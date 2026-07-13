@@ -9,6 +9,7 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as argon2 from "argon2";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { WalletService } from "../wallet/wallet.service";
 import type { RegisterDto } from "./dto/register.dto";
 import type { LoginDto } from "./dto/login.dto";
 import type { AccessTokenPayload, RefreshTokenPayload, TokenPair } from "./token.types";
@@ -26,6 +27,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly wallet: WalletService,
   ) {}
 
   async register(dto: RegisterDto): Promise<{ user: PublicUser } & TokenPair> {
@@ -35,8 +37,10 @@ export class AuthService {
     }
 
     const passwordHash = await argon2.hash(dto.password);
-    const user = await this.prisma.user.create({
-      data: { email: dto.email, passwordHash },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({ data: { email: dto.email, passwordHash } });
+      await this.wallet.createWalletForNewUser(tx, created.id);
+      return created;
     });
 
     const tokens = await this.issueTokenPair(user.id, user.role);
@@ -109,12 +113,13 @@ export class AuthService {
     }
   }
 
-  async getProfile(userId: string): Promise<PublicUser> {
+  async getProfile(userId: string): Promise<PublicUser & { balance: string }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new UnauthorizedException("User not found");
     }
-    return toPublicUser(user);
+    const { balance } = await this.wallet.getWallet(userId);
+    return { ...toPublicUser(user), balance };
   }
 
   private async issueTokenPair(userId: string, role: PublicUser["role"]): Promise<TokenPair> {

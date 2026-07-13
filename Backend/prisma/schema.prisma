@@ -25,6 +25,7 @@ model User {
   status        UserStatus     @default(ACTIVE)
   createdAt     DateTime       @default(now())
   refreshTokens RefreshToken[]
+  wallet        Wallet?
 }
 
 // Rotating refresh tokens: the raw token is only ever returned to the client once. We
@@ -41,4 +42,57 @@ model RefreshToken {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+enum LedgerEntryType {
+  DEPOSIT
+  WITHDRAWAL
+  BET_STAKE
+  BET_WIN
+  ADJUSTMENT
+}
+
+// The wallet's cachedBalance is a read-optimized projection, never the source of truth.
+// The source of truth is the sum of this wallet's LedgerEntry rows, which are append-only
+// (no updates, no deletes) — every money movement is a permanent, auditable record.
+model Wallet {
+  id            String        @id @default(uuid())
+  userId        String        @unique
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency      String        @default("DEMO")
+  cachedBalance BigInt        @default(0)
+  version       Int           @default(0)
+  updatedAt     DateTime      @updatedAt
+  ledgerEntries LedgerEntry[]
+}
+
+model LedgerEntry {
+  id        String          @id @default(uuid())
+  walletId  String
+  // onDelete: Cascade here is purely to let test fixtures clean up a whole user's data in
+  // one delete — the app itself never deletes a User (only bans), so this never fires
+  // against a real ledger. If a user-deletion flow is added later, use anonymization
+  // instead of cascade delete to keep the audit trail intact.
+  wallet    Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  amount    BigInt
+  type      LedgerEntryType
+  refType   String?
+  refId     String?
+  createdAt DateTime        @default(now())
+
+  @@index([walletId, createdAt])
+}
+
+// Guards money-moving endpoints (deposit/withdraw/spin) against duplicate charges from
+// client retries: the same key always returns the original stored response, never
+// re-executes the movement.
+model IdempotencyKey {
+  key          String   @id
+  userId       String
+  endpoint     String
+  requestHash  String
+  responseJson Json
+  createdAt    DateTime @default(now())
+
+  @@index([userId, endpoint])
 }

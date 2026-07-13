@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { RequestIdMiddleware } from "./common/middleware/request-id.middleware";
 import { AuthModule } from "./modules/auth/auth.module";
+import { WalletModule } from "./modules/wallet/wallet.module";
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { AuthModule } from "./modules/auth/auth.module";
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     PrismaModule,
     AuthModule,
+    WalletModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

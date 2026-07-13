@@ -4,6 +4,28 @@ import * as argon2 from "argon2";
 const prisma = new PrismaClient();
 
 const PLAYER_EMAILS = ["alice@auroraways.demo", "bob@auroraways.demo", "carol@auroraways.demo"];
+const STARTING_DEMO_BALANCE = BigInt(process.env.STARTING_DEMO_BALANCE ?? "100000");
+
+async function ensureFundedWallet(userId: string): Promise<void> {
+  const existing = await prisma.wallet.findUnique({ where: { userId } });
+  if (existing) return;
+
+  await prisma.$transaction(async (tx) => {
+    const wallet = await tx.wallet.create({
+      data: { userId, cachedBalance: STARTING_DEMO_BALANCE },
+    });
+    if (STARTING_DEMO_BALANCE > 0n) {
+      await tx.ledgerEntry.create({
+        data: {
+          walletId: wallet.id,
+          amount: STARTING_DEMO_BALANCE,
+          type: "DEPOSIT",
+          refType: "SIGNUP_BONUS",
+        },
+      });
+    }
+  });
+}
 
 async function main(): Promise<void> {
   const adminPasswordHash = await argon2.hash("Admin123!");
@@ -12,18 +34,20 @@ async function main(): Promise<void> {
     update: {},
     create: { email: "admin@auroraways.demo", passwordHash: adminPasswordHash, role: "ADMIN" },
   });
+  await ensureFundedWallet(admin.id);
 
   const playerPasswordHash = await argon2.hash("Player123!");
   for (const email of PLAYER_EMAILS) {
-    await prisma.user.upsert({
+    const player = await prisma.user.upsert({
       where: { email },
       update: {},
       create: { email, passwordHash: playerPasswordHash, role: "PLAYER" },
     });
+    await ensureFundedWallet(player.id);
   }
 
   console.log(`Seeded admin (${admin.email}) and ${PLAYER_EMAILS.length} players.`);
-  console.log("Demo wallets funded via the ledger are added in M4.");
+  console.log(`Each wallet funded with ${STARTING_DEMO_BALANCE} minor units via a DEPOSIT ledger entry.`);
 }
 
 main()
