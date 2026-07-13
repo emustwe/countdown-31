@@ -1,0 +1,152 @@
+// Hand-maintained mirror of the Backend's public DTO/response shapes. We don't generate
+// these from OpenAPI because our controllers validate with zod, not class-validator, so
+// @nestjs/swagger has no decorators to introspect — the generated spec had no request/
+// response bodies. Keep this in sync with Backend/src/modules/**/dto and **/*.mapper.ts.
+
+export interface PublicUser {
+  id: string;
+  email: string;
+  role: "PLAYER" | "ADMIN";
+  status: "ACTIVE" | "BANNED";
+  createdAt: string;
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export type RegisterResponse = { user: PublicUser } & AuthTokens;
+export type LoginResponse = { user: PublicUser } & AuthTokens;
+export type RefreshResponse = AuthTokens;
+export type MeResponse = PublicUser & { balance: string };
+
+export interface WalletSnapshot {
+  balance: string;
+  reconciled: boolean;
+}
+
+export interface MoneyMovementResult {
+  balance: string;
+  amount: string;
+  type: "DEPOSIT" | "WITHDRAWAL";
+}
+
+export interface LedgerEntryDto {
+  id: string;
+  amount: string;
+  type: "DEPOSIT" | "WITHDRAWAL" | "BET_STAKE" | "BET_WIN" | "ADJUSTMENT";
+  refType: string | null;
+  refId: string | null;
+  createdAt: string;
+}
+
+export interface TransactionPage {
+  entries: LedgerEntryDto[];
+  nextCursor: string | null;
+}
+
+export type SymbolId = "H1" | "H2" | "H3" | "L1" | "L2" | "L3" | "L4" | "W" | "S";
+export type Grid = SymbolId[][];
+
+export interface PublicMathModel {
+  id: string;
+  version: string;
+  displayName: string;
+  grid: { reels: 5; rows: 5 };
+  symbols: SymbolId[];
+  wild: "W";
+  scatter: "S";
+  paytable: Record<string, number[]>;
+  scatterPays: number[];
+  freeSpins: {
+    award: Record<3 | 4 | 5, number>;
+    startMultiplier: number;
+    multiplierStep: number;
+    maxMultiplier: number;
+    retrigger: boolean;
+  };
+}
+
+export interface WinLineDto {
+  symbol: string;
+  matchLength: number;
+  ways: number;
+  win: string;
+}
+
+export interface SpinApiResponse {
+  roundId: string;
+  newBalance: string;
+  totalBet: string;
+  totalWin: string;
+  base: {
+    grid: Grid;
+    lines: WinLineDto[];
+    scatterCount: number;
+    win: string;
+  };
+  feature?: {
+    type: "FREE_SPINS";
+    awarded: number;
+    retriggers: number;
+    featureWin: string;
+    spins: Array<{
+      grid: Grid;
+      lines: WinLineDto[];
+      scatterCount: number;
+      win: string;
+      multiplier: number;
+      retriggered: boolean;
+    }>;
+  };
+  freeSpinsRemaining: number;
+  state: "FEATURE" | "COMPLETE";
+}
+
+export interface FreeSpinRevealResponse {
+  roundId: string;
+  index: number;
+  grid: Grid;
+  result: { lines: WinLineDto[]; scatterCount: number; multiplier: number; retriggered: boolean };
+  win: string;
+  freeSpinsRemaining: number;
+  state: "FEATURE" | "COMPLETE";
+}
+
+export interface RoundDetail {
+  id: string;
+  modelId: string;
+  modelVersion: string;
+  totalBet: string;
+  totalWin: string;
+  state: "STAKED" | "RESOLVED" | "FEATURE" | "COMPLETE";
+  freeSpinsRemaining: number;
+  createdAt: string;
+  completedAt: string | null;
+  spins: Array<{ index: number; grid: Grid; result: unknown; win: string }>;
+}
+
+export interface RoundSummary {
+  id: string;
+  modelId: string;
+  totalBet: string;
+  totalWin: string;
+  state: "STAKED" | "RESOLVED" | "FEATURE" | "COMPLETE";
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface RoundsPage {
+  rounds: RoundSummary[];
+  nextCursor: string | null;
+}
+
+export interface ApiErrorEnvelope {
+  statusCode: number;
+  error: string;
+  message: string | { message?: string; issues?: Array<{ path: string; message: string }> };
+  path: string;
+  timestamp: string;
+  requestId?: string;
+}

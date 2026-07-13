@@ -219,4 +219,31 @@ describe("Game (integration)", () => {
       .set("Authorization", `Bearer ${otherToken}`);
     expect(asOther.status).toBe(404);
   });
+
+  it("GET /game/rounds lists only the caller's own rounds, newest first", async () => {
+    const { accessToken } = await registerAndGetToken("history");
+    const { accessToken: otherToken } = await registerAndGetToken("historyother");
+
+    for (let i = 0; i < 3; i++) {
+      await request(server())
+        .post("/game/spin")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({ totalBet: "1000", idempotencyKey: randomUUID() });
+    }
+    await request(server())
+      .post("/game/spin")
+      .set("Authorization", `Bearer ${otherToken}`)
+      .send({ totalBet: "1000", idempotencyKey: randomUUID() });
+
+    const res = await request(server())
+      .get("/game/rounds?limit=2")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.rounds).toHaveLength(2);
+    expect(res.body.nextCursor).not.toBeNull();
+
+    const createdTimes = res.body.rounds.map((r: { createdAt: string }) => new Date(r.createdAt).getTime());
+    expect(createdTimes[0]).toBeGreaterThanOrEqual(createdTimes[1]);
+  });
 });

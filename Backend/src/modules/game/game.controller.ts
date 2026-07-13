@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { GameService } from "./game.service";
 import { SpinDtoSchema, type SpinDto } from "./dto/spin.dto";
 import { FreeSpinDtoSchema, type FreeSpinDto } from "./dto/free-spin.dto";
+import { PaginationDtoSchema, type PaginationDto } from "../../common/dto/pagination.dto";
 import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
@@ -35,6 +36,16 @@ export class GameController {
     @Body(new ZodValidationPipe(FreeSpinDtoSchema)) dto: FreeSpinDto,
   ) {
     return this.gameService.playNextFreeSpin(user.sub, dto.roundId);
+  }
+
+  @Get("rounds")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  listRounds(
+    @CurrentUser() user: AccessTokenPayload,
+    @Query(new ZodValidationPipe(PaginationDtoSchema)) query: PaginationDto,
+  ) {
+    return this.gameService.listRounds(user.sub, query.cursor, query.limit);
   }
 
   @Get("rounds/:id")

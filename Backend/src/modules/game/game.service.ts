@@ -215,6 +215,31 @@ export class GameService {
     });
   }
 
+  async listRounds(userId: string, cursor?: string, limit = 20) {
+    const rounds = await this.prisma.gameRound.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+
+    const hasMore = rounds.length > limit;
+    const page = hasMore ? rounds.slice(0, limit) : rounds;
+
+    return {
+      rounds: page.map((round) => ({
+        id: round.id,
+        modelId: round.modelId,
+        totalBet: round.totalBet.toString(),
+        totalWin: round.totalWin.toString(),
+        state: round.state,
+        createdAt: round.createdAt,
+        completedAt: round.completedAt,
+      })),
+      nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+    };
+  }
+
   async getRound(userId: string, roundId: string) {
     const round = await this.prisma.gameRound.findUnique({
       where: { id: roundId },

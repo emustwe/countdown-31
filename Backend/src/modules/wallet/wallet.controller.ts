@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { WalletService } from "./wallet.service";
 import { MoneyMovementDtoSchema, type MoneyMovementDto } from "./dto/money-movement.dto";
-import { ListTransactionsDtoSchema, type ListTransactionsDto } from "./dto/list-transactions.dto";
+import { PaginationDtoSchema, type PaginationDto } from "../../common/dto/pagination.dto";
 import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
@@ -39,7 +39,7 @@ export class WalletController {
   @Get("transactions")
   getTransactions(
     @CurrentUser() user: AccessTokenPayload,
-    @Query(new ZodValidationPipe(ListTransactionsDtoSchema)) query: ListTransactionsDto,
+    @Query(new ZodValidationPipe(PaginationDtoSchema)) query: PaginationDto,
   ) {
     return this.walletService.getTransactions(user.sub, query.cursor, query.limit);
   }

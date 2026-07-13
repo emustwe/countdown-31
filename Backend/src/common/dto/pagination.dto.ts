@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ListTransactionsDtoSchema = z
+export const PaginationDtoSchema = z
   .object({
     cursor: z.string().min(1).optional(),
     limit: z
@@ -12,4 +12,4 @@ export const ListTransactionsDtoSchema = z
   })
   .strict();
 
-export type ListTransactionsDto = z.infer<typeof ListTransactionsDtoSchema>;
+export type PaginationDto = z.infer<typeof PaginationDtoSchema>;
