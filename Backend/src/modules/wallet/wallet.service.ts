@@ -4,6 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { LedgerService } from "./ledger.service";
+import { BalanceGateway } from "../realtime/balance.gateway";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -40,6 +41,7 @@ export class WalletService {
     private readonly prisma: PrismaService,
     private readonly ledger: LedgerService,
     private readonly config: ConfigService,
+    private readonly balanceGateway: BalanceGateway,
   ) {}
 
   /** Called from within the same transaction that creates the User row, so a user can
@@ -123,7 +125,7 @@ export class WalletService {
       return existing.responseJson as unknown as MoneyMovementResult;
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const response = await this.prisma.$transaction(async (tx) => {
       // Lock the wallet row for the duration of this transaction so concurrent
       // deposit/withdraw calls for the same user serialize instead of racing.
       await tx.$executeRaw`SELECT id FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE`;
@@ -160,5 +162,8 @@ export class WalletService {
 
       return response;
     });
+
+    this.balanceGateway.emitBalanceUpdate(userId, response.balance);
+    return response;
   }
 }

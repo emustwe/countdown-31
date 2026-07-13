@@ -7,12 +7,16 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { InjectQueue } from "@nestjs/bullmq";
+import type { Queue } from "bullmq";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { LedgerService } from "../wallet/ledger.service";
 import { createSecureRng, createTraceRng, getMathModel, resolveSpin, type MathModel } from "../../engine";
 import { toPublicMathModel, type PublicMathModel } from "./public-model.mapper";
 import { serializeLine, toSpinApiResponse, type SpinApiResponse } from "./spin-response.mapper";
+import { SIDE_EFFECTS_JOBS, SIDE_EFFECTS_QUEUE, type SpinCompletedJobData } from "../../common/queue/queue.constants";
+import { BalanceGateway } from "../realtime/balance.gateway";
 
 const GAME_CONFIG_ID = "singleton";
 
@@ -26,6 +30,8 @@ export class GameService {
     private readonly prisma: PrismaService,
     private readonly ledger: LedgerService,
     private readonly config: ConfigService,
+    @InjectQueue(SIDE_EFFECTS_QUEUE) private readonly sideEffectsQueue: Queue<SpinCompletedJobData>,
+    private readonly balanceGateway: BalanceGateway,
   ) {}
 
   async getActiveModel(): Promise<MathModel> {
@@ -67,7 +73,7 @@ export class GameService {
     const model = await this.getActiveModel();
     const roundId = randomUUID();
 
-    return this.prisma.$transaction(async (tx) => {
+    const response = await this.prisma.$transaction(async (tx) => {
       // Row lock: concurrent spins for the same user serialize instead of racing on balance.
       await tx.$executeRaw`SELECT id FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE`;
       const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
@@ -172,6 +178,20 @@ export class GameService {
 
       return response;
     });
+
+    // Fire-and-forget: never let a queue hiccup delay or fail the spin response — the
+    // money and round are already durably committed above.
+    await this.sideEffectsQueue
+      .add(SIDE_EFFECTS_JOBS.SPIN_COMPLETED, {
+        roundId,
+        userId,
+        totalBet: totalBet.toString(),
+        totalWin: response.totalWin,
+      })
+      .catch(() => undefined);
+
+    this.balanceGateway.emitBalanceUpdate(userId, response.newBalance);
+    return response;
   }
 
   async playNextFreeSpin(userId: string, roundId: string) {

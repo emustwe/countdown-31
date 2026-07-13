@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "../lib/hooks/useWallet";
 import { useLogout, useProfile } from "../lib/hooks/useAuth";
+import { useBalanceSocket } from "../lib/hooks/useBalanceSocket";
 import { formatMinorUnits } from "../lib/money";
 
 const NAV_LINKS = [
@@ -19,6 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: wallet } = useWallet();
   const { data: profile } = useProfile();
   const logout = useLogout();
+  useBalanceSocket();
 
   return (
     <div className="min-h-screen">

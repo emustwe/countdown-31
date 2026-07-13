@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { PrismaModule } from "./common/prisma/prisma.module";
+import { QueueModule } from "./common/queue/queue.module";
 import { RequestIdMiddleware } from "./common/middleware/request-id.middleware";
 import { AuthModule } from "./modules/auth/auth.module";
 import { WalletModule } from "./modules/wallet/wallet.module";
@@ -14,6 +15,7 @@ import { AdminModule } from "./modules/admin/admin.module";
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     PrismaModule,
+    QueueModule,
     AuthModule,
     WalletModule,
     GameModule,
