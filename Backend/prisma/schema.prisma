@@ -158,3 +158,18 @@ model GameConfig {
   updatedBy     String?
   updatedAt     DateTime @updatedAt
 }
+
+// Append-only trail for every admin action that touches money or config: balance
+// adjustments, bans, and math-model switches. Never updated or deleted.
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String
+  action      String
+  targetType  String
+  targetId    String
+  dataJson    Json
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
