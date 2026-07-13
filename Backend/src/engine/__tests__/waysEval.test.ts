@@ -30,14 +30,14 @@ describe("evaluateWays", () => {
     const g = grid([
       ["H1", "H1", "L1", "L1", "L1"],
       ["H1", "L2", "L2", "L2", "L2"],
-      ["L3", "L3", "L3", "L3", "L3"],
+      ["H1", "L3", "L3", "L3", "L3"],
       ["L4", "L4", "L4", "L4", "L4"],
       ["L4", "L4", "L4", "L4", "L4"],
     ]);
     const wins = evaluateWays(g, model, 1000n);
     const h1 = wins.find((w) => w.symbol === "H1");
-    expect(h1?.matchLength).toBe(2);
-    expect(h1?.ways).toBe(2); // 2 on reel 1, 1 on reel 2
+    expect(h1?.matchLength).toBe(3);
+    expect(h1?.ways).toBe(2); // 2 on reel 1, 1 on reel 2, 1 on reel 3
   });
 
   it("lets wilds extend a chain and substitute for the paying symbol", () => {
@@ -77,7 +77,7 @@ describe("evaluateWays", () => {
     const g = grid([
       ["H1", "H2", "H2", "H2", "H2"],
       ["H1", "H2", "H2", "H2", "H2"],
-      ["L3", "L3", "L3", "L3", "L3"],
+      ["H1", "H2", "H2", "H2", "H2"],
       ["L4", "L4", "L4", "L4", "L4"],
       ["L4", "L4", "L4", "L4", "L4"],
     ]);

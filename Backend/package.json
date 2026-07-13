@@ -9,7 +9,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint . --max-warnings=0",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "simulate": "tsx src/engine/simulate/cli.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
