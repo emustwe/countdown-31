@@ -4,26 +4,59 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/main.ts",
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start:prod": "node dist/main",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
-    "simulate": "tsx src/engine/simulate/cli.ts"
+    "simulate": "tsx src/engine/simulate/cli.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
+    "@nestjs/cli": "^11.0.24",
+    "@nestjs/testing": "^11.1.28",
+    "@swc/core": "^1.15.43",
+    "@types/express": "^5.0.6",
     "@types/node": "^26.1.1",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/supertest": "^7.2.0",
     "@typescript-eslint/eslint-plugin": "^8.15.0",
     "@typescript-eslint/parser": "^8.15.0",
     "eslint": "^9.15.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.3.3",
+    "prisma": "^6.19.3",
+    "supertest": "^7.2.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
+    "unplugin-swc": "^1.5.9",
     "vitest": "^2.1.5"
   },
   "dependencies": {
+    "@nestjs/common": "^11.1.28",
+    "@nestjs/config": "^4.0.4",
+    "@nestjs/core": "^11.1.28",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.1.28",
+    "@nestjs/swagger": "^11.4.5",
+    "@nestjs/throttler": "^6.5.0",
+    "@prisma/client": "^6.19.3",
+    "argon2": "^0.44.0",
+    "helmet": "^8.3.0",
+    "nest-winston": "^1.10.2",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "winston": "^3.19.0",
     "zod": "^4.4.3"
   }
 }

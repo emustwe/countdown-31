@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PLAYER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  role          Role           @default(PLAYER)
+  status        UserStatus     @default(ACTIVE)
+  createdAt     DateTime       @default(now())
+  refreshTokens RefreshToken[]
+}
+
+// Rotating refresh tokens: the raw token is only ever returned to the client once. We
+// store a hash so a stolen DB dump can't be replayed as a valid refresh token. Revoking a
+// token (on rotation or reuse detection) sets revokedAt rather than deleting the row, so a
+// reused-after-rotation token can still be detected and its whole family revoked.
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
