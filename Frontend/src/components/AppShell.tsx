@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "../lib/hooks/useWallet";
-import { useLogout } from "../lib/hooks/useAuth";
+import { useLogout, useProfile } from "../lib/hooks/useAuth";
 import { formatMinorUnits } from "../lib/money";
 
 const NAV_LINKS = [
@@ -17,6 +17,7 @@ const NAV_LINKS = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: wallet } = useWallet();
+  const { data: profile } = useProfile();
   const logout = useLogout();
 
   return (
@@ -43,6 +44,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
         <div className="flex items-center gap-4">
+          {profile?.role === "ADMIN" && (
+            <Link href="/admin" className="text-sm text-[var(--color-accent-2)] hover:underline">
+              Admin
+            </Link>
+          )}
           <div className="rounded-md bg-[var(--color-surface-2)] px-3 py-1.5 text-sm font-medium tabular-nums">
             {wallet ? formatMinorUnits(wallet.balance) : "—"}
           </div>

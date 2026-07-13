@@ -142,6 +142,85 @@ export interface RoundsPage {
   nextCursor: string | null;
 }
 
+export interface AdminUser {
+  id: string;
+  email: string;
+  role: "PLAYER" | "ADMIN";
+  status: "ACTIVE" | "BANNED";
+  createdAt: string;
+  balance: string;
+}
+
+export interface AdminUsersPage {
+  users: AdminUser[];
+  nextCursor: string | null;
+}
+
+export interface AdminMathModel {
+  id: string;
+  version: string;
+  displayName: string;
+  targetRtp: number;
+  active: boolean;
+  computed: {
+    theoreticalRtpBase?: number;
+    empiricalRtpTotal?: number;
+    hitFrequency?: number;
+    volatilityIndex?: number;
+    simSpins?: number;
+  } | null;
+}
+
+export interface AdminTransaction {
+  id: string;
+  userEmail: string;
+  amount: string;
+  type: "DEPOSIT" | "WITHDRAWAL" | "BET_STAKE" | "BET_WIN" | "ADJUSTMENT";
+  refType: string | null;
+  refId: string | null;
+  createdAt: string;
+}
+
+export interface AdminTransactionsPage {
+  entries: AdminTransaction[];
+  nextCursor: string | null;
+}
+
+export interface AnalyticsTopWin {
+  roundId: string;
+  userEmail: string;
+  modelId: string;
+  totalBet: string;
+  totalWin: string;
+  createdAt: string;
+}
+
+export interface Analytics {
+  windowDays: number;
+  totalSpins: number;
+  totalStaked: string;
+  totalReturned: string;
+  ggr: string;
+  activeUsers: number;
+  observedRtp: number;
+  topWins: AnalyticsTopWin[];
+}
+
+export interface AuditLogEntry {
+  id: string;
+  actorUserId: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  dataJson: unknown;
+  createdAt: string;
+}
+
+export interface AuditLogPage {
+  entries: AuditLogEntry[];
+  nextCursor: string | null;
+}
+
 export interface ApiErrorEnvelope {
   statusCode: number;
   error: string;
