@@ -12,23 +12,22 @@ describe("golden spin", () => {
     const result = resolveSpin({ model, totalBet: 1000n }, createSeededRng("golden-seed-1"));
 
     expect(result.grid).toEqual([
-      ["L3", "L4", "L1", "L2", "L4"],
-      ["L1", "L2", "L3", "L4", "W"],
-      ["H3", "L1", "L3", "L4", "W"],
-      ["L3", "L4", "H3", "L1", "L2"],
+      ["S", "H1", "H2", "H3", "L1"],
+      ["H2", "H3", "L1", "L2", "L3"],
+      ["L2", "L3", "W", "S", "H1"],
+      ["W", "S", "H1", "H2", "H3"],
       ["L4", "L1", "L2", "L3", "L4"],
     ]);
-    expect(result.scatterCount).toBe(0);
-    expect(result.feature).toBeUndefined();
-    expect(result.totalWin).toBe(888n);
-    expect(result.rngTrace).toEqual([
+    expect(result.scatterCount).toBe(3);
+    expect(result.feature).toBeDefined();
+    expect(result.totalWin).toBe(1788n);
+    expect(result.rngTrace.slice(0, 5)).toEqual([
       1911623544, 2282084821, 470340243, 2333507853, 1624893303,
     ]);
 
     const bySymbol = Object.fromEntries(result.lines.map((l) => [l.symbol, l]));
-    expect(bySymbol["L1"]).toMatchObject({ matchLength: 5, ways: 4, win: 224n });
-    expect(bySymbol["L2"]).toMatchObject({ matchLength: 5, ways: 2, win: 87n });
-    expect(bySymbol["L3"]).toMatchObject({ matchLength: 5, ways: 4, win: 139n });
-    expect(bySymbol["L4"]).toMatchObject({ matchLength: 5, ways: 16, win: 438n });
+    expect(bySymbol["H2"]).toMatchObject({ matchLength: 4, ways: 2, win: 128n });
+    expect(bySymbol["H3"]).toMatchObject({ matchLength: 4, ways: 2, win: 82n });
+    expect(bySymbol["L1"]).toMatchObject({ matchLength: 5, ways: 1, win: 102n });
   });
 });

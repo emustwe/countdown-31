@@ -6,7 +6,7 @@ const model = getMathModel("aurora-ways-96");
 
 describe("free spins feature", () => {
   it("triggers on 3+ scatters, awards spins per the model, and applies a rising multiplier", () => {
-    const result = resolveSpin({ model, totalBet: 1000n }, createSeededRng("fs2-search-7"));
+    const result = resolveSpin({ model, totalBet: 1000n }, createSeededRng("v2-search-9"));
 
     expect(result.scatterCount).toBe(3);
     expect(result.feature).toBeDefined();
@@ -26,7 +26,7 @@ describe("free spins feature", () => {
   });
 
   it("retriggers additional free spins on 3+ scatters during the feature", () => {
-    const result = resolveSpin({ model, totalBet: 1000n }, createSeededRng("fs2-search-37"));
+    const result = resolveSpin({ model, totalBet: 1000n }, createSeededRng("v2-search-8"));
 
     expect(result.feature).toBeDefined();
     expect(result.feature?.retriggers).toBeGreaterThan(0);
@@ -37,14 +37,14 @@ describe("free spins feature", () => {
   });
 
   it("free spins are included in the recorded rngTrace and replay byte-for-byte", () => {
-    const original = resolveSpin({ model, totalBet: 1000n }, createSeededRng("fs2-search-37"));
+    const original = resolveSpin({ model, totalBet: 1000n }, createSeededRng("v2-search-8"));
     const replayed = resolveSpin({ model, totalBet: 1000n }, createTraceRng(original.rngTrace));
 
     expect(replayed).toEqual(original);
   });
 
   it("does not trigger a feature on a spin with fewer than 3 scatters", () => {
-    const result = resolveSpin({ model, totalBet: 1000n }, createSeededRng("golden-seed-1"));
+    const result = resolveSpin({ model, totalBet: 1000n }, createSeededRng("v2-search-0"));
     expect(result.scatterCount).toBeLessThan(3);
     expect(result.feature).toBeUndefined();
   });
