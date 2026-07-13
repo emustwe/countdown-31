@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+Backend/node_modules/
+Frontend/node_modules/
+
+# Env files (real secrets - never commit)
+.env
+.env.local
+.env.*.local
+Backend/.env
+Frontend/.env.local
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+# Prisma
+Backend/prisma/*.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor/OS
+.DS_Store
+.vscode/
+.idea/
+
+# Test/coverage
+coverage/
+.turbo/
