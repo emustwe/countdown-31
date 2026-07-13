@@ -44,8 +44,11 @@ function AdjustBalanceForm({ user, onDone }: { user: AdminUser; onDone: () => vo
   return (
     <form onSubmit={handleSubmit} className="mt-2 flex flex-wrap items-end gap-2 rounded-md bg-[var(--color-surface-2)] p-3">
       <div>
-        <label className="mb-1 block text-xs text-[var(--color-text-dim)]">Amount (± credits)</label>
+        <label htmlFor={`amount-${user.id}`} className="mb-1 block text-xs text-[var(--color-text-dim)]">
+          Amount (± credits)
+        </label>
         <input
+          id={`amount-${user.id}`}
           required
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
@@ -54,8 +57,11 @@ function AdjustBalanceForm({ user, onDone }: { user: AdminUser; onDone: () => vo
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs text-[var(--color-text-dim)]">Reason (audited)</label>
+        <label htmlFor={`reason-${user.id}`} className="mb-1 block text-xs text-[var(--color-text-dim)]">
+          Reason (audited)
+        </label>
         <input
+          id={`reason-${user.id}`}
           required
           minLength={3}
           value={reason}

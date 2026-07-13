@@ -184,8 +184,11 @@ function GameContent() {
         <div className="surface rounded-lg p-6">
           <div className="mb-4 flex flex-wrap items-end gap-3">
             <div>
-              <label className="mb-1 block text-sm text-[var(--color-text-dim)]">Bet (credits)</label>
+              <label htmlFor="betCredits" className="mb-1 block text-sm text-[var(--color-text-dim)]">
+                Bet (credits)
+              </label>
               <input
+                id="betCredits"
                 type="text"
                 value={betCredits}
                 disabled={showingFeature}

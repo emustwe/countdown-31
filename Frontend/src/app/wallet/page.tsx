@@ -65,8 +65,11 @@ function WalletContent() {
         <h2 className="mb-4 font-semibold">Deposit / withdraw</h2>
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <label className="mb-1 block text-sm text-[var(--color-text-dim)]">Amount (credits)</label>
+            <label htmlFor="amount" className="mb-1 block text-sm text-[var(--color-text-dim)]">
+              Amount (credits)
+            </label>
             <input
+              id="amount"
               type="text"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}

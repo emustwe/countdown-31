@@ -34,8 +34,11 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm text-[var(--color-text-dim)]">Email</label>
+            <label htmlFor="email" className="mb-1 block text-sm text-[var(--color-text-dim)]">
+              Email
+            </label>
             <input
+              id="email"
               type="email"
               required
               value={email}
@@ -44,8 +47,11 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-[var(--color-text-dim)]">Password</label>
+            <label htmlFor="password" className="mb-1 block text-sm text-[var(--color-text-dim)]">
+              Password
+            </label>
             <input
+              id="password"
               type="password"
               required
               minLength={8}

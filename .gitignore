@@ -32,3 +32,6 @@ npm-debug.log*
 # Test/coverage
 coverage/
 .turbo/
+test-results/
+playwright-report/
+blob-report/
