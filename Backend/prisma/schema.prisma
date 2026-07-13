@@ -26,6 +26,7 @@ model User {
   createdAt     DateTime       @default(now())
   refreshTokens RefreshToken[]
   wallet        Wallet?
+  gameRounds    GameRound[]
 }
 
 // Rotating refresh tokens: the raw token is only ever returned to the client once. We
@@ -64,6 +65,7 @@ model Wallet {
   version       Int           @default(0)
   updatedAt     DateTime      @updatedAt
   ledgerEntries LedgerEntry[]
+  gameRounds    GameRound[]
 }
 
 model LedgerEntry {
@@ -95,4 +97,64 @@ model IdempotencyKey {
   createdAt    DateTime @default(now())
 
   @@index([userId, endpoint])
+}
+
+enum GameRoundState {
+  STAKED
+  RESOLVED
+  FEATURE
+  COMPLETE
+}
+
+// A round is the full outcome of one spin — base game plus, if triggered, the entire
+// free-spins feature — decided atomically and in full by the engine the instant the player
+// spins. state/freeSpinsRemaining track how much of that already-decided outcome the
+// client has revealed so far (for resume-after-disconnect), not whether money has
+// settled — money settles unconditionally in the same transaction that creates the round.
+model GameRound {
+  id                 String         @id @default(uuid())
+  userId             String
+  // onDelete: Cascade is for test-fixture cleanup only — the app never deletes a User.
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletId           String
+  wallet             Wallet         @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  modelId            String
+  modelVersion       String
+  totalBet           BigInt
+  state              GameRoundState
+  freeSpinsRemaining Int            @default(0)
+  totalWin           BigInt         @default(0)
+  createdAt          DateTime       @default(now())
+  completedAt        DateTime?
+  spins              Spin[]
+
+  @@index([userId, createdAt])
+}
+
+// One row per resolved spin within a round: index 0 is the base spin, 1..n are free spins
+// in order. Immutable — this plus rngTraceJson is what makes a round replayable
+// byte-for-byte from stored data alone.
+model Spin {
+  id           String    @id @default(uuid())
+  roundId      String
+  round        GameRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  index        Int
+  gridJson     Json
+  resultJson   Json
+  rngTraceJson Json
+  win          BigInt
+  createdAt    DateTime  @default(now())
+
+  @@unique([roundId, index])
+  @@index([roundId])
+}
+
+// Singleton row (id is always "singleton") holding the currently active math model.
+// Switching it is an audited admin action and never affects rounds already created —
+// each GameRound pins its own modelId + modelVersion at creation time.
+model GameConfig {
+  id            String   @id @default("singleton")
+  activeModelId String
+  updatedBy     String?
+  updatedAt     DateTime @updatedAt
 }

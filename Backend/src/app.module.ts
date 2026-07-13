@@ -6,6 +6,8 @@ import { PrismaModule } from "./common/prisma/prisma.module";
 import { RequestIdMiddleware } from "./common/middleware/request-id.middleware";
 import { AuthModule } from "./modules/auth/auth.module";
 import { WalletModule } from "./modules/wallet/wallet.module";
+import { GameModule } from "./modules/game/game.module";
+import { AdminModule } from "./modules/admin/admin.module";
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { WalletModule } from "./modules/wallet/wallet.module";
     PrismaModule,
     AuthModule,
     WalletModule,
+    GameModule,
+    AdminModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

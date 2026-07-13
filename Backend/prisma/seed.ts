@@ -46,8 +46,15 @@ async function main(): Promise<void> {
     await ensureFundedWallet(player.id);
   }
 
+  await prisma.gameConfig.upsert({
+    where: { id: "singleton" },
+    update: {},
+    create: { id: "singleton", activeModelId: "aurora-ways-96", updatedBy: admin.id },
+  });
+
   console.log(`Seeded admin (${admin.email}) and ${PLAYER_EMAILS.length} players.`);
   console.log(`Each wallet funded with ${STARTING_DEMO_BALANCE} minor units via a DEPOSIT ledger entry.`);
+  console.log("Active math model: aurora-ways-96.");
 }
 
 main()
