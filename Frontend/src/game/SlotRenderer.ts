@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Sprite, type Texture } from "pixi.js";
+import { Application, Container, FillGradient, Graphics, Sprite, type Texture } from "pixi.js";
 import gsap from "gsap";
 import type { Grid, SymbolId, WinLineDto } from "../lib/api-types";
 import { ALL_SYMBOL_IDS } from "./symbols";
@@ -10,11 +10,12 @@ const REELS = 5;
 const ROWS = 5;
 const BUFFER = 15;
 const STRIP_LENGTH = ROWS * 2 + BUFFER; // head (current result) + filler + tail (new result)
-const CELL_SIZE = 84;
-const GAP = 8;
+const CELL_SIZE = 120;
+const GAP = 12;
 const CELL_STEP = CELL_SIZE + GAP;
 const BOARD_WIDTH = REELS * CELL_SIZE + (REELS - 1) * GAP;
 const BOARD_HEIGHT = ROWS * CELL_SIZE + (ROWS - 1) * GAP;
+const CABINET_PAD = 28;
 const HIGHLIGHT_TINT = 0xf2c94c;
 const NO_TINT = 0xffffff;
 
@@ -44,6 +45,16 @@ export class SlotRenderer {
       return;
     }
 
+    // The canvas is a "replaced element" with its own intrinsic size — left in normal
+    // flow, it can feed back into the container's own aspect-ratio-driven height (the
+    // container grows to fit the canvas, resizeTo grows the canvas to fit the container,
+    // and on some layouts that loop settles on the wrong size). Taking it out of flow
+    // entirely removes the feedback: only the container's CSS decides its size.
+    app.canvas.style.position = "absolute";
+    app.canvas.style.inset = "0";
+    app.canvas.style.width = "100%";
+    app.canvas.style.height = "100%";
+    container.style.position = "relative";
     container.appendChild(app.canvas);
     this.app = app;
 
@@ -52,6 +63,8 @@ export class SlotRenderer {
     const board = new Container();
     app.stage.addChild(board);
     this.board = board;
+
+    board.addChild(this.buildCabinetFrame());
 
     for (let r = 0; r < REELS; r++) {
       const reelContainer = new Container();
@@ -77,6 +90,8 @@ export class SlotRenderer {
       }
       this.strips.push(sprites);
     }
+
+    board.addChild(this.buildReelDividers());
 
     this.layout();
     this.resizeObserver = new ResizeObserver(() => this.layout());
@@ -186,10 +201,77 @@ export class SlotRenderer {
     }
   }
 
+  /** A dark, gold-trimmed "cabinet" backing behind the reels — drawn once as a child of
+   * `board` so it scales and repositions together with everything else in layout(). */
+  private buildCabinetFrame(): Container {
+    const frame = new Container();
+    const x0 = -CABINET_PAD;
+    const y0 = -CABINET_PAD;
+    const w = BOARD_WIDTH + CABINET_PAD * 2;
+    const h = BOARD_HEIGHT + CABINET_PAD * 2;
+    const radius = CABINET_PAD * 1.1;
+
+    const glow = new Graphics()
+      .roundRect(x0 - 10, y0 - 10, w + 20, h + 20, radius + 8)
+      .fill({ color: 0xf2c94c, alpha: 0.16 });
+    frame.addChild(glow);
+
+    const panelGradient = new FillGradient({
+      type: "linear",
+      start: { x: 0, y: 0 },
+      end: { x: 0, y: 1 },
+      colorStops: [
+        { offset: 0, color: 0x1c2138 },
+        { offset: 1, color: 0x0b0e1a },
+      ],
+      textureSpace: "local",
+    });
+
+    const panel = new Graphics()
+      .roundRect(x0, y0, w, h, radius)
+      .fill(panelGradient)
+      .stroke({ width: 4, color: 0xf2c94c, alpha: 0.85, alignment: 1 })
+      .roundRect(x0 + 6, y0 + 6, w - 12, h - 12, radius * 0.85)
+      .stroke({ width: 1.5, color: 0xffe08a, alpha: 0.35, alignment: 1 });
+    frame.addChild(panel);
+
+    // Small corner accents — a common cabinet/marquee detail, kept cheap (four circles).
+    const corners: Array<[number, number]> = [
+      [x0 + 14, y0 + 14],
+      [x0 + w - 14, y0 + 14],
+      [x0 + 14, y0 + h - 14],
+      [x0 + w - 14, y0 + h - 14],
+    ];
+    const gems = new Graphics();
+    for (const [cx, cy] of corners) {
+      gems.circle(cx, cy, 5).fill({ color: 0xf2c94c, alpha: 0.9 });
+    }
+    frame.addChild(gems);
+
+    return frame;
+  }
+
+  /** Thin gold dividers between reels, purely cosmetic. */
+  private buildReelDividers(): Container {
+    const dividers = new Container();
+    const g = new Graphics();
+    for (let r = 1; r < REELS; r++) {
+      const x = r * CELL_STEP - GAP / 2;
+      g.moveTo(x, 0).lineTo(x, BOARD_HEIGHT).stroke({ width: 1, color: 0xf2c94c, alpha: 0.18 });
+    }
+    dividers.addChild(g);
+    return dividers;
+  }
+
   private layout(): void {
     if (!this.app || !this.board) return;
     const { width, height } = this.app.screen;
-    const scale = Math.min(width / BOARD_WIDTH, height / BOARD_HEIGHT) * 0.94;
+    // Fit the whole cabinet frame (reels + padding + glow bleed), not just the reels,
+    // so the decorative border never clips against the container edges.
+    const frameMargin = CABINET_PAD + 20;
+    const frameWidth = BOARD_WIDTH + frameMargin * 2;
+    const frameHeight = BOARD_HEIGHT + frameMargin * 2;
+    const scale = Math.min(width / frameWidth, height / frameHeight) * 0.96;
     this.board.scale.set(scale);
     this.board.x = (width - BOARD_WIDTH * scale) / 2;
     this.board.y = (height - BOARD_HEIGHT * scale) / 2;

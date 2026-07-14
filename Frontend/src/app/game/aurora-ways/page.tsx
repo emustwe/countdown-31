@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import gsap from "gsap";
 import { AuthGuard } from "../../../components/AuthGuard";
 import { AppShell } from "../../../components/AppShell";
@@ -152,86 +152,130 @@ function GameContent() {
 
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-semibold">{config?.displayName ?? "Aurora Ways"}</h1>
-      <p className="mb-6 text-sm text-[var(--color-text-dim)]">
+      <h1 className="mb-1 text-center text-2xl font-semibold">{config?.displayName ?? "Aurora Ways"}</h1>
+      <p className="mb-6 text-center text-sm text-[var(--color-text-dim)]">
         5×5 ways-to-win — wilds substitute for every paying symbol, 3+ scatters anywhere
         trigger free spins.
       </p>
 
-      <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
-        <div className="relative">
-          <div
-            ref={containerRef}
-            className="surface aspect-square w-full max-w-[520px] rounded-lg"
-            style={{ minHeight: 320 }}
-          />
-          {featureBanner && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/70">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-[var(--color-accent)]">FREE SPINS!</p>
-                <p className="text-[var(--color-text-dim)]">{featureBanner.awarded} spins awarded</p>
-                <button
-                  onClick={() => setFeatureBanner(null)}
-                  className="mt-4 rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-black"
-                >
-                  Let&apos;s go
-                </button>
+      <div className="relative overflow-hidden rounded-3xl p-4 sm:p-8" style={CASINO_BACKGROUND_STYLE}>
+        {/* Soft aurora-colored glow blobs — purely decorative, behind everything. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full bg-[var(--color-accent-2)] opacity-25 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-10 -right-16 h-64 w-64 rounded-full bg-[var(--color-win)] opacity-20 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-16 left-1/3 h-64 w-64 rounded-full bg-[var(--color-accent)] opacity-20 blur-3xl"
+        />
+
+        <div className="relative mx-auto max-w-3xl">
+          <div className="relative mx-auto" style={{ maxWidth: 760 }}>
+            <div ref={containerRef} className="aspect-square w-full" />
+            {featureBanner && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/75">
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-[var(--color-accent)] drop-shadow-[0_0_12px_rgba(242,201,76,0.6)]">
+                    FREE SPINS!
+                  </p>
+                  <p className="mt-1 text-[var(--color-text-dim)]">{featureBanner.awarded} spins awarded</p>
+                  <button
+                    onClick={() => setFeatureBanner(null)}
+                    className="mt-4 rounded-md bg-[var(--color-accent)] px-5 py-2 text-sm font-semibold text-black"
+                  >
+                    Let&apos;s go
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        <div className="surface rounded-lg p-6">
-          <div className="mb-4 flex flex-wrap items-end gap-3">
-            <div>
-              <label htmlFor="betCredits" className="mb-1 block text-sm text-[var(--color-text-dim)]">
-                Bet (credits)
-              </label>
-              <input
-                id="betCredits"
-                type="text"
-                value={betCredits}
-                disabled={showingFeature}
-                onChange={(e) => setBetCredits(e.target.value)}
-                className="w-32 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)] disabled:opacity-50"
-              />
-            </div>
-
-            {!showingFeature ? (
-              <button
-                onClick={handleSpin}
-                disabled={busy || !ready}
-                className="rounded-md bg-[var(--color-accent)] px-6 py-2 text-sm font-semibold text-black disabled:opacity-60"
-              >
-                {busy ? "Spinning…" : "Spin"}
-              </button>
-            ) : (
-              <button
-                onClick={handleRevealNext}
-                disabled={busy || featureBanner !== null}
-                className="rounded-md bg-[var(--color-accent-2)] px-6 py-2 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                {busy ? "Spinning…" : `Free spin (${freeSpinsRemaining} left)`}
-              </button>
             )}
           </div>
 
-          {error && <p className="mb-2 text-sm text-[var(--color-danger)]">{error}</p>}
+          {/* Control deck: one horizontal strip below the reels — bet, spin, and the
+              score readouts all in a single row, like a physical cabinet's button panel. */}
+          <div className="surface mt-6 rounded-2xl border border-[var(--color-accent)]/30 px-6 py-4 shadow-[0_0_30px_rgba(0,0,0,0.4)]">
+            <div className="flex flex-wrap items-center justify-center gap-6 sm:justify-between">
+              <div className="flex items-center gap-2">
+                <label htmlFor="betCredits" className="text-sm text-[var(--color-text-dim)]">
+                  Bet
+                </label>
+                <input
+                  id="betCredits"
+                  type="text"
+                  value={betCredits}
+                  disabled={showingFeature}
+                  onChange={(e) => setBetCredits(e.target.value)}
+                  className="w-24 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-center text-sm outline-none focus:border-[var(--color-accent)] disabled:opacity-50"
+                />
+              </div>
 
-          <div className="space-y-1 text-sm">
-            <p>
-              Total win:{" "}
-              <span className="text-lg font-semibold text-[var(--color-win)] tabular-nums">
-                {formatMinorUnits(Math.round(displayedWin).toString())}
-              </span>
-            </p>
-            {multiplier !== null && (
-              <p className="text-[var(--color-accent)]">Current multiplier: ×{multiplier}</p>
-            )}
-            {newBalance && <p className="text-[var(--color-text-dim)]">Balance: {formatMinorUnits(newBalance)}</p>}
+              {!showingFeature ? (
+                <button
+                  onClick={handleSpin}
+                  disabled={busy || !ready}
+                  className="rounded-full bg-[var(--color-accent)] px-10 py-3 text-base font-bold text-black shadow-[0_0_18px_rgba(242,201,76,0.5)] transition hover:brightness-110 disabled:opacity-60"
+                >
+                  {busy ? "Spinning…" : "SPIN"}
+                </button>
+              ) : (
+                <button
+                  onClick={handleRevealNext}
+                  disabled={busy || featureBanner !== null}
+                  className="rounded-full bg-[var(--color-accent-2)] px-8 py-3 text-base font-bold text-white shadow-[0_0_18px_rgba(124,92,255,0.5)] transition hover:brightness-110 disabled:opacity-60"
+                >
+                  {busy ? "Spinning…" : `FREE SPIN (${freeSpinsRemaining})`}
+                </button>
+              )}
+
+              <div className="flex items-center gap-6 text-sm">
+                <div className="text-center">
+                  <p className="text-xs text-[var(--color-text-dim)]">Win</p>
+                  <p className="font-semibold text-[var(--color-win)] tabular-nums">
+                    {formatMinorUnits(Math.round(displayedWin).toString())}
+                  </p>
+                </div>
+                {multiplier !== null && (
+                  <div className="text-center">
+                    <p className="text-xs text-[var(--color-text-dim)]">Multiplier</p>
+                    <p className="font-semibold text-[var(--color-accent)]">×{multiplier}</p>
+                  </div>
+                )}
+                <div className="text-center">
+                  <p className="text-xs text-[var(--color-text-dim)]">Balance</p>
+                  <p className="font-semibold tabular-nums">
+                    {newBalance ? formatMinorUnits(newBalance) : "—"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {error && <p className="mt-3 text-center text-sm text-[var(--color-danger)]">{error}</p>}
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+// A dark, layered "casino floor at night" backdrop: a soft vignette plus a scatter of tiny
+// star-like sparkle points, echoing the game's aurora-sky theme without needing an image
+// asset. Kept as a plain CSS background (Pixi's canvas stays transparent) so it's cheap and
+// theme-aware.
+const CASINO_BACKGROUND_STYLE: CSSProperties = {
+  backgroundImage: [
+    "radial-gradient(circle at 25% 20%, rgba(124,92,255,0.16), transparent 45%)",
+    "radial-gradient(circle at 80% 15%, rgba(52,211,153,0.10), transparent 40%)",
+    "radial-gradient(circle at 70% 90%, rgba(242,201,76,0.10), transparent 45%)",
+    "radial-gradient(1.5px 1.5px at 10% 20%, rgba(255,255,255,0.55) 1.5px, transparent 1.5px)",
+    "radial-gradient(1.5px 1.5px at 85% 25%, rgba(255,255,255,0.45) 1.5px, transparent 1.5px)",
+    "radial-gradient(1.5px 1.5px at 60% 75%, rgba(255,255,255,0.4) 1.5px, transparent 1.5px)",
+    "radial-gradient(1.5px 1.5px at 25% 85%, rgba(255,255,255,0.35) 1.5px, transparent 1.5px)",
+    "radial-gradient(1.5px 1.5px at 45% 40%, rgba(255,255,255,0.4) 1.5px, transparent 1.5px)",
+    "radial-gradient(1.5px 1.5px at 90% 60%, rgba(255,255,255,0.3) 1.5px, transparent 1.5px)",
+    "linear-gradient(180deg, #131730 0%, #0a0d1a 60%, #060810 100%)",
+  ].join(", "),
+  backgroundSize: "auto, auto, auto, 160px 160px, 190px 190px, 170px 170px, 200px 200px, 150px 150px, 210px 210px, auto",
+};
