@@ -11,6 +11,7 @@ import { useSlotRenderer } from "../../../game/useSlotRenderer";
 import { useSettingsStore } from "../../../stores/settings-store";
 import { useGameSessionStore } from "../../../stores/game-session-store";
 import { playFeatureTrigger, playSpinStart, playWin } from "../../../game/sound";
+import { RulesModal } from "../../../components/RulesModal";
 
 export default function AuroraWaysPage() {
   return (
@@ -62,6 +63,7 @@ function GameContent() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [multiplier, setMultiplier] = useState<number | null>(null);
+  const [showRules, setShowRules] = useState(false);
   const resumeHandled = useRef(false);
 
   useEffect(() => {
@@ -214,23 +216,33 @@ function GameContent() {
                 />
               </div>
 
-              {!showingFeature ? (
+              <div className="flex items-center gap-3">
+                {!showingFeature ? (
+                  <button
+                    onClick={handleSpin}
+                    disabled={busy || !ready}
+                    className="rounded-full bg-[var(--color-accent)] px-10 py-3 text-base font-bold text-black shadow-[0_0_18px_rgba(242,201,76,0.5)] transition hover:brightness-110 disabled:opacity-60"
+                  >
+                    {busy ? "Spinning…" : "SPIN"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleRevealNext}
+                    disabled={busy || featureBanner !== null}
+                    className="rounded-full bg-[var(--color-accent-2)] px-8 py-3 text-base font-bold text-white shadow-[0_0_18px_rgba(124,92,255,0.5)] transition hover:brightness-110 disabled:opacity-60"
+                  >
+                    {busy ? "Spinning…" : `FREE SPIN (${freeSpinsRemaining})`}
+                  </button>
+                )}
                 <button
-                  onClick={handleSpin}
-                  disabled={busy || !ready}
-                  className="rounded-full bg-[var(--color-accent)] px-10 py-3 text-base font-bold text-black shadow-[0_0_18px_rgba(242,201,76,0.5)] transition hover:brightness-110 disabled:opacity-60"
+                  onClick={() => setShowRules(true)}
+                  aria-label="Game rules"
+                  title="How to play"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] text-sm font-bold text-[var(--color-text-dim)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
                 >
-                  {busy ? "Spinning…" : "SPIN"}
+                  ?
                 </button>
-              ) : (
-                <button
-                  onClick={handleRevealNext}
-                  disabled={busy || featureBanner !== null}
-                  className="rounded-full bg-[var(--color-accent-2)] px-8 py-3 text-base font-bold text-white shadow-[0_0_18px_rgba(124,92,255,0.5)] transition hover:brightness-110 disabled:opacity-60"
-                >
-                  {busy ? "Spinning…" : `FREE SPIN (${freeSpinsRemaining})`}
-                </button>
-              )}
+              </div>
 
               <div className="flex items-center gap-6 text-sm">
                 <div className="text-center">
@@ -258,6 +270,8 @@ function GameContent() {
           </div>
         </div>
       </div>
+
+      {showRules && config && <RulesModal model={config} onClose={() => setShowRules(false)} />}
     </div>
   );
 }

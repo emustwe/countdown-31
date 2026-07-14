@@ -1,4 +1,4 @@
-import { Application, Container, FillGradient, Graphics, Sprite, type Texture } from "pixi.js";
+import { Application, BlurFilter, Container, FillGradient, Graphics, Sprite, type Texture } from "pixi.js";
 import gsap from "gsap";
 import type { Grid, SymbolId, WinLineDto } from "../lib/api-types";
 import { ALL_SYMBOL_IDS } from "./symbols";
@@ -9,7 +9,8 @@ import { highlightedCells } from "./highlightedCells";
 const REELS = 5;
 const ROWS = 5;
 const BUFFER = 15;
-const STRIP_LENGTH = ROWS * 2 + BUFFER; // head (current result) + filler + tail (new result)
+const OVERSHOOT_BUFFER = 2; // extra sprites past the target, so the bounce-back has something to show
+const STRIP_LENGTH = ROWS * 2 + BUFFER + OVERSHOOT_BUFFER; // head + filler + tail (target) + overshoot
 const CELL_SIZE = 120;
 const GAP = 12;
 const CELL_STEP = CELL_SIZE + GAP;
@@ -18,6 +19,7 @@ const BOARD_HEIGHT = ROWS * CELL_SIZE + (ROWS - 1) * GAP;
 const CABINET_PAD = 28;
 const HIGHLIGHT_TINT = 0xf2c94c;
 const NO_TINT = 0xffffff;
+const OVERSHOOT_PIXELS = CELL_STEP * 0.4;
 
 function randomSymbolId(): SymbolId {
   return ALL_SYMBOL_IDS[Math.floor(Math.random() * ALL_SYMBOL_IDS.length)] as SymbolId;
@@ -27,6 +29,7 @@ export class SlotRenderer {
   private app: Application | null = null;
   private textures: Record<SymbolId, Texture> | null = null;
   private board: Container | null = null;
+  private reelVisualContents: Container[] = [];
   private stripContainers: Container[] = [];
   private strips: Sprite[][] = [];
   private resizeObserver: ResizeObserver | null = null;
@@ -67,6 +70,7 @@ export class SlotRenderer {
     board.addChild(this.buildCabinetFrame());
 
     for (let r = 0; r < REELS; r++) {
+      // reelContainer: fixed position + the clip mask — never scaled/moved directly.
       const reelContainer = new Container();
       reelContainer.x = r * CELL_STEP;
       board.addChild(reelContainer);
@@ -75,8 +79,16 @@ export class SlotRenderer {
       reelContainer.addChild(mask);
       reelContainer.mask = mask;
 
+      // visualContent: everything that actually gets scaled for the landing "pop", pivoted
+      // on its own center so scaling doesn't shift the reel sideways.
+      const visualContent = new Container();
+      visualContent.pivot.set(CELL_SIZE / 2, BOARD_HEIGHT / 2);
+      visualContent.position.set(CELL_SIZE / 2, BOARD_HEIGHT / 2);
+      reelContainer.addChild(visualContent);
+      this.reelVisualContents.push(visualContent);
+
       const stripContainer = new Container();
-      reelContainer.addChild(stripContainer);
+      visualContent.addChild(stripContainer);
       this.stripContainers.push(stripContainer);
 
       const sprites: Sprite[] = [];
@@ -117,9 +129,11 @@ export class SlotRenderer {
     }
   }
 
-  /** Animates every reel from its current resting grid to `grid`, staggering each reel's
-   * stop time for the classic cascading-stop look, and resolves once all reels have
-   * landed. Falls back to an instant swap when animations are disabled in Settings. */
+  /** Animates every reel from its current resting grid to `grid`: a quick coiled-spring
+   * anticipation dip, a blurred fast scroll, then an overshoot past the stop point that
+   * bounces back into place — staggered per reel for the classic cascading-stop look.
+   * Resolves once all reels have landed. Falls back to an instant swap when animations
+   * are disabled in Settings. */
   async spinTo(grid: Grid): Promise<void> {
     if (!this.animationsEnabled) {
       this.showGrid(grid);
@@ -130,11 +144,12 @@ export class SlotRenderer {
 
     for (let r = 0; r < REELS; r++) {
       const strip = this.strips[r];
-      const container = this.stripContainers[r];
+      const stripContainer = this.stripContainers[r];
+      const visualContent = this.reelVisualContents[r];
       const column = grid[r];
-      if (!strip || !container || !column || !this.textures) continue;
+      if (!strip || !stripContainer || !visualContent || !column || !this.textures) continue;
 
-      for (let i = ROWS; i < ROWS + BUFFER; i++) {
+      for (let i = ROWS; i < ROWS + BUFFER + OVERSHOOT_BUFFER; i++) {
         const sprite = strip[i];
         if (sprite) sprite.texture = this.textures[randomSymbolId()];
       }
@@ -144,23 +159,50 @@ export class SlotRenderer {
         if (sprite && symbol) sprite.texture = this.textures[symbol];
       }
 
-      const duration = 0.7 + r * 0.15;
+      const spinDuration = 0.55 + r * 0.14;
       const targetY = -(ROWS + BUFFER) * CELL_STEP;
+      const overshootY = targetY - OVERSHOOT_PIXELS;
+      const blur = new BlurFilter({ strengthX: 0, strengthY: 26, quality: 3 });
 
       tweenPromises.push(
         new Promise<void>((resolve) => {
-          gsap.to(container, {
+          const tl = gsap.timeline();
+
+          // Coiled-spring anticipation: a small dip before the reel launches upward-scrolling.
+          tl.to(stripContainer, { y: CELL_STEP * 0.18, duration: 0.09, ease: "power1.out", delay: r * 0.03 });
+
+          // Fast, blurred scroll toward (just past) the stop point.
+          tl.to(stripContainer, {
+            y: overshootY,
+            duration: spinDuration,
+            ease: "power1.in",
+            onStart: () => {
+              stripContainer.filters = [blur];
+            },
+          });
+
+          // Bounce back to the exact resting position.
+          tl.to(stripContainer, {
             y: targetY,
-            duration,
-            ease: "power2.out",
+            duration: 0.32,
+            ease: "back.out(2.2)",
+            onStart: () => {
+              stripContainer.filters = [];
+            },
             onComplete: () => {
-              container.y = 0;
+              stripContainer.y = 0;
               for (let row = 0; row < ROWS; row++) {
                 const headSprite = strip[row];
                 const symbol = column[row];
                 if (headSprite && symbol) headSprite.texture = this.textures![symbol];
               }
               if (this.soundEnabled) playReelStop();
+              gsap.killTweensOf(visualContent.scale);
+              gsap.fromTo(
+                visualContent.scale,
+                { x: 1.08, y: 0.92 },
+                { x: 1, y: 1, duration: 0.28, ease: "elastic.out(1, 0.5)" },
+              );
               resolve();
             },
           });
@@ -284,6 +326,7 @@ export class SlotRenderer {
       for (const sprite of strip) gsap.killTweensOf(sprite.scale);
     }
     for (const container of this.stripContainers) gsap.killTweensOf(container);
+    for (const container of this.reelVisualContents) gsap.killTweensOf(container.scale);
     this.app?.destroy({ removeView: true }, { children: true, texture: true });
     this.app = null;
   }
