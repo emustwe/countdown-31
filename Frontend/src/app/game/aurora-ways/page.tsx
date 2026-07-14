@@ -175,7 +175,7 @@ function GameContent() {
 
         <div className="relative mx-auto max-w-3xl">
           <div className="relative mx-auto" style={{ maxWidth: 760 }}>
-            <div ref={containerRef} className="aspect-square w-full" />
+            <div ref={containerRef} className="w-full" />
             {featureBanner && (
               <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/75">
                 <div className="text-center">
