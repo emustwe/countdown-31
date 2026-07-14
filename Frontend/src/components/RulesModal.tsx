@@ -1,6 +1,7 @@
 "use client";
 
-import { SYMBOL_VISUALS } from "../game/symbols";
+import { useEffect, useState } from "react";
+import { SYMBOL_VISUALS, type SymbolVisual } from "../game/symbols";
 import type { PublicMathModel } from "../lib/api-types";
 
 const SYMBOL_NAMES: Record<string, string> = {
@@ -15,101 +16,166 @@ const SYMBOL_NAMES: Record<string, string> = {
 
 const PAYING_SYMBOL_ORDER = ["H1", "H2", "H3", "L1", "L2", "L3", "L4"] as const;
 
+function hexToCss(hex: number): string {
+  return `#${hex.toString(16).padStart(6, "0")}`;
+}
+
+function swatchStyle(visual: SymbolVisual) {
+  const [a, b] = visual.gradientStops;
+  return {
+    background: `linear-gradient(135deg, ${hexToCss(a ?? visual.border)}, ${hexToCss(b ?? visual.border)})`,
+    borderColor: hexToCss(visual.border),
+  };
+}
+
 export function RulesModal({ model, onClose }: { model: PublicMathModel; onClose: () => void }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Game rules"
     >
       <div
-        className="surface max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--color-accent)]/30 p-6"
+        className={`surface flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-[var(--color-accent)]/30 shadow-[0_0_60px_rgba(0,0,0,0.55)] transition-all duration-200 ease-out ${
+          visible ? "scale-100 opacity-100" : "scale-95 opacity-0"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-[var(--color-accent)]">
-            How to Play — {model.displayName}
-          </h2>
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
+          <div>
+            <h2 className="text-xl font-bold text-[var(--color-accent)]">🎰 How to Play</h2>
+            <p className="text-xs text-[var(--color-text-dim)]">{model.displayName}</p>
+          </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="text-lg text-[var(--color-text-dim)] hover:text-white"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-text-dim)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
           >
             ✕
           </button>
         </div>
 
-        <section className="mb-5">
-          <h3 className="mb-1 font-semibold">Ways to win</h3>
-          <p className="text-sm text-[var(--color-text-dim)]">
-            Matching symbols pay when they land on consecutive reels starting from reel 1
-            (the leftmost), in any row. The more reels in a row that match, and the more
-            copies of that symbol on each of those reels, the bigger the win.
-          </p>
-        </section>
+        <div className="space-y-5 overflow-y-auto p-6">
+          <section className="rounded-2xl border border-[var(--color-accent-2)]/30 bg-[var(--color-surface-2)] p-4">
+            <h3 className="mb-1 flex items-center gap-2 font-semibold text-[var(--color-accent-2)]">
+              <span className="text-lg">🛣️</span> Ways to Win
+            </h3>
+            <p className="text-sm text-[var(--color-text-dim)]">
+              Matching symbols pay when they land on consecutive reels starting from reel 1
+              (the leftmost), in any row. The more reels in a row that match — and the more
+              copies of that symbol on each of those reels — the bigger the win.
+            </p>
+          </section>
 
-        <section className="mb-5">
-          <h3 className="mb-2 font-semibold">Paytable</h3>
-          <p className="mb-2 text-xs text-[var(--color-text-dim)]">Win = multiplier × ways × bet</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[var(--color-text-dim)]">
-                  <th className="pb-2 font-normal">Symbol</th>
-                  <th className="pb-2 text-right font-normal">3 of a kind</th>
-                  <th className="pb-2 text-right font-normal">4 of a kind</th>
-                  <th className="pb-2 text-right font-normal">5 of a kind</th>
-                </tr>
-              </thead>
-              <tbody>
+          <section>
+            <div className="mb-3 flex items-baseline justify-between">
+              <h3 className="flex items-center gap-2 font-semibold">
+                <span className="text-lg">💰</span> Paytable
+              </h3>
+              <p className="text-xs text-[var(--color-text-dim)]">win = multiplier × ways × bet</p>
+            </div>
+            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-2)]/40 p-2">
+              <div className="grid grid-cols-[2rem_1fr_3.75rem_3.75rem_3.75rem] gap-x-1 px-1.5 pb-1.5 text-[9px] font-medium tracking-wide text-[var(--color-text-dim)] uppercase sm:grid-cols-[2.75rem_1fr_4rem_4rem_4rem] sm:gap-x-2 sm:text-[10px]">
+                <span />
+                <span />
+                <span className="text-center">3×</span>
+                <span className="text-center">4×</span>
+                <span className="text-center">5×</span>
+              </div>
+              <div className="space-y-1">
                 {PAYING_SYMBOL_ORDER.map((id) => {
                   const visual = SYMBOL_VISUALS[id];
                   const row = model.paytable[id] ?? [0, 0, 0, 0];
                   return (
-                    <tr key={id} className="border-t border-[var(--color-border)]">
-                      <td className="py-2">
-                        <span className="mr-2 text-lg">{visual.glyph}</span>
-                        {SYMBOL_NAMES[id]}
-                      </td>
-                      <td className="py-2 text-right tabular-nums">×{row[1] ?? 0}</td>
-                      <td className="py-2 text-right tabular-nums">×{row[2] ?? 0}</td>
-                      <td className="py-2 text-right tabular-nums">×{row[3] ?? 0}</td>
-                    </tr>
+                    <div
+                      key={id}
+                      className="grid grid-cols-[2rem_1fr_3.75rem_3.75rem_3.75rem] items-center gap-x-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)]/60 px-1.5 py-1.5 transition hover:border-[var(--color-accent)]/40 sm:grid-cols-[2.75rem_1fr_4rem_4rem_4rem] sm:gap-x-2 sm:px-2.5 sm:py-2"
+                    >
+                      <div
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs shadow-inner sm:h-10 sm:w-10 sm:text-lg"
+                        style={swatchStyle(visual)}
+                      >
+                        {visual.glyph}
+                      </div>
+                      <span className="truncate text-xs font-medium sm:text-sm">{SYMBOL_NAMES[id]}</span>
+                      <PayoutCell value={row[1] ?? 0} />
+                      <PayoutCell value={row[2] ?? 0} />
+                      <PayoutCell value={row[3] ?? 0} />
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        </section>
+              </div>
+            </div>
+          </section>
 
-        <section className="mb-5">
-          <h3 className="mb-1 font-semibold">
-            <span className="mr-1">{SYMBOL_VISUALS.W.glyph}</span> Wild
-          </h3>
-          <p className="text-sm text-[var(--color-text-dim)]">
-            Substitutes for any paying symbol (not the scatter) to help complete a way. A
-            way made up entirely of wilds doesn&apos;t pay — at least one real copy of the
-            symbol is still needed.
-          </p>
-        </section>
+          <section className="grid gap-3 sm:grid-cols-2">
+            <FeatureCard
+              visual={SYMBOL_VISUALS.W}
+              title="Wild"
+              description="Substitutes for any paying symbol (not the scatter) to help complete a way. A way made up entirely of wilds doesn't pay — at least one real copy of the symbol is still needed."
+            />
+            <FeatureCard
+              visual={SYMBOL_VISUALS.S}
+              title="Scatter & Free Spins"
+              description={`3, 4, or 5 scatters anywhere award ${model.freeSpins.award[3]}, ${model.freeSpins.award[4]}, or ${model.freeSpins.award[5]} free spins. Win multiplier starts at ×${model.freeSpins.startMultiplier} and rises by ${model.freeSpins.multiplierStep} each free spin, up to ×${model.freeSpins.maxMultiplier}.${model.freeSpins.retrigger ? " Landing 3+ scatters again during free spins adds more." : ""}`}
+            />
+          </section>
+        </div>
 
-        <section>
-          <h3 className="mb-1 font-semibold">
-            <span className="mr-1">{SYMBOL_VISUALS.S.glyph}</span> Scatter &amp; free spins
-          </h3>
-          <p className="text-sm text-[var(--color-text-dim)]">
-            3, 4, or 5 scatters anywhere on the grid award {model.freeSpins.award[3]},{" "}
-            {model.freeSpins.award[4]}, or {model.freeSpins.award[5]} free spins. A win
-            multiplier starts at ×{model.freeSpins.startMultiplier} and rises by{" "}
-            {model.freeSpins.multiplierStep} each free spin, up to ×
-            {model.freeSpins.maxMultiplier}.
-            {model.freeSpins.retrigger &&
-              " Landing 3+ scatters again during free spins adds more spins."}
-          </p>
-        </section>
+        <div className="border-t border-[var(--color-border)] p-4">
+          <button
+            onClick={onClose}
+            className="w-full rounded-full bg-[var(--color-accent)] py-2.5 text-sm font-bold text-black transition hover:brightness-110"
+          >
+            Got it
+          </button>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function PayoutCell({ value }: { value: number }) {
+  if (value <= 0) {
+    return <p className="text-center text-xs text-[var(--color-text-dim)] sm:text-sm">—</p>;
+  }
+  return (
+    <p className="text-center text-[11px] font-semibold whitespace-nowrap text-[var(--color-win)] sm:text-sm">
+      ×{value}
+    </p>
+  );
+}
+
+function FeatureCard({
+  visual,
+  title,
+  description,
+}: {
+  visual: SymbolVisual;
+  title: string;
+  description: string;
+}) {
+  const accent = hexToCss(visual.border);
+  return (
+    <div className="rounded-2xl border bg-[var(--color-surface-2)] p-4" style={{ borderColor: `${accent}4d` }}>
+      <div className="mb-2 flex items-center gap-2">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg border text-base" style={swatchStyle(visual)}>
+          {visual.glyph}
+        </div>
+        <h3 className="font-semibold" style={{ color: accent }}>
+          {title}
+        </h3>
+      </div>
+      <p className="text-sm text-[var(--color-text-dim)]">{description}</p>
     </div>
   );
 }
