@@ -50,7 +50,7 @@ function GameContent() {
   const activeRoundId = useGameSessionStore((s) => s.activeRoundId);
   const setActiveRound = useGameSessionStore((s) => s.setActiveRound);
 
-  const { containerRef, rendererRef, ready } = useSlotRenderer();
+  const { containerRef, rendererRef, ready } = useSlotRenderer(150);
   const { data: resumedRound } = useRound(activeRoundId ?? undefined);
 
   const [betCredits, setBetCredits] = useState("10");
@@ -152,13 +152,15 @@ function GameContent() {
 
   return (
     <div>
-      <h1 className="mb-1 text-center text-2xl font-semibold">{config?.displayName ?? "Aurora Ways"}</h1>
-      <p className="mb-6 text-center text-sm text-[var(--color-text-dim)]">
+      <h1 className="mb-0.5 text-center text-xl font-semibold sm:text-2xl">
+        {config?.displayName ?? "Aurora Ways"}
+      </h1>
+      <p className="mb-3 text-center text-xs text-[var(--color-text-dim)] sm:text-sm">
         5×5 ways-to-win — wilds substitute for every paying symbol, 3+ scatters anywhere
         trigger free spins.
       </p>
 
-      <div className="relative overflow-hidden rounded-3xl p-4 sm:p-8" style={CASINO_BACKGROUND_STYLE}>
+      <div className="relative overflow-hidden rounded-3xl p-3 sm:p-5" style={CASINO_BACKGROUND_STYLE}>
         {/* Soft aurora-colored glow blobs — purely decorative, behind everything. */}
         <div
           aria-hidden
@@ -196,7 +198,7 @@ function GameContent() {
 
           {/* Control deck: one horizontal strip below the reels — bet, spin, and the
               score readouts all in a single row, like a physical cabinet's button panel. */}
-          <div className="surface mt-6 rounded-2xl border border-[var(--color-accent)]/30 px-6 py-4 shadow-[0_0_30px_rgba(0,0,0,0.4)]">
+          <div className="surface mt-3 rounded-2xl border border-[var(--color-accent)]/30 px-6 py-3 shadow-[0_0_30px_rgba(0,0,0,0.4)]">
             <div className="flex flex-wrap items-center justify-center gap-6 sm:justify-between">
               <div className="flex items-center gap-2">
                 <label htmlFor="betCredits" className="text-sm text-[var(--color-text-dim)]">
