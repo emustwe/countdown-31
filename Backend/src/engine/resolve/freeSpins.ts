@@ -3,6 +3,7 @@ import type { MathModel, SymbolId } from "../model/mathModel";
 import { fillGrid } from "./reelFill";
 import { evaluateWays, type WinLine } from "./waysEval";
 import { evaluateScatter } from "./scatter";
+import { evaluateJackpot, type JackpotResult } from "./jackpot";
 import { applyMultiplier } from "./money";
 
 export interface FreeSpinStep {
@@ -12,6 +13,7 @@ export interface FreeSpinStep {
   win: bigint;
   multiplier: number;
   retriggered: boolean;
+  jackpot?: JackpotResult;
 }
 
 export interface FeatureResult {
@@ -54,7 +56,8 @@ export function resolveFreeSpins(
     const grid = fillGrid(model, rng);
     const lines = evaluateWays(grid, model, totalBet);
     const scatter = evaluateScatter(grid, model, totalBet);
-    const rawWin = lines.reduce((sum, line) => sum + line.win, 0n) + scatter.pay;
+    const jackpot = evaluateJackpot(grid, model, totalBet);
+    const rawWin = lines.reduce((sum, line) => sum + line.win, 0n) + scatter.pay + jackpot.pay;
     const win = applyMultiplier(rawWin, 1, multiplier);
     featureWin += win;
 
@@ -65,7 +68,22 @@ export function resolveFreeSpins(
       retriggered = true;
     }
 
-    steps.push({ grid, lines, scatterCount: scatter.count, win, multiplier, retriggered });
+    // Report the jackpot's *actual* multiplier-adjusted share of `win`, not its raw
+    // pre-multiplier pay — callers (ledger bookkeeping, the frontend banner) need the real
+    // credited amount, and `win` was computed by multiplying the combined rawWin as a whole.
+    const jackpotReport: JackpotResult | undefined = jackpot.tier
+      ? { ...jackpot, pay: applyMultiplier(jackpot.pay, 1, multiplier) }
+      : undefined;
+
+    steps.push({
+      grid,
+      lines,
+      scatterCount: scatter.count,
+      win,
+      multiplier,
+      retriggered,
+      jackpot: jackpotReport,
+    });
 
     played++;
     remaining--;

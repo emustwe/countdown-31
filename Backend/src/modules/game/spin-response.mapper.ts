@@ -4,6 +4,10 @@ export function serializeLine(line: WinLine) {
   return { symbol: line.symbol, matchLength: line.matchLength, ways: line.ways, win: line.win.toString() };
 }
 
+function serializeJackpot(jackpot: SpinResult["jackpot"]) {
+  return jackpot ? { tier: jackpot.tier as 3 | 4 | 5, pay: jackpot.pay.toString() } : undefined;
+}
+
 export interface SpinApiResponse {
   roundId: string;
   newBalance: string;
@@ -14,6 +18,7 @@ export interface SpinApiResponse {
     lines: ReturnType<typeof serializeLine>[];
     scatterCount: number;
     win: string;
+    jackpot?: { tier: 3 | 4 | 5; pay: string };
   };
   feature?: {
     type: "FREE_SPINS";
@@ -27,6 +32,7 @@ export interface SpinApiResponse {
       win: string;
       multiplier: number;
       retriggered: boolean;
+      jackpot?: { tier: 3 | 4 | 5; pay: string };
     }>;
   };
   freeSpinsRemaining: number;
@@ -55,6 +61,7 @@ export function toSpinApiResponse(
       lines: result.lines.map(serializeLine),
       scatterCount: result.scatterCount,
       win: baseWin.toString(),
+      jackpot: serializeJackpot(result.jackpot),
     },
     feature: result.feature
       ? {
@@ -69,6 +76,7 @@ export function toSpinApiResponse(
             win: step.win.toString(),
             multiplier: step.multiplier,
             retriggered: step.retriggered,
+            jackpot: serializeJackpot(step.jackpot),
           })),
         }
       : undefined,

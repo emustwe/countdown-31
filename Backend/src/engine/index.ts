@@ -3,6 +3,7 @@ import type { MathModel, SymbolId } from "./model/mathModel";
 import { fillGrid } from "./resolve/reelFill";
 import { evaluateWays, type WinLine } from "./resolve/waysEval";
 import { evaluateScatter } from "./resolve/scatter";
+import { evaluateJackpot, type JackpotResult } from "./resolve/jackpot";
 import { resolveFreeSpins, type FeatureResult } from "./resolve/freeSpins";
 
 export { createSecureRng, createSeededRng, createTraceRng, createRecordingRng } from "./rng";
@@ -12,6 +13,7 @@ export type { MathModel, SymbolId, PayingSymbolId } from "./model/mathModel";
 export { loadMathModel } from "./model/loadModel";
 export { MATH_MODELS, MATH_MODELS_BY_ID, getMathModel } from "./models";
 export type { WinLine } from "./resolve/waysEval";
+export type { JackpotResult } from "./resolve/jackpot";
 export type { FeatureResult, FreeSpinStep } from "./resolve/freeSpins";
 
 export interface SpinInput {
@@ -25,6 +27,7 @@ export interface SpinResult {
   scatterCount: number;
   totalWin: bigint;
   feature?: FeatureResult;
+  jackpot?: JackpotResult;
   rngTrace: number[];
 }
 
@@ -42,9 +45,10 @@ export function resolveSpin(input: SpinInput, rng: Rng): SpinResult {
   const grid = fillGrid(model, recordingRng);
   const lines = evaluateWays(grid, model, totalBet);
   const scatter = evaluateScatter(grid, model, totalBet);
+  const jackpot = evaluateJackpot(grid, model, totalBet);
 
   const linesWin = lines.reduce((sum, line) => sum + line.win, 0n);
-  let totalWin = linesWin + scatter.pay;
+  let totalWin = linesWin + scatter.pay + jackpot.pay;
 
   let feature: FeatureResult | undefined;
   if (scatter.freeSpinsAwarded > 0) {
@@ -58,6 +62,7 @@ export function resolveSpin(input: SpinInput, rng: Rng): SpinResult {
     scatterCount: scatter.count,
     totalWin,
     feature,
+    jackpot: jackpot.tier ? jackpot : undefined,
     rngTrace: trace,
   };
 }

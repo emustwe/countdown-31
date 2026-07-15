@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 import { MATH_MODELS } from "../models";
 
 describe("shipped math models", () => {
-  it("ships exactly the three documented models", () => {
+  it("ships exactly the four documented models", () => {
     const ids = MATH_MODELS.map((m) => m.id).sort();
-    expect(ids).toEqual(["aurora-ways-92", "aurora-ways-94", "aurora-ways-96"]);
+    expect(ids).toEqual([
+      "aurora-ways-92",
+      "aurora-ways-94",
+      "aurora-ways-96",
+      "aurora-ways-tournament",
+    ]);
   });
 
   it.each(MATH_MODELS)("$id has 5 non-empty reel strips and a full paytable", (model) => {

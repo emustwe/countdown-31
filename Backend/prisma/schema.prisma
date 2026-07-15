@@ -50,6 +50,7 @@ enum LedgerEntryType {
   WITHDRAWAL
   BET_STAKE
   BET_WIN
+  JACKPOT_WIN
   ADJUSTMENT
 }
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const SYMBOL_IDS = ["H1", "H2", "H3", "L1", "L2", "L3", "L4", "W", "S"] as const;
+export const SYMBOL_IDS = ["H1", "H2", "H3", "L1", "L2", "L3", "L4", "W", "S", "JP"] as const;
 export type SymbolId = (typeof SYMBOL_IDS)[number];
 
 export const PAYING_SYMBOL_IDS = ["H1", "H2", "H3", "L1", "L2", "L3", "L4"] as const;
@@ -16,7 +16,9 @@ export const MathModelSchema = z.object({
   id: z.string().min(1),
   version: z.string().min(1),
   displayName: z.string().min(1),
-  targetRtp: z.number().min(0).max(1),
+  // >1 is intentional: this engine also powers a points-only tournament mode where a
+  // generous, "always feels rewarding" payout curve is the point, not a house edge.
+  targetRtp: z.number().min(0).max(5),
   grid: z.object({
     reels: z.literal(5),
     rows: z.literal(5),
@@ -24,6 +26,19 @@ export const MathModelSchema = z.object({
   symbols: z.array(SymbolIdSchema).min(1),
   wild: z.literal("W"),
   scatter: z.literal("S"),
+  // Optional: only tournament-tuned models define a jackpot. A dedicated symbol (never a
+  // paying "ways" symbol, same category as the scatter) — its count anywhere on the grid
+  // decides the tier, independent of reel adjacency.
+  jackpot: z
+    .object({
+      symbol: z.literal("JP"),
+      pays: z.object({
+        3: z.number().nonnegative(),
+        4: z.number().nonnegative(),
+        5: z.number().nonnegative(),
+      }),
+    })
+    .optional(),
   reelStrips: z.array(z.array(SymbolIdSchema).min(1)).length(5),
   paytable: z.record(PayingSymbolIdSchema, PayRowSchema),
   scatterPays: z.array(z.number().nonnegative()).length(3),

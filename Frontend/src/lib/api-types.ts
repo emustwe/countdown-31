@@ -35,7 +35,7 @@ export interface MoneyMovementResult {
 export interface LedgerEntryDto {
   id: string;
   amount: string;
-  type: "DEPOSIT" | "WITHDRAWAL" | "BET_STAKE" | "BET_WIN" | "ADJUSTMENT";
+  type: "DEPOSIT" | "WITHDRAWAL" | "BET_STAKE" | "BET_WIN" | "JACKPOT_WIN" | "ADJUSTMENT";
   refType: string | null;
   refId: string | null;
   createdAt: string;
@@ -46,7 +46,7 @@ export interface TransactionPage {
   nextCursor: string | null;
 }
 
-export type SymbolId = "H1" | "H2" | "H3" | "L1" | "L2" | "L3" | "L4" | "W" | "S";
+export type SymbolId = "H1" | "H2" | "H3" | "L1" | "L2" | "L3" | "L4" | "W" | "S" | "JP";
 export type Grid = SymbolId[][];
 
 export interface PublicMathModel {
@@ -66,6 +66,15 @@ export interface PublicMathModel {
     maxMultiplier: number;
     retrigger: boolean;
   };
+  jackpot?: {
+    symbol: "JP";
+    pays: Record<3 | 4 | 5, number>;
+  };
+}
+
+export interface JackpotWinDto {
+  tier: 3 | 4 | 5;
+  pay: string;
 }
 
 export interface WinLineDto {
@@ -85,6 +94,7 @@ export interface SpinApiResponse {
     lines: WinLineDto[];
     scatterCount: number;
     win: string;
+    jackpot?: JackpotWinDto;
   };
   feature?: {
     type: "FREE_SPINS";
@@ -98,6 +108,7 @@ export interface SpinApiResponse {
       win: string;
       multiplier: number;
       retriggered: boolean;
+      jackpot?: JackpotWinDto;
     }>;
   };
   freeSpinsRemaining: number;
@@ -108,7 +119,13 @@ export interface FreeSpinRevealResponse {
   roundId: string;
   index: number;
   grid: Grid;
-  result: { lines: WinLineDto[]; scatterCount: number; multiplier: number; retriggered: boolean };
+  result: {
+    lines: WinLineDto[];
+    scatterCount: number;
+    multiplier: number;
+    retriggered: boolean;
+    jackpot?: JackpotWinDto;
+  };
   win: string;
   freeSpinsRemaining: number;
   state: "FEATURE" | "COMPLETE";
@@ -175,7 +192,7 @@ export interface AdminTransaction {
   id: string;
   userEmail: string;
   amount: string;
-  type: "DEPOSIT" | "WITHDRAWAL" | "BET_STAKE" | "BET_WIN" | "ADJUSTMENT";
+  type: "DEPOSIT" | "WITHDRAWAL" | "BET_STAKE" | "BET_WIN" | "JACKPOT_WIN" | "ADJUSTMENT";
   refType: string | null;
   refId: string | null;
   createdAt: string;

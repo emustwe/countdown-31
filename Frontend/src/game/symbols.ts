@@ -94,6 +94,14 @@ export const SYMBOL_VISUALS: Record<SymbolId, SymbolVisual> = {
     glyphShadow: 0x081820,
     glow: true,
   },
+  JP: {
+    glyph: "7\u{FE0F}\u{20E3}", // 7️⃣ — classic "lucky sevens" jackpot symbol
+    gradientStops: [0xff8a6a, 0xd6273f, 0x2c060a],
+    border: 0xffd24c,
+    glyphColor: 0xfff4d6,
+    glyphShadow: 0x24040a,
+    glow: true,
+  },
 };
 
-export const ALL_SYMBOL_IDS: SymbolId[] = ["H1", "H2", "H3", "L1", "L2", "L3", "L4", "W", "S"];
+export const ALL_SYMBOL_IDS: SymbolId[] = ["H1", "H2", "H3", "L1", "L2", "L3", "L4", "W", "S", "JP"];

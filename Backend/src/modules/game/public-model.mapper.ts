@@ -11,6 +11,7 @@ export interface PublicMathModel {
   paytable: MathModel["paytable"];
   scatterPays: MathModel["scatterPays"];
   freeSpins: MathModel["freeSpins"];
+  jackpot?: MathModel["jackpot"];
 }
 
 // Never send reelStrips (or any weight-derived data) to a non-admin client — that's the
@@ -27,5 +28,6 @@ export function toPublicMathModel(model: MathModel): PublicMathModel {
     paytable: model.paytable,
     scatterPays: model.scatterPays,
     freeSpins: model.freeSpins,
+    jackpot: model.jackpot,
   };
 }

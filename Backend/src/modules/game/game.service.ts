@@ -122,7 +122,11 @@ export class GameService {
           roundId,
           index: 0,
           gridJson: result.grid,
-          resultJson: { lines: result.lines.map(serializeLine), scatterCount: result.scatterCount },
+          resultJson: {
+            lines: result.lines.map(serializeLine),
+            scatterCount: result.scatterCount,
+            ...(result.jackpot ? { jackpot: { tier: result.jackpot.tier, pay: result.jackpot.pay.toString() } } : {}),
+          },
           rngTraceJson: result.rngTrace,
           win: baseWin,
         },
@@ -140,6 +144,7 @@ export class GameService {
                 scatterCount: step.scatterCount,
                 multiplier: step.multiplier,
                 retriggered: step.retriggered,
+                ...(step.jackpot ? { jackpot: { tier: step.jackpot.tier, pay: step.jackpot.pay.toString() } } : {}),
               },
               rngTraceJson: [],
               win: step.win,
@@ -148,11 +153,28 @@ export class GameService {
         }
       }
 
-      if (result.totalWin > 0n) {
+      // Jackpot wins are booked as their own ledger entry, separate from ordinary line/
+      // scatter wins, so BET_WIN + JACKPOT_WIN always sums to exactly totalWin — the
+      // audit trail stays able to distinguish "won on the reels" from "hit the jackpot."
+      const jackpotTotal =
+        (result.jackpot?.pay ?? 0n) +
+        (result.feature?.spins.reduce((sum, step) => sum + (step.jackpot?.pay ?? 0n), 0n) ?? 0n);
+      const ordinaryWin = result.totalWin - jackpotTotal;
+
+      if (ordinaryWin > 0n) {
         await this.ledger.appendEntry(tx, {
           walletId: wallet.id,
-          amount: result.totalWin,
+          amount: ordinaryWin,
           type: "BET_WIN",
+          refType: "GAME_ROUND",
+          refId: roundId,
+        });
+      }
+      if (jackpotTotal > 0n) {
+        await this.ledger.appendEntry(tx, {
+          walletId: wallet.id,
+          amount: jackpotTotal,
+          type: "JACKPOT_WIN",
           refType: "GAME_ROUND",
           refId: roundId,
         });

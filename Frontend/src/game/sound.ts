@@ -46,6 +46,14 @@ export function playFeatureTrigger(): void {
   [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => tone(freq, i * 0.09, 0.2, 0.14));
 }
 
+/** A richer, longer fanfare than playFeatureTrigger — layered chords rather than a single
+ * arpeggio, so a jackpot reads as a bigger moment than a free-spins trigger. */
+export function playJackpot(): void {
+  const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+  notes.forEach((freq, i) => tone(freq, i * 0.07, 0.35, 0.16));
+  notes.forEach((freq, i) => tone(freq * 2, 0.3 + i * 0.05, 0.4, 0.1));
+}
+
 export function playSpinStart(): void {
   tone(200, 0, 0.1, 0.08, "sawtooth");
 }

@@ -16,6 +16,12 @@ const SYMBOL_NAMES: Record<string, string> = {
 
 const PAYING_SYMBOL_ORDER = ["H1", "H2", "H3", "L1", "L2", "L3", "L4"] as const;
 
+const JACKPOT_TIERS = [
+  { count: 3 as const, label: "Mini Jackpot" },
+  { count: 4 as const, label: "Major Jackpot" },
+  { count: 5 as const, label: "Mega Jackpot" },
+];
+
 function hexToCss(hex: number): string {
   return `#${hex.toString(16).padStart(6, "0")}`;
 }
@@ -129,6 +135,39 @@ export function RulesModal({ model, onClose }: { model: PublicMathModel; onClose
               description={`3, 4, or 5 scatters anywhere award ${model.freeSpins.award[3]}, ${model.freeSpins.award[4]}, or ${model.freeSpins.award[5]} free spins. Win multiplier starts at ×${model.freeSpins.startMultiplier} and rises by ${model.freeSpins.multiplierStep} each free spin, up to ×${model.freeSpins.maxMultiplier}.${model.freeSpins.retrigger ? " Landing 3+ scatters again during free spins adds more." : ""}`}
             />
           </section>
+
+          {model.jackpot && (
+            <section className="rounded-2xl border border-[var(--color-accent)]/30 bg-[var(--color-surface-2)] p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <div
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border text-base"
+                  style={swatchStyle(SYMBOL_VISUALS.JP)}
+                >
+                  {SYMBOL_VISUALS.JP.glyph}
+                </div>
+                <h3 className="font-semibold text-[var(--color-accent)]">Jackpot</h3>
+              </div>
+              <p className="mb-3 text-sm text-[var(--color-text-dim)]">
+                Land 3, 4, or 5 lucky-sevens anywhere on the grid — no adjacency needed — to
+                win a jackpot tier on top of any other wins from that spin.
+              </p>
+              <div className="space-y-1.5">
+                {JACKPOT_TIERS.map(({ count, label }) => (
+                  <div
+                    key={count}
+                    className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)]/60 px-3 py-2"
+                  >
+                    <span className="text-sm font-medium">
+                      {count}× {SYMBOL_VISUALS.JP.glyph} — {label}
+                    </span>
+                    <span className="text-sm font-semibold text-[var(--color-win)]">
+                      ×{model.jackpot?.pays[count]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         <div className="border-t border-[var(--color-border)] p-4">

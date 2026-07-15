@@ -10,8 +10,14 @@ import { ApiError } from "../../../lib/api-client";
 import { useSlotRenderer } from "../../../game/useSlotRenderer";
 import { useSettingsStore } from "../../../stores/settings-store";
 import { useGameSessionStore } from "../../../stores/game-session-store";
-import { playFeatureTrigger, playSpinStart, playWin } from "../../../game/sound";
+import { playFeatureTrigger, playJackpot, playSpinStart, playWin } from "../../../game/sound";
 import { RulesModal } from "../../../components/RulesModal";
+
+const JACKPOT_TIER_NAMES: Record<3 | 4 | 5, string> = {
+  3: "Mini Jackpot",
+  4: "Major Jackpot",
+  5: "Mega Jackpot",
+};
 
 export default function AuroraWaysPage() {
   return (
@@ -60,6 +66,7 @@ function GameContent() {
   const [freeSpinsRemaining, setFreeSpinsRemaining] = useState(0);
   const [currentRoundId, setCurrentRoundId] = useState<string | null>(null);
   const [featureBanner, setFeatureBanner] = useState<{ awarded: number } | null>(null);
+  const [jackpotBanner, setJackpotBanner] = useState<{ tier: 3 | 4 | 5; pay: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [multiplier, setMultiplier] = useState<number | null>(null);
@@ -91,6 +98,7 @@ function GameContent() {
     if (freeSpinsRemaining > 0) return;
     setError(null);
     setFeatureBanner(null);
+    setJackpotBanner(null);
     setBusy(true);
     try {
       if (soundEnabled) playSpinStart();
@@ -108,6 +116,11 @@ function GameContent() {
       setMultiplier(null);
 
       if (res.base.lines.length > 0 && soundEnabled) playWin();
+
+      if (res.base.jackpot) {
+        setJackpotBanner(res.base.jackpot);
+        if (soundEnabled) playJackpot();
+      }
 
       if (res.feature) {
         setFeatureBanner({ awarded: res.feature.awarded });
@@ -138,6 +151,11 @@ function GameContent() {
       setFreeSpinsRemaining(step.freeSpinsRemaining);
       setMultiplier(step.result.multiplier);
       if (BigInt(step.win) > 0n && soundEnabled) playWin();
+
+      if (step.result.jackpot) {
+        setJackpotBanner(step.result.jackpot);
+        if (soundEnabled) playJackpot();
+      }
 
       if (step.state === "COMPLETE") {
         setActiveRound(null);
@@ -180,21 +198,43 @@ function GameContent() {
         <div className="relative mx-auto max-w-3xl">
           <div className="relative mx-auto" style={{ maxWidth: 760 }}>
             <div ref={containerRef} className="w-full" />
-            {featureBanner && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/75">
+            {jackpotBanner ? (
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/80">
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-[var(--color-accent)] drop-shadow-[0_0_12px_rgba(242,201,76,0.6)]">
-                    FREE SPINS!
+                  <p className="text-4xl font-bold text-[var(--color-danger)] drop-shadow-[0_0_16px_rgba(224,60,60,0.7)]">
+                    🎰 JACKPOT!
                   </p>
-                  <p className="mt-1 text-[var(--color-text-dim)]">{featureBanner.awarded} spins awarded</p>
+                  <p className="mt-1 text-lg font-semibold text-[var(--color-accent)]">
+                    {JACKPOT_TIER_NAMES[jackpotBanner.tier]}
+                  </p>
+                  <p className="mt-1 text-[var(--color-text-dim)]">
+                    +{formatMinorUnits(jackpotBanner.pay)} credits
+                  </p>
                   <button
-                    onClick={() => setFeatureBanner(null)}
+                    onClick={() => setJackpotBanner(null)}
                     className="mt-4 rounded-md bg-[var(--color-accent)] px-5 py-2 text-sm font-semibold text-black"
                   >
-                    Let&apos;s go
+                    Amazing!
                   </button>
                 </div>
               </div>
+            ) : (
+              featureBanner && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/75">
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-[var(--color-accent)] drop-shadow-[0_0_12px_rgba(242,201,76,0.6)]">
+                      FREE SPINS!
+                    </p>
+                    <p className="mt-1 text-[var(--color-text-dim)]">{featureBanner.awarded} spins awarded</p>
+                    <button
+                      onClick={() => setFeatureBanner(null)}
+                      className="mt-4 rounded-md bg-[var(--color-accent)] px-5 py-2 text-sm font-semibold text-black"
+                    >
+                      Let&apos;s go
+                    </button>
+                  </div>
+                </div>
+              )
             )}
           </div>
 

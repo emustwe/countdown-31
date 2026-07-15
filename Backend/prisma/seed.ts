@@ -46,15 +46,18 @@ async function main(): Promise<void> {
     await ensureFundedWallet(player.id);
   }
 
+  // The tournament edition (points only, generous ~130% RTP + jackpot) is the default —
+  // this is a points-tournament game, not a real-money one, so the realistic 92/94/96%
+  // models stay registered but unused unless an admin explicitly switches to one.
   await prisma.gameConfig.upsert({
     where: { id: "singleton" },
-    update: {},
-    create: { id: "singleton", activeModelId: "aurora-ways-96", updatedBy: admin.id },
+    update: { activeModelId: "aurora-ways-tournament" },
+    create: { id: "singleton", activeModelId: "aurora-ways-tournament", updatedBy: admin.id },
   });
 
   console.log(`Seeded admin (${admin.email}) and ${PLAYER_EMAILS.length} players.`);
   console.log(`Each wallet funded with ${STARTING_DEMO_BALANCE} minor units via a DEPOSIT ledger entry.`);
-  console.log("Active math model: aurora-ways-96.");
+  console.log("Active math model: aurora-ways-tournament.");
 }
 
 main()

@@ -167,7 +167,7 @@ describe("Admin (integration)", () => {
     const res = await request(server()).get("/admin/models").set("Authorization", `Bearer ${admin.accessToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(3);
+    expect(res.body).toHaveLength(4);
     const active = res.body.filter((m: { active: boolean }) => m.active);
     expect(active).toHaveLength(1);
     expect(res.body[0].computed).not.toBeNull();

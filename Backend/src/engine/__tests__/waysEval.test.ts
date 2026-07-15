@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { evaluateWays } from "../resolve/waysEval";
 import { evaluateScatter } from "../resolve/scatter";
+import { evaluateJackpot } from "../resolve/jackpot";
 import { getMathModel } from "../models";
 import type { SymbolId } from "../model/mathModel";
 
 const model = getMathModel("aurora-ways-96");
+const tournamentModel = getMathModel("aurora-ways-tournament");
 
 function grid(columns: SymbolId[][]): SymbolId[][] {
   return columns;
@@ -112,5 +114,57 @@ describe("evaluateScatter", () => {
     const result = evaluateScatter(g, model, 1000n);
     expect(result.count).toBe(3);
     expect(result.freeSpinsAwarded).toBe(model.freeSpins.award[3]);
+  });
+});
+
+describe("evaluateJackpot", () => {
+  it("never awards a jackpot on a model with no jackpot configured", () => {
+    const allJp: SymbolId[] = ["JP", "JP", "JP", "JP", "JP"];
+    const g = grid([allJp, allJp, allJp, allJp, allJp]);
+    const result = evaluateJackpot(g, model, 1000n);
+    expect(result.tier).toBeNull();
+    expect(result.pay).toBe(0n);
+  });
+
+  it("does not trigger below 3 jackpot symbols", () => {
+    const g = grid([
+      ["JP", "L1", "L1", "L1", "L1"],
+      ["JP", "L2", "L2", "L2", "L2"],
+      ["L3", "L3", "L3", "L3", "L3"],
+      ["L4", "L4", "L4", "L4", "L4"],
+      ["L4", "L4", "L4", "L4", "L4"],
+    ]);
+    const result = evaluateJackpot(g, tournamentModel, 1000n);
+    expect(result.count).toBe(2);
+    expect(result.tier).toBeNull();
+    expect(result.pay).toBe(0n);
+  });
+
+  it("awards the Mini tier for exactly 3, anywhere on the grid", () => {
+    const g = grid([
+      ["JP", "L1", "L1", "L1", "L1"],
+      ["L2", "L2", "L2", "L2", "L2"],
+      ["JP", "L3", "L3", "L3", "L3"],
+      ["L4", "L4", "L4", "L4", "JP"],
+      ["L4", "L4", "L4", "L4", "L4"],
+    ]);
+    const result = evaluateJackpot(g, tournamentModel, 1000n);
+    expect(result.count).toBe(3);
+    expect(result.tier).toBe(3);
+    expect(result.pay).toBe(3000n); // 1000 bet * 1 way * 3x
+  });
+
+  it("awards the Mega tier for 5, and the wild does not substitute for the jackpot symbol", () => {
+    const g = grid([
+      ["JP", "W", "W", "W", "W"],
+      ["JP", "W", "W", "W", "W"],
+      ["JP", "W", "W", "W", "W"],
+      ["JP", "W", "W", "W", "W"],
+      ["JP", "W", "W", "W", "W"],
+    ]);
+    const result = evaluateJackpot(g, tournamentModel, 1000n);
+    expect(result.count).toBe(5);
+    expect(result.tier).toBe(5);
+    expect(result.pay).toBe(200_000n); // 1000 bet * 1 way * 200x
   });
 });

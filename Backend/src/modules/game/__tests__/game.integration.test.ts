@@ -13,6 +13,14 @@ describe("Game (integration)", () => {
   beforeAll(async () => {
     app = await createTestApp();
     prisma = app.get(PrismaService);
+    // Pin the active model explicitly rather than relying on whatever the app's own
+    // default happens to be — this suite's assertions are specifically about
+    // aurora-ways-96's shape (paytable/scatter, no jackpot block).
+    await prisma.gameConfig.upsert({
+      where: { id: "singleton" },
+      update: { activeModelId: "aurora-ways-96" },
+      create: { id: "singleton", activeModelId: "aurora-ways-96" },
+    });
   });
 
   afterAll(async () => {
