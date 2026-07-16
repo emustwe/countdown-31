@@ -18,8 +18,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen">
       <header className="surface sticky top-0 z-10 flex items-center justify-between gap-4 px-6 py-3">
         <div className="flex items-center gap-6">
-          <Link href="/admin/analytics" className="text-lg font-semibold tracking-tight text-[var(--color-accent)]">
-            Aurora Ways — Admin
+          <Link href="/admin/analytics" className="font-display text-lg font-bold tracking-tight text-[var(--color-accent)]">
+            AURORA WAYS — ADMIN
           </Link>
           <nav className="hidden gap-4 sm:flex">
             {ADMIN_LINKS.map((link) => (

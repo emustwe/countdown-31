@@ -27,7 +27,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="surface w-full max-w-sm rounded-lg p-8">
-        <h1 className="mb-1 text-xl font-semibold text-[var(--color-accent)]">Aurora Ways</h1>
+        <h1 className="font-display mb-1 text-xl font-bold text-[var(--color-accent)]">AURORA WAYS</h1>
         <p className="mb-6 text-sm text-[var(--color-text-dim)]">Sign in to your demo account</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -21,6 +21,14 @@ const HIGHLIGHT_TINT = 0xf2c94c;
 const NO_TINT = 0xffffff;
 const OVERSHOOT_PIXELS = CELL_STEP * 0.4;
 
+// Cosmic space-disco cabinet palette — mirrors the site's --color-accent/-2 and the two
+// extra neon tokens from globals.css, hardcoded here since Pixi draws outside the DOM/CSS
+// variable system.
+const NEON_GOLD = 0xffd23f;
+const NEON_TEAL = 0x2ee6c4;
+const NEON_VIOLET = 0xa855f7;
+const NEON_PINK = 0xff3ec8;
+
 function randomSymbolId(): SymbolId {
   return ALL_SYMBOL_IDS[Math.floor(Math.random() * ALL_SYMBOL_IDS.length)] as SymbolId;
 }
@@ -36,6 +44,8 @@ export class SlotRenderer {
   private soundEnabled = true;
   private animationsEnabled = true;
   private destroyed = false;
+  private ledLights: Graphics[] = [];
+  private cabinetGlow: Graphics | null = null;
 
   async mount(container: HTMLDivElement): Promise<void> {
     const app = new Application();
@@ -102,8 +112,6 @@ export class SlotRenderer {
       }
       this.strips.push(sprites);
     }
-
-    board.addChild(this.buildReelDividers());
 
     this.layout();
     this.resizeObserver = new ResizeObserver(() => this.layout());
@@ -243,8 +251,11 @@ export class SlotRenderer {
     }
   }
 
-  /** A dark, gold-trimmed "cabinet" backing behind the reels — drawn once as a child of
-   * `board` so it scales and repositions together with everything else in layout(). */
+  /** A dark, neon-trimmed "disco cabinet" backing behind the reels — drawn once as a child
+   * of `board` so it scales and repositions together with everything else in layout().
+   * Corner speaker blocks + a chasing LED strip replace the old plain gold-trimmed panel;
+   * the panel itself is what gives symbols their shared dark backdrop now that individual
+   * symbol tiles no longer draw their own background box (see buildSymbolTextures.ts). */
   private buildCabinetFrame(): Container {
     const frame = new Container();
     const x0 = -CABINET_PAD;
@@ -254,17 +265,19 @@ export class SlotRenderer {
     const radius = CABINET_PAD * 1.1;
 
     const glow = new Graphics()
-      .roundRect(x0 - 10, y0 - 10, w + 20, h + 20, radius + 8)
-      .fill({ color: 0xf2c94c, alpha: 0.16 });
+      .roundRect(x0 - 12, y0 - 12, w + 24, h + 24, radius + 8)
+      .fill({ color: NEON_GOLD, alpha: 0.14 });
     frame.addChild(glow);
+    this.cabinetGlow = glow;
 
     const panelGradient = new FillGradient({
       type: "linear",
       start: { x: 0, y: 0 },
       end: { x: 0, y: 1 },
       colorStops: [
-        { offset: 0, color: 0x1c2138 },
-        { offset: 1, color: 0x0b0e1a },
+        { offset: 0, color: 0x1c1a44 },
+        { offset: 0.6, color: 0x10102c },
+        { offset: 1, color: 0x05050e },
       ],
       textureSpace: "local",
     });
@@ -272,37 +285,62 @@ export class SlotRenderer {
     const panel = new Graphics()
       .roundRect(x0, y0, w, h, radius)
       .fill(panelGradient)
-      .stroke({ width: 4, color: 0xf2c94c, alpha: 0.85, alignment: 1 })
+      .stroke({ width: 4, color: NEON_GOLD, alpha: 0.9, alignment: 1 })
       .roundRect(x0 + 6, y0 + 6, w - 12, h - 12, radius * 0.85)
-      .stroke({ width: 1.5, color: 0xffe08a, alpha: 0.35, alignment: 1 });
+      .stroke({ width: 1.5, color: NEON_TEAL, alpha: 0.4, alignment: 1 });
     frame.addChild(panel);
 
-    // Small corner accents — a common cabinet/marquee detail, kept cheap (four circles).
-    const corners: Array<[number, number]> = [
-      [x0 + 14, y0 + 14],
-      [x0 + w - 14, y0 + 14],
-      [x0 + 14, y0 + h - 14],
-      [x0 + w - 14, y0 + h - 14],
+    // Corner "speaker" blocks: concentric glow rings, one aurora hue per corner.
+    const speakerCorners: Array<[number, number, number]> = [
+      [x0 + 22, y0 + 22, NEON_VIOLET],
+      [x0 + w - 22, y0 + 22, NEON_TEAL],
+      [x0 + 22, y0 + h - 22, NEON_PINK],
+      [x0 + w - 22, y0 + h - 22, NEON_GOLD],
     ];
-    const gems = new Graphics();
-    for (const [cx, cy] of corners) {
-      gems.circle(cx, cy, 5).fill({ color: 0xf2c94c, alpha: 0.9 });
+    for (const [cx, cy, color] of speakerCorners) {
+      const speaker = new Graphics()
+        .circle(cx, cy, 16)
+        .fill({ color: 0x0a0a1a })
+        .circle(cx, cy, 16)
+        .stroke({ width: 2, color, alpha: 0.9 })
+        .circle(cx, cy, 10)
+        .stroke({ width: 1.5, color, alpha: 0.6 })
+        .circle(cx, cy, 4)
+        .fill({ color, alpha: 0.9 });
+      frame.addChild(speaker);
     }
-    frame.addChild(gems);
+
+    // Chasing LED strip along the top and bottom bars — small glowing squares cycling
+    // through the aurora palette, gently pulsing so the cabinet never sits fully static.
+    const ledColors = [NEON_TEAL, NEON_VIOLET, NEON_PINK, NEON_GOLD];
+    const ledY = [y0 + 10, y0 + h - 10];
+    const ledSize = 7;
+    const ledSpacing = 18;
+    const ledCount = Math.floor((w - 40) / ledSpacing);
+    for (const stripY of ledY) {
+      for (let i = 0; i < ledCount; i++) {
+        const led = new Graphics()
+          .roundRect(-ledSize / 2, -ledSize / 2, ledSize, ledSize, 2)
+          .fill({ color: ledColors[i % ledColors.length] });
+        led.x = x0 + 20 + i * ledSpacing;
+        led.y = stripY;
+        led.alpha = 0.5;
+        frame.addChild(led);
+        this.ledLights.push(led);
+        gsap.to(led, {
+          alpha: 1,
+          duration: 0.9,
+          delay: (i % ledColors.length) * 0.12,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: -1,
+        });
+      }
+    }
+
+    gsap.to(glow, { alpha: 0.22, duration: 2.4, ease: "sine.inOut", yoyo: true, repeat: -1 });
 
     return frame;
-  }
-
-  /** Thin gold dividers between reels, purely cosmetic. */
-  private buildReelDividers(): Container {
-    const dividers = new Container();
-    const g = new Graphics();
-    for (let r = 1; r < REELS; r++) {
-      const x = r * CELL_STEP - GAP / 2;
-      g.moveTo(x, 0).lineTo(x, BOARD_HEIGHT).stroke({ width: 1, color: 0xf2c94c, alpha: 0.18 });
-    }
-    dividers.addChild(g);
-    return dividers;
   }
 
   private layout(): void {
@@ -327,6 +365,8 @@ export class SlotRenderer {
     }
     for (const container of this.stripContainers) gsap.killTweensOf(container);
     for (const container of this.reelVisualContents) gsap.killTweensOf(container.scale);
+    for (const led of this.ledLights) gsap.killTweensOf(led);
+    if (this.cabinetGlow) gsap.killTweensOf(this.cabinetGlow);
     this.app?.destroy({ removeView: true }, { children: true, texture: true });
     this.app = null;
   }

@@ -22,7 +22,7 @@ const JACKPOT_TIER_NAMES: Record<3 | 4 | 5, string> = {
 export default function AuroraWaysPage() {
   return (
     <AuthGuard>
-      <AppShell>
+      <AppShell fullWidth>
         <GameContent />
       </AppShell>
     </AuthGuard>
@@ -172,8 +172,8 @@ function GameContent() {
 
   return (
     <div>
-      <h1 className="mb-0.5 text-center text-xl font-semibold sm:text-2xl">
-        {config?.displayName ?? "Aurora Ways"}
+      <h1 className="font-display mb-0.5 text-center text-xl font-bold tracking-wide text-[var(--color-accent)] sm:text-2xl">
+        {(config?.displayName ?? "Aurora Ways").toUpperCase()}
       </h1>
       <p className="mb-3 text-center text-xs text-[var(--color-text-dim)] sm:text-sm">
         5×5 ways-to-win — wilds substitute for every paying symbol, 3+ scatters anywhere
@@ -181,38 +181,46 @@ function GameContent() {
       </p>
 
       <div className="relative overflow-hidden rounded-3xl p-3 sm:p-5" style={CASINO_BACKGROUND_STYLE}>
-        {/* Soft aurora-colored glow blobs — purely decorative, behind everything. */}
+        {/* Cosmic disco-floor backdrop: moon + aurora ribbons + two parallax mountain layers +
+            glowing dance floor, all CSS — see the *_STYLE constants below. */}
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={MOON_STYLE} />
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={BACK_MOUNTAIN_STYLE} />
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={MOUNTAIN_SILHOUETTE_STYLE} />
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-28 sm:h-36" style={DANCE_FLOOR_STYLE} />
+
+        {/* Aurora-colored glow blobs — purely decorative, behind the board. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full bg-[var(--color-accent-2)] opacity-25 blur-3xl"
+          className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full bg-[var(--color-neon-violet)] opacity-25 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute top-10 -right-16 h-64 w-64 rounded-full bg-[var(--color-win)] opacity-20 blur-3xl"
+          className="pointer-events-none absolute top-10 -right-16 h-64 w-64 rounded-full bg-[var(--color-accent-2)] opacity-25 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-16 left-1/3 h-64 w-64 rounded-full bg-[var(--color-accent)] opacity-20 blur-3xl"
+          className="pointer-events-none absolute -bottom-16 left-1/3 h-64 w-64 rounded-full bg-[var(--color-neon-pink)] opacity-20 blur-3xl"
         />
 
-        <div className="relative mx-auto max-w-3xl">
-          <div className="relative mx-auto" style={{ maxWidth: 760 }}>
+        <div className="relative mx-auto max-w-[1500px]">
+          <div className="relative mx-auto" style={{ maxWidth: 1200 }}>
             <div ref={containerRef} className="w-full" />
             {jackpotBanner ? (
               <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/80">
-                <div className="text-center">
-                  <p className="text-4xl font-bold text-[var(--color-danger)] drop-shadow-[0_0_16px_rgba(224,60,60,0.7)]">
-                    🎰 JACKPOT!
+                <div
+                  className="flex flex-col items-center justify-center rounded-full p-10 text-center"
+                  style={medallionStyle("var(--color-danger)", "var(--color-accent)")}
+                >
+                  <p className="font-display text-4xl font-extrabold tracking-wide bg-gradient-to-b from-[var(--color-accent)] via-[var(--color-danger)] to-[var(--color-accent)] bg-clip-text text-transparent drop-shadow-[0_0_18px_rgba(255,77,109,0.7)]">
+                    JACKPOT!
                   </p>
                   <p className="mt-1 text-lg font-semibold text-[var(--color-accent)]">
                     {JACKPOT_TIER_NAMES[jackpotBanner.tier]}
                   </p>
-                  <p className="mt-1 text-[var(--color-text-dim)]">
-                    +{formatMinorUnits(jackpotBanner.pay)} credits
-                  </p>
+                  <p className="mt-1 text-[var(--color-text-dim)]">+{formatMinorUnits(jackpotBanner.pay)}</p>
                   <button
                     onClick={() => setJackpotBanner(null)}
-                    className="mt-4 rounded-md bg-[var(--color-accent)] px-5 py-2 text-sm font-semibold text-black"
+                    className="mt-4 rounded-full bg-[var(--color-accent)] px-5 py-2 text-sm font-semibold text-black"
                   >
                     Amazing!
                   </button>
@@ -221,14 +229,17 @@ function GameContent() {
             ) : (
               featureBanner && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/75">
-                  <div className="text-center">
-                    <p className="text-3xl font-bold text-[var(--color-accent)] drop-shadow-[0_0_12px_rgba(242,201,76,0.6)]">
+                  <div
+                    className="flex flex-col items-center justify-center rounded-full p-10 text-center"
+                    style={medallionStyle("var(--color-accent-2)", "var(--color-neon-violet)")}
+                  >
+                    <p className="font-display text-3xl font-extrabold tracking-wide bg-gradient-to-b from-[var(--color-accent-2)] via-white to-[var(--color-neon-violet)] bg-clip-text text-transparent drop-shadow-[0_0_16px_rgba(46,230,196,0.6)]">
                       FREE SPINS!
                     </p>
                     <p className="mt-1 text-[var(--color-text-dim)]">{featureBanner.awarded} spins awarded</p>
                     <button
                       onClick={() => setFeatureBanner(null)}
-                      className="mt-4 rounded-md bg-[var(--color-accent)] px-5 py-2 text-sm font-semibold text-black"
+                      className="mt-4 rounded-full bg-[var(--color-accent)] px-5 py-2 text-sm font-semibold text-black"
                     >
                       Let&apos;s go
                     </button>
@@ -316,22 +327,88 @@ function GameContent() {
   );
 }
 
-// A dark, layered "casino floor at night" backdrop: a soft vignette plus a scatter of tiny
-// star-like sparkle points, echoing the game's aurora-sky theme without needing an image
-// asset. Kept as a plain CSS background (Pixi's canvas stays transparent) so it's cheap and
-// theme-aware.
+// A glowing circular "medallion" behind win/feature banner text — echoes the reference's
+// BIG WIN/SUPER WIN badge treatment: a radial glow, a bright ring, a darker core so the
+// gradient text stays legible on top.
+function medallionStyle(ringColor: string, glowColor: string): CSSProperties {
+  return {
+    width: 300,
+    height: 300,
+    background: `radial-gradient(circle, rgba(10,10,26,0.6) 0%, rgba(10,10,26,0.92) 60%, rgba(10,10,26,0.98) 100%)`,
+    border: `3px solid ${ringColor}`,
+    boxShadow: `0 0 40px ${glowColor}, 0 0 90px ${glowColor}, inset 0 0 30px rgba(0,0,0,0.5)`,
+  };
+}
+
+// A "cosmic space-disco" backdrop: diagonal aurora-ribbon color bands over a near-black
+// night sky, a scatter of star sparkles, a distant mountain-range silhouette, and a glowing
+// dance-floor strip along the bottom. Entirely CSS (Pixi's canvas stays transparent) so it's
+// cheap and needs no image assets — same technique as before, richer layering + new palette.
 const CASINO_BACKGROUND_STYLE: CSSProperties = {
   backgroundImage: [
-    "radial-gradient(circle at 25% 20%, rgba(124,92,255,0.16), transparent 45%)",
-    "radial-gradient(circle at 80% 15%, rgba(52,211,153,0.10), transparent 40%)",
-    "radial-gradient(circle at 70% 90%, rgba(242,201,76,0.10), transparent 45%)",
-    "radial-gradient(1.5px 1.5px at 10% 20%, rgba(255,255,255,0.55) 1.5px, transparent 1.5px)",
-    "radial-gradient(1.5px 1.5px at 85% 25%, rgba(255,255,255,0.45) 1.5px, transparent 1.5px)",
-    "radial-gradient(1.5px 1.5px at 60% 75%, rgba(255,255,255,0.4) 1.5px, transparent 1.5px)",
-    "radial-gradient(1.5px 1.5px at 25% 85%, rgba(255,255,255,0.35) 1.5px, transparent 1.5px)",
-    "radial-gradient(1.5px 1.5px at 45% 40%, rgba(255,255,255,0.4) 1.5px, transparent 1.5px)",
-    "radial-gradient(1.5px 1.5px at 90% 60%, rgba(255,255,255,0.3) 1.5px, transparent 1.5px)",
-    "linear-gradient(180deg, #131730 0%, #0a0d1a 60%, #060810 100%)",
+    // Diagonal aurora ribbons sweeping the sky.
+    "linear-gradient(115deg, transparent 8%, rgba(46,230,196,0.20) 22%, transparent 38%, rgba(168,85,247,0.18) 52%, transparent 68%, rgba(255,62,200,0.14) 82%, transparent 96%)",
+    "linear-gradient(70deg, transparent 60%, rgba(255,210,63,0.08) 75%, transparent 90%)",
+    // Star sparkles.
+    "radial-gradient(1.5px 1.5px at 10% 15%, rgba(255,255,255,0.6) 1.5px, transparent 1.5px)",
+    "radial-gradient(1.5px 1.5px at 85% 12%, rgba(255,255,255,0.5) 1.5px, transparent 1.5px)",
+    "radial-gradient(1.5px 1.5px at 60% 25%, rgba(255,255,255,0.45) 1.5px, transparent 1.5px)",
+    "radial-gradient(1.5px 1.5px at 25% 30%, rgba(255,255,255,0.4) 1.5px, transparent 1.5px)",
+    "radial-gradient(1.5px 1.5px at 45% 18%, rgba(255,255,255,0.45) 1.5px, transparent 1.5px)",
+    "radial-gradient(1.5px 1.5px at 92% 35%, rgba(255,255,255,0.35) 1.5px, transparent 1.5px)",
+    "radial-gradient(2px 2px at 15% 45%, rgba(255,255,255,0.3) 2px, transparent 2px)",
+    "radial-gradient(2px 2px at 75% 42%, rgba(255,255,255,0.3) 2px, transparent 2px)",
+    // Base night-sky gradient.
+    "linear-gradient(180deg, #171340 0%, #10102c 45%, #0a0b18 75%, #05050e 100%)",
   ].join(", "),
-  backgroundSize: "auto, auto, auto, 160px 160px, 190px 190px, 170px 170px, 200px 200px, 150px 150px, 210px 210px, auto",
+  backgroundSize:
+    "auto, auto, 160px 160px, 190px 190px, 170px 170px, 200px 200px, 150px 150px, 210px 210px, 240px 240px, 260px 260px, auto",
+};
+
+// A soft glowing moon low in the sky — a focal point the aurora bands alone didn't give the
+// scene. Pure CSS radial glow, no image asset.
+const MOON_STYLE: CSSProperties = {
+  backgroundImage: [
+    "radial-gradient(circle at 78% 16%, rgba(255,247,214,0.95) 0%, rgba(255,247,214,0.95) 4%, rgba(255,230,150,0.35) 8%, transparent 16%)",
+    "radial-gradient(circle at 78% 16%, rgba(255,230,150,0.25) 0%, transparent 24%)",
+  ].join(", "),
+};
+
+// A second, further-back mountain layer (larger, lower-contrast, offset peaks) sitting
+// behind the main silhouette for a cheap sense of depth/parallax.
+const BACK_MOUNTAIN_STYLE: CSSProperties = {
+  backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 320' preserveAspectRatio='none'>" +
+      "<polygon points='0,320 0,220 140,150 260,205 420,110 560,190 700,100 860,200 " +
+      "1000,130 1100,195 1200,160 1200,320' fill='#171346' opacity='0.55'/>" +
+      "</svg>",
+  )}")`,
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "bottom",
+  backgroundSize: "100% 48%",
+};
+
+// A jagged dark mountain/crystal-spire skyline anchored to the bottom of the scene, sitting
+// between the sky and the dance floor — built as an inline SVG data URI (no image asset).
+const MOUNTAIN_SILHOUETTE_STYLE: CSSProperties = {
+  backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 300' preserveAspectRatio='none'>" +
+      "<polygon points='0,300 0,190 90,120 180,175 280,80 360,150 460,55 540,140 640,70 730,160 " +
+      "830,90 900,155 1000,60 1080,145 1160,95 1200,150 1200,300' fill='#0d0c22' opacity='0.85'/>" +
+      "</svg>",
+  )}")`,
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "bottom",
+  backgroundSize: "100% 42%",
+};
+
+// The glowing checkerboard-ish dance floor along the very bottom of the scene — alternating
+// translucent aurora-colored stripes fading upward into the sky, plus a bright reflective
+// strip along the floor's leading edge.
+const DANCE_FLOOR_STYLE: CSSProperties = {
+  backgroundImage: [
+    "linear-gradient(180deg, transparent 0%, rgba(5,5,14,0.4) 30%, rgba(5,5,14,0.85) 100%)",
+    "repeating-linear-gradient(100deg, rgba(46,230,196,0.16) 0 40px, rgba(168,85,247,0.14) 40px 80px, rgba(255,62,200,0.12) 80px 120px, rgba(255,210,63,0.10) 120px 160px)",
+    "linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 12%)",
+  ].join(", "),
 };
