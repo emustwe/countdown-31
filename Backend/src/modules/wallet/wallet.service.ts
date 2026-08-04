@@ -1,22 +1,40 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { isSolanaAddress } from "../../common/crypto/solana-address";
 import { LedgerService } from "./ledger.service";
+import { SolanaService } from "./solana.service";
 import { BalanceGateway } from "../realtime/balance.gateway";
 
 type TxClient = Prisma.TransactionClient;
+
+/** A stand-in for a real Solana transaction signature (base58, ~88 chars). Replaced by the
+ * actual on-chain signature when the live integration is wired up. */
+function mockTxSignature(): string {
+  return randomBytes(32).toString("hex");
+}
 
 export interface MoneyMovementResult {
   balance: string;
   amount: string;
   type: "DEPOSIT" | "WITHDRAWAL";
+  transferId: string;
+  txSignature: string;
+  address: string;
 }
 
 export interface WalletSnapshot {
   balance: string;
   reconciled: boolean;
+  currency: string;
+  asset: string;
+  network: string;
+  /** The platform address players send USDT to when depositing. */
+  depositAddress: string;
+  /** true = real on-chain devnet flow (send from your wallet + verify); false = instant mock. */
+  live: boolean;
 }
 
 export interface TransactionPage {
@@ -27,6 +45,7 @@ export interface TransactionPage {
     refType: string | null;
     refId: string | null;
     createdAt: Date;
+    transfer: { direction: string; address: string; txSignature: string | null; status: string } | null;
   }>;
   nextCursor: string | null;
 }
@@ -42,6 +61,7 @@ export class WalletService {
     private readonly ledger: LedgerService,
     private readonly config: ConfigService,
     private readonly balanceGateway: BalanceGateway,
+    private readonly solana: SolanaService,
   ) {}
 
   /** Called from within the same transaction that creates the User row, so a user can
@@ -63,12 +83,107 @@ export class WalletService {
     }
   }
 
+  /** On-ramp: player sends USDT to the platform's Solana deposit address; we credit their
+   * in-app wallet. On-chain confirmation is stubbed (instant mock) for now — the paired
+   * CryptoTransfer + mock signature is the seam the real integration replaces. */
   async deposit(userId: string, amount: bigint, idempotencyKey: string): Promise<MoneyMovementResult> {
-    return this.moveMoney(userId, "wallet.deposit", idempotencyKey, amount, "DEPOSIT");
+    const depositAddress = this.config.getOrThrow<string>("SOLANA_TREASURY_ADDRESS");
+    return this.moveMoney(userId, "wallet.deposit", idempotencyKey, amount, "DEPOSIT", depositAddress);
   }
 
-  async withdraw(userId: string, amount: bigint, idempotencyKey: string): Promise<MoneyMovementResult> {
-    return this.moveMoney(userId, "wallet.withdraw", idempotencyKey, amount, "WITHDRAWAL");
+  /** Off-ramp: debit the player's in-app USDT wallet and send USDT on-chain to their
+   * external Solana address. Live mode sends real USDT; otherwise it's the instant mock. */
+  async withdraw(userId: string, amount: bigint, destinationAddress: string, idempotencyKey: string): Promise<MoneyMovementResult> {
+    if (!isSolanaAddress(destinationAddress)) {
+      throw new BadRequestException("Enter a valid Solana (USDT) address");
+    }
+    if (this.solana.isLive) return this.liveWithdraw(userId, amount, destinationAddress, idempotencyKey);
+    return this.moveMoney(userId, "wallet.withdraw", idempotencyKey, amount, "WITHDRAWAL", destinationAddress);
+  }
+
+  /** Live withdrawal: reserve funds (debit + PENDING transfer), send USDT on-chain, then
+   * mark COMPLETED with the real signature. If the on-chain send fails, the debit is
+   * refunded and the transfer marked FAILED — the player never loses funds to a failed send. */
+  private async liveWithdraw(userId: string, amount: bigint, destinationAddress: string, idempotencyKey: string): Promise<MoneyMovementResult> {
+    const hash = requestHash({ userId, endpoint: "wallet.withdraw", amount: amount.toString(), address: destinationAddress });
+    const existing = await this.prisma.idempotencyKey.findUnique({ where: { key: idempotencyKey } });
+    if (existing) {
+      if (existing.requestHash !== hash) throw new ConflictException("This idempotency key was already used for a different request");
+      return existing.responseJson as unknown as MoneyMovementResult;
+    }
+
+    // Phase 1 — reserve: debit the wallet and open a PENDING transfer, atomically.
+    const reserved = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT id FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE`;
+      const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
+      if (wallet.cachedBalance < amount) throw new BadRequestException("Insufficient funds");
+      const transfer = await tx.cryptoTransfer.create({
+        data: { userId, direction: "WITHDRAWAL", amount, asset: "USDT", network: "SOLANA", address: destinationAddress, status: "PENDING" },
+      });
+      await this.ledger.appendEntry(tx, { walletId: wallet.id, amount: -amount, type: "WITHDRAWAL", refType: "CRYPTO_TRANSFER", refId: transfer.id });
+      const newBalance = wallet.cachedBalance - amount;
+      await tx.wallet.update({ where: { id: wallet.id }, data: { cachedBalance: newBalance, version: { increment: 1 } } });
+      return { walletId: wallet.id, transferId: transfer.id, newBalance };
+    });
+    this.balanceGateway.emitBalanceUpdate(userId, reserved.newBalance.toString());
+
+    // Phase 2 — settle on-chain. On failure, refund and surface the error.
+    let txSignature: string;
+    try {
+      txSignature = await this.solana.sendUsdt(destinationAddress, amount);
+    } catch (err) {
+      const refunded = await this.prisma.$transaction(async (tx) => {
+        await tx.cryptoTransfer.update({ where: { id: reserved.transferId }, data: { status: "FAILED" } });
+        await this.ledger.appendEntry(tx, { walletId: reserved.walletId, amount, type: "ADJUSTMENT", refType: "WITHDRAWAL_REVERSAL", refId: reserved.transferId });
+        const w = await tx.wallet.update({ where: { id: reserved.walletId }, data: { cachedBalance: { increment: amount }, version: { increment: 1 } } });
+        return w.cachedBalance;
+      });
+      this.balanceGateway.emitBalanceUpdate(userId, refunded.toString());
+      throw new BadRequestException(`On-chain transfer failed — your funds were returned. (${(err as Error).message.slice(0, 120)})`);
+    }
+
+    await this.prisma.cryptoTransfer.update({ where: { id: reserved.transferId }, data: { status: "COMPLETED", txSignature } });
+    const response: MoneyMovementResult = {
+      balance: reserved.newBalance.toString(),
+      amount: amount.toString(),
+      type: "WITHDRAWAL",
+      transferId: reserved.transferId,
+      txSignature,
+      address: destinationAddress,
+    };
+    await this.prisma.idempotencyKey.create({
+      data: { key: idempotencyKey, userId, endpoint: "wallet.withdraw", requestHash: hash, responseJson: response as unknown as Prisma.InputJsonValue },
+    });
+    return response;
+  }
+
+  /** Live deposit: scan the chain for USDT the player actually sent from `fromAddress` to
+   * the treasury, and credit any transfers not yet credited (deduped by signature). */
+  async verifyDeposit(userId: string, fromAddress: string): Promise<{ credited: { amount: string; txSignature: string }[]; balance: string }> {
+    if (!this.solana.isLive) throw new BadRequestException("Live deposits are not enabled");
+    if (!isSolanaAddress(fromAddress)) throw new BadRequestException("Enter a valid Solana address");
+
+    const incoming = await this.solana.findIncomingTransfers(fromAddress);
+    const wallet = await this.prisma.wallet.findUniqueOrThrow({ where: { userId } });
+    const credited: { amount: string; txSignature: string }[] = [];
+
+    for (const t of incoming) {
+      const already = await this.prisma.cryptoTransfer.findFirst({ where: { txSignature: t.signature } });
+      if (already) continue; // deduped — this transfer was credited before
+      await this.prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT id FROM "Wallet" WHERE id = ${wallet.id} FOR UPDATE`;
+        const transfer = await tx.cryptoTransfer.create({
+          data: { userId, direction: "DEPOSIT", amount: BigInt(t.amount), asset: "USDT", network: "SOLANA", address: fromAddress, txSignature: t.signature, status: "COMPLETED" },
+        });
+        await this.ledger.appendEntry(tx, { walletId: wallet.id, amount: BigInt(t.amount), type: "DEPOSIT", refType: "CRYPTO_TRANSFER", refId: transfer.id });
+        await tx.wallet.update({ where: { id: wallet.id }, data: { cachedBalance: { increment: BigInt(t.amount) }, version: { increment: 1 } } });
+      });
+      credited.push({ amount: t.amount, txSignature: t.signature });
+    }
+
+    const updated = await this.prisma.wallet.findUniqueOrThrow({ where: { userId } });
+    if (credited.length) this.balanceGateway.emitBalanceUpdate(userId, updated.cachedBalance.toString());
+    return { credited, balance: updated.cachedBalance.toString() };
   }
 
   async getWallet(userId: string): Promise<WalletSnapshot> {
@@ -77,6 +192,11 @@ export class WalletService {
     return {
       balance: wallet.cachedBalance.toString(),
       reconciled: ledgerSum === wallet.cachedBalance,
+      currency: wallet.currency,
+      asset: "USDT",
+      network: "Solana",
+      depositAddress: this.config.getOrThrow<string>("SOLANA_TREASURY_ADDRESS"),
+      live: this.solana.isLive,
     };
   }
 
@@ -93,15 +213,27 @@ export class WalletService {
     const hasMore = entries.length > limit;
     const page = hasMore ? entries.slice(0, limit) : entries;
 
+    // Attach the crypto-transfer detail (address / signature / status) for deposit and
+    // withdrawal rows so the history UI can show where the money went on-chain.
+    const transferIds = page.filter((e) => e.refType === "CRYPTO_TRANSFER" && e.refId).map((e) => e.refId!);
+    const transfers = transferIds.length
+      ? await this.prisma.cryptoTransfer.findMany({ where: { id: { in: transferIds } } })
+      : [];
+    const transferById = new Map(transfers.map((t) => [t.id, t]));
+
     return {
-      entries: page.map((entry) => ({
-        id: entry.id,
-        amount: entry.amount.toString(),
-        type: entry.type,
-        refType: entry.refType,
-        refId: entry.refId,
-        createdAt: entry.createdAt,
-      })),
+      entries: page.map((entry) => {
+        const t = entry.refType === "CRYPTO_TRANSFER" && entry.refId ? transferById.get(entry.refId) : undefined;
+        return {
+          id: entry.id,
+          amount: entry.amount.toString(),
+          type: entry.type,
+          refType: entry.refType,
+          refId: entry.refId,
+          createdAt: entry.createdAt,
+          transfer: t ? { direction: t.direction, address: t.address, txSignature: t.txSignature, status: t.status } : null,
+        };
+      }),
       nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
     };
   }
@@ -112,8 +244,9 @@ export class WalletService {
     idempotencyKey: string,
     amount: bigint,
     type: "DEPOSIT" | "WITHDRAWAL",
+    address: string,
   ): Promise<MoneyMovementResult> {
-    const hash = requestHash({ userId, endpoint, amount: amount.toString() });
+    const hash = requestHash({ userId, endpoint, amount: amount.toString(), address });
 
     const existing = await this.prisma.idempotencyKey.findUnique({ where: { key: idempotencyKey } });
     if (existing) {
@@ -138,7 +271,24 @@ export class WalletService {
         throw new BadRequestException("Insufficient funds");
       }
 
-      await this.ledger.appendEntry(tx, { walletId: wallet.id, amount: signedAmount, type });
+      // Record the on/off-ramp movement. On-chain settlement is stubbed for now: the
+      // transfer is created COMPLETED with a mock signature. When the real Solana
+      // integration lands, this becomes PENDING until the chain confirms.
+      const txSignature = mockTxSignature();
+      const transfer = await tx.cryptoTransfer.create({
+        data: {
+          userId,
+          direction: type,
+          amount,
+          asset: "USDT",
+          network: "SOLANA",
+          address,
+          txSignature,
+          status: "COMPLETED",
+        },
+      });
+
+      await this.ledger.appendEntry(tx, { walletId: wallet.id, amount: signedAmount, type, refType: "CRYPTO_TRANSFER", refId: transfer.id });
       await tx.wallet.update({
         where: { id: wallet.id },
         data: { cachedBalance: newBalance, version: { increment: 1 } },
@@ -148,6 +298,9 @@ export class WalletService {
         balance: newBalance.toString(),
         amount: amount.toString(),
         type,
+        transferId: transfer.id,
+        txSignature,
+        address,
       };
 
       await tx.idempotencyKey.create({

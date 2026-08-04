@@ -1,4 +1,4 @@
-import { Application, BlurFilter, Container, FillGradient, Graphics, Sprite, type Texture } from "pixi.js";
+import { Application, Assets, BlurFilter, Container, Graphics, Sprite, type Texture } from "pixi.js";
 import gsap from "gsap";
 import type { Grid, SymbolId, WinLineDto } from "../lib/api-types";
 import { ALL_SYMBOL_IDS } from "./symbols";
@@ -6,28 +6,34 @@ import { buildSymbolTextures } from "./buildSymbolTextures";
 import { playReelStop } from "./sound";
 import { highlightedCells } from "./highlightedCells";
 
+const FRAME_SRC = "/game/board-frame.png";
+// Measured once from the source art (see the board-frame processing notes): the inner
+// transparent window as a fraction of the full frame image, so the reel grid can be sized
+// and positioned to land exactly inside it regardless of the frame's own on-screen scale.
+const FRAME_WINDOW = { left: 0.2217, top: 0.1834, right: 0.7743, bottom: 0.7804 };
+/** On-screen width:height of the whole frame image as the renderer draws it (the reel grid
+ * is square, so the frame's aspect is the window's height-fraction over its width-fraction).
+ * The page sizes the board container to this so HUD controls line up with the frame art. */
+export const FRAME_ASPECT =
+  (FRAME_WINDOW.bottom - FRAME_WINDOW.top) / (FRAME_WINDOW.right - FRAME_WINDOW.left);
+
 const REELS = 5;
 const ROWS = 5;
 const BUFFER = 15;
 const OVERSHOOT_BUFFER = 2; // extra sprites past the target, so the bounce-back has something to show
 const STRIP_LENGTH = ROWS * 2 + BUFFER + OVERSHOOT_BUFFER; // head + filler + tail (target) + overshoot
-const CELL_SIZE = 120;
-const GAP = 12;
+// Baked at a high resolution so symbols stay crisp even when the board is scaled up large
+// (e.g. the full-height tournament view). The layout still scales the board to fit; this only
+// controls texture sharpness, not on-screen size.
+const CELL_SIZE = 200;
+const GAP = 20;
 const CELL_STEP = CELL_SIZE + GAP;
 const BOARD_WIDTH = REELS * CELL_SIZE + (REELS - 1) * GAP;
 const BOARD_HEIGHT = ROWS * CELL_SIZE + (ROWS - 1) * GAP;
-const CABINET_PAD = 28;
 const HIGHLIGHT_TINT = 0xf2c94c;
 const NO_TINT = 0xffffff;
-const OVERSHOOT_PIXELS = CELL_STEP * 0.4;
-
-// Cosmic space-disco cabinet palette — mirrors the site's --color-accent/-2 and the two
-// extra neon tokens from globals.css, hardcoded here since Pixi draws outside the DOM/CSS
-// variable system.
-const NEON_GOLD = 0xffd23f;
-const NEON_TEAL = 0x2ee6c4;
-const NEON_VIOLET = 0xa855f7;
-const NEON_PINK = 0xff3ec8;
+const OVERSHOOT_PIXELS = CELL_STEP * 0.18;
+const FRAME_GLOW_COLOR = 0xff8a3c;
 
 function randomSymbolId(): SymbolId {
   return ALL_SYMBOL_IDS[Math.floor(Math.random() * ALL_SYMBOL_IDS.length)] as SymbolId;
@@ -44,8 +50,14 @@ export class SlotRenderer {
   private soundEnabled = true;
   private animationsEnabled = true;
   private destroyed = false;
-  private ledLights: Graphics[] = [];
   private cabinetGlow: Graphics | null = null;
+  /** The frame image's own bounding box in board-local units, computed once the frame
+   * texture loads — layout() fits this (not just the bare reel area) into the viewport. */
+  private frameBounds = { width: BOARD_WIDTH, height: BOARD_HEIGHT, offsetX: 0, offsetY: 0 };
+
+  /** Picks the board frame: the desert cabinet image, or the procedurally-drawn monster
+   * frame. Both size their inner window identically so the reels line up either way. */
+  constructor(private readonly themeFamily: "desert" | "monster" = "desert") {}
 
   async mount(container: HTMLDivElement): Promise<void> {
     const app = new Application();
@@ -71,13 +83,22 @@ export class SlotRenderer {
     container.appendChild(app.canvas);
     this.app = app;
 
-    this.textures = buildSymbolTextures(app, CELL_SIZE);
+    const monster = this.themeFamily === "monster";
+    const [textures, frameTexture] = await Promise.all([
+      buildSymbolTextures(app, CELL_SIZE, this.themeFamily),
+      monster ? Promise.resolve(null) : Assets.load<Texture>(FRAME_SRC),
+    ]);
+    if (this.destroyed) {
+      app.destroy({ removeView: true }, { children: true, texture: true });
+      return;
+    }
+    this.textures = textures;
 
     const board = new Container();
     app.stage.addChild(board);
     this.board = board;
 
-    board.addChild(this.buildCabinetFrame());
+    board.addChild(monster ? this.buildMonsterFrame() : this.buildCabinetFrame(frameTexture!));
 
     for (let r = 0; r < REELS; r++) {
       // reelContainer: fixed position + the clip mask — never scaled/moved directly.
@@ -167,10 +188,10 @@ export class SlotRenderer {
         if (sprite && symbol) sprite.texture = this.textures[symbol];
       }
 
-      const spinDuration = 0.55 + r * 0.14;
+      const spinDuration = 0.7 + r * 0.16;
       const targetY = -(ROWS + BUFFER) * CELL_STEP;
       const overshootY = targetY - OVERSHOOT_PIXELS;
-      const blur = new BlurFilter({ strengthX: 0, strengthY: 26, quality: 3 });
+      const blur = new BlurFilter({ strengthX: 0, strengthY: 16, quality: 3 });
 
       tweenPromises.push(
         new Promise<void>((resolve) => {
@@ -189,11 +210,11 @@ export class SlotRenderer {
             },
           });
 
-          // Bounce back to the exact resting position.
+          // Bounce back to the exact resting position — a gentle settle, not a hard snap.
           tl.to(stripContainer, {
             y: targetY,
-            duration: 0.32,
-            ease: "back.out(2.2)",
+            duration: 0.4,
+            ease: "back.out(1.4)",
             onStart: () => {
               stripContainer.filters = [];
             },
@@ -208,8 +229,8 @@ export class SlotRenderer {
               gsap.killTweensOf(visualContent.scale);
               gsap.fromTo(
                 visualContent.scale,
-                { x: 1.08, y: 0.92 },
-                { x: 1, y: 1, duration: 0.28, ease: "elastic.out(1, 0.5)" },
+                { x: 1.025, y: 0.985 },
+                { x: 1, y: 1, duration: 0.32, ease: "elastic.out(1, 0.65)" },
               );
               resolve();
             },
@@ -233,7 +254,7 @@ export class SlotRenderer {
         sprite.tint = HIGHLIGHT_TINT;
         gsap.killTweensOf(sprite.scale);
         if (this.animationsEnabled) {
-          gsap.to(sprite.scale, { x: 1.12, y: 1.12, duration: 0.35, ease: "sine.inOut", yoyo: true, repeat: -1 });
+          gsap.to(sprite.scale, { x: 1.05, y: 1.05, duration: 0.75, ease: "sine.inOut", yoyo: true, repeat: -1 });
         }
       }
     }
@@ -251,94 +272,184 @@ export class SlotRenderer {
     }
   }
 
-  /** A dark, neon-trimmed "disco cabinet" backing behind the reels — drawn once as a child
-   * of `board` so it scales and repositions together with everything else in layout().
-   * Corner speaker blocks + a chasing LED strip replace the old plain gold-trimmed panel;
-   * the panel itself is what gives symbols their shared dark backdrop now that individual
-   * symbol tiles no longer draw their own background box (see buildSymbolTextures.ts). */
-  private buildCabinetFrame(): Container {
+  /** The real board-frame artwork, scaled so its (measured) inner window exactly matches
+   * the reel grid's own bounds — the frame sprite sits behind the reels in paint order but
+   * its ornate border is wider than the reel area, so it reads as a cabinet the reels are
+   * mounted inside rather than a plain rectangle. */
+  private buildCabinetFrame(frameTexture: Texture): Container {
     const frame = new Container();
-    const x0 = -CABINET_PAD;
-    const y0 = -CABINET_PAD;
-    const w = BOARD_WIDTH + CABINET_PAD * 2;
-    const h = BOARD_HEIGHT + CABINET_PAD * 2;
-    const radius = CABINET_PAD * 1.1;
+    const windowFracW = FRAME_WINDOW.right - FRAME_WINDOW.left;
+    const windowFracH = FRAME_WINDOW.bottom - FRAME_WINDOW.top;
+    const frameWidth = BOARD_WIDTH / windowFracW;
+    const frameHeight = BOARD_HEIGHT / windowFracH;
+    const offsetX = FRAME_WINDOW.left * frameWidth;
+    const offsetY = FRAME_WINDOW.top * frameHeight;
+
+    this.frameBounds = { width: frameWidth, height: frameHeight, offsetX, offsetY };
 
     const glow = new Graphics()
-      .roundRect(x0 - 12, y0 - 12, w + 24, h + 24, radius + 8)
-      .fill({ color: NEON_GOLD, alpha: 0.14 });
+      .roundRect(-offsetX * 0.6, -offsetY * 0.6, frameWidth + offsetX * 0.2, frameHeight + offsetY * 0.2, 60)
+      .fill({ color: FRAME_GLOW_COLOR, alpha: 0.16 });
     frame.addChild(glow);
     this.cabinetGlow = glow;
+    gsap.to(glow, { alpha: 0.26, duration: 2.6, ease: "sine.inOut", yoyo: true, repeat: -1 });
 
-    const panelGradient = new FillGradient({
-      type: "linear",
-      start: { x: 0, y: 0 },
-      end: { x: 0, y: 1 },
-      colorStops: [
-        { offset: 0, color: 0x1c1a44 },
-        { offset: 0.6, color: 0x10102c },
-        { offset: 1, color: 0x05050e },
-      ],
-      textureSpace: "local",
-    });
+    const frameSprite = new Sprite(frameTexture);
+    frameSprite.width = frameWidth;
+    frameSprite.height = frameHeight;
+    frameSprite.position.set(-offsetX, -offsetY);
+    frame.addChild(frameSprite);
 
-    const panel = new Graphics()
-      .roundRect(x0, y0, w, h, radius)
-      .fill(panelGradient)
-      .stroke({ width: 4, color: NEON_GOLD, alpha: 0.9, alignment: 1 })
-      .roundRect(x0 + 6, y0 + 6, w - 12, h - 12, radius * 0.85)
-      .stroke({ width: 1.5, color: NEON_TEAL, alpha: 0.4, alignment: 1 });
-    frame.addChild(panel);
+    return frame;
+  }
 
-    // Corner "speaker" blocks: concentric glow rings, one aurora hue per corner.
-    const speakerCorners: Array<[number, number, number]> = [
-      [x0 + 22, y0 + 22, NEON_VIOLET],
-      [x0 + w - 22, y0 + 22, NEON_TEAL],
-      [x0 + 22, y0 + h - 22, NEON_PINK],
-      [x0 + w - 22, y0 + h - 22, NEON_GOLD],
+  /** Original, procedurally-drawn "monster" board frame (no image): a toxic-green stone maw
+   * ringed with fangs, warty bumps, horns, and glowing eyes. Sizes its inner window exactly
+   * like the desert cabinet so the reel grid still lands in the same place. */
+  private buildMonsterFrame(): Container {
+    const frame = new Container();
+    const windowFracW = FRAME_WINDOW.right - FRAME_WINDOW.left;
+    const windowFracH = FRAME_WINDOW.bottom - FRAME_WINDOW.top;
+    const frameWidth = BOARD_WIDTH / windowFracW;
+    const frameHeight = BOARD_HEIGHT / windowFracH;
+    const offsetX = FRAME_WINDOW.left * frameWidth;
+    const offsetY = FRAME_WINDOW.top * frameHeight;
+    this.frameBounds = { width: frameWidth, height: frameHeight, offsetX, offsetY };
+
+    const fx = -offsetX;
+    const fy = -offsetY;
+    const R = 72;
+
+    // Pulsing toxic aura behind the frame.
+    const glow = new Graphics()
+      .roundRect(fx - offsetX * 0.15, fy - offsetY * 0.15, frameWidth + offsetX * 0.3, frameHeight + offsetY * 0.3, R + 24)
+      .fill({ color: 0x2fae5a, alpha: 0.16 });
+    frame.addChild(glow);
+    this.cabinetGlow = glow;
+    gsap.to(glow, { alpha: 0.32, duration: 2.4, ease: "sine.inOut", yoyo: true, repeat: -1 });
+
+    // Horns poking out of the top corners.
+    const horns = new Graphics();
+    horns.poly([fx + 70, fy + 30, fx + 6, fy - 76, fx + 128, fy + 8]).fill({ color: 0x7a1f14 }).stroke({ width: 4, color: 0x4a1109 });
+    horns.poly([fx + frameWidth - 70, fy + 30, fx + frameWidth - 6, fy - 76, fx + frameWidth - 128, fy + 8]).fill({ color: 0x7a1f14 }).stroke({ width: 4, color: 0x4a1109 });
+    frame.addChild(horns);
+
+    // Stone body + bevel.
+    frame.addChild(
+      new Graphics()
+        .roundRect(fx, fy, frameWidth, frameHeight, R)
+        .fill({ color: 0x13291c })
+        .stroke({ width: 10, color: 0x2fae5a, alpha: 0.9 }),
+    );
+    frame.addChild(
+      new Graphics()
+        .roundRect(fx + 18, fy + 18, frameWidth - 36, frameHeight - 36, R - 14)
+        .stroke({ width: 6, color: 0x1c3a29 }),
+    );
+
+    // Warty bumps scattered on the border.
+    const warts = new Graphics();
+    const wartPts: [number, number, number][] = [
+      [fx + 80, fy + 120, 16],
+      [fx + frameWidth - 90, fy + 100, 13],
+      [fx + 60, fy + frameHeight - 150, 15],
+      [fx + frameWidth - 70, fy + frameHeight - 120, 18],
+      [fx + frameWidth * 0.5, fy + frameHeight - 46, 14],
+      [fx + 40, fy + frameHeight * 0.5, 12],
+      [fx + frameWidth - 40, fy + frameHeight * 0.5, 12],
     ];
-    for (const [cx, cy, color] of speakerCorners) {
-      const speaker = new Graphics()
-        .circle(cx, cy, 16)
-        .fill({ color: 0x0a0a1a })
-        .circle(cx, cy, 16)
-        .stroke({ width: 2, color, alpha: 0.9 })
-        .circle(cx, cy, 10)
-        .stroke({ width: 1.5, color, alpha: 0.6 })
-        .circle(cx, cy, 4)
-        .fill({ color, alpha: 0.9 });
-      frame.addChild(speaker);
+    for (const [wx, wy, wr] of wartPts) {
+      warts.circle(wx, wy, wr).fill({ color: 0x255c39 });
+      warts.circle(wx - wr * 0.3, wy - wr * 0.3, wr * 0.4).fill({ color: 0x39d06f, alpha: 0.6 });
+    }
+    frame.addChild(warts);
+
+    // Dark reel-window backdrop with a glowing rim (reels render on top of this).
+    frame.addChild(
+      new Graphics()
+        .roundRect(-8, -8, BOARD_WIDTH + 16, BOARD_HEIGHT + 16, 26)
+        .fill({ color: 0x06120c })
+        .stroke({ width: 6, color: 0x39d06f, alpha: 0.85 }),
+    );
+
+    // Fangs ringing the mouth (top point down, bottom point up). Their inner tips tuck just
+    // behind the reels, so they read as teeth around the opening without covering symbols.
+    const fangs = new Graphics();
+    const n = 9;
+    const fw = BOARD_WIDTH / n;
+    for (let i = 0; i < n; i++) {
+      const x = i * fw;
+      const len = i % 2 === 0 ? 92 : 62;
+      // top fang: wide base up in the brow, tip pointing down to the window edge
+      fangs
+        .poly([x + 4, -len - 14, x + fw - 4, -len - 14, x + fw / 2, -6])
+        .fill({ color: 0xe9e5d2 })
+        .stroke({ width: 2, color: 0x9c9a86, alpha: 0.5 });
+      // bottom fang: wide base in the jaw, tip pointing up to the window edge
+      fangs
+        .poly([x + 4, BOARD_HEIGHT + len + 14, x + fw - 4, BOARD_HEIGHT + len + 14, x + fw / 2, BOARD_HEIGHT + 6])
+        .fill({ color: 0xe9e5d2 })
+        .stroke({ width: 2, color: 0x9c9a86, alpha: 0.5 });
+    }
+    // Side fangs down the left/right borders so the whole mouth is ringed with teeth and the
+    // side gaps aren't empty.
+    const nSide = 5;
+    const sh = BOARD_HEIGHT / nSide;
+    for (let i = 0; i < nSide; i++) {
+      const y = i * sh;
+      const sl = i % 2 === 0 ? 82 : 54;
+      fangs
+        .poly([-sl - 14, y + 4, -sl - 14, y + sh - 4, -6, y + sh / 2])
+        .fill({ color: 0xe9e5d2 })
+        .stroke({ width: 2, color: 0x9c9a86, alpha: 0.5 });
+      fangs
+        .poly([BOARD_WIDTH + sl + 14, y + 4, BOARD_WIDTH + sl + 14, y + sh - 4, BOARD_WIDTH + 6, y + sh / 2])
+        .fill({ color: 0xe9e5d2 })
+        .stroke({ width: 2, color: 0x9c9a86, alpha: 0.5 });
+    }
+    frame.addChild(fangs);
+
+    // Glowing eyes on the side borders too, so the sides feel alive rather than empty.
+    for (const [ex, ey] of [
+      [-offsetX * 0.5, BOARD_HEIGHT * 0.5],
+      [BOARD_WIDTH + offsetX * 0.5, BOARD_HEIGHT * 0.5],
+    ] as [number, number][]) {
+      const r = offsetX * 0.24;
+      const e = new Graphics();
+      e.circle(ex, ey, r * 1.1).fill({ color: 0xff5147, alpha: 0.25 });
+      e.circle(ex, ey, r).fill({ color: 0x0a1a10 });
+      e.circle(ex, ey, r * 0.7).fill({ color: 0xff7a52 }).stroke({ width: 3, color: 0x7a1f14 });
+      e.ellipse(ex, ey, r * 0.24, r * 0.58).fill({ color: 0x160a04 });
+      e.circle(ex - r * 0.26, ey - r * 0.28, r * 0.16).fill({ color: 0xffffff, alpha: 0.9 });
+      frame.addChild(e);
     }
 
-    // Chasing LED strip along the top and bottom bars — small glowing squares cycling
-    // through the aurora palette, gently pulsing so the cabinet never sits fully static.
-    const ledColors = [NEON_TEAL, NEON_VIOLET, NEON_PINK, NEON_GOLD];
-    const ledY = [y0 + 10, y0 + h - 10];
-    const ledSize = 7;
-    const ledSpacing = 18;
-    const ledCount = Math.floor((w - 40) / ledSpacing);
-    for (const stripY of ledY) {
-      for (let i = 0; i < ledCount; i++) {
-        const led = new Graphics()
-          .roundRect(-ledSize / 2, -ledSize / 2, ledSize, ledSize, 2)
-          .fill({ color: ledColors[i % ledColors.length] });
-        led.x = x0 + 20 + i * ledSpacing;
-        led.y = stripY;
-        led.alpha = 0.5;
-        frame.addChild(led);
-        this.ledLights.push(led);
-        gsap.to(led, {
-          alpha: 1,
-          duration: 0.9,
-          delay: (i % ledColors.length) * 0.12,
-          ease: "sine.inOut",
-          yoyo: true,
-          repeat: -1,
-        });
-      }
+    // Two glowing eyes high on the brow.
+    for (const ex of [BOARD_WIDTH * 0.3, BOARD_WIDTH * 0.7]) {
+      const ey = fy + offsetY * 0.42;
+      const r = Math.min(offsetY, offsetX) * 0.34;
+      const eye = new Graphics();
+      eye.circle(ex, ey, r * 1.05).fill({ color: 0x2fae5a, alpha: 0.28 });
+      eye.circle(ex, ey, r).fill({ color: 0x0a1a10 });
+      eye.circle(ex, ey, r * 0.72).fill({ color: 0xffe27a }).stroke({ width: 3, color: 0xe8891a });
+      eye.ellipse(ex, ey, r * 0.24, r * 0.6).fill({ color: 0x160a04 });
+      eye.circle(ex - r * 0.28, ey - r * 0.3, r * 0.16).fill({ color: 0xffffff, alpha: 0.9 });
+      frame.addChild(eye);
     }
 
-    gsap.to(glow, { alpha: 0.22, duration: 2.4, ease: "sine.inOut", yoyo: true, repeat: -1 });
+    // Slime drips oozing off the bottom edge.
+    const slime = new Graphics();
+    for (const [dx, dl] of [
+      [fx + frameWidth * 0.22, 46],
+      [fx + frameWidth * 0.5, 68],
+      [fx + frameWidth * 0.78, 40],
+    ] as [number, number][]) {
+      const by = fy + frameHeight - 6;
+      slime.roundRect(dx - 9, by - 20, 18, 30, 9).fill({ color: 0x3fae52 });
+      slime.circle(dx, by + dl - 6, 11).fill({ color: 0x3fae52 });
+      slime.circle(dx - 3, by + dl - 10, 4).fill({ color: 0x8ff0a8, alpha: 0.7 });
+    }
+    frame.addChild(slime);
 
     return frame;
   }
@@ -346,15 +457,13 @@ export class SlotRenderer {
   private layout(): void {
     if (!this.app || !this.board) return;
     const { width, height } = this.app.screen;
-    // Fit the whole cabinet frame (reels + padding + glow bleed), not just the reels,
-    // so the decorative border never clips against the container edges.
-    const frameMargin = CABINET_PAD + 20;
-    const frameWidth = BOARD_WIDTH + frameMargin * 2;
-    const frameHeight = BOARD_HEIGHT + frameMargin * 2;
-    const scale = Math.min(width / frameWidth, height / frameHeight) * 0.96;
+    // Fit the whole frame image's own bounding box (its ornate border extends well beyond
+    // the bare reel area), not just the reels, so nothing clips against the container edges.
+    const { width: frameWidth, height: frameHeight, offsetX, offsetY } = this.frameBounds;
+    const scale = Math.min(width / frameWidth, height / frameHeight) * 0.995;
     this.board.scale.set(scale);
-    this.board.x = (width - BOARD_WIDTH * scale) / 2;
-    this.board.y = (height - BOARD_HEIGHT * scale) / 2;
+    this.board.x = (width - frameWidth * scale) / 2 + offsetX * scale;
+    this.board.y = (height - frameHeight * scale) / 2 + offsetY * scale;
   }
 
   destroy(): void {
@@ -365,7 +474,6 @@ export class SlotRenderer {
     }
     for (const container of this.stripContainers) gsap.killTweensOf(container);
     for (const container of this.reelVisualContents) gsap.killTweensOf(container.scale);
-    for (const led of this.ledLights) gsap.killTweensOf(led);
     if (this.cabinetGlow) gsap.killTweensOf(this.cabinetGlow);
     this.app?.destroy({ removeView: true }, { children: true, texture: true });
     this.app = null;

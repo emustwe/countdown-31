@@ -10,6 +10,7 @@ import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import type { Server, Socket } from "socket.io";
 import type { AccessTokenPayload } from "../auth/token.types";
+import { webOrigins } from "../../common/web-origins";
 
 function userRoom(userId: string): string {
   return `user:${userId}`;
@@ -21,7 +22,7 @@ function userRoom(userId: string): string {
  * move. TanStack Query's own refetch-after-mutation already keeps the tab that *made* the
  * change in sync; this is for everyone else watching the same account.
  */
-@WebSocketGateway({ cors: { origin: process.env.WEB_ORIGIN ?? "http://localhost:3000" } })
+@WebSocketGateway({ cors: { origin: webOrigins() } })
 export class BalanceGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;

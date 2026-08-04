@@ -5,10 +5,11 @@ import { usePathname } from "next/navigation";
 import { useWallet } from "../lib/hooks/useWallet";
 import { useLogout, useProfile } from "../lib/hooks/useAuth";
 import { useBalanceSocket } from "../lib/hooks/useBalanceSocket";
-import { formatMinorUnits } from "../lib/money";
+import { formatUsdt } from "../lib/money";
 
 const NAV_LINKS = [
-  { href: "/lobby", label: "Lobby" },
+  { href: "/home", label: "Home" },
+  { href: "/tournaments", label: "Tournaments" },
   { href: "/wallet", label: "Wallet" },
   { href: "/history", label: "History" },
   { href: "/profile", label: "Profile" },
@@ -34,8 +35,8 @@ export function AppShell({
     <div className="min-h-screen">
       <header className="surface sticky top-0 z-10 flex items-center justify-between gap-4 px-6 py-3">
         <div className="flex items-center gap-6">
-          <Link href="/lobby" className="font-display text-lg font-bold tracking-tight text-[var(--color-accent)]">
-            AURORA WAYS
+          <Link href="/home" className="font-wordmark text-lg font-black tracking-tight text-[var(--color-accent)]">
+            DESERT DUNE
           </Link>
           <nav className="hidden gap-4 sm:flex">
             {NAV_LINKS.map((link) => (
@@ -60,7 +61,7 @@ export function AppShell({
             </Link>
           )}
           <div className="rounded-md bg-[var(--color-surface-2)] px-3 py-1.5 text-sm font-medium tabular-nums">
-            {wallet ? formatMinorUnits(wallet.balance) : "—"}
+            {wallet ? formatUsdt(wallet.balance) : "—"}
           </div>
           <button
             onClick={() => logout.mutate()}

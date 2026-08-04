@@ -1,26 +1,30 @@
-// Money is always transported as decimal-string minor units (matches the Backend's bigint
-// minor-unit convention). 100 minor units = 1 demo credit. Never parse these as JS numbers
-// for math — only for display formatting, here at the UI edge.
-const MINOR_UNITS_PER_CREDIT = 100n;
+// Wallet money is USDT (on Solana), transported as decimal-string base units to match the
+// Backend's bigint convention: 1 USDT = 1_000_000 base units (6 decimals). Never parse these
+// as JS numbers for math — only for display formatting, here at the UI edge.
+const BASE_UNITS_PER_USDT = 1_000_000n;
 
-export function formatMinorUnits(minorUnits: string): string {
-  const value = BigInt(minorUnits);
+/** Formats USDT base units for display, e.g. "1,234.56 USDT" (2 decimals). Storage keeps
+ * full 6-decimal precision; this rounds only for display. */
+export function formatUsdt(baseUnits: string): string {
+  const value = BigInt(baseUnits);
   const negative = value < 0n;
   const abs = negative ? -value : value;
-  const whole = abs / MINOR_UNITS_PER_CREDIT;
-  const fraction = abs % MINOR_UNITS_PER_CREDIT;
-  const formattedWhole = whole.toLocaleString("en-US");
+  const dollars = Number(abs) / Number(BASE_UNITS_PER_USDT);
   const sign = negative ? "-" : "";
-  return `${sign}${formattedWhole}.${fraction.toString().padStart(2, "0")} credits`;
+  return `${sign}${dollars.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
 }
 
-export function creditsToMinorUnits(credits: string): string {
-  const trimmed = credits.trim();
-  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
-    throw new Error("Enter an amount like 100 or 100.50");
+/** Parses a USDT amount (e.g. "25" or "10.5" or "0.000001") into a base-unit string.
+ * Accepts up to 6 decimal places. */
+export function parseUsdt(amount: string): string {
+  const trimmed = amount.trim();
+  if (!/^\d+(\.\d{1,6})?$/.test(trimmed)) {
+    throw new Error("Enter a USDT amount like 25 or 10.5 (up to 6 decimals)");
   }
   const [wholePart = "0", fractionPart = ""] = trimmed.split(".");
-  const paddedFraction = fractionPart.padEnd(2, "0");
-  const minorUnits = BigInt(wholePart) * MINOR_UNITS_PER_CREDIT + BigInt(paddedFraction || "0");
-  return minorUnits.toString();
+  const paddedFraction = fractionPart.padEnd(6, "0");
+  const baseUnits = BigInt(wholePart) * BASE_UNITS_PER_USDT + BigInt(paddedFraction || "0");
+  return baseUnits.toString();
 }
+
+export { BASE_UNITS_PER_USDT };

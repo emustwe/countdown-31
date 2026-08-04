@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AdminGuard } from "../../../components/AdminGuard";
-import { AdminShell } from "../../../components/AdminShell";
+import { AdminNav } from "../../../components/dune/AdminNav";
 import { useAdminModels, useSetActiveModel } from "../../../lib/hooks/useAdmin";
 import { ApiError } from "../../../lib/api-client";
 import type { AdminMathModel } from "../../../lib/api-types";
@@ -10,9 +10,10 @@ import type { AdminMathModel } from "../../../lib/api-types";
 export default function AdminModelsPage() {
   return (
     <AdminGuard>
-      <AdminShell>
+      <div className="admin-shell">
+        <AdminNav />
         <ModelsContent />
-      </AdminShell>
+      </div>
     </AdminGuard>
   );
 }
@@ -21,7 +22,16 @@ function pct(value: number | undefined): string {
   return value === undefined ? "—" : `${(value * 100).toFixed(2)}%`;
 }
 
-function ModelCard({ model, onActivate }: { model: AdminMathModel; onActivate: (id: string) => void }) {
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "3px 0" }}>
+      <span style={{ color: "var(--muted)" }}>{label}</span>
+      <span style={{ fontVariantNumeric: "tabular-nums" }}>{value}</span>
+    </div>
+  );
+}
+
+function ModelCard({ model }: { model: AdminMathModel }) {
   const [confirming, setConfirming] = useState(false);
   const setActiveModel = useSetActiveModel();
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +40,6 @@ function ModelCard({ model, onActivate }: { model: AdminMathModel; onActivate: (
     setError(null);
     try {
       await setActiveModel.mutateAsync(model.id);
-      onActivate(model.id);
       setConfirming(false);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Failed");
@@ -38,65 +47,35 @@ function ModelCard({ model, onActivate }: { model: AdminMathModel; onActivate: (
   }
 
   return (
-    <div className={`surface rounded-lg p-6 ${model.active ? "border-[var(--color-accent)]" : ""}`}>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-semibold">{model.displayName}</h2>
-        {model.active && (
-          <span className="rounded-full bg-[var(--color-accent)] px-2 py-0.5 text-xs font-semibold text-black">
-            ACTIVE
-          </span>
-        )}
+    <div className="admin-card glass" style={{ border: model.active ? "1px solid var(--gold)" : "1px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <h2 style={{ margin: 0, fontSize: 17 }}>{model.displayName}</h2>
+        {model.active && <span className="a-tag ok">ACTIVE</span>}
       </div>
-      <dl className="mb-4 space-y-1 text-sm">
-        <div className="flex justify-between">
-          <dt className="text-[var(--color-text-dim)]">Target RTP</dt>
-          <dd>{pct(model.targetRtp)}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-[var(--color-text-dim)]">Empirical RTP</dt>
-          <dd>{pct(model.computed?.empiricalRtpTotal)}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-[var(--color-text-dim)]">Hit frequency</dt>
-          <dd>{pct(model.computed?.hitFrequency)}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-[var(--color-text-dim)]">Volatility index</dt>
-          <dd>{model.computed?.volatilityIndex?.toFixed(2) ?? "—"}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-[var(--color-text-dim)]">Simulated spins</dt>
-          <dd>{model.computed?.simSpins?.toLocaleString() ?? "—"}</dd>
-        </div>
-      </dl>
+      <div style={{ marginBottom: 16 }}>
+        <Row label="Target RTP" value={pct(model.targetRtp)} />
+        <Row label="Empirical RTP" value={pct(model.computed?.empiricalRtpTotal)} />
+        <Row label="Hit frequency" value={pct(model.computed?.hitFrequency)} />
+        <Row label="Volatility index" value={model.computed?.volatilityIndex?.toFixed(2) ?? "—"} />
+        <Row label="Simulated spins" value={model.computed?.simSpins?.toLocaleString() ?? "—"} />
+      </div>
 
       {!model.active && !confirming && (
-        <button
-          onClick={() => setConfirming(true)}
-          className="w-full rounded-md border border-[var(--color-border)] py-2 text-sm font-semibold"
-        >
+        <button onClick={() => setConfirming(true)} className="secondary full">
           Set as active model
         </button>
       )}
       {!model.active && confirming && (
-        <div className="space-y-2">
-          <p className="text-xs text-[var(--color-danger)]">
-            This is audited and takes effect immediately for new spins. Rounds already in
-            progress keep the model they were created with.
+        <div style={{ display: "grid", gap: 8 }}>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
+            This is audited and takes effect immediately for new spins. Rounds already in progress keep the model they were created with.
           </p>
-          {error && <p className="text-xs text-[var(--color-danger)]">{error}</p>}
-          <div className="flex gap-2">
-            <button
-              onClick={handleConfirm}
-              disabled={setActiveModel.isPending}
-              className="flex-1 rounded-md bg-[var(--color-accent)] py-2 text-sm font-semibold text-black disabled:opacity-60"
-            >
+          {error && <p style={{ fontSize: 12, color: "var(--danger)", margin: 0 }}>{error}</p>}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={handleConfirm} disabled={setActiveModel.isPending} className="primary" style={{ flex: 1 }}>
               Confirm
             </button>
-            <button
-              onClick={() => setConfirming(false)}
-              className="flex-1 rounded-md border border-[var(--color-border)] py-2 text-sm"
-            >
+            <button onClick={() => setConfirming(false)} className="secondary" style={{ flex: 1 }}>
               Cancel
             </button>
           </div>
@@ -110,22 +89,27 @@ function ModelsContent() {
   const { data, isLoading } = useAdminModels();
 
   return (
-    <div>
-      <h1 className="mb-1 text-2xl font-semibold">Math models</h1>
-      <p className="mb-6 text-[var(--color-text-dim)]">
-        Select which certified model is active. RTP is never typed in directly — it's a
-        property of the model's strips + paytable, verified by the simulator.
-      </p>
+    <main className="admin-main">
+      <div className="admin-heading">
+        <div>
+          <p className="eyebrow">GAME MATH</p>
+          <h1>Math models</h1>
+          <p>
+            Select which certified model is active. RTP is never typed in directly — it&apos;s a property of the model&apos;s
+            strips + paytable, verified by the simulator.
+          </p>
+        </div>
+      </div>
 
       {isLoading || !data ? (
-        <p className="text-[var(--color-text-dim)]">Loading…</p>
+        <p className="muted" style={{ padding: 8 }}>Loading…</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
           {data.map((model) => (
-            <ModelCard key={model.id} model={model} onActivate={() => {}} />
+            <ModelCard key={model.id} model={model} />
           ))}
         </div>
       )}
-    </div>
+    </main>
   );
 }

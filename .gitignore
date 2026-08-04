@@ -35,3 +35,10 @@ coverage/
 test-results/
 playwright-report/
 blob-report/
+
+# Heavy design assets (not code — keep out of git)
+VA_Theme_Files/
+Zip_Files/
+*.zip
+*.pdf
+game-frontend-for-designer.zip

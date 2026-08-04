@@ -46,6 +46,13 @@ export class GameService {
     return toPublicMathModel(await this.getActiveModel());
   }
 
+  /** Platform-wide theme family — read by every client (including pre-login pages) to pick
+   * the palette. Admin sets it via PATCH /admin/config/theme. */
+  async getThemeFamily(): Promise<{ themeFamily: string }> {
+    const gameConfig = await this.prisma.gameConfig.findUnique({ where: { id: GAME_CONFIG_ID } });
+    return { themeFamily: gameConfig?.themeFamily ?? "desert" };
+  }
+
   async spin(userId: string, totalBet: bigint, idempotencyKey: string): Promise<SpinApiResponse> {
     const hash = requestHash({ userId, endpoint: "game.spin", totalBet: totalBet.toString() });
 
@@ -114,44 +121,7 @@ export class GameService {
         },
       });
 
-      // The base spin row carries the FULL rngTrace for the round (base + every free
-      // spin) — resolveSpin draws continuously from one rng, so replaying this one trace
-      // reconstructs the entire round. Feature-step rows don't need their own trace.
-      await tx.spin.create({
-        data: {
-          roundId,
-          index: 0,
-          gridJson: result.grid,
-          resultJson: {
-            lines: result.lines.map(serializeLine),
-            scatterCount: result.scatterCount,
-            ...(result.jackpot ? { jackpot: { tier: result.jackpot.tier, pay: result.jackpot.pay.toString() } } : {}),
-          },
-          rngTraceJson: result.rngTrace,
-          win: baseWin,
-        },
-      });
-
-      if (result.feature) {
-        for (const [i, step] of result.feature.spins.entries()) {
-          await tx.spin.create({
-            data: {
-              roundId,
-              index: i + 1,
-              gridJson: step.grid,
-              resultJson: {
-                lines: step.lines.map(serializeLine),
-                scatterCount: step.scatterCount,
-                multiplier: step.multiplier,
-                retriggered: step.retriggered,
-                ...(step.jackpot ? { jackpot: { tier: step.jackpot.tier, pay: step.jackpot.pay.toString() } } : {}),
-              },
-              rngTraceJson: [],
-              win: step.win,
-            },
-          });
-        }
-      }
+      await this.writeSpinRows(tx, roundId, result, baseWin);
 
       // Jackpot wins are booked as their own ledger entry, separate from ordinary line/
       // scatter wins, so BET_WIN + JACKPOT_WIN always sums to exactly totalWin — the
@@ -216,6 +186,320 @@ export class GameService {
     return response;
   }
 
+  /** Free-play PRACTICE spin: runs the real engine and persists a GameRound (so the existing
+   * /game/free-spin reveal works), but touches NO wallet, ledger, or side-effects — the
+   * balance is a dummy coin stack passed by the client. Lets the real slot UI/UX be tested
+   * with zero money impact. Practice rounds are flagged and excluded from history/analytics. */
+  async practiceSpin(userId: string, totalBet: bigint, balance: bigint): Promise<SpinApiResponse> {
+    if (totalBet <= 0n) throw new BadRequestException("totalBet must be greater than zero");
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (user.status !== "ACTIVE") throw new ForbiddenException("Account is not active");
+    const wallet = await this.prisma.wallet.findUniqueOrThrow({ where: { userId } }); // for GameRound.walletId only — never mutated
+
+    const model = await this.getActiveModel();
+    const roundId = randomUUID();
+    const rng = createSecureRng();
+    const result = resolveSpin({ model, totalBet }, rng);
+    const featureSpinCount = result.feature?.spins.length ?? 0;
+    const state = featureSpinCount > 0 ? "FEATURE" : "COMPLETE";
+    const baseWin = result.totalWin - (result.feature?.featureWin ?? 0n);
+    // Dummy-coin accounting only — no real money moves.
+    const newBalance = balance - totalBet + result.totalWin;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.gameRound.create({
+        data: {
+          id: roundId,
+          userId,
+          walletId: wallet.id,
+          modelId: model.id,
+          modelVersion: model.version,
+          totalBet,
+          state,
+          freeSpinsRemaining: featureSpinCount,
+          totalWin: result.totalWin,
+          completedAt: state === "COMPLETE" ? new Date() : null,
+          practice: true,
+        },
+      });
+      await this.writeSpinRows(tx, roundId, result, baseWin);
+    });
+
+    return toSpinApiResponse(roundId, newBalance < 0n ? 0n : newBalance, totalBet, result);
+  }
+
+  /** Writes the base spin row (index 0, carrying the whole round's rngTrace) plus one row
+   * per free spin. Shared by wallet spins and tournament spins. */
+  private async writeSpinRows(
+    tx: Prisma.TransactionClient,
+    roundId: string,
+    result: ReturnType<typeof resolveSpin>,
+    baseWin: bigint,
+  ): Promise<void> {
+    await tx.spin.create({
+      data: {
+        roundId,
+        index: 0,
+        gridJson: result.grid,
+        resultJson: {
+          lines: result.lines.map(serializeLine),
+          scatterCount: result.scatterCount,
+          ...(result.jackpot ? { jackpot: { tier: result.jackpot.tier, pay: result.jackpot.pay.toString() } } : {}),
+        },
+        rngTraceJson: result.rngTrace,
+        win: baseWin,
+      },
+    });
+
+    if (result.feature) {
+      for (const [i, step] of result.feature.spins.entries()) {
+        await tx.spin.create({
+          data: {
+            roundId,
+            index: i + 1,
+            gridJson: step.grid,
+            resultJson: {
+              lines: step.lines.map(serializeLine),
+              scatterCount: step.scatterCount,
+              multiplier: step.multiplier,
+              retriggered: step.retriggered,
+              ...(step.jackpot ? { jackpot: { tier: step.jackpot.tier, pay: step.jackpot.pay.toString() } } : {}),
+            },
+            rngTraceJson: [],
+            win: step.win,
+          },
+        });
+      }
+    }
+  }
+
+  /** A spin inside a tournament: identical engine + persistence to spin(), but the stake and
+   * win move the player's TournamentEntry coin stack instead of their wallet (no LedgerEntry
+   * rows — tournament coins aren't real wallet money), and the round is tagged with the
+   * entry. Score is the resulting stack. */
+  async spinInTournament(
+    userId: string,
+    tournamentId: string,
+    totalBet: bigint,
+    idempotencyKey: string,
+  ): Promise<SpinApiResponse> {
+    const hash = requestHash({
+      userId,
+      endpoint: "game.tournamentSpin",
+      tournamentId,
+      totalBet: totalBet.toString(),
+    });
+
+    const existing = await this.prisma.idempotencyKey.findUnique({ where: { key: idempotencyKey } });
+    if (existing) {
+      if (existing.requestHash !== hash) {
+        throw new ConflictException("This idempotency key was already used for a different request");
+      }
+      return existing.responseJson as unknown as SpinApiResponse;
+    }
+
+    const minBet = BigInt(this.config.get<string>("MIN_BET") ?? "1");
+    const maxBet = BigInt(this.config.get<string>("MAX_BET") ?? "1000000000");
+    if (totalBet < minBet || totalBet > maxBet) {
+      throw new BadRequestException(`totalBet must be between ${minBet} and ${maxBet} minor units`);
+    }
+
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (user.status !== "ACTIVE") {
+      throw new ForbiddenException("Account is not active");
+    }
+
+    const tournament = await this.prisma.tournament.findUnique({ where: { id: tournamentId } });
+    if (!tournament) throw new NotFoundException("Tournament not found");
+    const now = Date.now();
+    const running =
+      tournament.state !== "CANCELLED" &&
+      tournament.state !== "SETTLED" &&
+      now >= tournament.startAt.getTime() &&
+      now < tournament.endAt.getTime();
+    if (!running) throw new BadRequestException("Tournament is not currently running");
+
+    const model = getMathModel(tournament.modelId);
+    const roundId = randomUUID();
+
+    const response = await this.prisma.$transaction(async (tx) => {
+      // Serialize concurrent spins for this entry so the coin stack can't be raced.
+      await tx.$executeRaw`SELECT id FROM "TournamentEntry" WHERE "tournamentId" = ${tournamentId} AND "userId" = ${userId} FOR UPDATE`;
+      const entry = await tx.tournamentEntry.findUnique({
+        where: { tournamentId_userId: { tournamentId, userId } },
+      });
+      if (!entry) throw new BadRequestException("Join the tournament before playing");
+      if (entry.credits < totalBet) throw new BadRequestException("Insufficient tournament coins");
+
+      const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
+
+      const rng = createSecureRng();
+      const result = resolveSpin({ model, totalBet }, rng);
+      const featureSpinCount = result.feature?.spins.length ?? 0;
+      const state = featureSpinCount > 0 ? "FEATURE" : "COMPLETE";
+      const baseWin = result.totalWin - (result.feature?.featureWin ?? 0n);
+      const newCredits = entry.credits - totalBet + result.totalWin;
+
+      await tx.gameRound.create({
+        data: {
+          id: roundId,
+          userId,
+          walletId: wallet.id,
+          modelId: model.id,
+          modelVersion: model.version,
+          totalBet,
+          state,
+          freeSpinsRemaining: featureSpinCount,
+          totalWin: result.totalWin,
+          completedAt: state === "COMPLETE" ? new Date() : null,
+          tournamentEntryId: entry.id,
+        },
+      });
+
+      await this.writeSpinRows(tx, roundId, result, baseWin);
+
+      await tx.tournamentEntry.update({
+        where: { id: entry.id },
+        data: { credits: newCredits, score: newCredits, spinsCount: { increment: 1 } },
+      });
+
+      const response = toSpinApiResponse(roundId, newCredits, totalBet, result);
+
+      await tx.idempotencyKey.create({
+        data: {
+          key: idempotencyKey,
+          userId,
+          endpoint: "game.tournamentSpin",
+          requestHash: hash,
+          responseJson: response as unknown as Prisma.InputJsonValue,
+        },
+      });
+
+      return response;
+    });
+
+    return response;
+  }
+
+  /** A spin inside a bracket match: same engine as a tournament spin, but the stake/win move
+   * the player's MatchPlayer coin stack (fresh each match) and their `score` = the resulting
+   * stack, which decides who wins the match. Only allowed within the match's play window
+   * [round.startAt, nextRound.startAt) — or [round.startAt, tournament.endAt) for the final. */
+  async spinInMatch(
+    userId: string,
+    matchId: string,
+    totalBet: bigint,
+    idempotencyKey: string,
+  ): Promise<SpinApiResponse> {
+    const hash = requestHash({ userId, endpoint: "game.matchSpin", matchId, totalBet: totalBet.toString() });
+
+    const existing = await this.prisma.idempotencyKey.findUnique({ where: { key: idempotencyKey } });
+    if (existing) {
+      if (existing.requestHash !== hash) {
+        throw new ConflictException("This idempotency key was already used for a different request");
+      }
+      return existing.responseJson as unknown as SpinApiResponse;
+    }
+
+    const minBet = BigInt(this.config.get<string>("MIN_BET") ?? "1");
+    const maxBet = BigInt(this.config.get<string>("MAX_BET") ?? "1000000000");
+    if (totalBet < minBet || totalBet > maxBet) {
+      throw new BadRequestException(`totalBet must be between ${minBet} and ${maxBet} minor units`);
+    }
+
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (user.status !== "ACTIVE") throw new ForbiddenException("Account is not active");
+
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: { tournament: true, round: true },
+    });
+    if (!match) throw new NotFoundException("Match not found");
+
+    // Group tournaments (WEEKLY/MONTHLY) run each group match for a fixed window (5 min).
+    // Legacy brackets run until the next round starts (or the tournament ends).
+    let endsAt: number;
+    if (match.tournament.format === "WEEKLY" || match.tournament.format === "MONTHLY") {
+      endsAt = match.startAt.getTime() + match.tournament.matchDurationSec * 1000;
+    } else {
+      const nextRound = await this.prisma.tournamentRound.findUnique({
+        where: { tournamentId_index: { tournamentId: match.tournamentId, index: match.round.index + 1 } },
+      });
+      endsAt = nextRound ? nextRound.startAt.getTime() : match.tournament.endAt.getTime();
+    }
+    const now = Date.now();
+    const running =
+      match.tournament.state !== "CANCELLED" &&
+      match.tournament.state !== "SETTLED" &&
+      match.state !== "DONE" &&
+      now >= match.startAt.getTime() &&
+      now < endsAt;
+    if (!running) throw new BadRequestException("This match is not currently playable");
+
+    const model = getMathModel(match.tournament.modelId);
+    const roundId = randomUUID();
+
+    const response = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT id FROM "MatchPlayer" WHERE "matchId" = ${matchId} AND "userId" = ${userId} FOR UPDATE`;
+      const player = await tx.matchPlayer.findUnique({ where: { matchId_userId: { matchId, userId } } });
+      if (!player) throw new BadRequestException("You are not in this match");
+      if (player.coins < totalBet) throw new BadRequestException("Insufficient match coins");
+
+      const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
+
+      const rng = createSecureRng();
+      const result = resolveSpin({ model, totalBet }, rng);
+      const featureSpinCount = result.feature?.spins.length ?? 0;
+      const state = featureSpinCount > 0 ? "FEATURE" : "COMPLETE";
+      const baseWin = result.totalWin - (result.feature?.featureWin ?? 0n);
+      const newCoins = player.coins - totalBet + result.totalWin;
+
+      await tx.gameRound.create({
+        data: {
+          id: roundId,
+          userId,
+          walletId: wallet.id,
+          modelId: model.id,
+          modelVersion: model.version,
+          totalBet,
+          state,
+          freeSpinsRemaining: featureSpinCount,
+          totalWin: result.totalWin,
+          completedAt: state === "COMPLETE" ? new Date() : null,
+        },
+      });
+
+      await this.writeSpinRows(tx, roundId, result, baseWin);
+
+      await tx.matchPlayer.update({
+        where: { id: player.id },
+        data: { coins: newCoins, score: newCoins, spinsCount: { increment: 1 } },
+      });
+
+      // First spin in a match flips it from PENDING to RUNNING (display only; play is gated
+      // by the time window above, not by this state).
+      if (match.state === "PENDING") {
+        await tx.match.update({ where: { id: matchId }, data: { state: "RUNNING" } });
+      }
+
+      const response = toSpinApiResponse(roundId, newCoins, totalBet, result);
+
+      await tx.idempotencyKey.create({
+        data: {
+          key: idempotencyKey,
+          userId,
+          endpoint: "game.matchSpin",
+          requestHash: hash,
+          responseJson: response as unknown as Prisma.InputJsonValue,
+        },
+      });
+
+      return response;
+    });
+
+    return response;
+  }
+
   async playNextFreeSpin(userId: string, roundId: string) {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT id FROM "GameRound" WHERE id = ${roundId} FOR UPDATE`;
@@ -259,7 +543,7 @@ export class GameService {
 
   async listRounds(userId: string, cursor?: string, limit = 20) {
     const rounds = await this.prisma.gameRound.findMany({
-      where: { userId },
+      where: { userId, practice: false },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

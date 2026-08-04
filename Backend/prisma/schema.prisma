@@ -20,13 +20,69 @@ enum UserStatus {
 model User {
   id            String         @id @default(uuid())
   email         String         @unique
+  fullName      String?
+  avatarUrl     String?
   passwordHash  String
   role          Role           @default(PLAYER)
   status        UserStatus     @default(ACTIVE)
-  createdAt     DateTime       @default(now())
-  refreshTokens RefreshToken[]
-  wallet        Wallet?
-  gameRounds    GameRound[]
+  createdAt         DateTime          @default(now())
+  refreshTokens     RefreshToken[]
+  wallet            Wallet?
+  gameRounds        GameRound[]
+  tournamentEntries TournamentEntry[]
+  notifications     Notification[]
+  rebuyRequests     RebuyRequest[]
+  cryptoTransfers   CryptoTransfer[]
+}
+
+// A sponsor account, created by an admin. Sponsors get their own login (separate from player
+// Users) and their own dashboard to run co-branded tournaments (subject to admin approval). The
+// password is stored ONLY as a hash; the plaintext is shown to the admin once at generation and on
+// regeneration — never persisted in the clear.
+model Sponsor {
+  id           String              @id @default(uuid())
+  name         String
+  username     String              @unique
+  passwordHash String
+  status       UserStatus          @default(ACTIVE)
+  createdAt    DateTime            @default(now())
+  tournaments  SponsorTournament[]
+}
+
+// A sponsor/promo tournament — the "new" tournament type shown on the user Tournaments page. Admin-
+// created ones are auto-approved; sponsor-created ones start PENDING until an admin approves.
+model SponsorTournament {
+  id          String        @id @default(uuid())
+  title       String
+  description String        @default("")
+  status      PromoStatus   @default(PENDING)
+  sponsorId   String?
+  sponsor     Sponsor?      @relation(fields: [sponsorId], references: [id], onDelete: SetNull)
+  createdBy   String        // "admin" or the sponsor id
+  createdAt   DateTime      @default(now())
+
+  @@index([status])
+}
+
+enum PromoStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A lightweight in-app notification (e.g. "Round 2 starts at ..."). Shown in the nav bell.
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  refType   String?
+  refId     String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 // Rotating refresh tokens: the raw token is only ever returned to the client once. We
@@ -52,6 +108,9 @@ enum LedgerEntryType {
   BET_WIN
   JACKPOT_WIN
   ADJUSTMENT
+  TOURNAMENT_ENTRY
+  TOURNAMENT_PRIZE
+  TOURNAMENT_REFUND
 }
 
 // The wallet's cachedBalance is a read-optimized projection, never the source of truth.
@@ -61,12 +120,47 @@ model Wallet {
   id            String        @id @default(uuid())
   userId        String        @unique
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  currency      String        @default("DEMO")
+  currency      String        @default("USDT")
   cachedBalance BigInt        @default(0)
   version       Int           @default(0)
   updatedAt     DateTime      @updatedAt
   ledgerEntries LedgerEntry[]
   gameRounds    GameRound[]
+}
+
+enum CryptoDirection {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum CryptoTransferStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// A record of an on/off-ramp movement between a player's in-app USDT wallet and the
+// Solana chain. Today the on-chain settlement is stubbed (instant mock: created COMPLETED
+// with a mock txSignature), but this row is the durable seam — when the real Solana/USDT
+// integration lands it fills in the true signature and drives status PENDING -> COMPLETED.
+// The paired LedgerEntry references this row via refType="CRYPTO_TRANSFER", refId=id.
+model CryptoTransfer {
+  id              String               @id @default(uuid())
+  userId          String
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  direction       CryptoDirection
+  amount          BigInt               // USDT base units (6 dp; 1_000_000 = 1 USDT)
+  asset           String               @default("USDT")
+  network         String               @default("SOLANA")
+  // Withdrawals: the player's external destination address. Deposits: the platform
+  // deposit address the player sent to.
+  address         String
+  destinationType String               @default("SOLANA") // reserved for a future "BANK" off-ramp
+  txSignature     String?              // on-chain signature (mock placeholder for now)
+  status          CryptoTransferStatus @default(COMPLETED)
+  createdAt       DateTime             @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model LedgerEntry {
@@ -127,9 +221,15 @@ model GameRound {
   totalWin           BigInt         @default(0)
   createdAt          DateTime       @default(now())
   completedAt        DateTime?
+  practice           Boolean        @default(false) // free-play: real engine, dummy coins, no wallet/ledger
   spins              Spin[]
+  // Set when the round is played inside a tournament — the stake/win then move the entry's
+  // tournament credits instead of the real wallet. Null for ordinary (wallet) play.
+  tournamentEntryId  String?
+  tournamentEntry    TournamentEntry? @relation(fields: [tournamentEntryId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
+  @@index([tournamentEntryId])
 }
 
 // One row per resolved spin within a round: index 0 is the base spin, 1..n are free spins
@@ -156,8 +256,190 @@ model Spin {
 model GameConfig {
   id            String   @id @default("singleton")
   activeModelId String
+  // Platform-wide visual theme family, admin-controlled: "desert" | "monster". Each family
+  // still renders in the viewer's own light/dark preference.
+  themeFamily   String   @default("monster")
   updatedBy     String?
   updatedAt     DateTime @updatedAt
+}
+
+enum TournamentState {
+  SCHEDULED // created, not yet started
+  RUNNING   // within [startAt, endAt): players can join and play
+  ENDED     // past endAt: scores frozen, prizes not yet paid
+  SETTLED   // prizes paid out to wallets
+  CANCELLED // called off by an admin
+}
+
+// A points-only slot tournament. Entry fee is charged from the player's wallet on join; in
+// return the player receives `startingCredits` tournament coins (a stack kept on their
+// TournamentEntry, separate from the wallet). They play the configured math model with that
+// stack; their score is their stack. When it ends, the prize pool (prizeJson) is paid into
+// the top players' wallets. All amounts are BigInt minor units, matching Wallet/LedgerEntry.
+enum TournamentFormat {
+  LEADERBOARD // fixed-stack, single leaderboard over a time window (legacy)
+  BRACKET     // multi-round matches; top scorer of each match advances (legacy)
+  WEEKLY      // 100-player, 3-round group tournament (admin-grouped, top-N per group advance)
+  MONTHLY     // 500-player, 4-round group tournament (admin-grouped, top-N per group advance)
+}
+
+enum MatchState {
+  PENDING // scheduled, not started
+  RUNNING // within its play window
+  DONE    // settled; winner decided
+}
+
+// Visual brand / sponsor skin of a tournament. Rules, engine and math are identical across
+// brands — only the look changes (background, symbols, colours, card, rule book & terms style),
+// so a sponsor's tournament is fully co-branded. Extensible: add a new value per partner.
+enum TournamentBrand {
+  WM // default WM Tournaments house style
+  VA // VA co-branded skin
+}
+
+model Tournament {
+  id              String            @id @default(uuid())
+  name            String
+  description     String?
+  modelId         String
+  format          TournamentFormat  @default(LEADERBOARD)
+  brand           TournamentBrand   @default(WM) // co-branding skin; rules/engine unchanged
+  state           TournamentState   @default(SCHEDULED)
+  entryFee        BigInt            @default(0)
+  startingCredits BigInt
+  startAt         DateTime
+  endAt           DateTime
+  maxEntries      Int?
+  // Bracket / group config (null for LEADERBOARD tournaments):
+  capacity        Int?              // total player slots (WEEKLY=100, MONTHLY=500)
+  roundsCount     Int?              // number of rounds
+  playersPerMatch Int?              // seats per match (legacy BRACKET only)
+  matchDurationSec Int              @default(300) // each group round is a 5-minute play window
+  roundGapSec     Int               @default(600) // automatic gap before the next round starts (10 min)
+  // Prize table: [{ "rank": 1, "amount": "50000" }, ...] in minor units, admin-defined.
+  prizeJson       Json              @default("[]")
+  createdBy       String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  settledAt       DateTime?
+  entries         TournamentEntry[]
+  rounds          TournamentRound[]
+  matches         Match[]
+  matchPlayers    MatchPlayer[]
+  rebuyRequests   RebuyRequest[]
+
+  @@index([state, startAt])
+}
+
+// A bracket round with its own admin-scheduled start time. Round 1 is filled by players
+// picking open match slots; later rounds are seeded automatically from winners.
+model TournamentRound {
+  id           String     @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  index        Int        // 1-based round number
+  startAt      DateTime
+  settledAt    DateTime?
+  startNotifiedAt DateTime? // set once the engine sends the "starts soon" notice (dedup)
+  // Group-tournament (WEEKLY/MONTHLY) per-round config. Admin fills the groups with the
+  // eligible players; the top `advancePerGroup` of each group advance, the rest are out.
+  groupCount      Int?
+  playersPerGroup Int?
+  advancePerGroup Int?
+  matches      Match[]
+
+  @@unique([tournamentId, index])
+}
+
+// One match within a round: up to playersPerMatch players; the top scorer advances.
+model Match {
+  id           String        @id @default(uuid())
+  tournamentId String
+  tournament   Tournament    @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  roundId      String
+  round        TournamentRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  index        Int           // match number within its round
+  state        MatchState    @default(PENDING)
+  startAt      DateTime
+  winnerUserId String?
+  players      MatchPlayer[]
+
+  @@index([tournamentId])
+  @@index([roundId])
+}
+
+// A player's seat + per-match play state. Each match starts them on a fresh coin stack;
+// `score` is their current stack, used to decide the match winner.
+model MatchPlayer {
+  id           String     @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  matchId      String
+  match        Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId       String
+  seat         Int
+  coins        BigInt     // current stack this match
+  score        BigInt     @default(0)
+  spinsCount   Int        @default(0)
+  advanced     Boolean    @default(false)
+  eliminated   Boolean    @default(false)
+  joinedAt     DateTime   @default(now())
+
+  @@unique([matchId, userId])
+  @@index([tournamentId, userId])
+}
+
+// One player's participation in one tournament: their tournament coin stack (`credits`),
+// their ranking `score`, and — after settlement — their final `rank` and `prizeAwarded`.
+model TournamentEntry {
+  id           String      @id @default(uuid())
+  tournamentId String
+  tournament   Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credits      BigInt
+  score        BigInt      @default(0)
+  spinsCount   Int         @default(0)
+  rank         Int?
+  prizeAwarded BigInt      @default(0)
+  // Group-tournament progress: the round the player is currently in, and whether they've
+  // been knocked out. Registration alone puts them in the round-1 pool.
+  currentRound   Int       @default(1)
+  eliminated     Boolean   @default(false)
+  eliminatedRound Int?               // the round they were knocked out in (for re-buy-in)
+  rebuysUsed     Int       @default(0)
+  joinedAt     DateTime    @default(now())
+  gameRounds   GameRound[]
+
+  @@unique([tournamentId, userId])
+  @@index([tournamentId, score])
+}
+
+enum RebuyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A player's request to re-buy-in after elimination. The entry fee is charged when the
+// request is made and refunded if an admin rejects it. Approval flips the player's entry
+// back to active in `round` (eliminated=false, currentRound=round); the admin then places
+// them into a group for that round using the normal grouping UI. No automatic re-entry.
+model RebuyRequest {
+  id           String      @id @default(uuid())
+  tournamentId String
+  tournament   Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  round        Int         // the round index the player wants to re-enter
+  amount       BigInt      // entry fee charged (held until decided; refunded on reject)
+  status       RebuyStatus @default(PENDING)
+  createdAt    DateTime    @default(now())
+  decidedAt    DateTime?
+  decidedById  String?
+
+  @@index([tournamentId, status])
+  @@index([userId, status])
 }
 
 // Append-only trail for every admin action that touches money or config: balance

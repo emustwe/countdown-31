@@ -3,7 +3,7 @@
 import { AuthGuard } from "../../components/AuthGuard";
 import { AppShell } from "../../components/AppShell";
 import { useProfile } from "../../lib/hooks/useAuth";
-import { formatMinorUnits } from "../../lib/money";
+import { formatUsdt } from "../../lib/money";
 
 export default function ProfilePage() {
   return (
@@ -26,7 +26,7 @@ function ProfileContent() {
     ["Email", profile.email],
     ["Role", profile.role],
     ["Status", profile.status],
-    ["Balance", formatMinorUnits(profile.balance)],
+    ["Balance", formatUsdt(profile.balance)],
     ["Member since", new Date(profile.createdAt).toLocaleDateString()],
   ];
 

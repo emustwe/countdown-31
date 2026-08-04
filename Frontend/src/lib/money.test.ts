@@ -1,46 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { creditsToMinorUnits, formatMinorUnits } from "./money";
+import { parseUsdt, formatUsdt } from "./money";
 
-describe("formatMinorUnits", () => {
-  it("formats whole credits", () => {
-    expect(formatMinorUnits("100000")).toBe("1,000.00 credits");
+describe("formatUsdt", () => {
+  it("formats whole USDT (1 USDT = 1_000_000 base units)", () => {
+    expect(formatUsdt("1000000")).toBe("1.00 USDT");
+    expect(formatUsdt("25000000")).toBe("25.00 USDT");
   });
 
-  it("formats fractional credits with correct padding", () => {
-    expect(formatMinorUnits("412")).toBe("4.12 credits");
-    expect(formatMinorUnits("5")).toBe("0.05 credits");
+  it("shows two decimals and thousands separators", () => {
+    expect(formatUsdt("1234560000")).toBe("1,234.56 USDT");
+    expect(formatUsdt("500000")).toBe("0.50 USDT");
   });
 
-  it("formats negative amounts", () => {
-    expect(formatMinorUnits("-1000")).toBe("-10.00 credits");
-  });
-
-  it("adds thousands separators", () => {
-    expect(formatMinorUnits("123456789")).toBe("1,234,567.89 credits");
+  it("handles negative amounts", () => {
+    expect(formatUsdt("-25000000")).toBe("-25.00 USDT");
   });
 });
 
-describe("creditsToMinorUnits", () => {
-  it("converts a whole-credit amount", () => {
-    expect(creditsToMinorUnits("100")).toBe("10000");
+describe("parseUsdt", () => {
+  it("parses whole amounts to base units", () => {
+    expect(parseUsdt("25")).toBe("25000000");
+    expect(parseUsdt("1000")).toBe("1000000000");
   });
 
-  it("converts a fractional amount", () => {
-    expect(creditsToMinorUnits("4.12")).toBe("412");
+  it("parses fractional amounts up to 6 decimals", () => {
+    expect(parseUsdt("10.5")).toBe("10500000");
+    expect(parseUsdt("0.000001")).toBe("1");
+    expect(parseUsdt("1.234567")).toBe("1234567");
   });
 
-  it("pads a single decimal digit", () => {
-    expect(creditsToMinorUnits("1.5")).toBe("150");
-  });
-
-  it("round-trips through formatMinorUnits", () => {
-    const minorUnits = creditsToMinorUnits("250.75");
-    expect(formatMinorUnits(minorUnits)).toBe("250.75 credits");
+  it("round-trips through formatUsdt", () => {
+    expect(formatUsdt(parseUsdt("250.75"))).toBe("250.75 USDT");
   });
 
   it("rejects invalid input", () => {
-    expect(() => creditsToMinorUnits("abc")).toThrow();
-    expect(() => creditsToMinorUnits("-5")).toThrow();
-    expect(() => creditsToMinorUnits("1.999")).toThrow();
+    expect(() => parseUsdt("abc")).toThrow();
+    expect(() => parseUsdt("-5")).toThrow();
+    expect(() => parseUsdt("1.9999999")).toThrow(); // > 6 decimals
   });
 });

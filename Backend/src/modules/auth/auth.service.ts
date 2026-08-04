@@ -38,7 +38,9 @@ export class AuthService {
 
     const passwordHash = await argon2.hash(dto.password);
     const user = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.user.create({ data: { email: dto.email, passwordHash } });
+      const created = await tx.user.create({
+        data: { email: dto.email, fullName: dto.fullName, passwordHash },
+      });
       await this.wallet.createWalletForNewUser(tx, created.id);
       return created;
     });
@@ -122,6 +124,18 @@ export class AuthService {
     return { ...toPublicUser(user), balance };
   }
 
+  /** Updates the caller's own profile (display name and/or avatar image). */
+  async updateProfile(userId: string, data: { fullName?: string; avatarUrl?: string | null }): Promise<PublicUser> {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.fullName !== undefined ? { fullName: data.fullName } : {}),
+        ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl } : {}),
+      },
+    });
+    return toPublicUser(user);
+  }
+
   private async issueTokenPair(userId: string, role: PublicUser["role"]): Promise<TokenPair> {
     const accessPayload: AccessTokenPayload = { sub: userId, role };
     const accessToken = await this.jwt.signAsync(accessPayload, {
@@ -169,6 +183,8 @@ export class AuthService {
 export interface PublicUser {
   id: string;
   email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
   role: "PLAYER" | "ADMIN";
   status: "ACTIVE" | "BANNED";
   createdAt: Date;
@@ -177,6 +193,8 @@ export interface PublicUser {
 function toPublicUser(user: {
   id: string;
   email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
   role: "PLAYER" | "ADMIN";
   status: "ACTIVE" | "BANNED";
   createdAt: Date;
@@ -184,6 +202,8 @@ function toPublicUser(user: {
   return {
     id: user.id,
     email: user.email,
+    fullName: user.fullName,
+    avatarUrl: user.avatarUrl,
     role: user.role,
     status: user.status,
     createdAt: user.createdAt,

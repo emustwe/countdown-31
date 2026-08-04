@@ -9,7 +9,8 @@ export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace(accessToken ? "/lobby" : "/login");
+    // Signed-in players go straight to the app; everyone else sees the landing page.
+    router.replace(accessToken ? "/home" : "/landing");
   }, [accessToken, router]);
 
   return null;

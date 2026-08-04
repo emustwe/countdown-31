@@ -20,22 +20,39 @@ export function useTransactions(cursor?: string, limit = 20) {
   });
 }
 
-function useMoneyMovement(path: "/wallet/deposit" | "/wallet/withdraw") {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { amount: string; idempotencyKey: string }) =>
-      apiRequest<MoneyMovementResult>(path, { method: "POST", body: input }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wallet"] });
-      queryClient.invalidateQueries({ queryKey: ["me"] });
-    },
-  });
+function invalidateWallet(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ["wallet"] });
+  queryClient.invalidateQueries({ queryKey: ["me"] });
 }
 
 export function useDeposit() {
-  return useMoneyMovement("/wallet/deposit");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { amount: string; idempotencyKey: string }) =>
+      apiRequest<MoneyMovementResult>("/wallet/deposit", { method: "POST", body: input }),
+    onSuccess: () => invalidateWallet(queryClient),
+  });
 }
 
 export function useWithdraw() {
-  return useMoneyMovement("/wallet/withdraw");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { amount: string; destinationAddress: string; idempotencyKey: string }) =>
+      apiRequest<MoneyMovementResult>("/wallet/withdraw", { method: "POST", body: input }),
+    onSuccess: () => invalidateWallet(queryClient),
+  });
+}
+
+/** Live deposit: ask the backend to scan the chain for USDT you sent from `fromAddress`
+ * to the treasury and credit any uncredited transfers. */
+export function useVerifyDeposit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { fromAddress: string }) =>
+      apiRequest<{ credited: { amount: string; txSignature: string }[]; balance: string }>(
+        "/wallet/deposit/verify",
+        { method: "POST", body: input },
+      ),
+    onSuccess: () => invalidateWallet(queryClient),
+  });
 }

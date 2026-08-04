@@ -2,16 +2,17 @@
 
 import { useState } from "react";
 import { AdminGuard } from "../../../components/AdminGuard";
-import { AdminShell } from "../../../components/AdminShell";
+import { AdminNav } from "../../../components/dune/AdminNav";
 import { useAdminTransactions } from "../../../lib/hooks/useAdmin";
-import { formatMinorUnits } from "../../../lib/money";
+import { formatUsdt } from "../../../lib/money";
 
 export default function AdminTransactionsPage() {
   return (
     <AdminGuard>
-      <AdminShell>
+      <div className="admin-shell">
+        <AdminNav />
         <TransactionsContent />
-      </AdminShell>
+      </div>
     </AdminGuard>
   );
 }
@@ -31,11 +32,16 @@ function TransactionsContent() {
   });
 
   return (
-    <div>
-      <h1 className="mb-1 text-2xl font-semibold">Transactions</h1>
-      <p className="mb-6 text-[var(--color-text-dim)]">Every ledger entry across all wallets.</p>
+    <main className="admin-main">
+      <div className="admin-heading">
+        <div>
+          <p className="eyebrow">LEDGER</p>
+          <h1>Transactions</h1>
+          <p>Every ledger entry across all wallets.</p>
+        </div>
+      </div>
 
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
         <input
           value={userId}
           onChange={(e) => {
@@ -43,7 +49,8 @@ function TransactionsContent() {
             setCursors([undefined]);
           }}
           placeholder="Filter by user id…"
-          className="w-64 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)]"
+          className="admin-input"
+          style={{ width: 260 }}
         />
         <select
           value={type}
@@ -51,7 +58,8 @@ function TransactionsContent() {
             setType(e.target.value);
             setCursors([undefined]);
           }}
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)]"
+          className="admin-input"
+          style={{ width: 200 }}
         >
           {TYPES.map((t) => (
             <option key={t} value={t}>
@@ -61,39 +69,36 @@ function TransactionsContent() {
         </select>
       </div>
 
-      <div className="surface overflow-hidden rounded-lg">
-        <table className="w-full text-sm">
+      <div className="admin-card glass" style={{ overflowX: "auto" }}>
+        <table className="admin-data">
           <thead>
-            <tr className="border-b border-[var(--color-border)] text-left text-[var(--color-text-dim)]">
-              <th className="px-4 py-3">User</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Ref</th>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3 text-right">Amount</th>
+            <tr>
+              <th>User</th>
+              <th>Type</th>
+              <th>Ref</th>
+              <th>Date</th>
+              <th style={{ textAlign: "right" }}>Amount</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-[var(--color-text-dim)]">
-                  Loading…
-                </td>
+                <td colSpan={5} className="admin-empty">Loading…</td>
+              </tr>
+            )}
+            {!isLoading && (data?.entries.length ?? 0) === 0 && (
+              <tr>
+                <td colSpan={5} className="admin-empty">No transactions found.</td>
               </tr>
             )}
             {data?.entries.map((entry) => (
-              <tr key={entry.id} className="border-b border-[var(--color-border)] last:border-0">
-                <td className="px-4 py-3">{entry.userEmail}</td>
-                <td className="px-4 py-3">{entry.type}</td>
-                <td className="px-4 py-3 text-[var(--color-text-dim)]">{entry.refType ?? "—"}</td>
-                <td className="px-4 py-3 text-[var(--color-text-dim)]">
-                  {new Date(entry.createdAt).toLocaleString()}
-                </td>
-                <td
-                  className={`px-4 py-3 text-right tabular-nums ${
-                    entry.amount.startsWith("-") ? "text-[var(--color-danger)]" : "text-[var(--color-win)]"
-                  }`}
-                >
-                  {formatMinorUnits(entry.amount)}
+              <tr key={entry.id}>
+                <td>{entry.userEmail}</td>
+                <td>{entry.type}</td>
+                <td style={{ color: "var(--muted)" }}>{entry.refType ?? "—"}</td>
+                <td style={{ color: "var(--muted)" }}>{new Date(entry.createdAt).toLocaleString()}</td>
+                <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: entry.amount.startsWith("-") ? "var(--danger)" : "var(--green)" }}>
+                  {formatUsdt(entry.amount)}
                 </td>
               </tr>
             ))}
@@ -101,22 +106,14 @@ function TransactionsContent() {
         </table>
       </div>
 
-      <div className="mt-4 flex justify-end gap-2">
-        <button
-          disabled={cursors.length <= 1}
-          onClick={() => setCursors((c) => c.slice(0, -1))}
-          className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm disabled:opacity-40"
-        >
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+        <button className="secondary" disabled={cursors.length <= 1} onClick={() => setCursors((c) => c.slice(0, -1))} style={{ padding: "7px 14px", fontSize: 13 }}>
           Previous
         </button>
-        <button
-          disabled={!data?.nextCursor}
-          onClick={() => setCursors((c) => [...c, data?.nextCursor ?? undefined])}
-          className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm disabled:opacity-40"
-        >
+        <button className="secondary" disabled={!data?.nextCursor} onClick={() => setCursors((c) => [...c, data?.nextCursor ?? undefined])} style={{ padding: "7px 14px", fontSize: 13 }}>
           Next
         </button>
       </div>
-    </div>
+    </main>
   );
 }

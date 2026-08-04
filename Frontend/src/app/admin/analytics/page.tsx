@@ -2,16 +2,17 @@
 
 import { useState } from "react";
 import { AdminGuard } from "../../../components/AdminGuard";
-import { AdminShell } from "../../../components/AdminShell";
+import { AdminNav } from "../../../components/dune/AdminNav";
 import { useAnalytics } from "../../../lib/hooks/useAdmin";
-import { formatMinorUnits } from "../../../lib/money";
+import { formatUsdt } from "../../../lib/money";
 
 export default function AdminAnalyticsPage() {
   return (
     <AdminGuard>
-      <AdminShell>
+      <div className="admin-shell">
+        <AdminNav />
         <AnalyticsContent />
-      </AdminShell>
+      </div>
     </AdminGuard>
   );
 }
@@ -20,10 +21,10 @@ const WINDOW_OPTIONS = [1, 7, 30, 90];
 
 function StatTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="surface rounded-lg p-5">
-      <p className="text-sm text-[var(--color-text-dim)]">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-      {sub && <p className="mt-1 text-xs text-[var(--color-text-dim)]">{sub}</p>}
+    <div className="admin-card glass">
+      <p className="muted" style={{ fontSize: 13, margin: 0 }}>{label}</p>
+      <p style={{ marginTop: 4, fontSize: 26, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{value}</p>
+      {sub && <p className="muted" style={{ marginTop: 4, fontSize: 12 }}>{sub}</p>}
     </div>
   );
 }
@@ -35,23 +36,16 @@ function AnalyticsContent() {
   const maxWin = data?.topWins.reduce((max, w) => (BigInt(w.totalWin) > max ? BigInt(w.totalWin) : max), 0n) ?? 0n;
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
+    <main className="admin-main">
+      <div className="admin-heading">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold">Analytics</h1>
-          <p className="text-[var(--color-text-dim)]">Observed performance over the selected window.</p>
+          <p className="eyebrow">INSIGHTS</p>
+          <h1>Analytics</h1>
+          <p>Observed performance over the selected window.</p>
         </div>
-        <div className="flex gap-2">
+        <div style={{ display: "flex", gap: 8 }}>
           {WINDOW_OPTIONS.map((opt) => (
-            <button
-              key={opt}
-              onClick={() => setDays(opt)}
-              className={`rounded-md px-3 py-1.5 text-sm ${
-                days === opt
-                  ? "bg-[var(--color-accent)] font-semibold text-black"
-                  : "border border-[var(--color-border)] text-[var(--color-text-dim)]"
-              }`}
-            >
+            <button key={opt} onClick={() => setDays(opt)} className={days === opt ? "primary" : "secondary"} style={{ padding: "7px 13px", fontSize: 13 }}>
               {opt}d
             </button>
           ))}
@@ -59,40 +53,32 @@ function AnalyticsContent() {
       </div>
 
       {isLoading || !data ? (
-        <p className="text-[var(--color-text-dim)]">Loading…</p>
+        <p className="muted" style={{ padding: 8 }}>Loading…</p>
       ) : (
         <>
-          <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
             <StatTile label="Total spins" value={data.totalSpins.toLocaleString()} />
             <StatTile label="Active users" value={data.activeUsers.toLocaleString()} />
-            <StatTile
-              label="GGR (staked − returned)"
-              value={formatMinorUnits(data.ggr)}
-              sub={`staked ${formatMinorUnits(data.totalStaked)}`}
-            />
+            <StatTile label="GGR (staked − returned)" value={formatUsdt(data.ggr)} sub={`staked ${formatUsdt(data.totalStaked)}`} />
             <StatTile label="Observed RTP" value={`${(data.observedRtp * 100).toFixed(2)}%`} />
           </div>
 
-          <div className="surface rounded-lg p-6">
-            <h2 className="mb-4 font-semibold">Top wins</h2>
+          <div className="admin-card glass">
+            <h2 style={{ marginTop: 0, marginBottom: 16 }}>Top wins</h2>
             {data.topWins.length === 0 ? (
-              <p className="text-sm text-[var(--color-text-dim)]">No spins in this window yet.</p>
+              <p className="muted" style={{ fontSize: 13 }}>No spins in this window yet.</p>
             ) : (
-              <div className="space-y-2">
+              <div style={{ display: "grid", gap: 8 }}>
                 {data.topWins.map((win) => {
                   const widthPct = maxWin > 0n ? Number((BigInt(win.totalWin) * 100n) / maxWin) : 0;
                   return (
-                    <div key={win.roundId} className="flex items-center gap-3 text-sm">
-                      <span className="w-40 shrink-0 truncate text-[var(--color-text-dim)]">{win.userEmail}</span>
-                      <div className="h-5 flex-1 rounded bg-[var(--color-surface-2)]">
-                        <div
-                          className="h-5 rounded bg-[var(--color-accent-2)]"
-                          style={{ width: `${Math.max(widthPct, 2)}%` }}
-                          title={`${win.userEmail}: ${formatMinorUnits(win.totalWin)}`}
-                        />
+                    <div key={win.roundId} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13 }}>
+                      <span style={{ width: 160, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--muted)" }}>{win.userEmail}</span>
+                      <div style={{ height: 20, flex: 1, borderRadius: 6, background: "rgba(255,255,255,0.06)" }}>
+                        <div style={{ height: 20, borderRadius: 6, background: "var(--cyan)", width: `${Math.max(widthPct, 2)}%` }} title={`${win.userEmail}: ${formatUsdt(win.totalWin)}`} />
                       </div>
-                      <span className="w-28 shrink-0 text-right tabular-nums text-[var(--color-win)]">
-                        {formatMinorUnits(win.totalWin)}
+                      <span style={{ width: 112, flexShrink: 0, textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--green)" }}>
+                        {formatUsdt(win.totalWin)}
                       </span>
                     </div>
                   );
@@ -102,6 +88,6 @@ function AnalyticsContent() {
           </div>
         </>
       )}
-    </div>
+    </main>
   );
 }

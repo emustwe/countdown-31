@@ -2,18 +2,19 @@
 
 import { Fragment, useState } from "react";
 import { AdminGuard } from "../../../components/AdminGuard";
-import { AdminShell } from "../../../components/AdminShell";
+import { AdminNav } from "../../../components/dune/AdminNav";
 import { useAdminUsers, useUpdateUser } from "../../../lib/hooks/useAdmin";
-import { creditsToMinorUnits, formatMinorUnits } from "../../../lib/money";
+import { parseUsdt, formatUsdt } from "../../../lib/money";
 import { ApiError } from "../../../lib/api-client";
 import type { AdminUser } from "../../../lib/api-types";
 
 export default function AdminUsersPage() {
   return (
     <AdminGuard>
-      <AdminShell>
+      <div className="admin-shell">
+        <AdminNav />
         <UsersContent />
-      </AdminShell>
+      </div>
     </AdminGuard>
   );
 }
@@ -30,7 +31,7 @@ function AdjustBalanceForm({ user, onDone }: { user: AdminUser; onDone: () => vo
     try {
       const negative = amount.trim().startsWith("-");
       const magnitude = negative ? amount.trim().slice(1) : amount.trim();
-      const minorUnits = creditsToMinorUnits(magnitude);
+      const minorUnits = parseUsdt(magnitude);
       await updateUser.mutateAsync({
         userId: user.id,
         balanceAdjustment: { amount: negative ? `-${minorUnits}` : minorUnits, reason },
@@ -42,45 +43,26 @@ function AdjustBalanceForm({ user, onDone }: { user: AdminUser; onDone: () => vo
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-2 flex flex-wrap items-end gap-2 rounded-md bg-[var(--color-surface-2)] p-3">
+    <form onSubmit={handleSubmit} style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 10, padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.04)", marginTop: 8 }}>
       <div>
-        <label htmlFor={`amount-${user.id}`} className="mb-1 block text-xs text-[var(--color-text-dim)]">
+        <label htmlFor={`amount-${user.id}`} style={{ display: "block", fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>
           Amount (± credits)
         </label>
-        <input
-          id={`amount-${user.id}`}
-          required
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="e.g. 50 or -25"
-          className="w-32 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm outline-none focus:border-[var(--color-accent)]"
-        />
+        <input id={`amount-${user.id}`} required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 50 or -25" className="admin-input" style={{ width: 140 }} />
       </div>
       <div>
-        <label htmlFor={`reason-${user.id}`} className="mb-1 block text-xs text-[var(--color-text-dim)]">
+        <label htmlFor={`reason-${user.id}`} style={{ display: "block", fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>
           Reason (audited)
         </label>
-        <input
-          id={`reason-${user.id}`}
-          required
-          minLength={3}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="e.g. bug compensation"
-          className="w-56 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm outline-none focus:border-[var(--color-accent)]"
-        />
+        <input id={`reason-${user.id}`} required minLength={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. bug compensation" className="admin-input" style={{ width: 240 }} />
       </div>
-      <button
-        type="submit"
-        disabled={updateUser.isPending}
-        className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-semibold text-black disabled:opacity-60"
-      >
+      <button type="submit" className="primary" disabled={updateUser.isPending} style={{ padding: "9px 16px", fontSize: 13 }}>
         Apply
       </button>
-      <button type="button" onClick={onDone} className="text-sm text-[var(--color-text-dim)]">
+      <button type="button" onClick={onDone} className="link-btn" style={{ color: "var(--muted)", fontSize: 13 }}>
         Cancel
       </button>
-      {error && <p className="w-full text-sm text-[var(--color-danger)]">{error}</p>}
+      {error && <p style={{ width: "100%", color: "var(--danger)", fontSize: 13, margin: 0 }}>{error}</p>}
     </form>
   );
 }
@@ -92,70 +74,57 @@ function UsersContent() {
   const [adjustingUserId, setAdjustingUserId] = useState<string | null>(null);
 
   return (
-    <div>
-      <h1 className="mb-1 text-2xl font-semibold">Users</h1>
-      <p className="mb-6 text-[var(--color-text-dim)]">Search, ban/unban, and adjust demo balances.</p>
+    <main className="admin-main">
+      <div className="admin-heading">
+        <div>
+          <p className="eyebrow">PLAYER MANAGEMENT</p>
+          <h1>Users</h1>
+          <p>Search, ban/unban, and adjust demo balances.</p>
+        </div>
+      </div>
 
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search by email…"
-        className="mb-4 w-full max-w-sm rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)]"
-      />
+      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by email…" className="admin-input" style={{ maxWidth: 360, marginBottom: 18 }} />
 
-      <div className="surface overflow-hidden rounded-lg">
-        <table className="w-full text-sm">
+      <div className="admin-card glass" style={{ overflowX: "auto" }}>
+        <table className="admin-data">
           <thead>
-            <tr className="border-b border-[var(--color-border)] text-left text-[var(--color-text-dim)]">
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Role</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Balance</th>
-              <th className="px-4 py-3">Actions</th>
+            <tr>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Balance</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-[var(--color-text-dim)]">
-                  Loading…
-                </td>
+                <td colSpan={5} className="admin-empty">Loading…</td>
+              </tr>
+            )}
+            {!isLoading && (data?.users.length ?? 0) === 0 && (
+              <tr>
+                <td colSpan={5} className="admin-empty">No users found.</td>
               </tr>
             )}
             {data?.users.map((user) => (
               <Fragment key={user.id}>
-                <tr className="border-b border-[var(--color-border)] last:border-0">
-                  <td className="px-4 py-3">{user.email}</td>
-                  <td className="px-4 py-3">{user.role}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
-                        user.status === "ACTIVE"
-                          ? "bg-[var(--color-surface-2)] text-[var(--color-win)]"
-                          : "bg-[var(--color-danger)]/20 text-[var(--color-danger)]"
-                      }`}
-                    >
-                      {user.status}
-                    </span>
+                <tr>
+                  <td>{user.email}</td>
+                  <td>{user.role}</td>
+                  <td>
+                    <span className={`a-tag ${user.status === "ACTIVE" ? "ok" : "bad"}`}>{user.status}</span>
                   </td>
-                  <td className="px-4 py-3 tabular-nums">{formatMinorUnits(user.balance)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-3">
+                  <td style={{ fontVariantNumeric: "tabular-nums" }}>{formatUsdt(user.balance)}</td>
+                  <td>
+                    <div style={{ display: "flex", gap: 16 }}>
                       <button
-                        onClick={() =>
-                          updateUser.mutate({
-                            userId: user.id,
-                            status: user.status === "ACTIVE" ? "BANNED" : "ACTIVE",
-                          })
-                        }
-                        className="text-[var(--color-accent)]"
+                        onClick={() => updateUser.mutate({ userId: user.id, status: user.status === "ACTIVE" ? "BANNED" : "ACTIVE" })}
+                        className="link-btn danger"
                       >
                         {user.status === "ACTIVE" ? "Ban" : "Unban"}
                       </button>
-                      <button
-                        onClick={() => setAdjustingUserId(adjustingUserId === user.id ? null : user.id)}
-                        className="text-[var(--color-accent-2)]"
-                      >
+                      <button onClick={() => setAdjustingUserId(adjustingUserId === user.id ? null : user.id)} className="link-btn cyan">
                         Adjust balance
                       </button>
                     </div>
@@ -163,7 +132,7 @@ function UsersContent() {
                 </tr>
                 {adjustingUserId === user.id && (
                   <tr>
-                    <td colSpan={5} className="px-4 pb-3">
+                    <td colSpan={5} style={{ paddingTop: 0 }}>
                       <AdjustBalanceForm user={user} onDone={() => setAdjustingUserId(null)} />
                     </td>
                   </tr>
@@ -173,6 +142,6 @@ function UsersContent() {
           </tbody>
         </table>
       </div>
-    </div>
+    </main>
   );
 }

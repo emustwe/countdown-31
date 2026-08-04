@@ -4,6 +4,7 @@ import { AdminService } from "./admin.service";
 import { ListUsersDtoSchema, type ListUsersDto } from "./dto/list-users.dto";
 import { UpdateUserDtoSchema, type UpdateUserDto } from "./dto/update-user.dto";
 import { SetActiveModelDtoSchema, type SetActiveModelDto } from "./dto/set-active-model.dto";
+import { SetThemeDtoSchema, type SetThemeDto } from "./dto/set-theme.dto";
 import {
   ListTransactionsAdminDtoSchema,
   type ListTransactionsAdminDto,
@@ -52,6 +53,14 @@ export class AdminController {
     return this.adminService.setActiveModel(admin.sub, dto.modelId);
   }
 
+  @Patch("config/theme")
+  setTheme(
+    @CurrentUser() admin: AccessTokenPayload,
+    @Body(new ZodValidationPipe(SetThemeDtoSchema)) dto: SetThemeDto,
+  ) {
+    return this.adminService.setThemeFamily(admin.sub, dto.themeFamily);
+  }
+
   @Get("transactions")
   listTransactions(
     @Query(new ZodValidationPipe(ListTransactionsAdminDtoSchema)) query: ListTransactionsAdminDto,
@@ -62,6 +71,11 @@ export class AdminController {
   @Get("analytics")
   getAnalytics(@Query(new ZodValidationPipe(AnalyticsQueryDtoSchema)) query: AnalyticsQueryDto) {
     return this.adminService.getAnalytics(query.days ?? 7);
+  }
+
+  @Get("treasury")
+  getTreasury() {
+    return this.adminService.getTreasurySummary();
   }
 
   @Get("audit-log")

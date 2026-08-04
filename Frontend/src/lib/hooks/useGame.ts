@@ -37,6 +37,15 @@ export function usePlayNextFreeSpin() {
   });
 }
 
+/** Free-play practice spin — real engine, dummy coins, no wallet impact. The caller tracks
+ * the dummy balance and passes it; the response echoes the new dummy balance. */
+export function usePracticeSpin() {
+  return useMutation({
+    mutationFn: (input: { totalBet: string; balance: string }) =>
+      apiRequest<SpinApiResponse>("/game/practice/spin", { method: "POST", body: input }),
+  });
+}
+
 export function useRound(roundId: string | undefined) {
   return useQuery({
     queryKey: ["game", "rounds", roundId],

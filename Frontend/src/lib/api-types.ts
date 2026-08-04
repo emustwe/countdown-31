@@ -6,6 +6,8 @@
 export interface PublicUser {
   id: string;
   email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
   role: "PLAYER" | "ADMIN";
   status: "ACTIVE" | "BANNED";
   createdAt: string;
@@ -24,21 +26,39 @@ export type MeResponse = PublicUser & { balance: string };
 export interface WalletSnapshot {
   balance: string;
   reconciled: boolean;
+  currency: string;
+  asset: string;
+  network: string;
+  /** Platform address players send USDT to when depositing. */
+  depositAddress: string;
+  /** true = real on-chain devnet flow (send from your wallet + verify); false = instant mock. */
+  live: boolean;
 }
 
 export interface MoneyMovementResult {
   balance: string;
   amount: string;
   type: "DEPOSIT" | "WITHDRAWAL";
+  transferId: string;
+  txSignature: string;
+  address: string;
+}
+
+export interface CryptoTransferDto {
+  direction: "DEPOSIT" | "WITHDRAWAL";
+  address: string;
+  txSignature: string | null;
+  status: "PENDING" | "COMPLETED" | "FAILED";
 }
 
 export interface LedgerEntryDto {
   id: string;
   amount: string;
-  type: "DEPOSIT" | "WITHDRAWAL" | "BET_STAKE" | "BET_WIN" | "JACKPOT_WIN" | "ADJUSTMENT";
+  type: "DEPOSIT" | "WITHDRAWAL" | "BET_STAKE" | "BET_WIN" | "JACKPOT_WIN" | "ADJUSTMENT" | "TOURNAMENT_ENTRY" | "TOURNAMENT_PRIZE" | "TOURNAMENT_REFUND";
   refType: string | null;
   refId: string | null;
   createdAt: string;
+  transfer: CryptoTransferDto | null;
 }
 
 export interface TransactionPage {

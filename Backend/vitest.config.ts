@@ -19,5 +19,9 @@ export default defineConfig({
   test: {
     globals: false,
     testTimeout: 30_000,
+    // Integration tests register users and immediately spin/withdraw, so they need a funded
+    // starting balance. Real signups start at 0 (deposit-required) via .env; this test-only
+    // override wins because process.env takes precedence over the .env file.
+    env: { STARTING_DEMO_BALANCE: "100000" },
   },
 });

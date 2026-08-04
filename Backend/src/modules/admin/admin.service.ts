@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import type { LedgerEntryType } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { LedgerService } from "../wallet/ledger.service";
@@ -18,7 +19,38 @@ export class AdminService {
     private readonly ledger: LedgerService,
     private readonly auditLog: AuditLogService,
     private readonly gameService: GameService,
+    private readonly config: ConfigService,
   ) {}
+
+  /** Treasury overview for the admin: the internal treasury wallet balance (fees collected
+   * minus prizes paid, plus the seed float), the configured on-chain address, and the most
+   * recent player deposits/withdrawals. */
+  async getTreasurySummary() {
+    const email = this.config.getOrThrow<string>("TREASURY_USER_EMAIL");
+    const treasury = await this.prisma.user.findUnique({ where: { email }, select: { wallet: { select: { id: true, cachedBalance: true } } } });
+    const transfers = await this.prisma.cryptoTransfer.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 25,
+      include: { user: { select: { email: true, fullName: true } } },
+    });
+    return {
+      address: this.config.getOrThrow<string>("SOLANA_TREASURY_ADDRESS"),
+      asset: "USDT",
+      network: "Solana",
+      balance: (treasury?.wallet?.cachedBalance ?? 0n).toString(),
+      configured: !!treasury?.wallet,
+      transfers: transfers.map((t) => ({
+        id: t.id,
+        direction: t.direction,
+        amount: t.amount.toString(),
+        address: t.address,
+        status: t.status,
+        txSignature: t.txSignature,
+        createdAt: t.createdAt.toISOString(),
+        user: t.user.fullName?.trim() || t.user.email.split("@")[0],
+      })),
+    };
+  }
 
   async listUsers(query: ListUsersDto) {
     const limit = query.limit ?? 20;
@@ -145,6 +177,22 @@ export class AdminService {
     return { activeModelId: modelId };
   }
 
+  async setThemeFamily(adminId: string, themeFamily: "desert" | "monster") {
+    const previous = await this.prisma.gameConfig.findUnique({ where: { id: GAME_CONFIG_ID } });
+    await this.prisma.gameConfig.update({
+      where: { id: GAME_CONFIG_ID },
+      data: { themeFamily, updatedBy: adminId },
+    });
+    await this.auditLog.record(this.prisma, {
+      actorUserId: adminId,
+      action: "THEME_FAMILY_CHANGED",
+      targetType: "GameConfig",
+      targetId: GAME_CONFIG_ID,
+      data: { previous: previous?.themeFamily ?? "desert", next: themeFamily },
+    });
+    return { themeFamily };
+  }
+
   async listTransactions(query: ListTransactionsAdminDto) {
     const limit = query.limit ?? 20;
     const entries = await this.prisma.ledgerEntry.findMany({
@@ -178,7 +226,7 @@ export class AdminService {
   async getAnalytics(days: number) {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const rounds = await this.prisma.gameRound.findMany({
-      where: { createdAt: { gte: since } },
+      where: { createdAt: { gte: since }, practice: false },
       select: {
         id: true,
         userId: true,

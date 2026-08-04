@@ -96,23 +96,58 @@ describe("Wallet (integration)", () => {
     expect(res.status).toBe(409);
   });
 
-  it("withdraw decreases the balance and rejects when funds are insufficient", async () => {
+  it("withdraw to a Solana address decreases the balance, records the transfer, and validates inputs", async () => {
     const { accessToken } = await registerAndGetToken("withdraw");
+    // Fund the wallet first so there is something to withdraw.
+    await request(server())
+      .post("/wallet/deposit")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: "10000", idempotencyKey: randomUUID() });
     const walletRes = await request(server()).get("/wallet").set("Authorization", `Bearer ${accessToken}`);
     const balance = BigInt(walletRes.body.balance);
+    const dest = "So11111111111111111111111111111111111111112";
 
+    // Insufficient funds.
     const tooMuch = await request(server())
       .post("/wallet/withdraw")
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({ amount: (balance + 1000n).toString(), idempotencyKey: randomUUID() });
+      .send({ amount: (balance + 1000n).toString(), destinationAddress: dest, idempotencyKey: randomUUID() });
     expect(tooMuch.status).toBe(400);
 
+    // Invalid destination address.
+    const badAddr = await request(server())
+      .post("/wallet/withdraw")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: "1000", destinationAddress: "not-a-real-address", idempotencyKey: randomUUID() });
+    expect(badAddr.status).toBe(400);
+
+    // Valid withdrawal.
     const ok = await request(server())
       .post("/wallet/withdraw")
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({ amount: "1000", idempotencyKey: randomUUID() });
+      .send({ amount: "1000", destinationAddress: dest, idempotencyKey: randomUUID() });
     expect(ok.status).toBe(201);
     expect(BigInt(ok.body.balance)).toBe(balance - 1000n);
+    expect(ok.body.address).toBe(dest);
+    expect(ok.body.txSignature).toBeTruthy();
+    expect(ok.body.transferId).toBeTruthy();
+  });
+
+  it("a deposit records a COMPLETED CryptoTransfer that surfaces in the transaction history", async () => {
+    const { accessToken } = await registerAndGetToken("crypto-deposit");
+    const dep = await request(server())
+      .post("/wallet/deposit")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: "5000", idempotencyKey: randomUUID() });
+    expect(dep.status).toBe(201);
+    expect(dep.body.txSignature).toBeTruthy();
+    expect(dep.body.address).toBeTruthy();
+
+    const txs = await request(server()).get("/wallet/transactions").set("Authorization", `Bearer ${accessToken}`);
+    const depositEntry = txs.body.entries.find((e: { type: string }) => e.type === "DEPOSIT");
+    expect(depositEntry.transfer).toBeTruthy();
+    expect(depositEntry.transfer.direction).toBe("DEPOSIT");
+    expect(depositEntry.transfer.status).toBe("COMPLETED");
   });
 
   it("ledger sum always equals cachedBalance after concurrent deposits (no lost updates)", async () => {
@@ -138,7 +173,7 @@ describe("Wallet (integration)", () => {
     expect(wallet.cachedBalance).toBe(ledgerSum._sum.amount);
 
     const depositCount = await prisma.ledgerEntry.count({
-      where: { walletId: wallet.id, type: "DEPOSIT", refType: null },
+      where: { walletId: wallet.id, type: "DEPOSIT", refType: "CRYPTO_TRANSFER" },
     });
     expect(depositCount).toBe(CONCURRENT_DEPOSITS);
   });

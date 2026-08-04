@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { GameService } from "./game.service";
 import { SpinDtoSchema, type SpinDto } from "./dto/spin.dto";
+import { PracticeSpinDtoSchema, type PracticeSpinDto } from "./dto/practice-spin.dto";
 import { FreeSpinDtoSchema, type FreeSpinDto } from "./dto/free-spin.dto";
 import { PaginationDtoSchema, type PaginationDto } from "../../common/dto/pagination.dto";
 import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe";
@@ -20,12 +21,25 @@ export class GameController {
     return this.gameService.getPublicConfig();
   }
 
+  @Get("theme")
+  getTheme() {
+    return this.gameService.getThemeFamily();
+  }
+
   @Post("spin")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 300, ttl: 60_000 } })
   spin(@CurrentUser() user: AccessTokenPayload, @Body(new ZodValidationPipe(SpinDtoSchema)) dto: SpinDto) {
     return this.gameService.spin(user.sub, dto.totalBet, dto.idempotencyKey);
+  }
+
+  @Post("practice/spin")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 300, ttl: 60_000 } })
+  practiceSpin(@CurrentUser() user: AccessTokenPayload, @Body(new ZodValidationPipe(PracticeSpinDtoSchema)) dto: PracticeSpinDto) {
+    return this.gameService.practiceSpin(user.sub, dto.totalBet, dto.balance);
   }
 
   @Post("free-spin")
