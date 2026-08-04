@@ -290,8 +290,6 @@ function SettingsContent() {
                 <CardPreview
                   card={cosmetics?.card}
                   avatar={cosmetics?.avatar}
-                  cloth={cosmetics?.cloth}
-                  shoes={cosmetics?.shoes}
                   name={profile?.fullName || profile?.email?.split("@")[0] || "Player"}
                   size="lg"
                 />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, CreditCard, Footprints, Layers, Shirt, User as UserIcon } from "lucide-react";
+import { Check, CreditCard, Eye, Footprints, Glasses, Layers, Palette, PersonStanding, Scissors, Shirt, Smile, Sparkles, User } from "lucide-react";
 import { PageShell } from "../../components/dune/Shell";
 import { AuthGuard } from "../../components/AuthGuard";
 import { useProfile } from "../../lib/hooks/useAuth";
@@ -9,25 +9,39 @@ import { useCosmetics, useUpdateCosmetics, type Cosmetics } from "../../lib/hook
 import { CardPreview, CARD_COLORS, CARD_PATTERNS, CARD_SHAPES, CARD_BORDERS, DEFAULT_CARD } from "../../components/dune/CardPreview";
 import {
   Avatar,
-  SKIN_TONES,
+  AvatarThumb,
+  type AvatarConfig,
+  DEFAULT_AVATAR,
+  TOPS,
   HAIR_COLORS,
-  OUTFITS,
-  OUTFIT_COLORS,
+  SKIN_TONES,
+  EYES,
+  EYEBROWS,
+  MOUTHS,
+  FACIAL_HAIR,
+  GLASSES,
+  CLOTHING,
+  CLOTHES_COLORS,
+  PANTS_COLORS,
   SHOE_STYLES,
   SHOE_COLORS,
-  DEFAULT_AVATAR,
-  DEFAULT_CLOTH,
-  DEFAULT_SHOES,
 } from "../../components/dune/Avatar";
 
-const TABS = [
-  { key: "card", label: "Card", Icon: CreditCard },
-  { key: "avatar", label: "Avatar", Icon: UserIcon },
-  { key: "board", label: "Board", Icon: Layers },
-  { key: "cloth", label: "Cloth", Icon: Shirt },
+const CATS = [
+  { key: "skin", label: "Skin", Icon: Palette },
+  { key: "hair", label: "Hair", Icon: Scissors },
+  { key: "eyes", label: "Eyes", Icon: Eye },
+  { key: "eyebrows", label: "Brows", Icon: Sparkles },
+  { key: "mouth", label: "Mouth", Icon: Smile },
+  { key: "facialHair", label: "Beard", Icon: User },
+  { key: "glasses", label: "Glasses", Icon: Glasses },
+  { key: "clothing", label: "Clothes", Icon: Shirt },
+  { key: "pants", label: "Pants", Icon: PersonStanding },
   { key: "shoes", label: "Shoes", Icon: Footprints },
+  { key: "card", label: "Card", Icon: CreditCard },
+  { key: "board", label: "Board", Icon: Layers },
 ] as const;
-type TabKey = (typeof TABS)[number]["key"];
+type CatKey = (typeof CATS)[number]["key"];
 
 const BOARD_SKINS = [
   { key: "classic", label: "Classic" },
@@ -36,7 +50,7 @@ const BOARD_SKINS = [
   { key: "carbon", label: "Carbon" },
 ] as const;
 
-const DEFAULTS: Cosmetics = { card: DEFAULT_CARD, avatar: DEFAULT_AVATAR, cloth: DEFAULT_CLOTH, shoes: DEFAULT_SHOES, board: { skin: "classic" } };
+const DEFAULTS: Cosmetics = { card: DEFAULT_CARD, avatar: DEFAULT_AVATAR as unknown as Record<string, string>, board: { skin: "classic" } };
 
 export default function ShopPage() {
   return (
@@ -54,7 +68,7 @@ function ShopContent() {
   const update = useUpdateCosmetics();
   const name = profile?.fullName || profile?.email?.split("@")[0] || "Player";
 
-  const [tab, setTab] = useState<TabKey>("card");
+  const [cat, setCat] = useState<CatKey>("hair");
   const [cos, setCos] = useState<Cosmetics>(DEFAULTS);
   const [dirty, setDirty] = useState(false);
   const [savedFlag, setSavedFlag] = useState(false);
@@ -63,126 +77,110 @@ function ShopContent() {
     if (saved) {
       setCos({
         card: { ...DEFAULT_CARD, ...(saved.card ?? {}) },
-        avatar: { ...DEFAULT_AVATAR, ...(saved.avatar ?? {}) },
-        cloth: { ...DEFAULT_CLOTH, ...(saved.cloth ?? {}) },
-        shoes: { ...DEFAULT_SHOES, ...(saved.shoes ?? {}) },
+        avatar: { ...DEFAULT_AVATAR, ...(saved.avatar ?? {}) } as unknown as Record<string, string>,
         board: { skin: saved.board?.skin ?? "classic" },
       });
     }
   }, [saved]);
 
-  function patch<K extends keyof Cosmetics>(section: K, value: Partial<NonNullable<Cosmetics[K]>>) {
-    setCos((c) => ({ ...c, [section]: { ...(c[section] as object), ...value } }));
-    setDirty(true);
-    setSavedFlag(false);
+  const av = cos.avatar as unknown as AvatarConfig;
+
+  function setAvatar(key: keyof AvatarConfig, value: string) {
+    setCos((c) => ({ ...c, avatar: { ...(c.avatar as object), [key]: value } as Record<string, string> }));
+    setDirty(true); setSavedFlag(false);
+  }
+  function setCard(key: string, value: string) {
+    setCos((c) => ({ ...c, card: { ...(c.card as object), [key]: value } }));
+    setDirty(true); setSavedFlag(false);
+  }
+  function setBoard(skin: string) {
+    setCos((c) => ({ ...c, board: { skin: skin as "classic" } }));
+    setDirty(true); setSavedFlag(false);
   }
 
   async function save() {
     await update.mutateAsync(cos);
-    setDirty(false);
-    setSavedFlag(true);
+    setDirty(false); setSavedFlag(true);
     setTimeout(() => setSavedFlag(false), 2000);
   }
+
+  const board = cos.board?.skin ?? "classic";
 
   return (
     <main className="page-main shop-main">
       <section className="page-banner">
         <div>
-          <h1>Shop</h1>
-          <p>Design your card and full-body avatar. Everything is free while we&apos;re testing.</p>
+          <h1>Avatar Studio</h1>
+          <p>Design your character and card. Everything is free while we&apos;re testing.</p>
         </div>
       </section>
 
-      <div className="shop-tabs">
-        {TABS.map(({ key, label, Icon }) => (
-          <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
-            <Icon size={16} /> {label}
+      <div className="studio">
+        {/* Live preview */}
+        <div className="studio-preview">
+          <div className={`avatar-stage board-skin-${board}`}>
+            <Avatar className="avatar-full" config={av} />
+          </div>
+          <CardPreview card={cos.card} avatar={cos.avatar} name={name} size="md" />
+          <button className="primary studio-save" onClick={save} disabled={update.isPending || !dirty}>
+            {update.isPending ? "Saving…" : savedFlag ? "Saved ✓" : "Save look"}
           </button>
-        ))}
-      </div>
-
-      <div className="shop-designer">
-        {/* Live preview: the card (with avatar on it) + a full-body view */}
-        <div className="shop-preview">
-          <CardPreview card={cos.card} avatar={cos.avatar} cloth={cos.cloth} shoes={cos.shoes} name={name} size="lg" />
-          {tab !== "card" && tab !== "board" && (
-            <div className={`avatar-stage board-skin-${cos.board?.skin ?? "classic"}`}>
-              <Avatar className="avatar-full" av={cos.avatar} cloth={cos.cloth} shoes={cos.shoes} />
-              <span className="avatar-stage-label">Full view</span>
-            </div>
-          )}
-          {tab === "board" && (
-            <div className={`board-preview board-skin-${cos.board?.skin ?? "classic"}`}>
-              <span>Game board</span>
-            </div>
-          )}
         </div>
 
-        {/* Controls per tab */}
-        <div className="shop-controls admin-card glass">
-          {tab === "card" && (
-            <>
-              <ControlRow label="Skin color">
-                <Swatches colors={CARD_COLORS} value={cos.card?.color} onPick={(v) => patch("card", { color: v })} />
-              </ControlRow>
-              <ControlRow label="Pattern">
-                <Chips options={CARD_PATTERNS} value={cos.card?.pattern ?? "stars"} onPick={(v) => patch("card", { pattern: v })} labels={{ none: "None", stars: "Shining stars", waves: "Waves", circuit: "Circuit" }} />
-              </ControlRow>
-              <ControlRow label="Shape">
-                <Chips options={CARD_SHAPES} value={cos.card?.shape ?? "rounded"} onPick={(v) => patch("card", { shape: v })} labels={{ rounded: "Rounded", sharp: "Sharp", pill: "Pill" }} />
-              </ControlRow>
-              <ControlRow label="Border">
-                <Chips options={CARD_BORDERS} value={cos.card?.border ?? "gold"} onPick={(v) => patch("card", { border: v })} labels={{ none: "None", gold: "Gold", neon: "Neon" }} />
-              </ControlRow>
-            </>
-          )}
+        {/* Editor */}
+        <div className="studio-editor">
+          <div className="studio-cats">
+            {CATS.map(({ key, label, Icon }) => (
+              <button key={key} className={cat === key ? "active" : ""} onClick={() => setCat(key)}>
+                <Icon size={17} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
 
-          {tab === "avatar" && (
-            <>
-              <ControlRow label="Base">
-                <Chips options={["male", "female"] as const} value={cos.avatar?.gender ?? "male"} onPick={(v) => patch("avatar", { gender: v })} labels={{ male: "Male", female: "Female" }} />
-              </ControlRow>
-              <ControlRow label="Skin tone">
-                <Swatches colors={SKIN_TONES} value={cos.avatar?.skin} onPick={(v) => patch("avatar", { skin: v })} />
-              </ControlRow>
-              <ControlRow label="Hair color">
-                <Swatches colors={HAIR_COLORS} value={cos.avatar?.hair} onPick={(v) => patch("avatar", { hair: v })} />
-              </ControlRow>
-            </>
-          )}
+          <div className="studio-panel admin-card glass">
+            {cat === "skin" && <SwatchRow label="Skin tone" colors={SKIN_TONES} value={av.skin} onPick={(v) => setAvatar("skin", v)} />}
 
-          {tab === "cloth" && (
-            <>
-              <ControlRow label="Outfit">
-                <Chips options={OUTFITS.map((o) => o.key)} value={cos.cloth?.outfit ?? "tee"} onPick={(v) => patch("cloth", { outfit: v })} labels={Object.fromEntries(OUTFITS.map((o) => [o.key, o.label])) as Record<string, string>} />
-              </ControlRow>
-              <ControlRow label="Color">
-                <Swatches colors={OUTFIT_COLORS} value={cos.cloth?.color} onPick={(v) => patch("cloth", { color: v })} />
-              </ControlRow>
-            </>
-          )}
-
-          {tab === "shoes" && (
-            <>
-              <ControlRow label="Style">
-                <Chips options={SHOE_STYLES.map((o) => o.key)} value={cos.shoes?.style ?? "sneakers"} onPick={(v) => patch("shoes", { style: v })} labels={Object.fromEntries(SHOE_STYLES.map((o) => [o.key, o.label])) as Record<string, string>} />
-              </ControlRow>
-              <ControlRow label="Color">
-                <Swatches colors={SHOE_COLORS} value={cos.shoes?.color} onPick={(v) => patch("shoes", { color: v })} />
-              </ControlRow>
-            </>
-          )}
-
-          {tab === "board" && (
-            <ControlRow label="Board skin">
-              <Chips options={BOARD_SKINS.map((b) => b.key)} value={cos.board?.skin ?? "classic"} onPick={(v) => patch("board", { skin: v })} labels={Object.fromEntries(BOARD_SKINS.map((b) => [b.key, b.label])) as Record<string, string>} />
-            </ControlRow>
-          )}
-
-          <div className="pf-actions" style={{ marginTop: 12 }}>
-            <button className="primary" onClick={save} disabled={update.isPending || !dirty}>
-              {update.isPending ? "Saving…" : savedFlag ? "Saved ✓" : "Save look"}
-            </button>
+            {cat === "hair" && (
+              <>
+                <FeatureGrid label="Style" options={TOPS} field="top" av={av} onPick={(v) => setAvatar("top", v)} />
+                <SwatchRow label="Hair color" colors={HAIR_COLORS} value={av.hairColor} onPick={(v) => setAvatar("hairColor", v)} />
+              </>
+            )}
+            {cat === "eyes" && <FeatureGrid label="Eyes" options={EYES} field="eyes" av={av} onPick={(v) => setAvatar("eyes", v)} />}
+            {cat === "eyebrows" && <FeatureGrid label="Eyebrows" options={EYEBROWS} field="eyebrows" av={av} onPick={(v) => setAvatar("eyebrows", v)} />}
+            {cat === "mouth" && <FeatureGrid label="Mouth" options={MOUTHS} field="mouth" av={av} onPick={(v) => setAvatar("mouth", v)} />}
+            {cat === "facialHair" && (
+              <>
+                <FeatureGrid label="Facial hair" options={FACIAL_HAIR} field="facialHair" av={av} onPick={(v) => setAvatar("facialHair", v)} />
+                <SwatchRow label="Beard color" colors={HAIR_COLORS} value={av.facialHairColor} onPick={(v) => setAvatar("facialHairColor", v)} />
+              </>
+            )}
+            {cat === "glasses" && <FeatureGrid label="Glasses" options={GLASSES} field="glasses" av={av} onPick={(v) => setAvatar("glasses", v)} />}
+            {cat === "clothing" && (
+              <>
+                <FeatureGrid label="Outfit" options={CLOTHING} field="clothing" av={av} onPick={(v) => setAvatar("clothing", v)} />
+                <SwatchRow label="Outfit color" colors={CLOTHES_COLORS} value={av.clothesColor} onPick={(v) => setAvatar("clothesColor", v)} />
+              </>
+            )}
+            {cat === "pants" && <SwatchRow label="Pants color" colors={PANTS_COLORS} value={av.pants} onPick={(v) => setAvatar("pants", v)} />}
+            {cat === "shoes" && (
+              <>
+                <ChipRow label="Style" options={SHOE_STYLES} value={av.shoeStyle} onPick={(v) => setAvatar("shoeStyle", v)} labels={{ sneakers: "Sneakers", boots: "Boots" }} />
+                <SwatchRow label="Shoe color" colors={SHOE_COLORS} value={av.shoeColor} onPick={(v) => setAvatar("shoeColor", v)} />
+              </>
+            )}
+            {cat === "card" && (
+              <>
+                <SwatchRow label="Card color" colors={CARD_COLORS.map((c) => c.slice(1))} value={(cos.card?.color ?? "").slice(1)} onPick={(v) => setCard("color", "#" + v)} />
+                <ChipRow label="Pattern" options={CARD_PATTERNS} value={cos.card?.pattern ?? "stars"} onPick={(v) => setCard("pattern", v)} labels={{ none: "None", stars: "Shining stars", waves: "Waves", circuit: "Circuit" }} />
+                <ChipRow label="Shape" options={CARD_SHAPES} value={cos.card?.shape ?? "rounded"} onPick={(v) => setCard("shape", v)} labels={{ rounded: "Rounded", sharp: "Sharp", pill: "Pill" }} />
+                <ChipRow label="Border" options={CARD_BORDERS} value={cos.card?.border ?? "gold"} onPick={(v) => setCard("border", v)} labels={{ none: "None", gold: "Gold", neon: "Neon" }} />
+              </>
+            )}
+            {cat === "board" && (
+              <ChipRow label="Board skin" options={BOARD_SKINS.map((b) => b.key)} value={board} onPick={setBoard} labels={Object.fromEntries(BOARD_SKINS.map((b) => [b.key, b.label]))} />
+            )}
           </div>
         </div>
       </div>
@@ -190,35 +188,47 @@ function ShopContent() {
   );
 }
 
-function ControlRow({ label, children }: { label: string; children: React.ReactNode }) {
+function FeatureGrid({ label, options, field, av, onPick }: { label: string; options: string[]; field: keyof AvatarConfig; av: AvatarConfig; onPick: (v: string) => void }) {
   return (
     <div className="control-row">
       <span className="control-label">{label}</span>
-      {children}
+      <div className="feature-grid">
+        {options.map((o) => (
+          <button key={o} className={`feature-thumb ${av[field] === o ? "on" : ""}`} onClick={() => onPick(o)} title={o}>
+            <AvatarThumb config={{ ...av, [field]: o }} size={66} />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
 
-function Swatches({ colors, value, onPick }: { colors: readonly string[]; value?: string; onPick: (v: string) => void }) {
+function SwatchRow({ label, colors, value, onPick }: { label: string; colors: readonly string[]; value?: string; onPick: (v: string) => void }) {
   return (
-    <div className="swatches">
-      {colors.map((c) => (
-        <button key={c} className={`swatch ${value === c ? "on" : ""}`} style={{ background: c }} onClick={() => onPick(c)} aria-label={`Color ${c}`}>
-          {value === c && <Check size={14} />}
-        </button>
-      ))}
+    <div className="control-row">
+      <span className="control-label">{label}</span>
+      <div className="swatches">
+        {colors.map((c) => (
+          <button key={c} className={`swatch ${value === c ? "on" : ""}`} style={{ background: "#" + c }} onClick={() => onPick(c)} aria-label={c}>
+            {value === c && <Check size={14} />}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
 
-function Chips<T extends string>({ options, value, onPick, labels }: { options: readonly T[]; value: T; onPick: (v: T) => void; labels: Record<string, string> }) {
+function ChipRow<T extends string>({ label, options, value, onPick, labels }: { label: string; options: readonly T[]; value: T; onPick: (v: T) => void; labels: Record<string, string> }) {
   return (
-    <div className="chips">
-      {options.map((o) => (
-        <button key={o} className={`chip ${value === o ? "on" : ""}`} onClick={() => onPick(o)}>
-          {labels[o] ?? o}
-        </button>
-      ))}
+    <div className="control-row">
+      <span className="control-label">{label}</span>
+      <div className="chips">
+        {options.map((o) => (
+          <button key={o} className={`chip ${value === o ? "on" : ""}`} onClick={() => onPick(o)}>
+            {labels[o] ?? o}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
