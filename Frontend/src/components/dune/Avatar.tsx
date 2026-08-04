@@ -94,38 +94,13 @@ function headDataUri(c: AvatarConfig): string {
   return createAvatar(avataaars, avataaarsOptions(c) as never).toDataUri();
 }
 
-function shade(hex: string, f: number): string {
-  const r = Math.round(parseInt(hex.slice(0, 2), 16) * f);
-  const g = Math.round(parseInt(hex.slice(2, 4), 16) * f);
-  const b = Math.round(parseInt(hex.slice(4, 6), 16) * f);
-  return `rgb(${r},${g},${b})`;
-}
-
-// Full-body SVG markup: legs + shoes drawn first, illustrated head+torso <image> on top so the
-// shirt hem overlaps the hips (shirt-over-pants).
-function fullBodyMarkup(c: AvatarConfig): string {
-  const p = hx(c.pants, "2f3a4a");
-  const s = hx(c.shoeColor, "ffffff");
-  // Short pelvis bridges the shirt hem to the legs; two clearly-separated legs (visible inseam gap)
-  // then distinct feet. The illustrated head+torso <image> is drawn last so the shirt overlaps the
-  // waistband (shirt-over-pants), giving a connected full-body figure.
-  const pelvis = `<path d="M96 256 Q140 247 184 256 L179 292 Q140 302 101 292 Z" fill="#${p}"/>`;
-  const legL = `<rect x="98" y="284" width="37" height="92" rx="15" fill="#${p}"/>`;
-  const legR = `<rect x="145" y="284" width="37" height="92" rx="15" fill="${shade(p, 0.85)}"/>`;
-  const feet =
-    c.shoeStyle === "boots"
-      ? `<rect x="92" y="360" width="46" height="30" rx="9" fill="#${s}"/>` +
-        `<rect x="142" y="360" width="46" height="30" rx="9" fill="${shade(s, 0.85)}"/>`
-      : `<path d="M96 366 q0 -8 8 -8 h26 q10 0 12 12 l1 8 q0 6 -6 6 H92 q-6 0 -6 -6 q0 -8 10 -12 z" fill="#${s}"/>` +
-        `<path d="M184 366 q0 -8 -8 -8 h-26 q-10 0 -12 12 l-1 8 q0 6 6 6 H188 q6 0 6 -6 q0 -8 -10 -12 z" fill="${shade(s, 0.85)}"/>`;
-  const head = `<image href="${headDataUri(c)}" x="0" y="0" width="280" height="280"/>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 398" preserveAspectRatio="xMidYMax meet" style="width:100%;height:100%">${pelvis}${legL}${legR}${feet}${head}</svg>`;
-}
-
+// The avatar is shown as a clean head-and-shoulders bust (like a Snapchat profile avatar) — no
+// legs. (pants / shoe config are kept in the type for later but not rendered.)
 export function Avatar({ config, className }: { config?: Partial<AvatarConfig>; className?: string }) {
   const c = cfgOf(config);
-  const html = useMemo(() => fullBodyMarkup(c), [JSON.stringify(c)]);
-  return <div className={className} role="img" aria-label="Player avatar" dangerouslySetInnerHTML={{ __html: html }} />;
+  const uri = useMemo(() => headDataUri(c), [JSON.stringify(c)]);
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img className={className} src={uri} alt="Player avatar" />;
 }
 
 // Head-only thumbnail for the shop pickers (isolated <img>, no id collisions).

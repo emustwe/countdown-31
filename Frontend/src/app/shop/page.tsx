@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, CreditCard, Eye, Footprints, Glasses, Layers, Palette, PersonStanding, Scissors, Shirt, Smile, Sparkles, User } from "lucide-react";
+import { Check, CreditCard, Eye, Glasses, Layers, Palette, Scissors, Shirt, Smile, Sparkles, User } from "lucide-react";
 import { PageShell } from "../../components/dune/Shell";
 import { AuthGuard } from "../../components/AuthGuard";
 import { useProfile } from "../../lib/hooks/useAuth";
@@ -22,9 +22,6 @@ import {
   GLASSES,
   CLOTHING,
   CLOTHES_COLORS,
-  PANTS_COLORS,
-  SHOE_STYLES,
-  SHOE_COLORS,
 } from "../../components/dune/Avatar";
 
 const CATS = [
@@ -36,8 +33,6 @@ const CATS = [
   { key: "facialHair", label: "Beard", Icon: User },
   { key: "glasses", label: "Glasses", Icon: Glasses },
   { key: "clothing", label: "Clothes", Icon: Shirt },
-  { key: "pants", label: "Pants", Icon: PersonStanding },
-  { key: "shoes", label: "Shoes", Icon: Footprints },
   { key: "card", label: "Card", Icon: CreditCard },
   { key: "board", label: "Board", Icon: Layers },
 ] as const;
@@ -161,13 +156,6 @@ function ShopContent() {
               <>
                 <FeatureGrid label="Outfit" options={CLOTHING} field="clothing" av={av} onPick={(v) => setAvatar("clothing", v)} />
                 <SwatchRow label="Outfit color" colors={CLOTHES_COLORS} value={av.clothesColor} onPick={(v) => setAvatar("clothesColor", v)} />
-              </>
-            )}
-            {cat === "pants" && <SwatchRow label="Pants color" colors={PANTS_COLORS} value={av.pants} onPick={(v) => setAvatar("pants", v)} />}
-            {cat === "shoes" && (
-              <>
-                <ChipRow label="Style" options={SHOE_STYLES} value={av.shoeStyle} onPick={(v) => setAvatar("shoeStyle", v)} labels={{ sneakers: "Sneakers", boots: "Boots" }} />
-                <SwatchRow label="Shoe color" colors={SHOE_COLORS} value={av.shoeColor} onPick={(v) => setAvatar("shoeColor", v)} />
               </>
             )}
             {cat === "card" && (
