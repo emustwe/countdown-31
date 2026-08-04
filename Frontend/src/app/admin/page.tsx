@@ -1,7 +1,14 @@
 "use client";
 
-import { Building2, CheckCircle2, Clock, Users, XCircle } from "lucide-react";
-import { usePromoOverview, useSponsors, useAdminPromoTournaments, useSetPromoStatus } from "../../lib/hooks/useSponsors";
+import { Building2, CheckCircle2, Clock, Handshake, Mail, Ticket, Users, XCircle } from "lucide-react";
+import {
+  usePromoOverview,
+  useSponsors,
+  useAdminPromoTournaments,
+  useSetPromoStatus,
+  useAdminInquiries,
+  useSetInquiryStatus,
+} from "../../lib/hooks/useSponsors";
 
 // New admin dashboard: at-a-glance counts, the sponsor roster, and pending sponsor tournaments the
 // admin can approve or reject.
@@ -9,8 +16,11 @@ export default function NewAdminDashboardPage() {
   const { data: ov } = usePromoOverview();
   const { data: sponsors } = useSponsors();
   const { data: promos } = useAdminPromoTournaments();
+  const { data: inquiries } = useAdminInquiries();
   const setStatus = useSetPromoStatus();
+  const setInquiry = useSetInquiryStatus();
   const pending = (promos ?? []).filter((t) => t.status === "PENDING");
+  const openInquiries = (inquiries ?? []).filter((i) => i.status !== "CLOSED");
 
   const stats: [string, string | number][] = [
     ["Total users", ov?.totalUsers ?? "—"],
@@ -91,6 +101,47 @@ export default function NewAdminDashboardPage() {
             <p><Users size={14} /> {ov?.totalUsers ?? "—"} total users · <b>{ov?.activeUsers7d ?? "—"} active</b></p>
           </div>
         </div>
+      </div>
+
+      {/* Contact requests: sponsorship offers + entry requests */}
+      <div className="admin-card glass wide" style={{ marginTop: 18 }}>
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">REQUESTS</p>
+            <h2>Sponsorship &amp; entry requests</h2>
+          </div>
+          <Mail size={18} />
+        </div>
+        {openInquiries.length === 0 && <div className="empty-line">No open requests.</div>}
+        {openInquiries.map((i) => (
+          <div className="pending-row" key={i.id}>
+            <div>
+              <b>
+                <span className={`vis-pill ${i.type === "SPONSORSHIP" ? "private" : "public"}`}>
+                  {i.type === "SPONSORSHIP" ? <Handshake size={11} /> : <Ticket size={11} />} {i.type === "SPONSORSHIP" ? "SPONSOR" : "ENTRY"}
+                </span>{" "}
+                {i.name || i.email}
+              </b>
+              <small>
+                <a href={`mailto:${i.email}`} style={{ color: "var(--gold2)" }}>{i.email}</a>
+                {i.tournament ? ` · ${i.tournament.title}` : ""}
+                {i.sponsor ? ` · sponsor: ${i.sponsor.name}` : ""}
+                {" · "}<span className={`promo-status ${i.status === "NEW" ? "pending" : "approved"}`}>{i.status}</span>
+              </small>
+              {i.message && <small style={{ color: "var(--muted)" }}>“{i.message}”</small>}
+            </div>
+            <div className="pending-actions">
+              {i.status === "NEW" && (
+                <button className="mini secondary" onClick={() => setInquiry.mutate({ id: i.id, status: "CONTACTED" })}>
+                  <CheckCircle2 size={13} /> Mark contacted
+                </button>
+              )}
+              <button className="mini secondary" onClick={() => setInquiry.mutate({ id: i.id, status: "CLOSED" })}>
+                <XCircle size={13} /> Close
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </main>
   );

@@ -3,11 +3,27 @@ import { JwtModule } from "@nestjs/jwt";
 import { PrismaModule } from "../../common/prisma/prisma.module";
 import { SponsorsService } from "./sponsors.service";
 import { SponsorAuthGuard } from "./sponsor-auth.guard";
-import { AdminSponsorsController, AdminPromoController, SponsorController, PublicPromoController } from "./sponsors.controller";
+import {
+  AdminSponsorsController,
+  AdminPromoController,
+  AdminInquiriesController,
+  SponsorController,
+  PublicPromoController,
+  PublicSponsorshipController,
+  CosmeticsController,
+} from "./sponsors.controller";
 
 @Module({
   imports: [PrismaModule, JwtModule.register({})],
-  controllers: [AdminSponsorsController, AdminPromoController, SponsorController, PublicPromoController],
+  controllers: [
+    AdminSponsorsController,
+    AdminPromoController,
+    AdminInquiriesController,
+    SponsorController,
+    PublicPromoController,
+    PublicSponsorshipController,
+    CosmeticsController,
+  ],
   providers: [SponsorsService, SponsorAuthGuard],
   exports: [SponsorsService],
 })

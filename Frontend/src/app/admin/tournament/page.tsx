@@ -21,6 +21,9 @@ interface FormState {
   endAt: string;
   prizePool: string;
   winnerCount: string;
+  minPlayers: string;
+  maxPlayers: string;
+  seekingSponsor: boolean;
   sponsorId: string;
 }
 const EMPTY: FormState = {
@@ -31,6 +34,9 @@ const EMPTY: FormState = {
   endAt: "",
   prizePool: "",
   winnerCount: "1",
+  minPlayers: "",
+  maxPlayers: "",
+  seekingSponsor: false,
   sponsorId: "",
 };
 
@@ -73,6 +79,9 @@ export default function TournamentAdminPage() {
       endAt: toLocalInput(t.endAt),
       prizePool: t.prizePool,
       winnerCount: String(t.winnerCount),
+      minPlayers: t.minPlayers != null ? String(t.minPlayers) : "",
+      maxPlayers: t.maxPlayers != null ? String(t.maxPlayers) : "",
+      seekingSponsor: t.seekingSponsor,
       sponsorId: t.sponsor?.id ?? "",
     });
     setError("");
@@ -96,6 +105,9 @@ export default function TournamentAdminPage() {
       endAt: form.endAt || null,
       prizePool: form.prizePool.trim(),
       winnerCount: Number(form.winnerCount) || 1,
+      minPlayers: form.minPlayers === "" ? null : Number(form.minPlayers),
+      maxPlayers: form.maxPlayers === "" ? null : Number(form.maxPlayers),
+      seekingSponsor: form.visibility === "PRIVATE" ? form.seekingSponsor : false,
       // Private tournaments are claimed by a sponsor via code, so no direct assignment there.
       sponsorId: form.visibility === "PRIVATE" ? null : form.sponsorId || null,
     };
@@ -194,13 +206,29 @@ export default function TournamentAdminPage() {
           </label>
 
           <label className="pf-field">
-            <span>Prize</span>
+            <span>Prize {form.visibility === "PRIVATE" ? "(optional — set later)" : ""}</span>
             <input value={form.prizePool} onChange={(e) => set("prizePool", e.target.value)} placeholder="e.g. 5,000 USDT" />
           </label>
           <label className="pf-field">
             <span>Number of winners</span>
             <input type="number" min={1} value={form.winnerCount} onChange={(e) => set("winnerCount", e.target.value)} />
           </label>
+
+          <label className="pf-field">
+            <span>Min players</span>
+            <input type="number" min={0} value={form.minPlayers} onChange={(e) => set("minPlayers", e.target.value)} placeholder="e.g. 50" />
+          </label>
+          <label className="pf-field">
+            <span>Max players</span>
+            <input type="number" min={0} value={form.maxPlayers} onChange={(e) => set("maxPlayers", e.target.value)} placeholder="e.g. 200" />
+          </label>
+
+          {form.visibility === "PRIVATE" && (
+            <label className="pf-full pf-check">
+              <input type="checkbox" checked={form.seekingSponsor} onChange={(e) => set("seekingSponsor", e.target.checked)} />
+              <span>List on the public Sponsorship page as an opportunity (until a sponsor is assigned)</span>
+            </label>
+          )}
 
           {error && <div className="pf-full sponsor-auth-err">{error}</div>}
 
@@ -235,9 +263,12 @@ export default function TournamentAdminPage() {
                 <span className={`promo-status ${t.status.toLowerCase()}`}>{t.status}</span>
               </div>
               <div className="tourn-meta">
-                <span>{t.sponsor ? `Sponsor: ${t.sponsor.name}` : "House"}</span>
+                <span>{t.sponsor ? `Sponsor: ${t.sponsor.name}` : t.seekingSponsor ? "Seeking sponsor" : "House"}</span>
                 <span>Prize: {t.prizePool || "—"}</span>
                 <span>Winners: {t.winnerCount}</span>
+                {(t.minPlayers != null || t.maxPlayers != null) && (
+                  <span>Players: {t.minPlayers ?? "?"}–{t.maxPlayers ?? "?"}</span>
+                )}
                 <span>Starts: {fmtDate(t.startAt)}</span>
                 <span>{t.entryCount} joined</span>
               </div>

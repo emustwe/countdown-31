@@ -29,6 +29,9 @@ export interface AdminCreatePromoInput {
   endAt?: string | null;
   prizePool?: string;
   winnerCount?: number | string;
+  minPlayers?: number | string | null;
+  maxPlayers?: number | string | null;
+  seekingSponsor?: boolean;
   sponsorId?: string | null;
 }
 export interface SponsorCreatePromoInput {
@@ -38,9 +41,19 @@ export interface SponsorCreatePromoInput {
   endAt?: string | null;
   prizePool?: string;
   winnerCount?: number | string;
+  minPlayers?: number | string | null;
+  maxPlayers?: number | string | null;
 }
 export interface UpdatePromoInput extends AdminCreatePromoInput {
   status?: string;
+}
+export interface InquiryInput {
+  type?: string;
+  tournamentId?: string | null;
+  name?: string;
+  email?: string;
+  message?: string;
+  userId?: string | null;
 }
 
 // ---- Generators -------------------------------------------------------------------------------
@@ -227,6 +240,13 @@ export class SponsorsService {
     if (!Number.isInteger(n) || n < 1) throw new BadRequestException("Number of winners must be a whole number ≥ 1");
     return Math.min(n, 1000);
   }
+  /** Optional non-negative integer player count (min/max participants). */
+  private parseCount(v: number | string | null | undefined): number | null {
+    if (v === undefined || v === null || v === "") return null;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 0) throw new BadRequestException("Player counts must be whole numbers ≥ 0");
+    return Math.min(n, 1_000_000);
+  }
   private parsePrize(v: string | undefined): string {
     return (v || "").trim().slice(0, 120);
   }
@@ -243,6 +263,9 @@ export class SponsorsService {
    * joinCode (for users to join); PUBLIC ones may be attributed to a sponsor. Always APPROVED. */
   async createByAdmin(input: AdminCreatePromoInput) {
     const visibility = this.parseVisibility(input.visibility);
+    const min = this.parseCount(input.minPlayers);
+    const max = this.parseCount(input.maxPlayers);
+    if (min !== null && max !== null && max < min) throw new BadRequestException("Max players cannot be less than min players");
     const data: Prisma.SponsorTournamentCreateInput = {
       title: this.reqTitle(input.title),
       description: (input.description ?? "").slice(0, 500),
@@ -252,6 +275,9 @@ export class SponsorsService {
       endAt: this.parseDate(input.endAt),
       prizePool: this.parsePrize(input.prizePool),
       winnerCount: this.parseWinnerCount(input.winnerCount),
+      minPlayers: min,
+      maxPlayers: max,
+      seekingSponsor: visibility === "PRIVATE" ? !!input.seekingSponsor : false,
       createdBy: "admin",
     };
     if (visibility === "PRIVATE") {
@@ -279,6 +305,8 @@ export class SponsorsService {
         endAt: this.parseDate(input.endAt),
         prizePool: this.parsePrize(input.prizePool),
         winnerCount: this.parseWinnerCount(input.winnerCount),
+        minPlayers: this.parseCount(input.minPlayers),
+        maxPlayers: this.parseCount(input.maxPlayers),
         createdBy: sponsorId,
         sponsor: { connect: { id: sponsorId } },
       },
@@ -297,6 +325,9 @@ export class SponsorsService {
     if (patch.description !== undefined) data.description = patch.description.slice(0, 500);
     if (patch.prizePool !== undefined) data.prizePool = this.parsePrize(patch.prizePool);
     if (patch.winnerCount !== undefined) data.winnerCount = this.parseWinnerCount(patch.winnerCount);
+    if (patch.minPlayers !== undefined) data.minPlayers = this.parseCount(patch.minPlayers);
+    if (patch.maxPlayers !== undefined) data.maxPlayers = this.parseCount(patch.maxPlayers);
+    if (patch.seekingSponsor !== undefined) data.seekingSponsor = !!patch.seekingSponsor;
     if (patch.startAt !== undefined) data.startAt = this.parseDate(patch.startAt);
     if (patch.endAt !== undefined) data.endAt = this.parseDate(patch.endAt);
     if (patch.status !== undefined) {
@@ -462,12 +493,124 @@ export class SponsorsService {
       endAt: t.endAt,
       prizePool: t.prizePool,
       winnerCount: t.winnerCount,
+      minPlayers: t.minPlayers,
+      maxPlayers: t.maxPlayers,
+      seekingSponsor: t.seekingSponsor,
       sponsor: t.sponsor ? { id: t.sponsor.id, name: t.sponsor.name } : null,
       createdBy: t.createdBy,
       createdAt: t.createdAt,
       entryCount: t._count?.entries ?? 0,
       ...(opts.codes ? { sponsorCode: t.sponsorCode, joinCode: t.joinCode } : {}),
     };
+  }
+
+  // ---- Sponsorship opportunities (public page) ------------------------------------------------
+  /** Private tournaments an admin has opened for sponsorship and not yet assigned to a sponsor.
+   * Shown publicly with participation details + prize (if set) — no codes. */
+  async listSponsorshipOpportunities() {
+    const rows = await this.prisma.sponsorTournament.findMany({
+      where: { visibility: "PRIVATE", seekingSponsor: true, sponsorId: null, status: "APPROVED" },
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { entries: true } } },
+    });
+    return rows.map((t) => this.serialize(t, { codes: false }));
+  }
+
+  // ---- Inquiries (contact requests) -----------------------------------------------------------
+  /** Public contact request. SPONSORSHIP → admin only. ENTRY → admin, and also the assigned
+   * sponsor (if the tournament already has one) so it shows in their dashboard. */
+  async createInquiry(input: InquiryInput) {
+    const type = input.type === "ENTRY" ? "ENTRY" : input.type === "SPONSORSHIP" ? "SPONSORSHIP" : null;
+    if (!type) throw new BadRequestException("Invalid inquiry type");
+    const email = (input.email || "").trim();
+    if (!/.+@.+\..+/.test(email)) throw new BadRequestException("A valid email is required");
+
+    let sponsorId: string | null = null;
+    let tournamentId: string | null = null;
+    if (input.tournamentId) {
+      const t = await this.prisma.sponsorTournament.findUnique({ where: { id: input.tournamentId } });
+      if (!t) throw new NotFoundException("Tournament not found");
+      tournamentId = t.id;
+      // Entry requests for a sponsor-run tournament also reach that sponsor.
+      if (type === "ENTRY") sponsorId = t.sponsorId;
+    }
+    await this.prisma.inquiry.create({
+      data: {
+        type,
+        email,
+        name: (input.name || "").trim().slice(0, 120) || null,
+        message: (input.message || "").trim().slice(0, 2000),
+        tournamentId,
+        sponsorId,
+        userId: input.userId || null,
+      },
+    });
+    return { ok: true };
+  }
+
+  async listInquiries() {
+    const rows = await this.prisma.inquiry.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { tournament: { select: { id: true, title: true } }, sponsor: { select: { id: true, name: true } } },
+    });
+    return rows.map((i) => this.serializeInquiry(i));
+  }
+
+  async listInquiriesForSponsor(sponsorId: string) {
+    const rows = await this.prisma.inquiry.findMany({
+      where: { sponsorId },
+      orderBy: { createdAt: "desc" },
+      include: { tournament: { select: { id: true, title: true } }, sponsor: { select: { id: true, name: true } } },
+    });
+    return rows.map((i) => this.serializeInquiry(i));
+  }
+
+  async setInquiryStatus(id: string, status: string) {
+    if (!["NEW", "CONTACTED", "CLOSED"].includes(status)) throw new BadRequestException("Invalid status");
+    return this.prisma.inquiry
+      .update({ where: { id }, data: { status: status as "NEW" | "CONTACTED" | "CLOSED" } })
+      .catch(() => {
+        throw new NotFoundException("Inquiry not found");
+      });
+  }
+
+  private serializeInquiry(i: {
+    id: string;
+    type: string;
+    status: string;
+    name: string | null;
+    email: string;
+    message: string;
+    createdAt: Date;
+    tournament?: { id: string; title: string } | null;
+    sponsor?: { id: string; name: string } | null;
+  }) {
+    return {
+      id: i.id,
+      type: i.type,
+      status: i.status,
+      name: i.name,
+      email: i.email,
+      message: i.message,
+      createdAt: i.createdAt,
+      tournament: i.tournament ? { id: i.tournament.id, title: i.tournament.title } : null,
+      sponsor: i.sponsor ? { id: i.sponsor.id, name: i.sponsor.name } : null,
+    };
+  }
+
+  // ---- User cosmetics (shop) ------------------------------------------------------------------
+  async getCosmetics(userId: string) {
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { cosmeticsJson: true } });
+    if (!u) throw new NotFoundException();
+    return (u.cosmeticsJson ?? {}) as Record<string, unknown>;
+  }
+
+  /** Merge a partial cosmetics patch into the user's saved cosmetics. */
+  async updateCosmetics(userId: string, patch: Record<string, unknown>) {
+    const current = await this.getCosmetics(userId);
+    const next = { ...current, ...(patch ?? {}) };
+    await this.prisma.user.update({ where: { id: userId }, data: { cosmeticsJson: next as Prisma.InputJsonValue } });
+    return next;
   }
 
   // ---- Admin overview (counts + sponsors + pending) -------------------------------------------

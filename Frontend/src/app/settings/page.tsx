@@ -5,7 +5,10 @@ import { Camera, IdCard, LogOut, Moon, Sparkles, Sun, UserRound, Volume2, WandSp
 import { AuthGuard } from "../../components/AuthGuard";
 import { PageShell, ToggleRow } from "../../components/dune/Shell";
 import { FlipText, useFlipIndex } from "../../components/dune/FlipText";
+import { useRouter } from "next/navigation";
 import { useProfile, useLogout, useUpdateProfile } from "../../lib/hooks/useAuth";
+import { useCosmetics } from "../../lib/hooks/useSponsors";
+import { CardPreview } from "../../components/dune/CardPreview";
 import { useSettingsStore } from "../../stores/settings-store";
 import { fileToAvatarDataUrl } from "../../lib/avatar";
 
@@ -20,7 +23,9 @@ export default function SettingsPage() {
 }
 
 function SettingsContent() {
+  const router = useRouter();
   const { data: profile } = useProfile();
+  const { data: cosmetics } = useCosmetics();
   const logout = useLogout();
   const updateProfile = useUpdateProfile();
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
@@ -281,12 +286,12 @@ function SettingsContent() {
                   ]}
                 />
               </p>
-              <div className="settings-player-card">
-                <span className="spc-badge">CARD</span>
-                <span className="spc-ava">{initials}</span>
-                <b className="spc-name">{profile?.fullName || profile?.email?.split("@")[0] || "Player"}</b>
-                <small className="spc-sub">{ko ? "플레이어" : "Player"}</small>
+              <div className="settings-card-preview">
+                <CardPreview card={cosmetics?.card} name={profile?.fullName || profile?.email?.split("@")[0] || "Player"} size="lg" />
               </div>
+              <button className="secondary" style={{ marginTop: 16 }} onClick={() => router.push("/shop")}>
+                <Sparkles size={15} /> {ko ? "상점에서 카드 꾸미기" : "Design your card in the Shop"}
+              </button>
             </div>
           )}
 

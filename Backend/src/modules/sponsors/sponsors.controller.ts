@@ -10,6 +10,7 @@ import {
   type AdminCreatePromoInput,
   type SponsorCreatePromoInput,
   type UpdatePromoInput,
+  type InquiryInput,
 } from "./sponsors.service";
 import { SponsorAuthGuard } from "./sponsor-auth.guard";
 
@@ -82,6 +83,23 @@ export class AdminPromoController {
   }
 }
 
+// Admin-only inquiry (contact request) management.
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles("ADMIN")
+@Controller("admin/inquiries")
+export class AdminInquiriesController {
+  constructor(private readonly sponsors: SponsorsService) {}
+
+  @Get()
+  list() {
+    return this.sponsors.listInquiries();
+  }
+  @Patch(":id")
+  setStatus(@Param("id") id: string, @Body() body: { status?: string }) {
+    return this.sponsors.setInquiryStatus(id, body?.status ?? "");
+  }
+}
+
 // Sponsor-facing: login (public) + their own dashboard (sponsor JWT).
 @Controller("sponsor")
 export class SponsorController {
@@ -111,6 +129,11 @@ export class SponsorController {
   @Post("claim")
   claim(@Req() req: Request & { sponsor: { id: string } }, @Body() body: { sponsorCode?: string }) {
     return this.sponsors.claimByCode(req.sponsor.id, body?.sponsorCode ?? "");
+  }
+  @UseGuards(SponsorAuthGuard)
+  @Get("inquiries")
+  inquiries(@Req() req: Request & { sponsor: { id: string } }) {
+    return this.sponsors.listInquiriesForSponsor(req.sponsor.id);
   }
 }
 
@@ -156,5 +179,36 @@ export class PublicPromoController {
   @Post(":id/join")
   join(@CurrentUser() user: AccessTokenPayload, @Param("id") id: string, @Body() body: { joinCode?: string }) {
     return this.sponsors.joinTournament(user.sub, id, body?.joinCode);
+  }
+}
+
+// Public sponsorship page: opportunities to sponsor + contact/inquiry submission (guests allowed).
+@Controller()
+export class PublicSponsorshipController {
+  constructor(private readonly sponsors: SponsorsService) {}
+
+  @Get("sponsorship-opportunities")
+  opportunities() {
+    return this.sponsors.listSponsorshipOpportunities();
+  }
+  @Post("inquiries")
+  createInquiry(@Body() body: InquiryInput) {
+    return this.sponsors.createInquiry(body ?? {});
+  }
+}
+
+// Signed-in user's shop cosmetics (card design, etc.).
+@UseGuards(JwtAuthGuard)
+@Controller("me/cosmetics")
+export class CosmeticsController {
+  constructor(private readonly sponsors: SponsorsService) {}
+
+  @Get()
+  get(@CurrentUser() user: AccessTokenPayload) {
+    return this.sponsors.getCosmetics(user.sub);
+  }
+  @Patch()
+  update(@CurrentUser() user: AccessTokenPayload, @Body() body: Record<string, unknown>) {
+    return this.sponsors.updateCosmetics(user.sub, body ?? {});
   }
 }

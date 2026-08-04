@@ -6906,7 +6906,7 @@ footer b {
 }
 
 /* User Tournaments (events) page */
-.events-main { width: min(1100px, calc(100% - 40px)); margin: auto; }
+.events-main, .sponsorship-main, .shop-main { width: min(1100px, calc(100% - 40px)); margin: auto; }
 .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
 .event-card { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 22px; border-radius: 18px; }
 .event-card-ico { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 14px; background: linear-gradient(160deg,#ffe176,#e79a24); color: #291406; }
@@ -7148,4 +7148,91 @@ button.mini:hover { filter: brightness(1.06); }
   .edc-facts { grid-template-columns: repeat(2, 1fr); }
   .tourn-row { flex-direction: column; }
   .tourn-actions { width: 100%; }
+}
+
+/* ===== Inquiries / sponsorship / shop / player card ===== */
+.promo-form-grid textarea {
+  padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--input-bg, rgba(255,255,255,0.04)); color: var(--text); font: inherit; font-size: 14px; resize: vertical; width: 100%;
+}
+.promo-form-grid textarea:focus { outline: none; border-color: var(--gold2); }
+.pf-check { flex-direction: row !important; align-items: center; gap: 10px; }
+.pf-check input { width: auto !important; }
+.pf-check > span { text-transform: none !important; font-weight: 500 !important; color: var(--text) !important; font-size: 13px !important; }
+
+/* Sponsorship page */
+.sponsor-cta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.sponsor-cta {
+  display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left;
+  padding: 20px; border-radius: 16px; cursor: pointer; border: 1px solid var(--border); color: var(--text);
+}
+.sponsor-cta:hover { border-color: var(--gold2); }
+.sponsor-cta b { font-size: 16px; }
+.sponsor-cta small { color: var(--muted); }
+.sponsor-cta-ico { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: rgba(244,185,66,0.14); color: var(--gold2); margin-bottom: 6px; }
+
+/* Shop */
+.shop-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 22px; }
+.shop-tabs button {
+  display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px; border-radius: 10px;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--muted); font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.shop-tabs button.active { background: rgba(244,185,66,0.16); color: var(--gold2); border-color: transparent; }
+.shop-designer { display: grid; grid-template-columns: 300px 1fr; gap: 22px; align-items: start; }
+.shop-preview { display: flex; flex-direction: column; gap: 10px; align-items: center; position: sticky; top: 90px; }
+.shop-controls { display: flex; flex-direction: column; gap: 18px; }
+.control-row { display: flex; flex-direction: column; gap: 9px; }
+.control-label { font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.swatches { display: flex; flex-wrap: wrap; gap: 9px; }
+.swatch { width: 34px; height: 34px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; display: grid; place-items: center; color: #1a1206; }
+.swatch.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg, #0d0a16); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 8px 14px; border-radius: 9px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+.chip.on { background: rgba(244,185,66,0.16); color: var(--gold2); border-color: transparent; }
+
+/* Player card (Shop preview + Settings + in-game) */
+.player-card {
+  position: relative; overflow: hidden;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--pc-color) 34%, #14101f), #0c0913);
+  border: 2px solid transparent;
+}
+.pc-md { width: 150px; height: 210px; }
+.pc-lg { width: 210px; height: 300px; }
+.pc-inner { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 18px; }
+.pc-avatar {
+  width: 74px; height: 74px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--pc-color) 85%, #000); color: #12101a; font-weight: 900; font-size: 26px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+}
+.pc-lg .pc-avatar { width: 92px; height: 92px; font-size: 32px; }
+.pc-name { font-weight: 800; font-size: 16px; text-align: center; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+.pc-tag { font: 800 8px var(--numeric, monospace); letter-spacing: 0.18em; color: var(--pc-color); opacity: 0.85; }
+.pc-pattern-layer { position: absolute; inset: 0; z-index: 1; opacity: 0.5; }
+.pc-pattern-stars .pc-pattern-layer {
+  background-image:
+    radial-gradient(1.6px 1.6px at 20% 30%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 70% 20%, var(--pc-color), transparent),
+    radial-gradient(1.8px 1.8px at 40% 70%, #fff, transparent),
+    radial-gradient(1.3px 1.3px at 85% 60%, var(--pc-color), transparent),
+    radial-gradient(1.5px 1.5px at 60% 85%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 15% 80%, #fff, transparent);
+}
+.pc-pattern-waves .pc-pattern-layer {
+  background-image: repeating-linear-gradient(120deg, color-mix(in srgb, var(--pc-color) 40%, transparent) 0 2px, transparent 2px 12px);
+}
+.pc-pattern-circuit .pc-pattern-layer {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--pc-color) 30%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--pc-color) 30%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.pc-border-gold { border-color: color-mix(in srgb, var(--pc-color) 70%, #d4af37); }
+.pc-border-neon { border-color: var(--pc-color); box-shadow: 0 0 14px color-mix(in srgb, var(--pc-color) 60%, transparent), inset 0 0 10px color-mix(in srgb, var(--pc-color) 20%, transparent); }
+
+.settings-card-preview { display: flex; justify-content: center; margin-top: 16px; }
+
+@media (max-width: 720px) {
+  .sponsor-cta-row { grid-template-columns: 1fr; }
+  .shop-designer { grid-template-columns: 1fr; }
+  .shop-preview { position: static; }
 }

@@ -41,6 +41,19 @@ export interface SponsorCreateInput {
   endAt?: string | null;
   prizePool?: string;
   winnerCount?: number;
+  minPlayers?: number | null;
+  maxPlayers?: number | null;
+}
+
+export interface SponsorInquiry {
+  id: string;
+  type: "SPONSORSHIP" | "ENTRY";
+  status: "NEW" | "CONTACTED" | "CLOSED";
+  name: string | null;
+  email: string;
+  message: string;
+  createdAt: string;
+  tournament: { id: string; title: string } | null;
 }
 
 export function useSponsorLogin() {
@@ -79,5 +92,15 @@ export function useClaimTournament() {
     mutationFn: (sponsorCode: string) =>
       sponsorRequest<SponsorTournamentRow>("/sponsor/claim", { method: "POST", body: { sponsorCode }, token }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sponsor-tournaments"] }),
+  });
+}
+
+// Entry requests routed to this sponsor (for tournaments they run).
+export function useSponsorInquiries() {
+  const token = useSponsorAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: ["sponsor-inquiries"],
+    queryFn: () => sponsorRequest<SponsorInquiry[]>("/sponsor/inquiries", { token }),
+    enabled: !!token,
   });
 }

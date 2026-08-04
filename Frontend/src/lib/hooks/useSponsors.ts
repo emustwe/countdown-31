@@ -25,6 +25,9 @@ export interface PromoTournament {
   endAt: string | null;
   prizePool: string;
   winnerCount: number;
+  minPlayers: number | null;
+  maxPlayers: number | null;
+  seekingSponsor: boolean;
   sponsor: { id?: string; name: string } | null;
   createdBy: string;
   createdAt: string;
@@ -51,8 +54,23 @@ export interface PromoInput {
   endAt?: string | null;
   prizePool?: string;
   winnerCount?: number;
+  minPlayers?: number | null;
+  maxPlayers?: number | null;
+  seekingSponsor?: boolean;
   sponsorId?: string | null;
   status?: PromoStatus;
+}
+
+export interface Inquiry {
+  id: string;
+  type: "SPONSORSHIP" | "ENTRY";
+  status: "NEW" | "CONTACTED" | "CLOSED";
+  name: string | null;
+  email: string;
+  message: string;
+  createdAt: string;
+  tournament: { id: string; title: string } | null;
+  sponsor: { id: string; name: string } | null;
 }
 
 // ---- Admin: sponsors ------------------------------------------------------------------------
@@ -168,5 +186,54 @@ export function useMyJoinedPromos(enabled = true) {
     queryKey: ["my-joined-promos"],
     queryFn: () => apiRequest<(PromoTournament & { joinedAt: string })[]>("/promo-tournaments/mine/joined"),
     enabled,
+  });
+}
+
+// ---- Sponsorship opportunities + inquiries --------------------------------------------------
+export function useSponsorshipOpportunities() {
+  return useQuery({
+    queryKey: ["sponsorship-opportunities"],
+    queryFn: () => apiRequest<PromoTournament[]>("/sponsorship-opportunities", { auth: false }),
+  });
+}
+export function useCreateInquiry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (b: { type: "SPONSORSHIP" | "ENTRY"; tournamentId?: string | null; email: string; message?: string; name?: string }) =>
+      apiRequest<{ ok: boolean }>("/inquiries", { method: "POST", body: b, auth: false }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-inquiries"] }),
+  });
+}
+export function useAdminInquiries() {
+  return useQuery({ queryKey: ["admin-inquiries"], queryFn: () => apiRequest<Inquiry[]>("/admin/inquiries") });
+}
+export function useSetInquiryStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "NEW" | "CONTACTED" | "CLOSED" }) =>
+      apiRequest<Inquiry>(`/admin/inquiries/${id}`, { method: "PATCH", body: { status } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-inquiries"] }),
+  });
+}
+
+// ---- Shop cosmetics -------------------------------------------------------------------------
+export interface CardCosmetics {
+  color?: string;
+  pattern?: "none" | "stars" | "waves" | "circuit";
+  shape?: "rounded" | "sharp" | "pill";
+  border?: "none" | "gold" | "neon";
+}
+export interface Cosmetics {
+  card?: CardCosmetics;
+  [k: string]: unknown;
+}
+export function useCosmetics(enabled = true) {
+  return useQuery({ queryKey: ["cosmetics"], queryFn: () => apiRequest<Cosmetics>("/me/cosmetics"), enabled });
+}
+export function useUpdateCosmetics() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: Partial<Cosmetics>) => apiRequest<Cosmetics>("/me/cosmetics", { method: "PATCH", body: patch }),
+    onSuccess: (data) => qc.setQueryData(["cosmetics"], data),
   });
 }

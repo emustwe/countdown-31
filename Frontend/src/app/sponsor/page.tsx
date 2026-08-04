@@ -8,6 +8,7 @@ import {
   useSponsorTournaments,
   useCreateSponsorTournament,
   useClaimTournament,
+  useSponsorInquiries,
 } from "../../lib/hooks/useSponsorPortal";
 
 function fmtDate(iso: string | null): string {
@@ -23,10 +24,11 @@ export default function SponsorDashboardPage() {
   const sponsor = useSponsorAuthStore((s) => s.sponsor);
   const clear = useSponsorAuthStore((s) => s.clear);
   const { data: tournaments } = useSponsorTournaments();
+  const { data: inquiries } = useSponsorInquiries();
   const create = useCreateSponsorTournament();
   const claim = useClaimTournament();
 
-  const [form, setForm] = useState({ title: "", description: "", prizePool: "", winnerCount: "1", startAt: "" });
+  const [form, setForm] = useState({ title: "", description: "", prizePool: "", winnerCount: "1", startAt: "", minPlayers: "", maxPlayers: "" });
   const [claimCode, setClaimCode] = useState("");
   const [error, setError] = useState("");
   const [claimError, setClaimError] = useState("");
@@ -48,8 +50,10 @@ export default function SponsorDashboardPage() {
         prizePool: form.prizePool.trim(),
         winnerCount: Number(form.winnerCount) || 1,
         startAt: form.startAt || null,
+        minPlayers: form.minPlayers === "" ? null : Number(form.minPlayers),
+        maxPlayers: form.maxPlayers === "" ? null : Number(form.maxPlayers),
       });
-      setForm({ title: "", description: "", prizePool: "", winnerCount: "1", startAt: "" });
+      setForm({ title: "", description: "", prizePool: "", winnerCount: "1", startAt: "", minPlayers: "", maxPlayers: "" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create tournament");
     }
@@ -135,6 +139,14 @@ export default function SponsorDashboardPage() {
                 <span>Winners</span>
                 <input type="number" min={1} value={form.winnerCount} onChange={(e) => setForm((f) => ({ ...f, winnerCount: e.target.value }))} />
               </label>
+              <label className="pf-field">
+                <span>Min players</span>
+                <input type="number" min={0} value={form.minPlayers} onChange={(e) => setForm((f) => ({ ...f, minPlayers: e.target.value }))} placeholder="optional" />
+              </label>
+              <label className="pf-field">
+                <span>Max players</span>
+                <input type="number" min={0} value={form.maxPlayers} onChange={(e) => setForm((f) => ({ ...f, maxPlayers: e.target.value }))} placeholder="optional" />
+              </label>
               <label className="pf-full">
                 <span>Starts at (optional)</span>
                 <input type="datetime-local" value={form.startAt} onChange={(e) => setForm((f) => ({ ...f, startAt: e.target.value }))} />
@@ -203,6 +215,30 @@ export default function SponsorDashboardPage() {
                     </button>
                   </div>
                 )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Entry requests routed to this sponsor */}
+        <div className="admin-card glass wide" style={{ marginTop: 18 }}>
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">PLAYER REQUESTS</p>
+              <h2>Entry requests</h2>
+            </div>
+          </div>
+          <p className="pf-note" style={{ marginTop: 0 }}>Players asking to join your tournaments. Reach out to them by email.</p>
+          {(inquiries ?? []).length === 0 && <div className="empty-line">No requests yet.</div>}
+          {(inquiries ?? []).map((i) => (
+            <div className="pending-row" key={i.id}>
+              <div>
+                <b>{i.name || i.email}</b>
+                <small>
+                  <span className={`promo-status ${i.status === "NEW" ? "pending" : i.status === "CONTACTED" ? "approved" : "rejected"}`}>{i.status}</span>
+                  {i.tournament ? ` · ${i.tournament.title}` : ""} · {i.email}
+                </small>
+                {i.message && <small style={{ color: "var(--muted)" }}>“{i.message}”</small>}
               </div>
             </div>
           ))}

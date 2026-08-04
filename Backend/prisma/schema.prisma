@@ -25,6 +25,9 @@ model User {
   passwordHash  String
   role          Role           @default(PLAYER)
   status        UserStatus     @default(ACTIVE)
+  // Shop cosmetics (card design, and later avatar/board/cloth/shoes). Free-form JSON so the
+  // catalog can grow without a migration per option.
+  cosmeticsJson Json           @default("{}")
   createdAt         DateTime          @default(now())
   refreshTokens     RefreshToken[]
   wallet            Wallet?
@@ -46,6 +49,7 @@ model Sponsor {
   status       UserStatus          @default(ACTIVE)
   createdAt    DateTime            @default(now())
   tournaments  SponsorTournament[]
+  inquiries    Inquiry[]
 }
 
 // A sponsor/promo tournament — the tournament type shown on the user Tournaments page.
@@ -67,9 +71,16 @@ model SponsorTournament {
   // When play starts. Entry closes at startAt. Null = not scheduled yet.
   startAt     DateTime?
   endAt       DateTime?
-  // Prize as admin-entered free text (e.g. "1,000 USDT") + how many ranks get paid.
+  // Prize as admin-entered free text (e.g. "1,000 USDT") + how many ranks get paid. A private
+  // tournament may be created with no prize yet (set later once a sponsor is secured).
   prizePool   String           @default("")
   winnerCount Int              @default(1)
+  // Target participation. Admin sets these at creation for both public and private tournaments.
+  minPlayers  Int?
+  maxPlayers  Int?
+  // PRIVATE only: when true and no sponsor is assigned yet, the tournament is advertised on the
+  // public Sponsorship page as an opportunity people can offer to sponsor.
+  seekingSponsor Boolean       @default(false)
   // Private-tournament gate codes (null for public).
   sponsorCode String?          @unique // sponsor enters this to claim the tournament
   joinCode    String?          @unique // user must supply this to join
@@ -78,9 +89,43 @@ model SponsorTournament {
   createdBy   String           // "admin" or the sponsor id
   createdAt   DateTime         @default(now())
   entries     PromoEntry[]
+  inquiries   Inquiry[]
 
   @@index([status])
   @@index([visibility, status])
+}
+
+// A contact request from the public site. SPONSORSHIP = someone offering to sponsor a tournament
+// (routed to the admin, who may then issue a sponsor code). ENTRY = a user asking to join a
+// (usually private) tournament; the admin checks eligibility and can issue a join code, and if the
+// tournament already has a sponsor the request is also visible to that sponsor's dashboard.
+model Inquiry {
+  id           String             @id @default(uuid())
+  type         InquiryType
+  status       InquiryStatus      @default(NEW)
+  name         String?
+  email        String
+  message      String             @default("")
+  tournamentId String?
+  tournament   SponsorTournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  sponsorId    String?            // set when the request should also reach an assigned sponsor
+  sponsor      Sponsor?           @relation(fields: [sponsorId], references: [id], onDelete: SetNull)
+  userId       String?            // set when the sender was signed in
+  createdAt    DateTime           @default(now())
+
+  @@index([type, status])
+  @@index([sponsorId, status])
+}
+
+enum InquiryType {
+  SPONSORSHIP
+  ENTRY
+}
+
+enum InquiryStatus {
+  NEW
+  CONTACTED
+  CLOSED
 }
 
 enum PromoStatus {
