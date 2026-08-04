@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import {
   Bell,
   CheckCircle2,
-  CircleUserRound,
+  Handshake,
   History as HistoryIcon,
   Home as HomeIcon,
   Settings as SettingsIcon,
@@ -21,11 +21,12 @@ import { useNotifications, useMarkNotificationsRead } from "../../lib/hooks/useN
 import { FlipText } from "./FlipText";
 
 // [key, EN label, KO label, Icon, path, disabled?]
-// Tournaments is a coming-soon hub. The Slot Tournament listing (/tournaments) still exists but is
-// not linked here for now. History, Settings and Notifications live in the profile menu.
+// Tournaments (/events) lists the public tournaments. Sponsorship is a coming-soon hub for people
+// who want to sponsor a tournament. History, Settings and Notifications live in the profile menu.
 const NAV_ITEMS: [string, string, string, typeof HomeIcon, string, boolean?][] = [
   ["home", "Home", "홈", HomeIcon, "/home"],
   ["tournaments", "Tournaments", "토너먼트", Trophy, "/events"],
+  ["sponsorship", "Sponsorship", "스폰서십", Handshake, "/sponsorship"],
   ["wallet", "Wallet", "지갑", WalletCards, "/wallet"],
   ["shop", "Shop", "상점", ShoppingBag, "/shop"],
 ];
@@ -163,16 +164,13 @@ function ProfileMenu({ initials, avatarUrl, name, email }: { initials: string; a
   );
 }
 
-/** Guests (no account) see two symbol-only buttons in place of the profile icon — no text, so it
- * reads the same in every language. A KEY = unlock / log in to an existing account; a PERSON-＋ =
- * add / create a new account. Two distinct metaphors so they can't be confused; tooltips help too. */
+/** Guests (no account) see a single symbol-only Sign-up button in place of the profile icon (no
+ * text, so it reads the same in every language). Logging in to an existing account is offered on
+ * the sign-up page itself, so the nav stays to one clear call to action. */
 function AuthButtons() {
   const router = useRouter();
   return (
     <div className="nav-auth">
-      <button className="nav-login" onClick={() => router.push("/login")} aria-label="Log in" title="Log in">
-        <CircleUserRound size={24} strokeWidth={2} />
-      </button>
       <button className="nav-signup" onClick={() => router.push("/register")} aria-label="Sign up" title="Sign up">
         <UserPlus size={22} strokeWidth={2.2} />
       </button>

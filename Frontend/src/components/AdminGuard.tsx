@@ -20,7 +20,7 @@ function RoleCheck({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && profile && profile.role !== "ADMIN") {
-      router.replace("/lobby");
+      router.replace("/home");
     }
   }, [isLoading, profile, router]);
 

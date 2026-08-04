@@ -1,12 +1,19 @@
-import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import type { Request } from "express";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import type { AccessTokenPayload } from "../auth/token.types";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
-import { SponsorsService } from "./sponsors.service";
+import {
+  SponsorsService,
+  type AdminCreatePromoInput,
+  type SponsorCreatePromoInput,
+  type UpdatePromoInput,
+} from "./sponsors.service";
 import { SponsorAuthGuard } from "./sponsor-auth.guard";
 
-// Admin-only sponsor & promo-tournament management.
+// Admin-only sponsor management.
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles("ADMIN")
 @Controller("admin/sponsors")
@@ -14,12 +21,19 @@ export class AdminSponsorsController {
   constructor(private readonly sponsors: SponsorsService) {}
 
   @Post()
-  create(@Body() body: { name?: string }) {
-    return this.sponsors.createSponsor(body?.name ?? "");
+  create(@Body() body: { name?: string; username?: string; password?: string }) {
+    return this.sponsors.createSponsor(body?.name ?? "", body?.username, body?.password);
   }
   @Get()
   list() {
     return this.sponsors.listSponsors();
+  }
+  @Patch(":id")
+  update(
+    @Param("id") id: string,
+    @Body() body: { name?: string; username?: string; password?: string; status?: string },
+  ) {
+    return this.sponsors.updateSponsor(id, body ?? {});
   }
   @Post(":id/regenerate")
   regenerate(@Param("id") id: string) {
@@ -31,6 +45,7 @@ export class AdminSponsorsController {
   }
 }
 
+// Admin-only promo/tournament management (public + private).
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles("ADMIN")
 @Controller("admin/promo-tournaments")
@@ -46,8 +61,16 @@ export class AdminPromoController {
     return this.sponsors.listAll();
   }
   @Post()
-  create(@Body() body: { title?: string; description?: string; sponsorId?: string }) {
-    return this.sponsors.createByAdmin(body?.title ?? "", body?.description ?? "", body?.sponsorId ?? null);
+  create(@Body() body: AdminCreatePromoInput) {
+    return this.sponsors.createByAdmin(body ?? {});
+  }
+  @Patch(":id")
+  update(@Param("id") id: string, @Body() body: UpdatePromoInput) {
+    return this.sponsors.updateTournament(id, body ?? {});
+  }
+  @Delete(":id")
+  remove(@Param("id") id: string) {
+    return this.sponsors.deleteTournament(id);
   }
   @Post(":id/approve")
   approve(@Param("id") id: string) {
@@ -59,7 +82,7 @@ export class AdminPromoController {
   }
 }
 
-// Sponsor-facing: login (public) + their own tournaments (sponsor JWT).
+// Sponsor-facing: login (public) + their own dashboard (sponsor JWT).
 @Controller("sponsor")
 export class SponsorController {
   constructor(private readonly sponsors: SponsorsService) {}
@@ -81,12 +104,17 @@ export class SponsorController {
   }
   @UseGuards(SponsorAuthGuard)
   @Post("tournaments")
-  createTournament(@Req() req: Request & { sponsor: { id: string } }, @Body() body: { title?: string; description?: string }) {
-    return this.sponsors.createBySponsor(req.sponsor.id, body?.title ?? "", body?.description ?? "");
+  createTournament(@Req() req: Request & { sponsor: { id: string } }, @Body() body: SponsorCreatePromoInput) {
+    return this.sponsors.createBySponsor(req.sponsor.id, body ?? {});
+  }
+  @UseGuards(SponsorAuthGuard)
+  @Post("claim")
+  claim(@Req() req: Request & { sponsor: { id: string } }, @Body() body: { sponsorCode?: string }) {
+    return this.sponsors.claimByCode(req.sponsor.id, body?.sponsorCode ?? "");
   }
 }
 
-// Public: approved promo tournaments for the user Tournaments page (guests included).
+// Public + user-facing promo tournaments.
 @Controller("promo-tournaments")
 export class PublicPromoController {
   constructor(private readonly sponsors: SponsorsService) {}
@@ -94,5 +122,39 @@ export class PublicPromoController {
   @Get()
   list() {
     return this.sponsors.listApproved();
+  }
+  // Redeem a private join code (guests may preview before signing in to join).
+  @Post("redeem")
+  redeem(@Body() body: { joinCode?: string }) {
+    return this.sponsors.redeemJoinCode(body?.joinCode ?? "");
+  }
+  // The signed-in user's joined tournaments.
+  @UseGuards(JwtAuthGuard)
+  @Get("mine/joined")
+  mine(@CurrentUser() user: AccessTokenPayload) {
+    return this.sponsors.myJoined(user.sub);
+  }
+  @Get(":id")
+  detail(
+    @Param("id") id: string,
+    @Query("code") code: string | undefined,
+    @Query("userId") _u: string | undefined,
+  ) {
+    // Public detail; joined-state is resolved on the authed variant below.
+    return this.sponsors.getForUser(id, code, undefined);
+  }
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/me")
+  detailForMe(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id") id: string,
+    @Query("code") code: string | undefined,
+  ) {
+    return this.sponsors.getForUser(id, code, user.sub);
+  }
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/join")
+  join(@CurrentUser() user: AccessTokenPayload, @Param("id") id: string, @Body() body: { joinCode?: string }) {
+    return this.sponsors.joinTournament(user.sub, id, body?.joinCode);
   }
 }

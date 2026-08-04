@@ -2,12 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, LogOut, Plus, ShieldCheck, Trophy } from "lucide-react";
+import { Building2, Copy, Link2, Lock, LogOut, Plus, ShieldCheck, Trophy, Unlock } from "lucide-react";
 import { useSponsorAuthStore } from "../../stores/sponsor-auth-store";
-import { useSponsorTournaments, useCreateSponsorTournament } from "../../lib/hooks/useSponsorPortal";
+import {
+  useSponsorTournaments,
+  useCreateSponsorTournament,
+  useClaimTournament,
+} from "../../lib/hooks/useSponsorPortal";
 
-// The sponsor's own dashboard: create tournaments (which go to the admin for approval before they
-// show to users) and track their status.
+function fmtDate(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+}
+
+// The sponsor's own dashboard: create public tournaments (admin-approved before going live), claim
+// a private tournament with an admin-issued sponsor code, and see all their tournaments + codes.
 export default function SponsorDashboardPage() {
   const router = useRouter();
   const token = useSponsorAuthStore((s) => s.token);
@@ -15,7 +24,13 @@ export default function SponsorDashboardPage() {
   const clear = useSponsorAuthStore((s) => s.clear);
   const { data: tournaments } = useSponsorTournaments();
   const create = useCreateSponsorTournament();
-  const [form, setForm] = useState({ title: "", description: "" });
+  const claim = useClaimTournament();
+
+  const [form, setForm] = useState({ title: "", description: "", prizePool: "", winnerCount: "1", startAt: "" });
+  const [claimCode, setClaimCode] = useState("");
+  const [error, setError] = useState("");
+  const [claimError, setClaimError] = useState("");
+  const [copied, setCopied] = useState("");
 
   useEffect(() => {
     if (!token) router.replace("/sponsor/login");
@@ -24,9 +39,42 @@ export default function SponsorDashboardPage() {
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
     if (!form.title.trim()) return;
-    await create.mutateAsync({ title: form.title.trim(), description: form.description.trim() });
-    setForm({ title: "", description: "" });
+    try {
+      await create.mutateAsync({
+        title: form.title.trim(),
+        description: form.description.trim(),
+        prizePool: form.prizePool.trim(),
+        winnerCount: Number(form.winnerCount) || 1,
+        startAt: form.startAt || null,
+      });
+      setForm({ title: "", description: "", prizePool: "", winnerCount: "1", startAt: "" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create tournament");
+    }
+  }
+
+  async function onClaim(e: React.FormEvent) {
+    e.preventDefault();
+    setClaimError("");
+    if (!claimCode.trim()) return;
+    try {
+      await claim.mutateAsync(claimCode.trim());
+      setClaimCode("");
+    } catch (err) {
+      setClaimError(err instanceof Error ? err.message : "Could not claim");
+    }
+  }
+
+  async function copy(text: string, key: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied(""), 1500);
+    } catch {
+      /* ignore */
+    }
   }
 
   function logout() {
@@ -52,46 +100,110 @@ export default function SponsorDashboardPage() {
           <div>
             <p className="eyebrow">SPONSOR DASHBOARD</p>
             <h1>{sponsor?.name}</h1>
-            <p>Create tournaments for your players. Each one is reviewed by an admin before it goes live.</p>
+            <p>Create tournaments for your players and claim any private tournament an admin set up for you.</p>
           </div>
         </div>
 
         <p className="sponsor-note">
-          <ShieldCheck size={15} /> New tournaments start as <b>Pending</b> and appear to users only after an admin approves them.
+          <ShieldCheck size={15} /> Tournaments you create start as <b>Pending</b> and go live only after an admin approves them.
         </p>
 
-        <div className="admin-card glass wide">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">CREATE</p>
-              <h2>New tournament</h2>
+        <div className="dash-two-col">
+          {/* Create public tournament */}
+          <div className="admin-card glass">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">CREATE</p>
+                <h2>New tournament</h2>
+              </div>
+              <Unlock size={16} />
             </div>
+            <form onSubmit={onCreate} className="promo-form-grid">
+              <label className="pf-full">
+                <span>Tournament name</span>
+                <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Neon Weekend Cup" />
+              </label>
+              <label className="pf-full">
+                <span>Description</span>
+                <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Optional" />
+              </label>
+              <label className="pf-field">
+                <span>Prize</span>
+                <input value={form.prizePool} onChange={(e) => setForm((f) => ({ ...f, prizePool: e.target.value }))} placeholder="e.g. 1,000 USDT" />
+              </label>
+              <label className="pf-field">
+                <span>Winners</span>
+                <input type="number" min={1} value={form.winnerCount} onChange={(e) => setForm((f) => ({ ...f, winnerCount: e.target.value }))} />
+              </label>
+              <label className="pf-full">
+                <span>Starts at (optional)</span>
+                <input type="datetime-local" value={form.startAt} onChange={(e) => setForm((f) => ({ ...f, startAt: e.target.value }))} />
+              </label>
+              {error && <div className="pf-full sponsor-auth-err">{error}</div>}
+              <div className="pf-full pf-actions">
+                <button className="primary" type="submit" disabled={create.isPending || !form.title.trim()}>
+                  <Plus size={16} /> Submit for approval
+                </button>
+              </div>
+            </form>
           </div>
-          <form onSubmit={onCreate} className="promo-form">
-            <input placeholder="Tournament title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
-            <input placeholder="Short description (optional)" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-            <button className="primary" type="submit" disabled={create.isPending || !form.title.trim()}>
-              <Plus size={16} /> Submit for approval
-            </button>
-          </form>
+
+          {/* Claim a private tournament */}
+          <div className="admin-card glass">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">CLAIM</p>
+                <h2>Private tournament</h2>
+              </div>
+              <Lock size={16} />
+            </div>
+            <p className="pf-note" style={{ marginTop: 0 }}>
+              An admin set up a private tournament for you? Enter the sponsor code they gave you to link it to your account.
+            </p>
+            <form onSubmit={onClaim} className="promo-form">
+              <input value={claimCode} onChange={(e) => setClaimCode(e.target.value)} placeholder="e.g. SPN-1A2B3C4D" style={{ textTransform: "uppercase" }} />
+              <button className="secondary" type="submit" disabled={claim.isPending || !claimCode.trim()}>
+                <Link2 size={15} /> Claim
+              </button>
+            </form>
+            {claimError && <div className="sponsor-auth-err" style={{ marginTop: 8 }}>{claimError}</div>}
+          </div>
         </div>
 
+        {/* All my tournaments */}
         <div className="admin-card glass wide" style={{ marginTop: 18 }}>
           <div className="section-heading">
             <div>
               <p className="eyebrow">YOUR TOURNAMENTS</p>
-              <h2>Submissions</h2>
+              <h2>{(tournaments ?? []).length} total</h2>
             </div>
             <Trophy size={18} />
           </div>
-          {(tournaments ?? []).length === 0 && <div style={{ padding: 16, color: "var(--muted)" }}>No tournaments yet — create one above.</div>}
+          {(tournaments ?? []).length === 0 && <div className="empty-line">No tournaments yet.</div>}
           {(tournaments ?? []).map((t) => (
-            <div className="pending-row" key={t.id}>
-              <div>
-                <b>{t.title}</b>
-                <small>{t.description || "no description"}</small>
+            <div className="tourn-row" key={t.id}>
+              <div className="tourn-main">
+                <div className="tourn-title">
+                  <b>{t.title}</b>
+                  <span className={`vis-pill ${t.visibility.toLowerCase()}`}>
+                    {t.visibility === "PRIVATE" ? <Lock size={11} /> : <Unlock size={11} />} {t.visibility}
+                  </span>
+                  <span className={`promo-status ${t.status.toLowerCase()}`}>{t.status}</span>
+                </div>
+                <div className="tourn-meta">
+                  <span>Prize: {t.prizePool || "—"}</span>
+                  <span>Winners: {t.winnerCount}</span>
+                  <span>Starts: {fmtDate(t.startAt)}</span>
+                  <span>{t.entryCount} joined</span>
+                </div>
+                {t.visibility === "PRIVATE" && t.joinCode && (
+                  <div className="code-chips">
+                    <button className="code-chip" onClick={() => copy(t.joinCode ?? "", `j-${t.id}`)} title="Share this code with your players">
+                      Share join code: <code>{t.joinCode}</code> <Copy size={12} /> {copied === `j-${t.id}` && <em>copied</em>}
+                    </button>
+                  </div>
+                )}
               </div>
-              <span className={`promo-status ${t.status.toLowerCase()}`}>{t.status}</span>
             </div>
           ))}
         </div>

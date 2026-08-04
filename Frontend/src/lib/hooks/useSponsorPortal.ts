@@ -22,8 +22,25 @@ export interface SponsorTournamentRow {
   id: string;
   title: string;
   description: string;
+  visibility: "PUBLIC" | "PRIVATE";
   status: "PENDING" | "APPROVED" | "REJECTED";
+  startAt: string | null;
+  endAt: string | null;
+  prizePool: string;
+  winnerCount: number;
+  entryCount: number;
+  sponsorCode?: string | null;
+  joinCode?: string | null;
   createdAt: string;
+}
+
+export interface SponsorCreateInput {
+  title: string;
+  description?: string;
+  startAt?: string | null;
+  endAt?: string | null;
+  prizePool?: string;
+  winnerCount?: number;
 }
 
 export function useSponsorLogin() {
@@ -48,8 +65,19 @@ export function useCreateSponsorTournament() {
   const token = useSponsorAuthStore((s) => s.token);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (b: { title: string; description?: string }) =>
+    mutationFn: (b: SponsorCreateInput) =>
       sponsorRequest<SponsorTournamentRow>("/sponsor/tournaments", { method: "POST", body: b, token }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sponsor-tournaments"] }),
+  });
+}
+
+// Claim a private tournament using the sponsor code an admin issued.
+export function useClaimTournament() {
+  const token = useSponsorAuthStore((s) => s.token);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sponsorCode: string) =>
+      sponsorRequest<SponsorTournamentRow>("/sponsor/claim", { method: "POST", body: { sponsorCode }, token }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sponsor-tournaments"] }),
   });
 }

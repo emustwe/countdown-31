@@ -71,7 +71,7 @@ export default function LandingPage() {
         <button
           className="primary xl landing-continue flip-card"
           key={`continue-${fContinue}`}
-          onClick={() => router.push("/play")}
+          onClick={() => router.push("/home")}
         >
           <span>{fContinue === 1 ? "게임 시작하기" : "Enter to the game"}</span>
           <ChevronRight size={20} />

@@ -14,16 +14,16 @@ export function NewAdminNav() {
   const initials = (profile?.fullName || profile?.email || "AD").slice(0, 2).toUpperCase();
 
   const items: [string, typeof Trophy, string][] = [
-    ["Dashboard", LayoutDashboard, "/admin/new"],
-    ["Tournament", Trophy, "/admin/new/tournament"],
-    ["Users", Users, "/admin/new/users"],
-    ["Sponsor", Building2, "/admin/new/sponsor"],
-    ["Settings", SettingsIcon, "/admin/new/settings"],
+    ["Dashboard", LayoutDashboard, "/admin"],
+    ["Tournament", Trophy, "/admin/tournament"],
+    ["Users", Users, "/admin/users"],
+    ["Sponsor", Building2, "/admin/sponsor"],
+    ["Settings", SettingsIcon, "/admin/settings"],
   ];
 
   return (
     <header className="admin-nav new-nav">
-      <button className="admin-nav-back" onClick={() => router.push("/admin")} title="Dashboards" aria-label="Back to dashboards">
+      <button className="admin-nav-back" onClick={() => router.push("/home")} title="Back to app" aria-label="Back to app">
         <ChevronLeft size={18} />
       </button>
       <nav>

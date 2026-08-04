@@ -12,13 +12,6 @@ const PLAYER_BALANCE = 1_000n * USDT;
 
 const PLAYER_EMAILS = ["alice@auroraways.demo", "bob@auroraways.demo", "carol@auroraways.demo"];
 
-// Top-10 prize split (percent), mirrors PRIZE_SPLIT in tournaments.service.ts.
-const PRIZE_SPLIT = [30, 20, 15, 10, 5, 4, 4, 4, 4, 4];
-
-function prizeTableFromPool(poolBaseUnits: bigint): { rank: number; amount: string }[] {
-  return PRIZE_SPLIT.map((pct, i) => ({ rank: i + 1, amount: ((poolBaseUnits * BigInt(pct)) / 100n).toString() }));
-}
-
 async function ensureUser(email: string, passwordHash: string, role: "ADMIN" | "PLAYER") {
   return prisma.user.upsert({
     where: { email },
@@ -80,19 +73,7 @@ async function main(): Promise<void> {
     if (has === 0) await setBalance(w.userId, PLAYER_BALANCE);
   }
 
-  // 4. Convert existing group tournaments (WEEKLY/MONTHLY) to USDT entry fees + prize tables.
-  //    startingCredits (in-match coins) is a separate game unit and is left unchanged.
-  const groupTournaments = await prisma.tournament.findMany({ where: { format: { in: ["WEEKLY", "MONTHLY"] } } });
-  for (const t of groupTournaments) {
-    const entryFee = 25n * USDT; // 25 USDT
-    const pool = (t.format === "MONTHLY" ? 10_000n : 2_000n) * USDT; // fees collected exceed the pool (rake)
-    await prisma.tournament.update({
-      where: { id: t.id },
-      data: { entryFee, prizeJson: prizeTableFromPool(pool) },
-    });
-  }
-
-  // 5. Game config (unchanged): points-tournament math model is the active default.
+  // 4. Game config (unchanged): points-tournament math model is the active default.
   await prisma.gameConfig.upsert({
     where: { id: "singleton" },
     update: { activeModelId: "aurora-ways-tournament", themeFamily: "monster" },
@@ -101,7 +82,6 @@ async function main(): Promise<void> {
 
   console.log(`Treasury (${TREASURY_EMAIL}) funded with ${TREASURY_FLOAT / USDT} USDT.`);
   console.log(`Admin + ${PLAYER_EMAILS.length} demo players + ${otherWallets.length} other wallets set to USDT balances.`);
-  console.log(`Converted ${groupTournaments.length} group tournament(s) to USDT entry fees + prize tables.`);
 }
 
 main()

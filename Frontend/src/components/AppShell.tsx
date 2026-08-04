@@ -9,7 +9,7 @@ import { formatUsdt } from "../lib/money";
 
 const NAV_LINKS = [
   { href: "/home", label: "Home" },
-  { href: "/tournaments", label: "Tournaments" },
+  { href: "/events", label: "Tournaments" },
   { href: "/wallet", label: "Wallet" },
   { href: "/history", label: "History" },
   { href: "/profile", label: "Profile" },
