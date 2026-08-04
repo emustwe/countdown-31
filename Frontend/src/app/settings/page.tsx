@@ -287,7 +287,14 @@ function SettingsContent() {
                 />
               </p>
               <div className="settings-card-preview">
-                <CardPreview card={cosmetics?.card} name={profile?.fullName || profile?.email?.split("@")[0] || "Player"} size="lg" />
+                <CardPreview
+                  card={cosmetics?.card}
+                  avatar={cosmetics?.avatar}
+                  cloth={cosmetics?.cloth}
+                  shoes={cosmetics?.shoes}
+                  name={profile?.fullName || profile?.email?.split("@")[0] || "Player"}
+                  size="lg"
+                />
               </div>
               <button className="secondary" style={{ marginTop: 16 }} onClick={() => router.push("/shop")}>
                 <Sparkles size={15} /> {ko ? "상점에서 카드 꾸미기" : "Design your card in the Shop"}

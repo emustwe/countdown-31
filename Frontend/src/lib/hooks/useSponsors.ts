@@ -223,8 +223,16 @@ export interface CardCosmetics {
   shape?: "rounded" | "sharp" | "pill";
   border?: "none" | "gold" | "neon";
 }
+export interface AvatarCosmetics { gender?: "male" | "female"; skin?: string; hair?: string }
+export interface ClothCosmetics { outfit?: "tee" | "hoodie" | "suit" | "jersey"; color?: string }
+export interface ShoesCosmetics { style?: "sneakers" | "boots"; color?: string }
+export interface BoardCosmetics { skin?: "classic" | "neon" | "sunset" | "carbon" }
 export interface Cosmetics {
   card?: CardCosmetics;
+  avatar?: AvatarCosmetics;
+  cloth?: ClothCosmetics;
+  shoes?: ShoesCosmetics;
+  board?: BoardCosmetics;
   [k: string]: unknown;
 }
 export function useCosmetics(enabled = true) {
