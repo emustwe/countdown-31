@@ -106,19 +106,20 @@ function shade(hex: string, f: number): string {
 function fullBodyMarkup(c: AvatarConfig): string {
   const p = hx(c.pants, "2f3a4a");
   const s = hx(c.shoeColor, "ffffff");
-  const legs =
+  // Short pelvis bridges the shirt hem to the legs; two clearly-separated legs (visible inseam gap)
+  // then distinct feet. The illustrated head+torso <image> is drawn last so the shirt overlaps the
+  // waistband (shirt-over-pants), giving a connected full-body figure.
+  const pelvis = `<path d="M96 256 Q140 247 184 256 L179 292 Q140 302 101 292 Z" fill="#${p}"/>`;
+  const legL = `<rect x="98" y="284" width="37" height="92" rx="15" fill="#${p}"/>`;
+  const legR = `<rect x="145" y="284" width="37" height="92" rx="15" fill="${shade(p, 0.85)}"/>`;
+  const feet =
     c.shoeStyle === "boots"
-      ? `<rect x="110" y="298" width="27" height="112" rx="11" fill="#${p}"/>` +
-        `<rect x="143" y="298" width="27" height="112" rx="11" fill="${shade(p, 0.85)}"/>` +
-        `<rect x="104" y="400" width="37" height="34" rx="9" fill="#${s}"/>` +
-        `<rect x="139" y="400" width="37" height="34" rx="9" fill="${shade(s, 0.82)}"/>`
-      : `<rect x="110" y="298" width="27" height="124" rx="11" fill="#${p}"/>` +
-        `<rect x="143" y="298" width="27" height="124" rx="11" fill="${shade(p, 0.85)}"/>` +
-        `<ellipse cx="121" cy="432" rx="23" ry="13" fill="#${s}"/>` +
-        `<ellipse cx="159" cy="432" rx="23" ry="13" fill="${shade(s, 0.82)}"/>`;
-  const hips = `<path d="M104 264 Q140 254 176 264 L172 306 Q140 316 108 306 Z" fill="#${p}"/>`;
+      ? `<rect x="92" y="360" width="46" height="30" rx="9" fill="#${s}"/>` +
+        `<rect x="142" y="360" width="46" height="30" rx="9" fill="${shade(s, 0.85)}"/>`
+      : `<path d="M96 366 q0 -8 8 -8 h26 q10 0 12 12 l1 8 q0 6 -6 6 H92 q-6 0 -6 -6 q0 -8 10 -12 z" fill="#${s}"/>` +
+        `<path d="M184 366 q0 -8 -8 -8 h-26 q-10 0 -12 12 l-1 8 q0 6 6 6 H188 q6 0 6 -6 q0 -8 -10 -12 z" fill="${shade(s, 0.85)}"/>`;
   const head = `<image href="${headDataUri(c)}" x="0" y="0" width="280" height="280"/>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 452" preserveAspectRatio="xMidYMax meet" style="width:100%;height:100%">${hips}${legs}${head}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 398" preserveAspectRatio="xMidYMax meet" style="width:100%;height:100%">${pelvis}${legL}${legR}${feet}${head}</svg>`;
 }
 
 export function Avatar({ config, className }: { config?: Partial<AvatarConfig>; className?: string }) {
