@@ -31,11 +31,17 @@ function reasonText(r: LiveReason | undefined): string {
 
 export function CountDown31() {
   const guestName = useGuestStore((s) => s.username);
+  const setGuestName = useGuestStore((s) => s.setUsername);
   const user = useAuthStore((s) => s.user);
-  const [fallback] = useState(() => `Guest ${Math.floor(1000 + Math.random() * 9000)}`);
-  const username = user?.fullName || user?.email?.split("@")[0] || guestName || fallback;
+  const defaultName = user?.fullName || user?.email?.split("@")[0] || guestName || "";
   const soundOn = useSettingsStore((s) => s.soundEnabled);
-  const { state, myId, submit, rejoin } = useCountdownLive(username);
+  const { state, myId, join, submit } = useCountdownLive();
+
+  // The player only joins after choosing a username. `chosenName` remembers it so a rejoin after
+  // elimination is one click (no re-typing).
+  const [chosenName, setChosenName] = useState<string>("");
+  const [showNameGate, setShowNameGate] = useState(false);
+  const [nameInput, setNameInput] = useState("");
 
   const [selected, setSelected] = useState<number[]>([]);
   const [now, setNow] = useState(() => Date.now());
@@ -84,6 +90,22 @@ export function CountDown31() {
     setSelected([]);
   }
 
+  function openNameGate() {
+    setNameInput(chosenName || defaultName);
+    setShowNameGate(true);
+  }
+  function confirmJoin() {
+    const name = nameInput.trim().slice(0, 20) || `Guest ${Math.floor(1000 + Math.random() * 9000)}`;
+    setChosenName(name);
+    if (!user) setGuestName(name);
+    join(name);
+    setShowNameGate(false);
+  }
+  function rejoin() {
+    if (chosenName) join(chosenName);
+    else openNameGate();
+  }
+
   const turnLabel = !state
     ? "Connecting…"
     : status === "waiting"
@@ -95,8 +117,10 @@ export function CountDown31() {
   return (
     <div className="cd31">
       <header className="cd31-head">
-        <h1>Count Down 31</h1>
-        <p>Live practice — anyone can join. Take 1–3 in a row (no skips), never the same amount as the last turn, and never say 31. Break a rule and you&apos;re out (rejoin anytime).</p>
+        <h1 className="cd31-title">
+          <span>Count Down</span>
+          <b>31</b>
+        </h1>
       </header>
 
       <div className="cd31-score">
@@ -166,8 +190,8 @@ export function CountDown31() {
           <Check size={18} /> Submit
         </button>
       ) : (
-        <button className="cd31-submit" onClick={rejoin}>
-          <LogIn size={18} /> {players.length ? "Rejoin the game" : "Join the game"}
+        <button className="cd31-submit" onClick={chosenName ? rejoin : openNameGate}>
+          <LogIn size={18} /> {chosenName ? "Rejoin the game" : "Join the game"}
         </button>
       )}
 
@@ -203,6 +227,26 @@ export function CountDown31() {
         })}
         {players.length === 0 && <p className="cd31-proll-empty">No players yet — be the first to join.</p>}
       </div>
+
+      {showNameGate && (
+        <div className="cd31-gate-overlay" onClick={() => setShowNameGate(false)}>
+          <div className="cd31-gate glass" onClick={(e) => e.stopPropagation()}>
+            <h2>Choose your name</h2>
+            <p>This is how other players see you in the game.</p>
+            <input
+              autoFocus
+              value={nameInput}
+              maxLength={20}
+              placeholder="Your name"
+              onChange={(e) => setNameInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && nameInput.trim()) confirmJoin(); }}
+            />
+            <button className="primary full xl" onClick={confirmJoin} disabled={!nameInput.trim()}>
+              <LogIn size={18} /> Enter game
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

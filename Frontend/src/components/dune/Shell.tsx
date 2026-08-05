@@ -184,17 +184,18 @@ function TopNav({ activeKey, authed, initials, avatarUrl, name, email, brandVa =
     <header className={`topnav ${brandVa ? "va-nav" : ""}`}>
       <div className="nav-inner">
         <Logo />
-        <nav>
-          {NAV_ITEMS.map(([key, label, labelKo, Icon, path, disabled]) => (
+        <nav className="nav-icons">
+          {NAV_ITEMS.map(([key, label, , Icon, path, disabled]) => (
             <button
               key={key}
               className={`${activeKey === key ? "active" : ""} ${disabled ? "disabled" : ""}`}
               disabled={disabled}
               aria-disabled={disabled}
+              aria-label={label}
+              title={label}
               onClick={() => !disabled && router.push(path)}
             >
-              <Icon size={17} />
-              <FlipText intervalMs={5000} items={[<>{label}</>, <>{labelKo}</>]} />
+              <Icon size={23} strokeWidth={2} />
             </button>
           ))}
         </nav>

@@ -68,6 +68,7 @@ export interface Inquiry {
   name: string | null;
   email: string;
   message: string;
+  tournamentRef: string | null;
   createdAt: string;
   tournament: { id: string; title: string } | null;
   sponsor: { id: string; name: string } | null;
@@ -199,7 +200,7 @@ export function useSponsorshipOpportunities() {
 export function useCreateInquiry() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (b: { type: "SPONSORSHIP" | "ENTRY"; tournamentId?: string | null; email: string; message?: string; name?: string }) =>
+    mutationFn: (b: { type: "SPONSORSHIP" | "ENTRY"; tournamentId?: string | null; tournamentRef?: string; email: string; message?: string; name?: string }) =>
       apiRequest<{ ok: boolean }>("/inquiries", { method: "POST", body: b, auth: false }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-inquiries"] }),
   });
@@ -213,6 +214,22 @@ export function useSetInquiryStatus() {
     mutationFn: ({ id, status }: { id: string; status: "NEW" | "CONTACTED" | "CLOSED" }) =>
       apiRequest<Inquiry>(`/admin/inquiries/${id}`, { method: "PATCH", body: { status } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-inquiries"] }),
+  });
+}
+// Resolve a specific-tournament sponsorship request: create/assign a sponsor + attach the tournament.
+export function useAssignSponsorToInquiry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; name?: string; username?: string; password?: string; sponsorId?: string }) =>
+      apiRequest<{ sponsor: { id: string; name: string; username: string } | null; credentials: { username: string; password: string } | null }>(
+        `/admin/inquiries/${id}/assign-sponsor`,
+        { method: "POST", body },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-inquiries"] });
+      qc.invalidateQueries({ queryKey: ["admin-promos"] });
+      qc.invalidateQueries({ queryKey: ["admin-sponsors"] });
+    },
   });
 }
 

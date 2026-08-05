@@ -106,6 +106,9 @@ model Inquiry {
   name         String?
   email        String
   message      String             @default("")
+  // A user-typed tournament name/reference (for entry requests where no specific tournament was
+  // selected from a list). tournamentId is set when the request came from a specific opportunity.
+  tournamentRef String?
   tournamentId String?
   tournament   SponsorTournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
   sponsorId    String?            // set when the request should also reach an assigned sponsor

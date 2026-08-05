@@ -22,24 +22,20 @@ export interface LiveState {
 }
 
 /**
- * Connects to the live, always-on Count Down 31 game on the "/countdown" namespace. Joins with a
- * display name (guest — no account needed), receives the shared game state in real time, and can
- * submit a move or rejoin after being eliminated.
+ * Connects to the live, always-on Count Down 31 game on the "/countdown" namespace. On connect the
+ * client only SPECTATES (sees the running game with its CPU players); it joins the game as a player
+ * only when the user chooses a name and calls join(). Break a rule and you're out — call join()
+ * again to rejoin.
  */
-export function useCountdownLive(username: string) {
+export function useCountdownLive() {
   const [state, setState] = useState<LiveState | null>(null);
   const [myId, setMyId] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
-  const nameRef = useRef(username);
-  nameRef.current = username;
 
   useEffect(() => {
     const socket = io(`${WS_URL}/countdown`, { transports: ["websocket"] });
     socketRef.current = socket;
-    socket.on("connect", () => {
-      setMyId(socket.id ?? null);
-      socket.emit("join", { name: nameRef.current });
-    });
+    socket.on("connect", () => setMyId(socket.id ?? null));
     socket.on("state", (s: LiveState) => setState(s));
     return () => {
       socket.disconnect();
@@ -47,12 +43,12 @@ export function useCountdownLive(username: string) {
     };
   }, []);
 
+  const join = useCallback((name: string) => {
+    socketRef.current?.emit("join", { name });
+  }, []);
   const submit = useCallback((picks: number[]) => {
     socketRef.current?.emit("submit", { picks });
   }, []);
-  const rejoin = useCallback(() => {
-    socketRef.current?.emit("join", { name: nameRef.current });
-  }, []);
 
-  return { state, myId, submit, rejoin };
+  return { state, myId, join, submit };
 }

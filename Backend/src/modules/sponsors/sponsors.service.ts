@@ -50,6 +50,7 @@ export interface UpdatePromoInput extends AdminCreatePromoInput {
 export interface InquiryInput {
   type?: string;
   tournamentId?: string | null;
+  tournamentRef?: string;
   name?: string;
   email?: string;
   message?: string;
@@ -540,12 +541,44 @@ export class SponsorsService {
         email,
         name: (input.name || "").trim().slice(0, 120) || null,
         message: (input.message || "").trim().slice(0, 2000),
+        tournamentRef: (input.tournamentRef || "").trim().slice(0, 120) || null,
         tournamentId,
         sponsorId,
         userId: input.userId || null,
       },
     });
     return { ok: true };
+  }
+
+  /**
+   * Admin resolves a specific-tournament sponsorship request: create (or reuse) a sponsor account,
+   * attach the request's tournament to it (so it appears in that sponsor's dashboard), and mark the
+   * request handled. Returns the sponsor's login so the admin can hand it over.
+   */
+  async assignSponsorToInquiry(
+    inquiryId: string,
+    body: { name?: string; username?: string; password?: string; sponsorId?: string },
+  ) {
+    const inquiry = await this.prisma.inquiry.findUnique({ where: { id: inquiryId } });
+    if (!inquiry) throw new NotFoundException("Request not found");
+    if (!inquiry.tournamentId) throw new BadRequestException("This request isn't tied to a specific tournament");
+
+    let sponsorId = body.sponsorId;
+    let credentials: { username: string; password: string } | null = null;
+    if (!sponsorId) {
+      const created = await this.createSponsor(body.name || inquiry.name || "Sponsor", body.username, body.password);
+      sponsorId = created.id;
+      credentials = { username: created.username, password: created.password };
+    }
+
+    await this.prisma.sponsorTournament.update({
+      where: { id: inquiry.tournamentId },
+      data: { sponsorId, seekingSponsor: false },
+    });
+    await this.prisma.inquiry.update({ where: { id: inquiryId }, data: { status: "CONTACTED", sponsorId } });
+
+    const sponsor = await this.prisma.sponsor.findUnique({ where: { id: sponsorId }, select: { id: true, name: true, username: true } });
+    return { sponsor, credentials };
   }
 
   async listInquiries() {
@@ -581,6 +614,7 @@ export class SponsorsService {
     name: string | null;
     email: string;
     message: string;
+    tournamentRef: string | null;
     createdAt: Date;
     tournament?: { id: string; title: string } | null;
     sponsor?: { id: string; name: string } | null;
@@ -592,6 +626,7 @@ export class SponsorsService {
       name: i.name,
       email: i.email,
       message: i.message,
+      tournamentRef: i.tournamentRef,
       createdAt: i.createdAt,
       tournament: i.tournament ? { id: i.tournament.id, title: i.tournament.title } : null,
       sponsor: i.sponsor ? { id: i.sponsor.id, name: i.sponsor.name } : null,

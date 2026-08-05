@@ -685,12 +685,30 @@ h3 {
 }
 .cd31-head h1 {
   margin: 0;
-  font-size: clamp(30px, 4.6vw, 46px);
 }
-.cd31-head p {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 14px;
+.cd31-title {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 0.2em;
+  line-height: 1;
+  font-size: clamp(28px, 4.4vw, 52px);
+  letter-spacing: 0.015em;
+}
+.cd31-title span { white-space: nowrap; }
+.cd31-title span {
+  color: #fff;
+  text-shadow: 0 3px 26px rgba(0, 0, 0, 0.55);
+}
+.cd31-title b {
+  font-size: 1.28em;
+  background: linear-gradient(135deg, #dfff49, #5be348 46%, #24d9cb);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 26px rgba(90, 227, 72, 0.5));
 }
 /* Match scoreboard: You score · Round X/10 · CPU score. */
 .cd31-score {
@@ -7311,3 +7329,25 @@ button.mini:hover { filter: brightness(1.06); }
   .studio-preview .avatar-stage { width: 220px; }
   .studio-save { width: auto; }
 }
+
+/* Icon-only navbar (universal symbols, no text) */
+.topnav nav.nav-icons button { padding: 11px 13px; }
+
+/* Count Down 31 — choose-your-name gate before joining */
+.cd31-gate-overlay {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+  background: rgba(6, 4, 12, 0.72); backdrop-filter: blur(4px); padding: 24px;
+}
+.cd31-gate {
+  width: 100%; max-width: 380px; padding: 26px 24px; border-radius: 20px; text-align: center;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.cd31-gate h2 { margin: 0; font-size: 22px; }
+.cd31-gate p { margin: 0; color: var(--muted); font-size: 13px; }
+.cd31-gate input {
+  padding: 13px 14px; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--input-bg, rgba(255,255,255,0.05)); color: var(--text); font-size: 16px; text-align: center; margin-top: 4px;
+}
+.cd31-gate input:focus { outline: none; border-color: var(--gold2); }
+.cd31-gate button { margin-top: 6px; }
+.vis-pill.seeking { background: rgba(244,185,66,0.16); color: var(--gold2); }

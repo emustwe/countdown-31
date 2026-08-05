@@ -6,7 +6,10 @@ import { PageShell, OrbIcon } from "../../components/dune/Shell";
 import { useSponsorshipOpportunities, useCreateInquiry, type PromoTournament } from "../../lib/hooks/useSponsors";
 import { useProfile } from "../../lib/hooks/useAuth";
 
-type ContactState = { type: "SPONSORSHIP" | "ENTRY"; tournamentId?: string; title?: string } | null;
+type ContactState = { type: "SPONSORSHIP" | "ENTRY"; tournamentId?: string; title?: string; ref?: string } | null;
+
+// A short, human-friendly reference for a tournament, shown so people can quote it in messages.
+const refOf = (id: string) => "#" + id.slice(0, 6).toUpperCase();
 
 // Public sponsorship hub: shows private tournaments an admin has opened for sponsorship, lets
 // visitors offer to sponsor one (message + email → admin), and lets anyone request entry to a
@@ -58,7 +61,7 @@ export default function SponsorshipPage() {
         ) : (
           <div className="events-grid">
             {list.map((t) => (
-              <OpportunityCard key={t.id} t={t} onSponsor={() => setContact({ type: "SPONSORSHIP", tournamentId: t.id, title: t.title })} />
+              <OpportunityCard key={t.id} t={t} onSponsor={() => setContact({ type: "SPONSORSHIP", tournamentId: t.id, title: t.title, ref: refOf(t.id) })} />
             ))}
           </div>
         )}
@@ -74,6 +77,7 @@ function OpportunityCard({ t, onSponsor }: { t: PromoTournament; onSponsor: () =
   return (
     <div className="event-card glass">
       <span className="event-card-ico"><Trophy size={22} /></span>
+      <span className="event-sponsor">Ref {refOf(t.id)}</span>
       <h3>{t.title}</h3>
       <p>{t.description || "A private tournament looking for a sponsor."}</p>
       <div className="event-facts">
@@ -93,6 +97,7 @@ function ContactModal({ state, onClose }: { state: NonNullable<ContactState>; on
   const [email, setEmail] = useState(profile?.email ?? "");
   const [name, setName] = useState(profile?.fullName ?? "");
   const [message, setMessage] = useState("");
+  const [tournamentRef, setTournamentRef] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
@@ -106,8 +111,19 @@ function ContactModal({ state, onClose }: { state: NonNullable<ContactState>; on
       setError("Please enter a valid email.");
       return;
     }
+    if (!isSponsor && !tournamentRef.trim()) {
+      setError("Please enter the tournament name or reference you want to join.");
+      return;
+    }
     try {
-      await send.mutateAsync({ type: state.type, tournamentId: state.tournamentId, email: email.trim(), name: name.trim(), message: message.trim() });
+      await send.mutateAsync({
+        type: state.type,
+        tournamentId: state.tournamentId,
+        tournamentRef: isSponsor ? state.ref : tournamentRef.trim(),
+        email: email.trim(),
+        name: name.trim(),
+        message: message.trim(),
+      });
       setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send");
@@ -128,13 +144,25 @@ function ContactModal({ state, onClose }: { state: NonNullable<ContactState>; on
         ) : (
           <>
             <h2 style={{ marginTop: 0 }}>{heading}</h2>
-            {state.title && <p className="muted" style={{ marginTop: -4 }}>For: <b>{state.title}</b></p>}
+            {state.title && (
+              <p className="muted" style={{ marginTop: -4 }}>
+                For: <b>{state.title}</b>{state.ref && <> · Ref <code style={{ color: "var(--gold2)" }}>{state.ref}</code></>}
+              </p>
+            )}
             <p className="muted" style={{ fontSize: 13 }}>
               {isSponsor
-                ? "Leave your email and a short note. An admin will contact you to discuss and, if it's a fit, issue you a sponsor code."
-                : "Leave your email and which tournament you'd like to join. An admin will check eligibility and send you a referral code."}
+                ? state.tournamentId
+                  ? "You're offering to sponsor this specific tournament. Leave your email and a note — an admin will contact you and, if it's a fit, set you up as its sponsor."
+                  : "General sponsorship enquiry. Leave your email and a note — an admin will contact you to discuss sponsoring or creating a tournament."
+                : "Tell us which tournament you want to join and how to reach you. An admin will check eligibility and send you a referral code."}
             </p>
             <form onSubmit={submit} className="promo-form-grid">
+              {!isSponsor && (
+                <label className="pf-full">
+                  <span>Tournament name or reference</span>
+                  <input value={tournamentRef} onChange={(e) => setTournamentRef(e.target.value)} placeholder="e.g. VIP Private Cup or #A1B2C3" />
+                </label>
+              )}
               <label className="pf-full">
                 <span>Your name</span>
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Optional" />

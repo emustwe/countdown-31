@@ -98,6 +98,15 @@ export class AdminInquiriesController {
   setStatus(@Param("id") id: string, @Body() body: { status?: string }) {
     return this.sponsors.setInquiryStatus(id, body?.status ?? "");
   }
+  // Resolve a specific-tournament sponsorship request: create/assign a sponsor and attach the
+  // tournament to them (auto-appears in that sponsor's dashboard).
+  @Post(":id/assign-sponsor")
+  assignSponsor(
+    @Param("id") id: string,
+    @Body() body: { name?: string; username?: string; password?: string; sponsorId?: string },
+  ) {
+    return this.sponsors.assignSponsorToInquiry(id, body ?? {});
+  }
 }
 
 // Sponsor-facing: login (public) + their own dashboard (sponsor JWT).
