@@ -1,30 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Copy, KeyRound, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Building2, Copy, Eye, EyeOff, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import {
   useSponsors,
   useCreateSponsor,
   useUpdateSponsor,
-  useRegenerateSponsor,
   useDeleteSponsor,
   type SponsorRow,
 } from "../../../lib/hooks/useSponsors";
 
 // Sponsor management: create accounts (admin can set a custom username + password, or leave blank to
-// auto-generate), edit any sponsor field, regenerate a password, and delete. Passwords are stored
-// hashed — plaintext is only ever shown once at create/regenerate.
+// auto-generate), and view/edit any sponsor's credentials — including the password — at any time.
 export default function SponsorAdminPage() {
   const { data: sponsors } = useSponsors();
   const create = useCreateSponsor();
   const update = useUpdateSponsor();
-  const regen = useRegenerateSponsor();
   const del = useDeleteSponsor();
 
   const [form, setForm] = useState({ name: "", username: "", password: "" });
   const [error, setError] = useState("");
   const [reveal, setReveal] = useState<{ name: string; username?: string; password: string } | null>(null);
   const [editing, setEditing] = useState<SponsorRow | null>(null);
+  const [shown, setShown] = useState<Record<string, boolean>>({});
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -40,14 +38,6 @@ export default function SponsorAdminPage() {
       setForm({ name: "", username: "", password: "" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create sponsor");
-    }
-  }
-  async function onRegen(id: string, sponsorName: string) {
-    try {
-      const res = await regen.mutateAsync(id);
-      setReveal({ name: sponsorName, password: res.password });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not regenerate password");
     }
   }
 
@@ -91,7 +81,7 @@ export default function SponsorAdminPage() {
       </div>
 
       <p className="sponsor-note">
-        <ShieldCheck size={15} /> Passwords are stored hashed. A plaintext password is shown only once at create/regenerate — copy it then. Editing lets you set a new one anytime.
+        <ShieldCheck size={15} /> Passwords are encrypted at rest but visible to you here, and you can change any credential anytime via Edit.
       </p>
 
       <div className="admin-card glass wide">
@@ -99,8 +89,8 @@ export default function SponsorAdminPage() {
           <div className="tr th">
             <span>Sponsor</span>
             <span>Username</span>
+            <span>Password</span>
             <span>Status</span>
-            <span>Tournaments</span>
             <span>Actions</span>
           </div>
           {(sponsors ?? []).length === 0 && <div style={{ padding: 24, color: "var(--muted)" }}>No sponsors yet — create one above.</div>}
@@ -111,14 +101,23 @@ export default function SponsorAdminPage() {
                 <b>{s.name}</b>
               </span>
               <span><code className="sponsor-user">{s.username}</code></span>
+              <span className="pw-cell">
+                {s.password ? (
+                  <>
+                    <code>{shown[s.id] ? s.password : "••••••••"}</code>
+                    <button className="icon-button sm" onClick={() => setShown((m) => ({ ...m, [s.id]: !m[s.id] }))} aria-label={shown[s.id] ? "Hide" : "Show"}>
+                      {shown[s.id] ? <EyeOff size={13} /> : <Eye size={13} />}
+                    </button>
+                    <button className="icon-button sm" onClick={() => navigator.clipboard?.writeText(s.password)} aria-label="Copy password"><Copy size={13} /></button>
+                  </>
+                ) : (
+                  <small style={{ color: "var(--muted)" }}>— set via Edit</small>
+                )}
+              </span>
               <span><span className={`promo-status ${s.status === "ACTIVE" ? "approved" : "rejected"}`}>{s.status}</span></span>
-              <span>{s.tournamentCount}</span>
               <span className="row-actions">
                 <button className="mini secondary" onClick={() => { setEditing(s); setError(""); }}>
                   <Pencil size={12} /> Edit
-                </button>
-                <button className="mini secondary" onClick={() => onRegen(s.id, s.name)} disabled={regen.isPending}>
-                  <KeyRound size={12} /> Regen
                 </button>
                 <button className="icon-button" style={{ width: 32, height: 32 }} onClick={() => { if (confirm(`Delete sponsor "${s.name}"?`)) del.mutate(s.id); }} aria-label="Delete">
                   <Trash2 size={14} />

@@ -36,10 +36,6 @@ export class AdminSponsorsController {
   ) {
     return this.sponsors.updateSponsor(id, body ?? {});
   }
-  @Post(":id/regenerate")
-  regenerate(@Param("id") id: string) {
-    return this.sponsors.regeneratePassword(id);
-  }
   @Delete(":id")
   remove(@Param("id") id: string) {
     return this.sponsors.deleteSponsor(id);

@@ -1,7 +1,12 @@
 "use client";
 
+import { Suspense } from "react";
 import { DuneAuth } from "../../components/dune/Auth";
 
 export default function RegisterPage() {
-  return <DuneAuth register />;
+  return (
+    <Suspense fallback={null}>
+      <DuneAuth register />
+    </Suspense>
+  );
 }

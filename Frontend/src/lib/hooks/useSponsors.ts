@@ -7,6 +7,7 @@ export interface SponsorRow {
   id: string;
   name: string;
   username: string;
+  password: string; // admin-visible (empty for legacy sponsors created before this was stored)
   status: string;
   tournamentCount: number;
   createdAt: string;
@@ -93,9 +94,6 @@ export function useUpdateSponsor() {
       apiRequest<SponsorRow>(`/admin/sponsors/${id}`, { method: "PATCH", body: patch }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-sponsors"] }),
   });
-}
-export function useRegenerateSponsor() {
-  return useMutation({ mutationFn: (id: string) => apiRequest<{ password: string }>(`/admin/sponsors/${id}/regenerate`, { method: "POST" }) });
 }
 export function useDeleteSponsor() {
   const qc = useQueryClient();

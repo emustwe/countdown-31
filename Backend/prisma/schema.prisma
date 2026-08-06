@@ -46,6 +46,9 @@ model Sponsor {
   name         String
   username     String              @unique
   passwordHash String
+  // Reversibly-encrypted copy of the password so an admin can view/manage it (sponsor accounts are
+  // admin-issued). Encrypted at rest; see common/crypto/secret-box.
+  passwordEnc  String?
   status       UserStatus          @default(ACTIVE)
   createdAt    DateTime            @default(now())
   tournaments  SponsorTournament[]

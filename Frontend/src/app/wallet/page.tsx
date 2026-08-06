@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, Check, Copy, ExternalLink, Gamepad2, Plus, ShieldCheck, Trophy } from "lucide-react";
-import { AuthGuard } from "../../components/AuthGuard";
+import { useRouter } from "next/navigation";
+import { ArrowDownToLine, ArrowUpFromLine, Check, Copy, ExternalLink, Gamepad2, Plus, ShieldCheck, Trophy, WalletCards } from "lucide-react";
+import { AuthGate } from "../../components/AuthGate";
+import { useAuthStore } from "../../stores/auth-store";
 import { PageShell, OrbIcon } from "../../components/dune/Shell";
 import { useFlipIndex } from "../../components/dune/FlipText";
 import { useWallet, useDeposit, useWithdraw, useTransactions, useVerifyDeposit } from "../../lib/hooks/useWallet";
@@ -36,12 +38,26 @@ const short = (a: string) => (a.length > 16 ? `${a.slice(0, 6)}…${a.slice(-6)}
 const explorerTx = (sig: string) => `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
 
 export default function WalletPage() {
-  return (
-    <AuthGuard>
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const router = useRouter();
+  if (!accessToken) {
+    return (
       <PageShell>
-        <WalletContent />
+        <main className="page-main">
+          <div className="coming-soon-panel glass">
+            <OrbIcon><WalletCards size={26} /></OrbIcon>
+            <h1>Your wallet</h1>
+            <p>Log in or create an account to view your balance and make deposits.</p>
+          </div>
+        </main>
+        <AuthGate open onClose={() => router.push("/home")} title="Sign in to open your wallet" message="Log in or create an account to view your balance and make deposits." />
       </PageShell>
-    </AuthGuard>
+    );
+  }
+  return (
+    <PageShell>
+      <WalletContent />
+    </PageShell>
   );
 }
 

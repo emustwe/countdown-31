@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Check, CreditCard, Eye, Glasses, Layers, Palette, Scissors, Shirt, Smile, Sparkles, User } from "lucide-react";
 import { PageShell } from "../../components/dune/Shell";
-import { AuthGuard } from "../../components/AuthGuard";
+import { AuthGate } from "../../components/AuthGate";
+import { useAuthStore } from "../../stores/auth-store";
 import { useProfile } from "../../lib/hooks/useAuth";
 import { useCosmetics, useUpdateCosmetics, type Cosmetics } from "../../lib/hooks/useSponsors";
 import { CardPreview, CARD_COLORS, CARD_PATTERNS, CARD_SHAPES, CARD_BORDERS, DEFAULT_CARD } from "../../components/dune/CardPreview";
@@ -49,17 +50,17 @@ const DEFAULTS: Cosmetics = { card: DEFAULT_CARD, avatar: DEFAULT_AVATAR as unkn
 
 export default function ShopPage() {
   return (
-    <AuthGuard>
-      <PageShell className="shop-page">
-        <ShopContent />
-      </PageShell>
-    </AuthGuard>
+    <PageShell className="shop-page">
+      <ShopContent />
+    </PageShell>
   );
 }
 
 function ShopContent() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const authed = !!accessToken;
   const { data: profile } = useProfile();
-  const { data: saved } = useCosmetics();
+  const { data: saved } = useCosmetics(authed);
   const update = useUpdateCosmetics();
   const name = profile?.fullName || profile?.email?.split("@")[0] || "Player";
 
@@ -67,6 +68,7 @@ function ShopContent() {
   const [cos, setCos] = useState<Cosmetics>(DEFAULTS);
   const [dirty, setDirty] = useState(false);
   const [savedFlag, setSavedFlag] = useState(false);
+  const [gate, setGate] = useState(false);
 
   useEffect(() => {
     if (saved) {
@@ -80,20 +82,30 @@ function ShopContent() {
 
   const av = cos.avatar as unknown as AvatarConfig;
 
+  // Guests can browse the studio, but trying anything on (or saving) requires an account.
+  function requireAuth(): boolean {
+    if (authed) return true;
+    setGate(true);
+    return false;
+  }
   function setAvatar(key: keyof AvatarConfig, value: string) {
+    if (!requireAuth()) return;
     setCos((c) => ({ ...c, avatar: { ...(c.avatar as object), [key]: value } as Record<string, string> }));
     setDirty(true); setSavedFlag(false);
   }
   function setCard(key: string, value: string) {
+    if (!requireAuth()) return;
     setCos((c) => ({ ...c, card: { ...(c.card as object), [key]: value } }));
     setDirty(true); setSavedFlag(false);
   }
   function setBoard(skin: string) {
+    if (!requireAuth()) return;
     setCos((c) => ({ ...c, board: { skin: skin as "classic" } }));
     setDirty(true); setSavedFlag(false);
   }
 
   async function save() {
+    if (!requireAuth()) return;
     await update.mutateAsync(cos);
     setDirty(false); setSavedFlag(true);
     setTimeout(() => setSavedFlag(false), 2000);
@@ -172,6 +184,13 @@ function ShopContent() {
           </div>
         </div>
       </div>
+
+      <AuthGate
+        open={gate}
+        onClose={() => setGate(false)}
+        title="Sign up to try items"
+        message="Create an account or log in to try on and save your look."
+      />
     </main>
   );
 }

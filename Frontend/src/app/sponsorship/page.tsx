@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { CheckCircle2, Gift, Handshake, Mail, Ticket, Trophy, Users, X } from "lucide-react";
 import { PageShell, OrbIcon } from "../../components/dune/Shell";
+import { AuthGate } from "../../components/AuthGate";
+import { useAuthStore } from "../../stores/auth-store";
 import { useSponsorshipOpportunities, useCreateInquiry, type PromoTournament } from "../../lib/hooks/useSponsors";
 import { useProfile } from "../../lib/hooks/useAuth";
 
@@ -16,7 +18,15 @@ const refOf = (id: string) => "#" + id.slice(0, 6).toUpperCase();
 // tournament (→ admin, and the assigned sponsor if there is one).
 export default function SponsorshipPage() {
   const { data: opportunities } = useSponsorshipOpportunities();
+  const accessToken = useAuthStore((s) => s.accessToken);
   const [contact, setContact] = useState<ContactState>(null);
+  const [gate, setGate] = useState(false);
+
+  // Requesting entry to a (private) tournament requires an account.
+  function requestEntry() {
+    if (accessToken) setContact({ type: "ENTRY" });
+    else setGate(true);
+  }
 
   const list = opportunities ?? [];
 
@@ -37,7 +47,7 @@ export default function SponsorshipPage() {
             <b>Become a sponsor</b>
             <small>Back a tournament and get it co-branded to you.</small>
           </button>
-          <button className="sponsor-cta glass" onClick={() => setContact({ type: "ENTRY" })}>
+          <button className="sponsor-cta glass" onClick={requestEntry}>
             <span className="sponsor-cta-ico"><Ticket size={22} /></span>
             <b>Request tournament entry</b>
             <small>Ask an admin for access to a private tournament.</small>
@@ -68,6 +78,7 @@ export default function SponsorshipPage() {
       </main>
 
       {contact && <ContactModal state={contact} onClose={() => setContact(null)} />}
+      <AuthGate open={gate} onClose={() => setGate(false)} title="Sign in to request entry" message="Log in or create an account to request entry to a tournament." />
     </PageShell>
   );
 }

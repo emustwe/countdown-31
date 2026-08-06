@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronRight, Clock3, Eye, EyeOff, ShieldCheck, Trophy } from "lucide-react";
 import { Logo, Pill } from "./Shell";
 import { FlipText, useFlipIndex } from "./FlipText";
@@ -10,6 +10,8 @@ import { ApiError } from "../../lib/api-client";
 
 export function DuneAuth({ register = false }: { register?: boolean }) {
   const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get("next");
   const login = useLogin();
   const signup = useRegister();
   const [show, setShow] = useState(false);
@@ -29,7 +31,7 @@ export function DuneAuth({ register = false }: { register?: boolean }) {
       } else {
         await login.mutateAsync({ email, password });
       }
-      router.push("/home");
+      router.push(next && next.startsWith("/") ? next : "/home");
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Something went wrong");
     }
@@ -214,7 +216,7 @@ export function DuneAuth({ register = false }: { register?: boolean }) {
               : ko
                 ? "WM 토너먼트가 처음이신가요?"
                 : "New to WM Tournaments?"}{" "}
-            <button type="button" onClick={() => router.push(register ? "/login" : "/register")}>
+            <button type="button" onClick={() => router.push(`${register ? "/login" : "/register"}${next ? `?next=${encodeURIComponent(next)}` : ""}`)}>
               {register ? (ko ? "로그인" : "Sign in") : ko ? "계정 만들기" : "Create an account"}
             </button>
           </p>

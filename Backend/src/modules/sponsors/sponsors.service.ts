@@ -10,6 +10,7 @@ import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import { randomBytes } from "node:crypto";
 import * as argon2 from "argon2";
+import { encryptSecret, decryptSecret } from "../../common/crypto/secret-box";
 import type { Prisma, SponsorTournament } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 
@@ -83,8 +84,8 @@ export class SponsorsService {
   // ---- Admin: sponsor accounts ----------------------------------------------------------------
   /**
    * Create a sponsor account. Username and password are optional — if omitted they are generated.
-   * Returns the username + PLAINTEXT password so the admin can hand them over (the password is
-   * stored only as an argon2 hash).
+   * The password is stored as an argon2 hash (for login) AND encrypted-at-rest (so the admin can
+   * view/manage it later).
    */
   async createSponsor(
     name: string,
@@ -98,7 +99,7 @@ export class SponsorsService {
     const pass = this.resolvePassword(password);
 
     const sponsor = await this.prisma.sponsor.create({
-      data: { name: clean, username: uname, passwordHash: await argon2.hash(pass) },
+      data: { name: clean, username: uname, passwordHash: await argon2.hash(pass), passwordEnc: encryptSecret(pass) },
     });
     return { id: sponsor.id, name: sponsor.name, username: uname, password: pass };
   }
@@ -123,6 +124,7 @@ export class SponsorsService {
     if (patch.password !== undefined && patch.password !== "") {
       if (patch.password.length < 6) throw new BadRequestException("Password must be at least 6 characters");
       data.passwordHash = await argon2.hash(patch.password);
+      data.passwordEnc = encryptSecret(patch.password);
     }
     if (patch.status !== undefined) {
       if (patch.status !== "ACTIVE" && patch.status !== "BANNED") throw new BadRequestException("Invalid status");
@@ -166,19 +168,12 @@ export class SponsorsService {
       id: s.id,
       name: s.name,
       username: s.username,
+      // Admin-visible password (decrypted). Empty for legacy sponsors created before this was stored.
+      password: decryptSecret(s.passwordEnc),
       status: s.status,
       tournamentCount: s._count.tournaments,
       createdAt: s.createdAt,
     }));
-  }
-
-  /** Set a new password for a sponsor; returns the new PLAINTEXT password (shown once). */
-  async regeneratePassword(id: string): Promise<{ password: string }> {
-    const sponsor = await this.prisma.sponsor.findUnique({ where: { id } });
-    if (!sponsor) throw new NotFoundException("Sponsor not found");
-    const password = genPassword();
-    await this.prisma.sponsor.update({ where: { id }, data: { passwordHash: await argon2.hash(password) } });
-    return { password };
   }
 
   async deleteSponsor(id: string): Promise<void> {
