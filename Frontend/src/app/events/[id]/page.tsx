@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, ChevronLeft, Gift, Lock, Trophy, Unlock, Users } from "lucide-react";
 import { PageShell } from "../../../components/dune/Shell";
+import { CountDown31 } from "../../../components/dune/CountDown31";
 import { usePromoDetail, useJoinPromo } from "../../../lib/hooks/useSponsors";
 import { useAuthStore } from "../../../stores/auth-store";
 
@@ -23,6 +24,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { data: t, isLoading, isError } = usePromoDetail(id, { code, authed });
   const join = useJoinPromo();
   const [error, setError] = useState("");
+  const [playing, setPlaying] = useState(false);
 
   const started = !!t?.startAt && new Date(t.startAt).getTime() <= Date.now();
 
@@ -37,6 +39,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not join");
     }
+  }
+
+  // When a joined player enters the game, show the knockout Count Down 31 for this tournament's room.
+  if (t && playing) {
+    return (
+      <PageShell className="events-page">
+        <main className="page-main cd31-page">
+          <button className="text-button" onClick={() => setPlaying(false)} style={{ marginBottom: 4 }}>
+            <ChevronLeft size={16} /> {t.title} — details
+          </button>
+          <CountDown31 roomId={`tour:${id}`} />
+        </main>
+      </PageShell>
+    );
   }
 
   return (
@@ -81,7 +97,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </div>
 
             {t.joined ? (
-              <div className="edc-joined"><CheckCircle2 size={18} /> You&apos;re in — the competition is coming soon.</div>
+              <>
+                <div className="edc-joined"><CheckCircle2 size={18} /> You&apos;re in — knockout: last one standing wins.</div>
+                <button className="primary full xl" onClick={() => setPlaying(true)}><Trophy size={18} /> Enter the game</button>
+              </>
             ) : started ? (
               <div className="edc-closed"><Lock size={16} /> Entry closed — this tournament has already started.</div>
             ) : (
@@ -91,7 +110,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             )}
             {error && <div className="sponsor-auth-err" style={{ marginTop: 10 }}>{error}</div>}
 
-            <p className="edc-note">The live competition and leaderboard are coming soon.</p>
+            <p className="edc-note">Knockout Count Down 31 — every elimination shrinks the field until one winner remains.</p>
           </div>
         )}
       </main>
