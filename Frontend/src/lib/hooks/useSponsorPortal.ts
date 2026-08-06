@@ -3,10 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSponsorAuthStore, type SponsorInfo } from "../../stores/sponsor-auth-store";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import { apiBaseUrl } from "../runtime-host";
 
 async function sponsorRequest<T>(path: string, opts: { method?: string; body?: unknown; token?: string | null } = {}): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
+  const res = await fetch(`${apiBaseUrl()}${path}`, {
     method: opts.method ?? "GET",
     headers: { "content-type": "application/json", ...(opts.token ? { authorization: `Bearer ${opts.token}` } : {}) },
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,

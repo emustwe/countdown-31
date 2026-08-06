@@ -10,7 +10,7 @@ import {
 } from "@nestjs/websockets";
 import type { Server, Socket } from "socket.io";
 import { CountdownGameService } from "./countdown.service";
-import { webOrigins } from "../../common/web-origins";
+import { corsOrigin } from "../../common/web-origins";
 
 // Live Count Down 31 socket channel ("/countdown" namespace). Anonymous (guest) connections are
 // allowed. Each game is a "room": "practice" (always-on) or "tour:<id>" (a tournament knockout).
@@ -21,7 +21,7 @@ function roomOf(data: { roomId?: string } | undefined): string {
   return /^(practice|tour:[a-zA-Z0-9-]{1,64})$/.test(r) ? r : "practice";
 }
 
-@WebSocketGateway({ namespace: "/countdown", cors: { origin: webOrigins() } })
+@WebSocketGateway({ namespace: "/countdown", cors: { origin: corsOrigin() } })
 export class CountdownGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;

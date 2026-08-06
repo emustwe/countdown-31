@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:4000";
+import { wsBaseUrl } from "../runtime-host";
 
 export type LiveReason = "31" | "repeat" | "over3" | "skip" | "timeout" | "left";
 export interface LivePlayer {
@@ -45,7 +45,7 @@ export function useCountdownLive(roomId = "practice") {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = io(`${WS_URL}/countdown`, { transports: ["websocket"] });
+    const socket = io(`${wsBaseUrl()}/countdown`, { transports: ["websocket"] });
     socketRef.current = socket;
     socket.on("connect", () => {
       setMyId(socket.id ?? null);

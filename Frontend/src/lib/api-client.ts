@@ -1,7 +1,7 @@
 import { getAuthState, useAuthStore } from "../stores/auth-store";
 import type { ApiErrorEnvelope, RefreshResponse } from "./api-types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import { apiBaseUrl } from "./runtime-host";
 
 export class ApiError extends Error {
   constructor(
@@ -28,7 +28,7 @@ async function refreshAccessToken(): Promise<string | null> {
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
-        const res = await fetch(`${API_URL}/auth/refresh`, {
+        const res = await fetch(`${apiBaseUrl()}/auth/refresh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ refreshToken }),
@@ -51,7 +51,7 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 function buildUrl(path: string, query?: RequestOptions["query"]): string {
-  const url = new URL(`${API_URL}${path}`);
+  const url = new URL(`${apiBaseUrl()}${path}`);
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined) url.searchParams.set(key, String(value));

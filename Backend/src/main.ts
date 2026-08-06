@@ -6,7 +6,7 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
 import { winstonConfig } from "./common/logger/winston.config";
-import { webOrigins } from "./common/web-origins";
+import { corsOrigin } from "./common/web-origins";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
@@ -15,7 +15,7 @@ async function bootstrap(): Promise<void> {
 
   app.use(helmet());
   app.enableCors({
-    origin: webOrigins(),
+    origin: corsOrigin(),
     credentials: true,
   });
   app.useGlobalFilters(new AllExceptionsFilter());

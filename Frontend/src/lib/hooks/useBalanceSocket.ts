@@ -5,7 +5,7 @@ import { io } from "socket.io-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../../stores/auth-store";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:4000";
+import { wsBaseUrl } from "../runtime-host";
 
 /** Subscribes to the server's balance push channel so this tab's wallet display updates
  * immediately when money moves from ANOTHER tab, device, or (in a future milestone) a
@@ -18,7 +18,7 @@ export function useBalanceSocket(): void {
   useEffect(() => {
     if (!accessToken) return;
 
-    const socket = io(WS_URL, { auth: { token: accessToken }, transports: ["websocket"] });
+    const socket = io(wsBaseUrl(), { auth: { token: accessToken }, transports: ["websocket"] });
     socket.on("balance", () => {
       queryClient.invalidateQueries({ queryKey: ["wallet"] });
       queryClient.invalidateQueries({ queryKey: ["me"] });
