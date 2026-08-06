@@ -28,6 +28,10 @@ export default function SponsorAdminPage() {
     e.preventDefault();
     setError("");
     if (!form.name.trim()) return;
+    if (form.password.trim() && form.password.trim().length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
     try {
       const res = await create.mutateAsync({
         name: form.name.trim(),
@@ -154,15 +158,7 @@ export default function SponsorAdminPage() {
         <EditSponsorModal
           sponsor={editing}
           onClose={() => setEditing(null)}
-          onSave={async (patch) => {
-            setError("");
-            try {
-              await update.mutateAsync({ id: editing.id, ...patch });
-              setEditing(null);
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "Could not save");
-            }
-          }}
+          onSave={(patch) => update.mutateAsync({ id: editing.id, ...patch })}
           saving={update.isPending}
         />
       )}
@@ -178,13 +174,33 @@ function EditSponsorModal({
 }: {
   sponsor: SponsorRow;
   onClose: () => void;
-  onSave: (patch: { name?: string; username?: string; password?: string; status?: string }) => void;
+  onSave: (patch: { name?: string; username?: string; password?: string; status?: string }) => Promise<unknown>;
   saving: boolean;
 }) {
   const [name, setName] = useState(sponsor.name);
   const [username, setUsername] = useState(sponsor.username);
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState(sponsor.status);
+  const [error, setError] = useState("");
+
+  async function submit() {
+    setError("");
+    const pw = password.trim();
+    if (pw && pw.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (!name.trim()) {
+      setError("Name cannot be empty.");
+      return;
+    }
+    try {
+      await onSave({ name: name.trim(), username: username.trim(), password: pw || undefined, status });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save");
+    }
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -211,20 +227,10 @@ function EditSponsorModal({
             </select>
           </label>
         </div>
-        <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+        {error && <div className="sponsor-auth-err" style={{ marginTop: 12 }}>{error}</div>}
+        <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button className="secondary" onClick={onClose}>Cancel</button>
-          <button
-            className="primary"
-            disabled={saving}
-            onClick={() =>
-              onSave({
-                name: name.trim(),
-                username: username.trim(),
-                password: password.trim() || undefined,
-                status,
-              })
-            }
-          >
+          <button className="primary" disabled={saving} onClick={submit}>
             {saving ? "Saving…" : "Save changes"}
           </button>
         </div>
