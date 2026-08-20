@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Zap, RotateCcw, Shield, Moon, Swords, Check, X, ArrowRight } from "lucide-react";
+import { Sparkles, Zap, RotateCcw, Shield, Moon, Check, X, ArrowRight } from "lucide-react";
 import { type SkillType } from "../../lib/hooks/useCountdownLive";
 import { soundManager } from "../../lib/soundManager";
 
