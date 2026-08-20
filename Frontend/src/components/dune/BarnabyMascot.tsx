@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Trophy, RotateCcw, Flame, Sparkles } from "lucide-react";
+import { Trophy, RotateCcw } from "lucide-react";
 import { TransparentVideo } from "./TransparentVideo";
 import { soundManager } from "../../lib/soundManager";
 
@@ -38,7 +38,7 @@ export function BarnabyMascot({
 
       {/* Floating 3D Golden Stars Orbiting Above Head */}
       {!isMyWin && (
-        <div className="flex justify-center items-center gap-2 mb-[-12px] z-30 pointer-events-none">
+        <div className="flex justify-center items-center gap-2 mb-[-14px] z-30 pointer-events-none">
           {[...Array(5)].map((_, i) => (
             <motion.span
               key={i}
@@ -66,11 +66,7 @@ export function BarnabyMascot({
         {!isMyWin ? (
           <TransparentVideo
             src="/assets/lose-animation-60fps.mp4"
-            className="w-48 h-48 sm:w-56 sm:h-56"
-            width={400}
-            height={400}
-            keyColor="auto"
-            threshold={35}
+            className="w-52 h-52 sm:w-60 sm:h-60"
           />
         ) : (
           <motion.div

@@ -22,50 +22,50 @@ interface SkillCardDefinition {
 const SKILL_DATABASE: Record<SkillType, SkillCardDefinition> = {
   rewind: {
     type: "rewind",
-    title: "Chrono Rewind",
-    subtitle: "-2 COUNTER STEP",
+    title: "Step Back",
+    subtitle: "GO BACK 2",
     rarity: "Rare",
     rarityColor: "#22d3ee",
     borderGlow: "border-cyan-400 shadow-[0_0_25px_rgba(34,211,238,0.5)]",
     cardGradient: "bg-gradient-to-b from-[#082f49]/95 via-[#031d30]/98 to-[#020d17]",
     icon: <RotateCcw size={28} className="text-cyan-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]" />,
-    description: "Rewinds the live counter back by -2 numbers, pulling you out of lethal range!",
+    description: "Move the count back by 2.",
     badge: "-2 STEPS",
   },
   turbo: {
     type: "turbo",
-    title: "Turbo Leap",
-    subtitle: "+3 RUSH BURST",
+    title: "Jump Ahead",
+    subtitle: "GO FORWARD 3",
     rarity: "Epic",
     rarityColor: "#f59e0b",
     borderGlow: "border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.5)]",
     cardGradient: "bg-gradient-to-b from-[#451a03]/95 via-[#290e02]/98 to-[#130501]",
     icon: <Zap size={28} className="text-amber-300 fill-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)] animate-pulse" />,
-    description: "Instantly leaps forward +3 numbers in a surge, forcing opponents into tight corners!",
+    description: "Move the count forward by 3.",
     badge: "+3 LEAP",
   },
   shield: {
     type: "shield",
-    title: "Bovine Barrier",
-    subtitle: "DIVINE PROTECTION",
+    title: "Safety Shield",
+    subtitle: "STAY SAFE",
     rarity: "Epic",
     rarityColor: "#c084fc",
     borderGlow: "border-purple-400 shadow-[0_0_25px_rgba(192,132,252,0.5)]",
     cardGradient: "bg-gradient-to-b from-[#3b0764]/95 via-[#24033f]/98 to-[#10011d]",
     icon: <Shield size={28} className="text-purple-300 fill-purple-300 drop-shadow-[0_0_10px_rgba(192,132,252,0.8)]" />,
-    description: "Activates divine shield immunity for 1 turn, protecting against 31 detonation or blunders!",
+    description: "Stay safe for one turn.",
     badge: "IMMUNITY",
   },
   nudge: {
     type: "nudge",
-    title: "Pasture Snooze",
-    subtitle: "SAFE TURN PASS",
+    title: "Skip Turn",
+    subtitle: "TAKE A BREAK",
     rarity: "Legendary",
     rarityColor: "#34d399",
     borderGlow: "border-emerald-400 shadow-[0_0_25px_rgba(52,211,153,0.5)]",
     cardGradient: "bg-gradient-to-b from-[#064e3b]/95 via-[#022c22]/98 to-[#01140f]",
     icon: <Moon size={28} className="text-emerald-300 fill-emerald-300 drop-shadow-[0_0_10px_rgba(52,211,153,0.8)]" />,
-    description: "Safely skips and passes your entire turn to the next player without selecting any cards!",
+    description: "Pass your turn to the next player.",
     badge: "SKIP TURN",
   },
   double: {
@@ -128,7 +128,7 @@ export function ArcadeActionConsole({
             <div className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/60 px-3 py-1 rounded-full">
               <Zap size={15} className="text-yellow-400 fill-yellow-400 animate-bounce" />
               <span className="font-title font-black text-xs sm:text-sm text-emerald-300 tracking-wider uppercase">
-                YOUR TURN · CLICK CARDS ON REEL TO PICK
+                YOUR TURN · PICK 1, 2, OR 3
               </span>
             </div>
           ) : (
@@ -143,7 +143,7 @@ export function ArcadeActionConsole({
           {isSkillsLocked && (
             <span className="text-[11px] font-title font-black text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded-lg border border-amber-500/50 flex items-center gap-1">
               <Lock size={12} />
-              <span>SUDDEN DEATH (Skills Locked 22+)</span>
+              <span>SKILLS PAUSE AT 22</span>
             </span>
           )}
         </div>
@@ -166,11 +166,11 @@ export function ArcadeActionConsole({
         <div className="flex items-center gap-1.5">
           <Sparkles size={16} className="text-yellow-400 fill-yellow-400 animate-pulse" />
           <span className="text-xs sm:text-sm font-title font-black text-amber-300 uppercase tracking-widest">
-            EQUIPPED BATTLE SKILLS (CLICK TO PLAY)
+            YOUR SKILLS
           </span>
         </div>
         <span className="text-[11px] font-title font-bold text-slate-400">
-          2 Skills Loadout · 1 Cast Per Match
+          Tap a card to use it
         </span>
       </div>
 
@@ -258,7 +258,7 @@ export function ArcadeActionConsole({
                         : "bg-slate-900 text-slate-500"
                     }`}
                   >
-                    <span>CAST CARD</span>
+                    <span>USE SKILL</span>
                     <Send size={11} />
                   </button>
                 )}

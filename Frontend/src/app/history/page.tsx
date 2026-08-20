@@ -22,7 +22,7 @@ export default function HistoryPage() {
   const [showRules, setShowRules] = useState(false);
 
   return (
-    <div className="relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+    <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
       {/* Background Pasture Atmosphere */}
       <div
         className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
@@ -46,13 +46,13 @@ export default function HistoryPage() {
             <div>
               <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1">
                 <Trophy size={12} className="text-yellow-400 fill-yellow-400" />
-                <span>COMBAT REPLAY VAULT</span>
+                <span>YOUR RECENT GAMES</span>
               </span>
               <h1 className="font-title font-black text-3xl sm:text-5xl text-white tracking-tight mt-0.5">
-                MATCH REPLAYS
+                PAST GAMES
               </h1>
               <p className="text-xs text-slate-300 mt-1 max-w-lg">
-                Review your sequential deduction traps, tactical skill maneuvers, and past arena triumphs.
+                See your wins, scores, and rewards.
               </p>
             </div>
           </div>
@@ -64,7 +64,7 @@ export default function HistoryPage() {
             }}
             className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-green-500 text-slate-950 font-title font-black text-sm shadow-[0_0_15px_rgba(52,211,153,0.7)] hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 cursor-pointer shrink-0"
           >
-            <span>START NEW BATTLE</span>
+              <span>PLAY AGAIN</span>
             <ArrowRight size={16} />
           </button>
         </div>

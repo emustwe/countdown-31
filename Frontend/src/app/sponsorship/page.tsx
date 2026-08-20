@@ -78,7 +78,7 @@ export default function SponsorshipPage() {
   const list = opportunities ?? [];
 
   return (
-    <div className="relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+    <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
       {/* Background Pasture Atmosphere */}
       <div
         className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
@@ -102,10 +102,10 @@ export default function SponsorshipPage() {
             <div>
               <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1">
                 <Sparkles size={12} className="text-yellow-400" />
-                <span>BRAND COLLABORATIONS & TOURNAMENT SPONSORS</span>
+                <span>SUPPORT A GAME</span>
               </span>
               <h1 className="font-title font-black text-3xl sm:text-5xl text-white tracking-tight mt-0.5">
-                SPONSORSHIP HUB
+                SPONSOR A GAME
               </h1>
               <p className="text-xs text-slate-300 mt-1 max-w-lg">
                 Sponsor a tournament, get co-branded custom assets, or request access to high-stakes private invitationals.
@@ -148,7 +148,7 @@ export default function SponsorshipPage() {
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
             <span className="font-title font-black text-base text-amber-300 uppercase tracking-widest flex items-center gap-2">
               <Trophy size={18} className="text-yellow-400" />
-              <span>TOURNAMENTS OPEN FOR SPONSORSHIP</span>
+              <span>GAMES LOOKING FOR SPONSORS</span>
             </span>
             <span className="text-xs font-title font-bold text-slate-400">
               {list.length} Opportunities
@@ -193,7 +193,7 @@ export default function SponsorshipPage() {
                       onClick={() => openSponsorInquiry(t)}
                       className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-title font-black text-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer shadow"
                     >
-                      SPONSOR THIS TOURNAMENT
+                      SPONSOR THIS GAME
                     </button>
                   </div>
                 </div>

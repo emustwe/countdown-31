@@ -27,7 +27,7 @@ function SettingsLayout() {
   const [showRules, setShowRules] = useState(false);
 
   return (
-    <div className="relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+    <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
       {/* Background Pasture Atmosphere */}
       <div
         className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
@@ -148,7 +148,7 @@ function SettingsContent() {
           <div className="flex items-center gap-2 border-b border-white/10 pb-2">
             <User size={18} className="text-amber-400" />
             <span className="font-title font-black text-sm text-amber-300 uppercase tracking-wider">
-              PLAYER ACCOUNT PROFILE
+              YOUR ACCOUNT
             </span>
           </div>
 

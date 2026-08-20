@@ -322,7 +322,13 @@ export function useCountdownLive(roomId = "practice") {
   }, [roomId]);
 
   const join = useCallback(
-    (name: string, cos?: JoinCosmetics, mode: GameMode = "skills", chosenSkills: SkillType[] = ["rewind", "turbo"]) => {
+    (
+      name: string,
+      cos?: JoinCosmetics,
+      mode: GameMode = "skills",
+      chosenSkills: SkillType[] = ["rewind", "turbo"],
+      botCount: number = 3
+    ) => {
       if (socketRef.current?.connected) {
         socketRef.current.emit("join", { roomId, name, card: cos?.card, avatar: cos?.avatar, mode });
         return;
@@ -343,18 +349,8 @@ export function useCountdownLive(roomId = "practice") {
       }
 
       setMyId("player_local");
-      const localPlayers: LivePlayer[] = [
-        {
-          id: "player_local",
-          name,
-          cpu: false,
-          color: "#5be348",
-          card: cos?.card,
-          avatar: cos?.avatar,
-          skills: playerSkills,
-          equippedSkills: mode === "skills" ? chosenSkills : [],
-          eliminated: false,
-        },
+
+      const allBots: LivePlayer[] = [
         {
           id: "cpu_bessie",
           name: "Bessie AI 🐮",
@@ -382,6 +378,21 @@ export function useCountdownLive(roomId = "practice") {
           equippedSkills: mode === "skills" ? ["turbo", "shield"] : [],
           eliminated: false,
         },
+      ];
+
+      const localPlayers: LivePlayer[] = [
+        {
+          id: "player_local",
+          name,
+          cpu: false,
+          color: "#5be348",
+          card: cos?.card,
+          avatar: cos?.avatar,
+          skills: playerSkills,
+          equippedSkills: mode === "skills" ? chosenSkills : [],
+          eliminated: false,
+        },
+        ...allBots.slice(0, Math.max(1, Math.min(3, botCount))),
       ];
 
       const newState: LiveState = {
@@ -631,6 +642,16 @@ export function useCountdownLive(roomId = "practice") {
     [myId, processNextTurn],
   );
 
+  const triggerDefeat = useCallback(
+    (reason: LiveReason = "31") => {
+      const cur = stateRef.current;
+      if (!cur) return;
+      soundManager.playSpinDefeat();
+      eliminatePlayer(myId ?? "player_local", reason, cur, "Instant Test: Hit 31 💣💀");
+    },
+    [myId, eliminatePlayer],
+  );
+
   return {
     state,
     myId,
@@ -638,5 +659,6 @@ export function useCountdownLive(roomId = "practice") {
     arm,
     submit,
     useSkill,
+    triggerDefeat,
   };
 }

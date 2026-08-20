@@ -38,7 +38,7 @@ export default function WalletPage() {
 
   if (!accessToken) {
     return (
-      <div className="relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+      <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
         <div
           className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
           style={{ backgroundImage: "url('/assets/barnaby/barnaby-field.jpg')" }}
@@ -53,7 +53,7 @@ export default function WalletPage() {
           <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 mb-4 shadow">
             <Wallet size={32} />
           </div>
-          <h1 className="font-title font-black text-2xl sm:text-3xl text-amber-300 mb-2">ARCADE VAULT</h1>
+          <h1 className="font-title font-black text-2xl sm:text-3xl text-amber-300 mb-2">YOUR WALLET</h1>
           <p className="text-xs sm:text-sm text-slate-300 max-w-md mb-6">
             Log in or create an account to view your live balance, make instant Solana deposits, and withdraw tournament winnings.
           </p>
@@ -73,7 +73,7 @@ export default function WalletPage() {
   }
 
   return (
-    <div className="relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+    <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
       {/* Background Pasture Atmosphere */}
       <div
         className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
@@ -199,7 +199,7 @@ function WalletContent() {
           <div>
             <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1">
               <ShieldCheck size={12} />
-              <span>SECURE INSTANT ARCADE VAULT</span>
+              <span>YOUR FUNDS</span>
             </span>
             <h1 className="font-title font-black text-3xl sm:text-5xl text-white tracking-tight mt-0.5">
               {formattedBalance} <span className="text-xl font-bold text-amber-300">USDT</span>
@@ -370,7 +370,7 @@ function WalletContent() {
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
             <span className="font-title font-black text-sm sm:text-base text-amber-300 uppercase tracking-widest flex items-center gap-1.5">
               <Coins size={16} className="text-yellow-400" />
-              <span>LIVE TRANSACTION LEDGER</span>
+              <span>RECENT ACTIVITY</span>
             </span>
             <span className="text-[10px] font-title font-bold text-slate-400">
               On-Chain Activity

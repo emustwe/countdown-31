@@ -32,7 +32,8 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const defaultName = user?.fullName || user?.email?.split("@")[0] || guestName || "";
   const soundOn = useSettingsStore((s) => s.soundEnabled);
   const { data: cosmetics } = useCosmetics(!!accessToken);
-  const { state, myId, join, arm, submit, useSkill } = useCountdownLive(roomId);
+  const { state, myId, join, arm, submit, useSkill, triggerDefeat } = useCountdownLive(roomId);
+  const [botCount, setBotCount] = useState<number>(1); // 1 = 1v1 Duel for fastest testing!
 
   const [chosenName, setChosenName] = useState("");
   const [showNameGate, setShowNameGate] = useState(false);
@@ -221,7 +222,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     if (gameMode === "skills") {
       setShowSkillModal(true);
     } else {
-      join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", []);
+      join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", [], botCount);
     }
   }
 
@@ -229,7 +230,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     setEquippedSkills(skills);
     setShowSkillModal(false);
     const name = chosenName || defaultName || "Player 1";
-    join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "skills", skills);
+    join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "skills", skills, botCount);
   }
 
   function rejoin() {
@@ -238,7 +239,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
       if (gameMode === "skills") {
         setShowSkillModal(true);
       } else {
-        join(chosenName, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", []);
+        join(chosenName, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", [], botCount);
       }
     } else {
       openNameGate();
@@ -357,16 +358,64 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         </div>
       </main>
 
-      {/* Bottom Arcade Match HUD with Generous Spacing */}
-      <div className="w-full max-w-5xl mx-auto mt-4 mb-3 pb-2">
+      {/* Bottom Arcade Match HUD with Bot Count Config & Instant Test Button */}
+      <div className="w-full max-w-5xl mx-auto mt-4 mb-3 pb-2 flex flex-col gap-2.5">
         <ArcadeHUD
           playerCount={players.length}
-          maxPlayers={4}
+          maxPlayers={botCount + 1}
           round={state?.round ?? 1}
           arenaName="Pasture"
           turnTime={7}
           pingMs={48}
         />
+
+        {/* Quick Testing Bar: Bot Count & Instant Defeat Trigger */}
+        <div className="flex items-center justify-between flex-wrap gap-2 px-3 py-1.5 rounded-2xl bg-black/60 border border-amber-400/40 backdrop-blur-md">
+          {/* Bot Count Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-title font-bold text-slate-300">OPPONENT BOTS:</span>
+            <div className="flex items-center gap-1 bg-black/80 p-0.5 rounded-xl border border-slate-700">
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playClick();
+                  setBotCount(1);
+                  if (chosenName) rejoin();
+                }}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-title font-black transition-all cursor-pointer ${
+                  botCount === 1 ? "bg-emerald-400 text-slate-950 shadow" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                1v1 DUEL (1 Bot)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playClick();
+                  setBotCount(3);
+                  if (chosenName) rejoin();
+                }}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-title font-black transition-all cursor-pointer ${
+                  botCount === 3 ? "bg-amber-400 text-slate-950 shadow" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                4-PLAYER (3 Bots)
+              </button>
+            </div>
+          </div>
+
+          {/* 1-Click Instant Defeat Animation Tester */}
+          <button
+            type="button"
+            onClick={() => {
+              soundManager.playClick();
+              triggerDefeat("31");
+            }}
+            className="px-3.5 py-1 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 text-white font-title font-black text-[10px] shadow-[0_0_12px_rgba(244,63,94,0.6)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+          >
+            <span>⚡ TEST DEFEAT COW ANIMATION</span>
+          </button>
+        </div>
       </div>
 
       {/* Pre-Match 2-Skill Loadout Selector Modal */}

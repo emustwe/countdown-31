@@ -83,7 +83,7 @@ export default function ShopPage() {
   const items = SHOP_ITEMS.filter((i) => i.category === tab);
 
   return (
-    <div className="relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+    <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
       {/* Background Pasture Atmosphere */}
       <div
         className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
@@ -135,7 +135,7 @@ export default function ShopPage() {
           {[
             { key: "skins", label: "👑 AVATARS & SKINS" },
             { key: "frames", label: "🖼️ 3D METALLIC FRAMES" },
-            { key: "skills", label: "🔮 TACTICAL SKILLS" },
+            { key: "skills", label: "🔮 SKILLS" },
             { key: "vault", label: "💰 COIN VAULT" },
           ].map((t) => (
             <button

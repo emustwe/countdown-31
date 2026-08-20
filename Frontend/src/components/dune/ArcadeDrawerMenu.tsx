@@ -55,14 +55,14 @@ export function ArcadeDrawerMenu({
   }
 
   const navItems = [
-    { label: "Home / Arena", icon: Home, path: "/home", badge: "Live" },
-    { label: "Avatar Studio", icon: Crown, path: "/avatar", badge: "Locker" },
-    { label: "Tournaments", icon: Trophy, path: "/events", badge: "Knockout" },
-    { label: "Sponsorships", icon: Handshake, path: "/sponsorship" },
-    { label: "Arcade Shop", icon: ShoppingBag, path: "/shop", badge: "Skills" },
-    { label: "Player Profile", icon: User, path: "/profile" },
-    { label: "Wallet & Funds", icon: Wallet, path: "/wallet" },
-    { label: "Match Replays", icon: HistoryIcon, path: "/history" },
+    { label: "Play", icon: Home, path: "/home", badge: "Live" },
+    { label: "My Cow", icon: Crown, path: "/avatar" },
+    { label: "Tournaments", icon: Trophy, path: "/events" },
+    { label: "Sponsor", icon: Handshake, path: "/sponsorship" },
+    { label: "Shop", icon: ShoppingBag, path: "/shop" },
+    { label: "My Profile", icon: User, path: "/profile" },
+    { label: "Wallet", icon: Wallet, path: "/wallet" },
+    { label: "Past Games", icon: HistoryIcon, path: "/history" },
     { label: "Settings", icon: Settings, path: "/settings" },
   ];
 
@@ -99,7 +99,7 @@ export function ArcadeDrawerMenu({
                     COUNT DOWN 31
                   </h3>
                   <span className="text-[10px] font-title font-semibold text-emerald-400/80 uppercase">
-                    Arcade Navigation
+                    Menu
                   </span>
                 </div>
               </div>
@@ -172,7 +172,7 @@ export function ArcadeDrawerMenu({
                   <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-300">
                     <BookOpen size={15} />
                   </div>
-                  <span>Official Rules (31)</span>
+                  <span>How to play</span>
                 </div>
                 <ChevronRight size={14} />
               </button>
@@ -190,7 +190,7 @@ export function ArcadeDrawerMenu({
             </button>
 
             <span className="text-[10px] font-title text-amber-400/50">
-              v2.0 Arcade
+              COUNT DOWN 31
             </span>
           </div>
         </motion.aside>

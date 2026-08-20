@@ -29,7 +29,7 @@ export default function ProfilePage() {
   const balanceUsdt = profile ? formatUsdt(profile.balance) : "1,250.00";
 
   return (
-    <div className="relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+    <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
       {/* Background Pasture Atmosphere */}
       <div
         className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
@@ -64,7 +64,7 @@ export default function ProfilePage() {
               <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
                 <span className="px-3 py-0.5 rounded-full bg-amber-400/20 border border-amber-400 text-[10px] font-title font-black text-amber-300 uppercase tracking-widest flex items-center gap-1">
                   <Crown size={12} className="text-yellow-400 fill-yellow-400" />
-                  <span>RANK #1 ARENA MASTER</span>
+                  <span>YOUR PLAYER CARD</span>
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full bg-rose-950/80 border border-rose-500 text-[10px] font-title font-black text-rose-300 flex items-center gap-1">
                   <Flame size={11} className="text-rose-400 fill-rose-400 animate-pulse" />

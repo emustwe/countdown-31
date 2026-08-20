@@ -54,7 +54,7 @@ export default function TournamentsHubPage() {
   const list = tournaments ?? [];
 
   return (
-    <div className="relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+    <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
       {/* Background Pasture Atmosphere */}
       <div
         className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
@@ -78,13 +78,13 @@ export default function TournamentsHubPage() {
             <div>
               <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1">
                 <Flame size={12} className="text-rose-400 fill-rose-400" />
-                <span>KNOCKOUT BRACKET ARENAS</span>
+                <span>PLAY TOGETHER</span>
               </span>
               <h1 className="font-title font-black text-3xl sm:text-5xl text-white tracking-tight mt-0.5">
                 TOURNAMENTS
               </h1>
               <p className="text-xs text-slate-300 mt-1 max-w-lg">
-                Join a public tournament, climb the sequential knockout bracket, or unlock a private arena with your referral code.
+                Pick a game below, or use a private code.
               </p>
             </div>
           </div>
@@ -100,7 +100,7 @@ export default function TournamentsHubPage() {
                 <input
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  placeholder="Enter Private Code..."
+                  placeholder="Private code"
                   className="bg-transparent border-none outline-none font-title font-black text-xs sm:text-sm text-white placeholder:text-slate-500 w-36 sm:w-44"
                 />
               </div>
@@ -109,7 +109,7 @@ export default function TournamentsHubPage() {
                 disabled={redeem.isPending}
                 className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-title font-black text-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer shadow"
               >
-                {redeem.isPending ? "..." : "UNLOCK"}
+                {redeem.isPending ? "..." : "JOIN"}
               </button>
             </div>
             {codeError && <span className="text-[10px] text-rose-400 font-bold px-2">{codeError}</span>}
@@ -121,7 +121,7 @@ export default function TournamentsHubPage() {
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
             <span className="font-title font-black text-base text-amber-300 uppercase tracking-widest flex items-center gap-2">
               <Swords size={18} className="text-yellow-400" />
-              <span>ACTIVE & UPCOMING TOURNAMENTS</span>
+              <span>GAMES TO JOIN</span>
             </span>
             <span className="text-xs font-title font-bold text-slate-400">
               {list.length} Arenas
@@ -136,7 +136,7 @@ export default function TournamentsHubPage() {
             <div className="p-8 rounded-3xl bg-black/60 border border-slate-800 text-center flex flex-col items-center gap-2">
               <Trophy size={32} className="text-slate-500" />
               <span className="font-title font-bold text-slate-300">No public tournaments open right now.</span>
-              <span className="text-xs text-slate-500">Check back soon or unlock a private tournament using a referral code above!</span>
+              <span className="text-xs text-slate-500">Try again soon, or use a private code.</span>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -185,7 +185,7 @@ export default function TournamentsHubPage() {
                     onClick={() => onEnter(t.id)}
                     className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 text-slate-950 font-title font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.6)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <span>ENTER TOURNAMENT</span>
+                      <span>JOIN GAME</span>
                     <ArrowRight size={15} />
                   </button>
                 </div>

@@ -22,49 +22,49 @@ interface SkillOption {
 const ALL_SKILLS: SkillOption[] = [
   {
     type: "rewind",
-    title: "Chrono Rewind",
-    subtitle: "-2 STEP BACK",
+    title: "Step Back",
+    subtitle: "GO BACK 2",
     badge: "-2 STEPS",
     rarity: "Rare",
     rarityColor: "#22d3ee",
     icon: <RotateCcw size={24} className="text-cyan-300" />,
-    description: "Rewinds the live counter back by -2 numbers, pulling you out of lethal range!",
+    description: "Move the count back by 2.",
     gradient: "bg-gradient-to-b from-[#082f49] via-[#031d30] to-[#020d17]",
     borderGlow: "border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.5)]",
   },
   {
     type: "turbo",
-    title: "Turbo Leap",
-    subtitle: "+3 RUSH BURST",
+    title: "Jump Ahead",
+    subtitle: "GO FORWARD 3",
     badge: "+3 LEAP",
     rarity: "Epic",
     rarityColor: "#f59e0b",
     icon: <Zap size={24} className="text-amber-300 fill-amber-300" />,
-    description: "Instantly leaps forward +3 numbers in a surge, forcing opponents into tight corners!",
+    description: "Move the count forward by 3.",
     gradient: "bg-gradient-to-b from-[#451a03] via-[#290e02] to-[#130501]",
     borderGlow: "border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)]",
   },
   {
     type: "shield",
-    title: "Bovine Barrier",
-    subtitle: "DIVINE PROTECTION",
+    title: "Safety Shield",
+    subtitle: "STAY SAFE",
     badge: "IMMUNITY",
     rarity: "Epic",
     rarityColor: "#c084fc",
     icon: <Shield size={24} className="text-purple-300 fill-purple-300" />,
-    description: "Activates divine shield immunity for 1 turn, protecting against 31 detonation or blunders!",
+    description: "Stay safe for one turn.",
     gradient: "bg-gradient-to-b from-[#3b0764] via-[#24033f] to-[#10011d]",
     borderGlow: "border-purple-400 shadow-[0_0_20px_rgba(192,132,252,0.5)]",
   },
   {
     type: "nudge",
-    title: "Pasture Snooze",
-    subtitle: "SAFE TURN PASS",
+    title: "Skip Turn",
+    subtitle: "TAKE A BREAK",
     badge: "SKIP TURN",
     rarity: "Legendary",
     rarityColor: "#34d399",
     icon: <Moon size={24} className="text-emerald-300 fill-emerald-300" />,
-    description: "Safely skips and passes your entire turn to the next player without selecting any cards!",
+    description: "Pass your turn to the next player.",
     gradient: "bg-gradient-to-b from-[#064e3b] via-[#022c22] to-[#01140f]",
     borderGlow: "border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.5)]",
   },
@@ -123,10 +123,10 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
               </div>
               <div>
                 <h2 className="font-title font-black text-lg sm:text-xl text-amber-300 tracking-wide">
-                  CHOOSE 2 TACTICAL SKILLS
+                  PICK 2 SKILLS
                 </h2>
                 <p className="text-xs text-slate-400">
-                  Select 2 battle cards to equip into your tactical loadout for this match!
+                  Tap two cards, then start the game.
                 </p>
               </div>
             </div>
@@ -142,7 +142,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
           {/* Selection Counter Pill */}
           <div className="flex items-center justify-between px-2">
             <span className="text-xs font-title font-bold text-slate-300">
-              Equipped Loadout:
+              Your picks
             </span>
             <span
               className={`text-xs font-title font-black px-3 py-1 rounded-full border shadow ${
@@ -151,7 +151,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
                   : "bg-amber-950/80 text-amber-300 border-amber-400"
               }`}
             >
-              {selected.length}/2 SKILLS EQUIPPED
+              {selected.length} of 2 picked
             </span>
           </div>
 
@@ -212,7 +212,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
             disabled={selected.length !== 2}
             className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-base shadow-[0_0_25px_rgba(52,211,153,0.8)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed"
           >
-            <span>CONFIRM LOADOUT & ENTER ARENA</span>
+            <span>START GAME</span>
             <ArrowRight size={18} />
           </button>
         </motion.div>
