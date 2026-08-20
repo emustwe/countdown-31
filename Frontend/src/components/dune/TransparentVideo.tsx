@@ -93,9 +93,9 @@ function createProgram(gl: WebGLRenderingContext) {
 
 export function TransparentVideo({
   src,
-  className = "w-52 h-52 sm:w-64 sm:h-64",
-  width = 420,
-  height = 420,
+  className = "w-64 aspect-[9/16] sm:w-72",
+  width = 360,
+  height = 640,
 }: TransparentVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);

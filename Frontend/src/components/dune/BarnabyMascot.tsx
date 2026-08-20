@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Trophy, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { TransparentVideo } from "./TransparentVideo";
 import { soundManager } from "../../lib/soundManager";
 
@@ -17,9 +17,9 @@ interface BarnabyMascotProps {
 }
 
 export function BarnabyMascot({
-  count,
+  count: _count,
   status,
-  myTurn,
+  myTurn: _myTurn,
   winner,
   lastEliminated,
   isMyWin,
@@ -66,7 +66,9 @@ export function BarnabyMascot({
         {!isMyWin ? (
           <TransparentVideo
             src="/assets/lose-animation-60fps.mp4"
-            className="w-52 h-52 sm:w-60 sm:h-60"
+            /* Change these width classes to resize the defeat cow. The 9/16
+               aspect keeps the portrait source from looking stretched. */
+            className="w-64 aspect-[9/16] sm:w-72"
           />
         ) : (
           <motion.div
@@ -77,7 +79,6 @@ export function BarnabyMascot({
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
             className="w-40 h-40 sm:w-48 sm:h-48 drop-shadow-[0_15px_30px_rgba(245,158,11,0.8)]"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/assets/Avatar1/avatar.png"
               alt="Victory Champion Bull"
