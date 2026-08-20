@@ -137,37 +137,35 @@ export function BarnabyMascot({
                 </motion.div>
               )}
 
-              {/* Barnaby Mascot Image */}
-              <motion.div
-                animate={
-                  !isMyWin
-                    ? {
-                        rotate: [0, 360, 720, 1080, 1440],
-                        scale: [1, 1.1, 0.95, 1.08, 1],
-                      }
-                    : {
-                        y: [0, -12, 0],
-                        scale: [1, 1.06, 1],
-                      }
-                }
-                transition={
-                  !isMyWin
-                    ? { duration: 2.2, ease: [0.25, 1, 0.5, 1] }
-                    : { duration: 1.4, repeat: Infinity, ease: "easeInOut" }
-                }
-                className="w-44 h-44 sm:w-52 sm:h-52 rounded-full overflow-hidden border-4 border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.6)] relative bg-amber-950 mx-auto"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={
-                    isMyWin
-                      ? "/assets/barnaby/barnaby-field.jpg"
-                      : "/assets/barnaby/barnaby-dizzy-stars.jpg"
-                  }
-                  alt="Barnaby Cow Mascot"
-                  className="w-full h-full object-cover object-center"
-                />
-              </motion.div>
+              {/* Barnaby Mascot Image / 3D Defeat Video */}
+              {!isMyWin ? (
+                <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-3xl overflow-hidden border-4 border-amber-400 shadow-[0_0_45px_rgba(245,158,11,0.7)] relative bg-black mx-auto flex items-center justify-center">
+                  <video
+                    src="/assets/lose-animation-60fps.mp4"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <motion.div
+                  animate={{
+                    y: [0, -12, 0],
+                    scale: [1, 1.06, 1],
+                  }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                  className="w-44 h-44 sm:w-52 sm:h-52 rounded-full overflow-hidden border-4 border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.6)] relative bg-amber-950 mx-auto"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/assets/Avatar1/avatar.png"
+                    alt="Victory Champion Bull"
+                    className="w-full h-full object-cover object-center"
+                  />
+                </motion.div>
+              )}
             </div>
 
             {/* Signature Dialogue Banner */}
