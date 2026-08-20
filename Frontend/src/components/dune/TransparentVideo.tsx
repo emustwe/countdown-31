@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useSettingsStore } from "../../stores/settings-store";
 
 interface TransparentVideoProps {
   src: string;
@@ -99,6 +100,17 @@ export function TransparentVideo({
 }: TransparentVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const soundEnabled = useSettingsStore((state) => state.soundEnabled);
+
+  /* The video element stays visually hidden because WebGL draws its transparent
+     picture, but its original audio is allowed through when game sound is on. */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !soundEnabled;
+    video.volume = 0.85;
+    if (soundEnabled) video.play().catch(() => undefined);
+  }, [soundEnabled, src]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -177,7 +189,17 @@ export function TransparentVideo({
 
   return (
     <div className={`relative flex items-center justify-center select-none pointer-events-none ${className}`}>
-      <video ref={videoRef} src={src} autoPlay loop muted playsInline preload="auto" className="absolute h-px w-px opacity-0" />
+      <video
+        ref={videoRef}
+        src={src}
+        autoPlay
+        loop
+        muted={!soundEnabled}
+        playsInline
+        preload="auto"
+        aria-hidden="true"
+        className="absolute h-px w-px opacity-0"
+      />
       <canvas
         ref={canvasRef}
         width={width}
