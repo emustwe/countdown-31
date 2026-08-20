@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Crown, LogIn, Sparkles, Skull, Clock, Dices, Send } from "lucide-react";
+import { Crown, LogIn, Clock, Dices, Square } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useGuestStore } from "../../stores/guest-store";
 import { useAuthStore } from "../../stores/auth-store";
 import { useCosmetics } from "../../lib/hooks/useSponsors";
 import {
   useCountdownLive,
-  type LiveReason,
   type SkillType,
   type GameMode,
 } from "../../lib/hooks/useCountdownLive";
@@ -32,7 +31,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const defaultName = user?.fullName || user?.email?.split("@")[0] || guestName || "";
   const soundOn = useSettingsStore((s) => s.soundEnabled);
   const { data: cosmetics } = useCosmetics(!!accessToken);
-  const { state, myId, join, arm, submit, useSkill, triggerDefeat } = useCountdownLive(roomId);
+  const { state, myId, join, submit, useSkill } = useCountdownLive(roomId);
   const [botCount, setBotCount] = useState<number>(1); // 1 = 1v1 Duel for fastest testing!
 
   const [chosenName, setChosenName] = useState("");
@@ -42,6 +41,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const [showRules, setShowRules] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [isShaking, setIsShaking] = useState(false);
+  const [testDefeatActive, setTestDefeatActive] = useState(false);
 
   // Game Mode: Classic 31 (pure counting) vs. Tactical Skill Mode (loadout cards)
   const [gameMode, setGameMode] = useState<GameMode>("skills");
@@ -214,6 +214,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
 
   function confirmJoin() {
     soundManager.playClick();
+    setTestDefeatActive(false);
     const name = nameInput.trim().slice(0, 20) || `Player ${Math.floor(1000 + Math.random() * 9000)}`;
     setChosenName(name);
     if (!user) setGuestName(name);
@@ -235,6 +236,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
 
   function rejoin() {
     soundManager.playClick();
+    setTestDefeatActive(false);
     if (chosenName) {
       if (gameMode === "skills") {
         setShowSkillModal(true);
@@ -288,15 +290,15 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           />
 
           {/* Action Area: Tactical Skill Cards in Skill Mode OR Classic Turn Bar OR In-Place Game Over Mascot Stage */}
-          {status === "over" ? (
+          {status === "over" || testDefeatActive ? (
             /* In-Place Defeat/Victory 3D Video & Outcome Console */
             <BarnabyMascot
               count={count}
-              status={status}
+              status="over"
               myTurn={myTurn}
-              winner={state?.winner ?? null}
-              lastEliminated={state?.lastEliminated ?? null}
-              isMyWin={!!(state?.winner && players.find((p) => p.id === myId)?.name === state.winner.name)}
+              winner={testDefeatActive ? { name: "Champion", color: "#34d399" } : state?.winner ?? null}
+              lastEliminated={testDefeatActive ? { name: "Test Cow", reason: "31" } : state?.lastEliminated ?? null}
+              isMyWin={testDefeatActive ? false : !!(state?.winner && players.find((p) => p.id === myId)?.name === state.winner.name)}
               onPlayAgain={rejoin}
             />
           ) : amIn && status === "playing" ? (
@@ -404,16 +406,23 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
             </div>
           </div>
 
-          {/* 1-Click Instant Defeat Animation Tester */}
+          {/* Defeat animation preview toggle. This is local UI state, so testing
+              never changes the real match or player state. */}
           <button
             type="button"
             onClick={() => {
               soundManager.playClick();
-              triggerDefeat("31");
+              setTestDefeatActive((active) => !active);
             }}
-            className="px-3.5 py-1 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 text-white font-title font-black text-[10px] shadow-[0_0_12px_rgba(244,63,94,0.6)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+            aria-pressed={testDefeatActive}
+            className={`px-3.5 py-1 rounded-xl text-white font-title font-black text-[10px] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1 ${
+              testDefeatActive
+                ? "bg-gradient-to-r from-red-600 to-rose-500 shadow-[0_0_14px_rgba(239,68,68,0.72)]"
+                : "bg-gradient-to-r from-rose-500 to-amber-500 shadow-[0_0_12px_rgba(244,63,94,0.6)]"
+            }`}
           >
-            <span>⚡ TEST DEFEAT COW ANIMATION</span>
+            {testDefeatActive ? <Square size={11} fill="currentColor" /> : <span>⚡</span>}
+            <span>{testDefeatActive ? "STOP COW ANIMATION" : "TEST DEFEAT COW ANIMATION"}</span>
           </button>
         </div>
       </div>
