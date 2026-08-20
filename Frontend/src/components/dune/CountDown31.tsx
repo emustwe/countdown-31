@@ -286,8 +286,19 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
             forbiddenK={state?.lastK ?? null}
           />
 
-          {/* Action Area: Tactical Skill Cards in Skill Mode OR Classic Turn Bar in Classic Mode */}
-          {amIn && status === "playing" ? (
+          {/* Action Area: Tactical Skill Cards in Skill Mode OR Classic Turn Bar OR In-Place Game Over Mascot Stage */}
+          {status === "over" ? (
+            /* In-Place Defeat/Victory 3D Video & Outcome Console */
+            <BarnabyMascot
+              count={count}
+              status={status}
+              myTurn={myTurn}
+              winner={state?.winner ?? null}
+              lastEliminated={state?.lastEliminated ?? null}
+              isMyWin={!!(state?.winner && players.find((p) => p.id === myId)?.name === state.winner.name)}
+              onPlayAgain={rejoin}
+            />
+          ) : amIn && status === "playing" ? (
             gameMode === "skills" ? (
               <ArcadeActionConsole
                 myTurn={myTurn}
@@ -326,7 +337,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
               className="btn-arcade-3d btn-arcade-amber text-lg sm:text-xl py-4 px-10 rounded-2xl flex items-center justify-center gap-2 shadow-2xl my-2 cursor-pointer hover:scale-105 transition-transform"
             >
               <LogIn size={22} />
-              <span>{status === "over" ? "PLAY AGAIN" : chosenName ? "REJOIN GAME" : "JOIN THE GAME"}</span>
+              <span>{chosenName ? "REJOIN GAME" : "JOIN THE GAME"}</span>
             </button>
           )}
         </div>
@@ -357,17 +368,6 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           pingMs={48}
         />
       </div>
-
-      {/* Victory / Defeat Screen Overlay & Mascot Commentary */}
-      <BarnabyMascot
-        count={count}
-        status={status}
-        myTurn={myTurn}
-        winner={state?.winner ?? null}
-        lastEliminated={state?.lastEliminated ?? null}
-        isMyWin={!!(state?.winner && players.find((p) => p.id === myId)?.name === state.winner.name)}
-        onPlayAgain={rejoin}
-      />
 
       {/* Pre-Match 2-Skill Loadout Selector Modal */}
       <SkillLoadoutModal
