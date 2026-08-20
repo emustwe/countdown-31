@@ -24,8 +24,8 @@ export default function AvatarPage() {
         <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
       </div>
 
-      {/* Main Studio Area */}
-      <main className="relative z-10 w-full flex-1 my-auto">
+      {/* Main Studio Area - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
+      <main className="relative z-10 w-full flex-1 mt-8 sm:mt-12 md:mt-14 mb-6">
         <AvatarStudio />
       </main>
 

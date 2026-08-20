@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { Crown, Trophy, Flame, Zap, Shield, RotateCcw, Moon, Swords, Award, Calendar, CheckCircle2, Star, Sparkles } from "lucide-react";
+import { Crown, Trophy, Flame, Zap, Shield, RotateCcw, Swords, Award, Calendar, CheckCircle2, Star, Sparkles, User, Mail, Wallet, Clock } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { MasterAvatar } from "../../components/dune/MasterAvatar";
 import { useAvatarStore } from "../../stores/avatar-customization-store";
-import { useAuthStore } from "../../stores/auth-store";
-import { useGuestStore } from "../../stores/guest-store";
+import { useProfile } from "../../lib/hooks/useAuth";
+import { formatUsdt } from "../../lib/money";
 import { soundManager } from "../../lib/soundManager";
 
 const MATCH_HISTORY = [
@@ -22,9 +22,11 @@ export default function ProfilePage() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const avatar = useAvatarStore();
-  const user = useAuthStore((s) => s.user);
-  const guestName = useGuestStore((s) => s.username);
-  const playerName = user?.fullName || guestName || "Sameer Khan";
+  const { data: profile, isLoading } = useProfile();
+
+  const playerName = profile?.fullName || profile?.email?.split("@")[0] || "Sameer Khan";
+  const memberSince = profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "August 2026";
+  const balanceUsdt = profile ? formatUsdt(profile.balance) : "1,250.00";
 
   return (
     <div className="relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
@@ -40,8 +42,8 @@ export default function ProfilePage() {
         <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
       </div>
 
-      {/* Main Profile Showcase */}
-      <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 my-4 flex flex-col gap-6">
+      {/* Main Profile Showcase - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
+      <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-6">
         {/* Top Hero Banner: Avatar + Prestige Identity */}
         <div className="w-full bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 sm:border-3 border-amber-400/70 rounded-3xl p-5 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col md:flex-row items-center gap-6 justify-between">
           {/* Avatar Showcase */}
@@ -79,9 +81,21 @@ export default function ProfilePage() {
                 <span>🏆 {avatar.title}</span>
               </span>
 
-              <p className="text-xs text-slate-400 mt-2 max-w-md">
-                Conqueror of the 31 Pasture. Master of sequential deduction, precision skip traps, and divine chrono rewinds.
-              </p>
+              {/* Account Details Row */}
+              <div className="flex items-center justify-center sm:justify-start gap-4 text-xs text-slate-400 mt-3 flex-wrap">
+                <span className="flex items-center gap-1">
+                  <Mail size={13} className="text-amber-400" />
+                  <span>{profile?.email ?? "sameer@countdown31.com"}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock size={13} className="text-emerald-400" />
+                  <span>Member since: {memberSince}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <Wallet size={13} className="text-cyan-400" />
+                  <span>Balance: <b>${balanceUsdt} USDT</b></span>
+                </span>
+              </div>
             </div>
           </div>
 
@@ -128,7 +142,6 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex flex-col gap-3">
-              {/* Skill 1: Chrono Rewind */}
               <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-[#082f49] to-black border-2 border-cyan-400/70 shadow-lg">
                 <div className="p-2.5 rounded-xl bg-black/60 border border-cyan-400/40 text-cyan-300">
                   <RotateCcw size={22} />
@@ -142,7 +155,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Skill 2: Turbo Leap */}
               <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-[#451a03] to-black border-2 border-amber-400/70 shadow-lg">
                 <div className="p-2.5 rounded-xl bg-black/60 border border-amber-400/40 text-amber-300">
                   <Zap size={22} className="fill-amber-300" />

@@ -6,74 +6,52 @@ import { Trophy, KeyRound, Swords, Users, Clock, Award, Sparkles, Flame, ShieldA
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
+import { AuthGate } from "../../components/AuthGate";
+import { usePublicPromoTournaments, useRedeemJoinCode } from "../../lib/hooks/useSponsors";
+import { useAuthStore } from "../../stores/auth-store";
 import { soundManager } from "../../lib/soundManager";
 
-interface TournamentCard {
-  id: string;
-  title: string;
-  prizePool: string;
-  entryFee: string;
-  players: string;
-  startTime: string;
-  status: "LIVE" | "STARTING SOON" | "REGISTERING";
-  badgeColor: string;
-  arena: string;
+function fmtStart(iso: string | null): string {
+  if (!iso) return "Open now";
+  const d = new Date(iso);
+  return d.getTime() <= Date.now() ? "Started" : d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 }
-
-const TOURNAMENTS: TournamentCard[] = [
-  {
-    id: "t1",
-    title: "🌾 Pasture Grand Championship 31",
-    prizePool: "$5,000 USDT",
-    entryFee: "50 Coins",
-    players: "32 / 64 Players",
-    startTime: "Live in 12m",
-    status: "STARTING SOON",
-    badgeColor: "bg-amber-400 text-slate-950",
-    arena: "Royal Pasture Arena",
-  },
-  {
-    id: "t2",
-    title: "⚡ Midnight Bull Knockout Blitz",
-    prizePool: "$2,500 USDT",
-    entryFee: "25 Coins",
-    players: "48 / 64 Players",
-    startTime: "Live in 45m",
-    status: "REGISTERING",
-    badgeColor: "bg-emerald-400 text-slate-950",
-    arena: "Thunder Dome",
-  },
-  {
-    id: "t3",
-    title: "👑 High Roller Master 31 Cup",
-    prizePool: "$10,000 USDT",
-    entryFee: "250 Coins",
-    players: "16 / 16 Players",
-    startTime: "Round 2 in Progress",
-    status: "LIVE",
-    badgeColor: "bg-rose-500 text-white animate-pulse",
-    arena: "Imperial Golden Pasture",
-  },
-];
 
 export default function TournamentsHubPage() {
   const router = useRouter();
+  const { data: tournaments, isLoading } = usePublicPromoTournaments();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const redeem = useRedeemJoinCode();
+
   const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
-  const [joinCode, setJoinCode] = useState("");
+  const [gate, setGate] = useState(false);
+  const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState("");
 
-  function handleJoin(t: TournamentCard) {
+  function onEnter(id: string) {
     soundManager.playClick();
-    router.push("/home");
+    if (accessToken) {
+      router.push(`/events/${id}`);
+    } else {
+      setGate(true);
+    }
   }
 
-  function handleRedeem(e: React.FormEvent) {
+  async function onRedeem(e: React.FormEvent) {
     e.preventDefault();
     soundManager.playClick();
-    if (!joinCode.trim()) return;
-    router.push("/home");
+    setCodeError("");
+    if (!code.trim()) return;
+    try {
+      const t = await redeem.mutateAsync(code.trim());
+      router.push(`/events/${t.id}?code=${encodeURIComponent(code.trim().toUpperCase())}`);
+    } catch (err) {
+      setCodeError(err instanceof Error ? err.message : "Invalid tournament code");
+    }
   }
+
+  const list = tournaments ?? [];
 
   return (
     <div className="relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
@@ -89,8 +67,8 @@ export default function TournamentsHubPage() {
         <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
       </div>
 
-      {/* Main Tournaments Hub */}
-      <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 my-4 flex flex-col gap-6">
+      {/* Main Tournaments Hub - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
+      <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-6">
         {/* Top Hero Banner */}
         <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
@@ -103,99 +81,127 @@ export default function TournamentsHubPage() {
                 <span>KNOCKOUT BRACKET ARENAS</span>
               </span>
               <h1 className="font-title font-black text-3xl sm:text-5xl text-white tracking-tight mt-0.5">
-                TOURNAMENT ARENAS
+                TOURNAMENTS
               </h1>
               <p className="text-xs text-slate-300 mt-1 max-w-lg">
-                Climb the sequential bracket, dodge the lethal 31 bomb, and claim the $10,000 Pasture Grand Prize!
+                Join a public tournament, climb the sequential knockout bracket, or unlock a private arena with your referral code.
               </p>
             </div>
           </div>
 
           {/* Private Join Code Input Bar */}
           <form
-            onSubmit={handleRedeem}
-            className="w-full md:w-auto flex items-center bg-black/80 border border-amber-400/60 rounded-2xl p-1.5 shadow-lg"
+            onSubmit={onRedeem}
+            className="w-full md:w-auto flex flex-col gap-1"
           >
-            <div className="flex items-center gap-2 px-3 text-amber-300">
-              <KeyRound size={18} />
-              <input
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value)}
-                placeholder="Enter Private Code..."
-                className="bg-transparent border-none outline-none font-title font-black text-xs sm:text-sm text-white placeholder:text-slate-500 w-36 sm:w-44"
-              />
+            <div className="flex items-center bg-black/80 border border-amber-400/60 rounded-2xl p-1.5 shadow-lg">
+              <div className="flex items-center gap-2 px-3 text-amber-300">
+                <KeyRound size={18} />
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="Enter Private Code..."
+                  className="bg-transparent border-none outline-none font-title font-black text-xs sm:text-sm text-white placeholder:text-slate-500 w-36 sm:w-44"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={redeem.isPending}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-title font-black text-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer shadow"
+              >
+                {redeem.isPending ? "..." : "UNLOCK"}
+              </button>
             </div>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-title font-black text-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer shadow"
-            >
-              UNLOCK
-            </button>
+            {codeError && <span className="text-[10px] text-rose-400 font-bold px-2">{codeError}</span>}
           </form>
         </div>
 
         {/* Live Tournaments Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {TOURNAMENTS.map((t) => (
-            <div
-              key={t.id}
-              className="relative rounded-3xl p-6 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 hover:border-amber-400 transition-all flex flex-col justify-between shadow-2xl gap-4 group"
-            >
-              {/* Header Status */}
-              <div className="flex items-center justify-between">
-                <span className={`text-[10px] font-title font-black px-3 py-0.5 rounded-full shadow ${t.badgeColor}`}>
-                  {t.status}
-                </span>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+            <span className="font-title font-black text-base text-amber-300 uppercase tracking-widest flex items-center gap-2">
+              <Swords size={18} className="text-yellow-400" />
+              <span>ACTIVE & UPCOMING TOURNAMENTS</span>
+            </span>
+            <span className="text-xs font-title font-bold text-slate-400">
+              {list.length} Arenas
+            </span>
+          </div>
 
-                <span className="text-xs font-title font-bold text-slate-400 flex items-center gap-1">
-                  <Clock size={13} />
-                  <span>{t.startTime}</span>
-                </span>
-              </div>
-
-              {/* Title & Arena */}
-              <div>
-                <h3 className="font-title font-black text-lg sm:text-xl text-white group-hover:text-amber-300 transition-colors">
-                  {t.title}
-                </h3>
-                <span className="text-xs text-slate-400">{t.arena}</span>
-              </div>
-
-              {/* Prize Pool & Entry Fee Info Box */}
-              <div className="grid grid-cols-2 gap-2 p-3 rounded-2xl bg-black/60 border border-slate-800">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-title font-bold text-slate-400 uppercase">Prize Pool</span>
-                  <span className="font-title font-black text-base text-emerald-400">{t.prizePool}</span>
-                </div>
-
-                <div className="flex flex-col text-right">
-                  <span className="text-[10px] font-title font-bold text-slate-400 uppercase">Entry Fee</span>
-                  <span className="font-title font-black text-base text-amber-300">{t.entryFee}</span>
-                </div>
-              </div>
-
-              {/* Player Count & Join Button */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-                  <span className="flex items-center gap-1 font-title font-bold">
-                    <Users size={14} className="text-cyan-400" />
-                    <span>{t.players}</span>
-                  </span>
-                  <span className="text-emerald-400 font-title font-bold">Single Elimination</span>
-                </div>
-
-                <button
-                  onClick={() => handleJoin(t)}
-                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 text-slate-950 font-title font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.6)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <span>ENTER TOURNAMENT</span>
-                  <ArrowRight size={15} />
-                </button>
-              </div>
+          {isLoading ? (
+            <div className="p-12 text-center text-slate-400 font-title font-bold">
+              Loading tournaments...
             </div>
-          ))}
+          ) : list.length === 0 ? (
+            <div className="p-8 rounded-3xl bg-black/60 border border-slate-800 text-center flex flex-col items-center gap-2">
+              <Trophy size={32} className="text-slate-500" />
+              <span className="font-title font-bold text-slate-300">No public tournaments open right now.</span>
+              <span className="text-xs text-slate-500">Check back soon or unlock a private tournament using a referral code above!</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {list.map((t) => (
+                <div
+                  key={t.id}
+                  className="relative rounded-3xl p-6 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 hover:border-amber-400 transition-all flex flex-col justify-between shadow-2xl gap-4 group"
+                >
+                  {/* Header Status */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-title font-black px-3 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow uppercase">
+                      {t.status}
+                    </span>
+
+                    <span className="text-xs font-title font-bold text-slate-400 flex items-center gap-1">
+                      <Clock size={13} />
+                      <span>{fmtStart(t.startAt)}</span>
+                    </span>
+                  </div>
+
+                  {/* Title & Arena */}
+                  <div>
+                    <h3 className="font-title font-black text-lg sm:text-xl text-white group-hover:text-amber-300 transition-colors">
+                      {t.title}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">
+                      {t.description || "Compete in the 31 knockout arena for massive glory and prizes!"}
+                    </p>
+                  </div>
+
+                  {/* Info Box */}
+                  <div className="grid grid-cols-2 gap-2 p-3 rounded-2xl bg-black/60 border border-slate-800">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-title font-bold text-slate-400 uppercase">Max Players</span>
+                      <span className="font-title font-black text-base text-emerald-400">{t.maxPlayers ?? 64}</span>
+                    </div>
+
+                    <div className="flex flex-col text-right">
+                      <span className="text-[10px] font-title font-bold text-slate-400 uppercase">Elimination</span>
+                      <span className="font-title font-black text-base text-amber-300">Single KO</span>
+                    </div>
+                  </div>
+
+                  {/* Enter Button */}
+                  <button
+                    onClick={() => onEnter(t.id)}
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 text-slate-950 font-title font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.6)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>ENTER TOURNAMENT</span>
+                    <ArrowRight size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
+
+      {/* AuthGate for Guests */}
+      <AuthGate
+        open={gate}
+        onClose={() => setGate(false)}
+        title="Sign in required"
+        message="Please sign in or create an account to enter competitive tournaments."
+      />
 
       {/* Drawer & Modal */}
       <ArcadeDrawerMenu

@@ -96,8 +96,8 @@ export default function ShopPage() {
         <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
       </div>
 
-      {/* Main Shop Arena */}
-      <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 my-4 flex flex-col gap-5">
+      {/* Main Shop Arena - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
+      <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-5">
         {/* Top Shop Banner: Live Currency Vault */}
         <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">

@@ -35,8 +35,8 @@ export default function HistoryPage() {
         <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
       </div>
 
-      {/* Main History Arena */}
-      <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 my-4 flex flex-col gap-6">
+      {/* Main History Arena - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
+      <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-6">
         {/* Top Hero Banner */}
         <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
