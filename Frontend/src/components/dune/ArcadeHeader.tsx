@@ -33,7 +33,7 @@ export function ArcadeHeader({
   }
 
   return (
-    <header className="relative w-full flex items-start justify-between px-3 sm:px-8 pt-3 pb-2 z-30 select-none h-20 sm:h-24">
+    <header className="relative w-full flex items-start justify-between px-3 sm:px-8 pt-3 pb-2 z-30 select-none h-24 sm:h-28">
       {/* Left Menu Button & Optional Mode Selector Pill (Only in Arena) */}
       <div className="flex items-center gap-2.5 z-20 pt-1">
         <button

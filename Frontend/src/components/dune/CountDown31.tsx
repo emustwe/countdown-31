@@ -252,10 +252,11 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         onMenuClick={() => setShowDrawer(true)}
         gameMode={gameMode}
         onToggleMode={handleModeChange}
+        showModeToggle={true}
       />
 
-      {/* Main Arcade Arena Battlefield (3 Columns on Desktop) */}
-      <main className="w-full max-w-[1500px] mx-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start mt-6 sm:mt-10 md:mt-12 mb-4">
+      {/* Main Arcade Arena Battlefield (3 Columns on Desktop) - Generous Clearance */}
+      <main className="w-full max-w-[1500px] mx-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start mt-10 sm:mt-14 md:mt-16 mb-4">
         {/* Left Column: Local Player Big Battle Card Showcase */}
         <div className="lg:col-span-3 flex items-start justify-center order-2 lg:order-1 w-full max-w-[280px] mx-auto">
           <div className="w-full">
