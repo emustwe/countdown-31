@@ -118,8 +118,8 @@ export function Arcade3DCylinder({
         </div>
 
         {/* Center Illuminated "NEXT" Bracket Frame (Locked in 50% Dead Center over Start of Turn Card) */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[86px] sm:w-[100px] md:w-[112px] h-[145px] sm:h-[165px] md:h-[185px] rounded-2xl border-2 sm:border-3 border-amber-400/90 bg-gradient-to-b from-amber-400/15 via-transparent to-amber-400/10 shadow-[0_0_30px_rgba(245,158,11,0.45),inset_0_0_20px_rgba(245,158,11,0.25)] z-25 pointer-events-none flex flex-col justify-between items-center py-2 sm:py-3">
-          <span className="text-[9px] sm:text-[11px] font-title font-black tracking-widest text-amber-300 uppercase bg-amber-950/90 px-2 py-0.5 rounded-md border border-amber-400/50 shadow flex items-center gap-1">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[80px] sm:w-[90px] md:w-[96px] h-[145px] sm:h-[165px] md:h-[185px] rounded-2xl border-2 sm:border-3 border-amber-400/90 bg-gradient-to-b from-amber-400/15 via-transparent to-amber-400/10 shadow-[0_0_25px_rgba(245,158,11,0.45),inset_0_0_15px_rgba(245,158,11,0.25)] z-25 pointer-events-none flex flex-col justify-between items-center py-2 sm:py-3">
+          <span className="text-[9px] sm:text-[10px] font-title font-black tracking-widest text-amber-300 uppercase bg-amber-950/90 px-2 py-0.5 rounded-md border border-amber-400/50 shadow flex items-center gap-1">
             <Star size={10} className="text-yellow-400 fill-yellow-400" />
             <span>{myTurn ? "PICK 1ST" : "NEXT"}</span>
           </span>
@@ -160,7 +160,7 @@ export function Arcade3DCylinder({
             let cardOpacity = 1.0;
             let cardZIndex = 20;
 
-            const STEP = 100; // 100px step creates 7 fully visible cards spanning 600px perfectly inside the 780px container!
+            const STEP = 100; // 100px step with 92px card width = 8px clean separation gap!
 
             if (isTargetCenter) {
               // 0 (Center Next Playable Card under Arrow)
@@ -234,7 +234,7 @@ export function Arcade3DCylinder({
                 initial={false}
                 animate={{
                   transform: `translate(-50%, -50%) translateX(${posX}px) translateZ(${posZ}px) rotateY(${rotY}deg) scale(${
-                    isSelected ? cardScale * 1.08 : cardScale
+                    isSelected ? cardScale * 1.06 : cardScale
                   })`,
                   opacity: cardOpacity,
                 }}
@@ -244,7 +244,7 @@ export function Arcade3DCylinder({
                   damping: 25,
                   mass: 0.9,
                 }}
-                className={`absolute top-1/2 w-[82px] sm:w-[94px] md:w-[104px] h-[135px] sm:h-[155px] md:h-[170px] rounded-2xl flex flex-col items-center justify-center border-2 transition-all select-none ${
+                className={`absolute top-1/2 w-[76px] sm:w-[86px] md:w-[92px] h-[135px] sm:h-[155px] md:h-[170px] rounded-2xl flex flex-col items-center justify-center border-2 transition-all select-none ${
                   isSelected
                     ? "bg-gradient-to-b from-emerald-900 via-emerald-800 to-black border-emerald-300 shadow-[0_0_35px_rgba(52,211,153,0.9),inset_0_0_15px_rgba(52,211,153,0.5)] cursor-pointer z-35"
                     : isLastTurnPick
