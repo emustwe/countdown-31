@@ -274,7 +274,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         </div>
 
         {/* Center Column: 3D Horizontal Number Cylinder Drum & Action/Skill Hand */}
-        <div className="flex flex-col items-center justify-start gap-3 order-1 lg:order-2 w-full max-w-[1000px] mx-auto">
+        <div className="flex flex-col items-center justify-start gap-3 order-1 lg:order-2 w-full max-w-[850px] mx-auto">
           {/* The Hero 3D Horizontal Arcade Cylinder with Direct Card Selection */}
           <Arcade3DCylinder
             currentCount={count}

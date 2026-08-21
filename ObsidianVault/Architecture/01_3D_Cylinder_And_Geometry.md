@@ -15,13 +15,13 @@ The **Arcade 3D Cylinder** (`Frontend/src/components/dune/Arcade3DCylinder.tsx`)
 | Property | Value | Notes |
 | :--- | :--- | :--- |
 | **Center Anchor (`baseCenterX`)** | `50%` | Exact dead center of drum machine housing |
-| **Container Max Width** | `1000px` | Set on `CountDown31.tsx` center column (`grid-cols-[270px_1fr_270px]`) and drum housing |
+| **Container Max Width** | `840px` (Center column: `max-w-[850px]`) | Hugs the 7 cards snugly with zero awkward empty void |
 | **Card Width** | `w-[86px] sm:w-[100px] md:w-[110px]` | Chunky, wide, premium arcade proportions |
 | **Card Height** | `h-[140px] sm:h-[160px] md:h-[175px]` | 3D beveled typography with vertical metallic ribs |
 | **Step Spacing (`STEP`)** | `118px` | `118px - 110px = 8px` clean separation gap |
 | **Golden Bracket Width** | `w-[90px] sm:w-[104px] md:w-[114px]` | Hugs center card with 2px cushion, leaving 6px from neighbors |
 | **Total 7-Card Span** | `818px` | $3 \times 118 = 354\text{px}$ on left, $354\text{px}$ on right + $110\text{px}$ card width |
-| **Side Wall Clearance** | `65px` | Card 29 (offset -3) and Card 4 (offset +3) have 65px clearance inside brass rim |
+| **Side Wall Clearance** | `12px – 15px` | Snug, edge-to-edge arcade bezel margins with 100% full card visibility |
 
 ---
 

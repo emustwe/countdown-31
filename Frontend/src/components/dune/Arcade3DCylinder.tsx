@@ -67,7 +67,7 @@ export function Arcade3DCylinder({
   const baseCenterX = "50%"; // Exact 50% Dead Center of the drum machine container!
 
   return (
-    <div className="relative w-full max-w-[1000px] mx-auto my-1 select-none flex flex-col items-center gap-2">
+    <div className="relative w-full max-w-[840px] mx-auto my-1 select-none flex flex-col items-center gap-2">
       {/* Tactical Skill Event Combat Banner */}
       {lastSkillUsed && (
         <div className="flex items-center justify-center animate-fadeIn">
