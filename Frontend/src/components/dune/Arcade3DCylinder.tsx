@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { motion } from "framer-motion";
-import { Flame, Skull, Star, Zap, CheckCircle2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Flame, Skull, Star, Zap, CheckCircle2, Send } from "lucide-react";
 import { type LastMoveInfo, type SkillType } from "../../lib/hooks/useCountdownLive";
 import { soundManager } from "../../lib/soundManager";
 
@@ -416,6 +416,29 @@ export function Arcade3DCylinder({
           })}
         </div>
       </div>
+
+      {/* 3D Glowing Green Confirm Move Button */}
+      <AnimatePresence>
+        {myTurn && selectedCards.length > 0 && status === "playing" && (
+          <motion.div
+            initial={{ opacity: 0, y: 15, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className="z-30 mt-1"
+          >
+            <button
+              onClick={() => {
+                soundManager.playClick();
+                onConfirmMove();
+              }}
+              className="px-8 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-base shadow-[0_0_30px_rgba(52,211,153,0.9),0_4px_12px_rgba(0,0,0,0.5)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2.5 animate-pulse"
+            >
+              <span>CONFIRM MOVE ({selectedCards.length} {selectedCards.length === 1 ? "CARD" : "CARDS"})</span>
+              <Send size={18} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
