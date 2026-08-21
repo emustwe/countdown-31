@@ -24,22 +24,17 @@ interface Arcade3DCylinderProps {
 }
 
 const TARGET = 31;
-const SLOTS_LEFT = 4;
-const SLOTS_RIGHT = 4;
+const SLOTS_LEFT = 3;
+const SLOTS_RIGHT = 3;
 
+/**
+ * Robust, zero-glitch 1..31 modulo function.
+ * Anchors offset 0 directly to the next playable number (currentCount + 1).
+ */
 function calculateSlotNumber(currentCount: number, offset: number): number {
-  if (currentCount === 0) {
-    if (offset <= 0) {
-      // Prior to start: 0, 31, 30, 29...
-      const n = TARGET + offset;
-      return n <= 0 ? TARGET : n;
-    }
-    return ((offset - 1) % TARGET) + 1;
-  }
-
-  const raw = currentCount + offset;
-  if (raw <= 0) return TARGET + ((raw % TARGET) || -TARGET) + 1;
-  return ((raw - 1) % TARGET) + 1;
+  const raw = currentCount + 1 + offset;
+  const mod = (((raw - 1) % TARGET) + TARGET) % TARGET + 1;
+  return mod;
 }
 
 export function Arcade3DCylinder({
@@ -54,7 +49,7 @@ export function Arcade3DCylinder({
   taken = {},
   forbiddenK,
 }: Arcade3DCylinderProps) {
-  // Generate list of visible slot offsets around current count: -4, -3, -2, -1, 0, 1, 2, 3, 4
+  // Visible slot offsets around next playable number: -3, -2, -1, 0, 1, 2, 3
   const visibleOffsets = useMemo(() => {
     const offsets: number[] = [];
     for (let i = -SLOTS_LEFT; i <= SLOTS_RIGHT; i++) {
@@ -117,16 +112,16 @@ export function Arcade3DCylinder({
           ))}
         </div>
 
-        {/* Top Fixed Golden Pointer Arrow (Locked in Exact 50% Dead Center) */}
+        {/* Top Fixed Golden Pointer Arrow (Locked in Exact 50% Dead Center over Next Playable Card) */}
         <div className="absolute top-4 sm:top-5 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center pointer-events-none">
           <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-b from-amber-300 via-amber-500 to-amber-600 rotate-45 border-2 border-amber-200 shadow-[0_4px_12px_rgba(245,158,11,0.8)] -mb-2.5 sm:-mb-3" />
         </div>
 
-        {/* Center Illuminated "NOW" Bracket Frame (Locked in Exact 50% Dead Center over Current Card) */}
+        {/* Center Illuminated "NEXT" Bracket Frame (Locked in 50% Dead Center over Start of Turn Card) */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[86px] sm:w-[100px] md:w-[112px] h-[145px] sm:h-[165px] md:h-[185px] rounded-2xl border-2 sm:border-3 border-amber-400/90 bg-gradient-to-b from-amber-400/15 via-transparent to-amber-400/10 shadow-[0_0_30px_rgba(245,158,11,0.45),inset_0_0_20px_rgba(245,158,11,0.25)] z-25 pointer-events-none flex flex-col justify-between items-center py-2 sm:py-3">
           <span className="text-[9px] sm:text-[11px] font-title font-black tracking-widest text-amber-300 uppercase bg-amber-950/90 px-2 py-0.5 rounded-md border border-amber-400/50 shadow flex items-center gap-1">
             <Star size={10} className="text-yellow-400 fill-yellow-400" />
-            <span>NOW</span>
+            <span>{myTurn ? "PICK 1ST" : "NEXT"}</span>
           </span>
           <div className="w-full flex justify-between px-2">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
@@ -145,20 +140,19 @@ export function Arcade3DCylinder({
         >
           {visibleOffsets.map((offset) => {
             const tileNum = calculateSlotNumber(currentCount, offset);
-            const isCurrent = offset === 0;
-            const isRight1 = offset === 1;
-            const isRight2 = offset === 2;
-            const isRight3 = offset === 3;
-            const isLeft1 = offset === -1;
-            const isLeft2 = offset === -2;
-            const isLeft3 = offset === -3;
+            const isTargetCenter = offset === 0; // The next playable card in 50% dead center
+            const isPlayable1 = offset === 0;   // 1st selectable card (currentCount + 1)
+            const isPlayable2 = offset === 1;   // 2nd selectable card (currentCount + 2)
+            const isPlayable3 = offset === 2;   // 3rd selectable card (currentCount + 3)
 
             const isTargetBomb = tileNum === TARGET;
             const isTileDanger = tileNum >= 28 && tileNum < TARGET;
             const isSelected = selectedCards.includes(tileNum);
 
             // Symmetrical, 7-Card Flat Spacing Math:
-            // Cards: [-3, -2, -1, 0, 1, 2, 3] are 7 completely flat, 100% visible front-facing cards!
+            // Left cards (-3, -2, -1): All 3 previous played numbers (e.g. 12, 13, 14)
+            // Center (0): Next playable number (e.g. 15)
+            // Right cards (1, 2, 3): Future playable choices (e.g. 16, 17, 18)
             let posX = 0;
             let posZ = 0;
             let rotY = 0;
@@ -168,15 +162,15 @@ export function Arcade3DCylinder({
 
             const STEP = 100; // 100px step creates 7 fully visible cards spanning 600px perfectly inside the 780px container!
 
-            if (isCurrent) {
-              // 0 (Center NOW Card)
+            if (isTargetCenter) {
+              // 0 (Center Next Playable Card under Arrow)
               posX = 0;
               posZ = 0;
               rotY = 0;
               cardScale = 1.0;
               cardOpacity = 1.0;
               cardZIndex = 30;
-            } else if (isRight1) {
+            } else if (isPlayable2) {
               // +1 (Next Card Right)
               posX = STEP;
               posZ = 0;
@@ -184,68 +178,52 @@ export function Arcade3DCylinder({
               cardScale = 1.0;
               cardOpacity = 1.0;
               cardZIndex = 28;
-            } else if (isRight2) {
+            } else if (isPlayable3) {
               // +2 (Next Card Right)
               posX = STEP * 2;
               posZ = 0;
               rotY = 0;
-              cardScale = 1.0;
+              cardScale = 0.98;
               cardOpacity = 1.0;
               cardZIndex = 26;
-            } else if (isRight3) {
-              // +3 (Next Card Right)
+            } else if (offset === 3) {
+              // +3 (Right Peek Card)
               posX = STEP * 3;
               posZ = 0;
               rotY = 0;
-              cardScale = 1.0;
+              cardScale = 0.96;
               cardOpacity = 1.0;
               cardZIndex = 24;
-            } else if (offset >= 4) {
-              // +4 (Far Right Peek Edge)
-              posX = STEP * 3.85;
-              posZ = -40;
-              rotY = -16;
-              cardScale = 0.82;
-              cardOpacity = 0.45;
-              cardZIndex = 14;
-            } else if (isLeft1) {
-              // -1 (Previous Card Left)
+            } else if (offset === -1) {
+              // -1 (Previous Player's Last Card, e.g. 14)
               posX = -STEP;
               posZ = 0;
               rotY = 0;
               cardScale = 1.0;
               cardOpacity = 1.0;
               cardZIndex = 28;
-            } else if (isLeft2) {
-              // -2 (Previous Card Left)
+            } else if (offset === -2) {
+              // -2 (Previous Player's 2nd Card, e.g. 13)
               posX = -STEP * 2;
               posZ = 0;
               rotY = 0;
-              cardScale = 1.0;
+              cardScale = 0.98;
               cardOpacity = 1.0;
               cardZIndex = 26;
-            } else if (isLeft3) {
-              // -3 (Previous Card Left)
+            } else if (offset === -3) {
+              // -3 (Previous Player's 1st Card, e.g. 12)
               posX = -STEP * 3;
               posZ = 0;
               rotY = 0;
-              cardScale = 1.0;
+              cardScale = 0.96;
               cardOpacity = 1.0;
               cardZIndex = 24;
-            } else {
-              // -4 (Far Left Peek Edge)
-              posX = -STEP * 3.85;
-              posZ = -40;
-              rotY = 16;
-              cardScale = 0.82;
-              cardOpacity = 0.45;
-              cardZIndex = 14;
             }
 
             // Identify whether this card was part of the previous move (1, 2, or 3 cards)
             const isLastTurnPick =
               lastPicks.includes(tileNum) ||
-              (offset <= 0 && offset >= -(lastCount - 1) && currentCount > 0);
+              (offset < 0 && offset >= -lastCount && currentCount > 0);
 
             const highlightColor = lastMove?.playerColor ?? "#21e6d7";
             const priorColor = taken[tileNum];
@@ -269,21 +247,15 @@ export function Arcade3DCylinder({
                 className={`absolute top-1/2 w-[82px] sm:w-[94px] md:w-[104px] h-[135px] sm:h-[155px] md:h-[170px] rounded-2xl flex flex-col items-center justify-center border-2 transition-all select-none ${
                   isSelected
                     ? "bg-gradient-to-b from-emerald-900 via-emerald-800 to-black border-emerald-300 shadow-[0_0_35px_rgba(52,211,153,0.9),inset_0_0_15px_rgba(52,211,153,0.5)] cursor-pointer z-35"
-                    : isCurrent
-                      ? isTargetBomb
-                        ? "bg-gradient-to-b from-rose-950 via-rose-900 to-black border-rose-500 shadow-[0_0_35px_rgba(239,68,68,0.7)]"
-                        : isTileDanger
-                          ? "bg-gradient-to-b from-amber-950 via-amber-900 to-black border-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.6)]"
-                          : "bg-gradient-to-b from-slate-900 via-slate-950 to-black border-amber-400/80 shadow-[0_0_25px_rgba(245,158,11,0.4)]"
-                      : isLastTurnPick
-                        ? "bg-gradient-to-b from-[#0e1d24] via-[#09151b] to-black border-2"
-                        : myTurn && (isRight1 || isRight2 || isRight3)
-                          ? "bg-gradient-to-b from-[#16271c] via-[#0d1a12] to-black border-emerald-500/70 hover:border-emerald-400 hover:scale-105 cursor-pointer shadow-[0_0_18px_rgba(16,185,129,0.35)]"
-                          : isTargetBomb
-                            ? "bg-gradient-to-b from-red-950/40 to-black/80 border-red-500/40"
-                            : priorColor
-                              ? "bg-gradient-to-b from-[#141b18] to-black border-slate-700"
-                              : "bg-gradient-to-b from-neutral-900/60 to-black/90 border-amber-900/40"
+                    : isLastTurnPick
+                      ? "bg-gradient-to-b from-[#0e1d24] via-[#09151b] to-black border-2"
+                      : myTurn && (isPlayable1 || isPlayable2 || isPlayable3)
+                        ? "bg-gradient-to-b from-[#16271c] via-[#0d1a12] to-black border-emerald-500/70 hover:border-emerald-400 hover:scale-105 cursor-pointer shadow-[0_0_18px_rgba(16,185,129,0.35)]"
+                        : isTargetBomb
+                          ? "bg-gradient-to-b from-red-950/40 to-black/80 border-red-500/40"
+                          : priorColor
+                            ? "bg-gradient-to-b from-[#141b18] to-black border-slate-700"
+                            : "bg-gradient-to-b from-neutral-900/60 to-black/90 border-amber-900/40"
                 }`}
                 style={{
                   left: baseCenterX,
@@ -297,7 +269,7 @@ export function Arcade3DCylinder({
                       : undefined,
                 }}
                 onClick={() => {
-                  if (myTurn && status === "playing" && (isRight1 || isRight2 || isRight3)) {
+                  if (myTurn && status === "playing" && (isPlayable1 || isPlayable2 || isPlayable3)) {
                     soundManager.playCardSelect();
                     onToggleCard(tileNum);
                   }
@@ -314,8 +286,8 @@ export function Arcade3DCylinder({
                   </span>
                 )}
 
-                {/* Previous Turn Pick Pill Badge (Subtle & High-Contrast for 1, 2, or 3 Previous Cards) */}
-                {isLastTurnPick && !isCurrent && (
+                {/* Previous Turn Pick Pill Badge (Subtle & High-Contrast for ALL Previous Cards including the last one) */}
+                {isLastTurnPick && (
                   <span
                     className="absolute top-1.5 px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-title font-black uppercase tracking-wider border shadow-md flex items-center gap-1 z-20"
                     style={{
@@ -364,23 +336,23 @@ export function Arcade3DCylinder({
                   className={`font-title font-black leading-none transition-all ${
                     isSelected
                       ? "text-4xl sm:text-5xl md:text-6xl text-emerald-200 drop-shadow-[0_4px_16px_rgba(52,211,153,1)] scale-110"
-                      : isCurrent
-                        ? "text-4xl sm:text-5xl md:text-6xl text-amber-300 drop-shadow-[0_4px_12px_rgba(245,158,11,0.9)]"
-                        : isLastTurnPick
-                          ? "text-3xl sm:text-4xl md:text-5xl text-cyan-300 drop-shadow-[0_2px_14px_rgba(33,230,215,0.9)]"
-                          : myTurn && (isRight1 || isRight2 || isRight3)
+                      : isLastTurnPick
+                        ? "text-3xl sm:text-4xl md:text-5xl text-cyan-300 drop-shadow-[0_2px_14px_rgba(33,230,215,0.9)]"
+                        : isTargetCenter
+                          ? "text-4xl sm:text-5xl md:text-6xl text-amber-300 drop-shadow-[0_4px_12px_rgba(245,158,11,0.9)]"
+                          : myTurn && (isPlayable2 || isPlayable3)
                             ? "text-3xl sm:text-4xl md:text-5xl text-emerald-300 drop-shadow-[0_2px_8px_rgba(34,197,94,0.8)]"
                             : isTargetBomb
                               ? "text-3xl sm:text-4xl md:text-5xl text-rose-500 drop-shadow-[0_2px_8px_rgba(239,68,68,0.8)]"
                               : "text-2xl sm:text-3xl md:text-4xl text-amber-100/70"
                   }`}
                 >
-                  {isCurrent && currentCount === 0 ? "0" : tileNum}
+                  {tileNum}
                 </span>
 
                 {/* Bottom Accents / Indicator Dot */}
                 <div className="absolute bottom-1.5 flex gap-1.5 items-center">
-                  {isLastTurnPick && !isCurrent ? (
+                  {isLastTurnPick ? (
                     <span className="text-[9px] font-title font-black" style={{ color: highlightColor }}>
                       ✓ Played
                     </span>
@@ -390,7 +362,7 @@ export function Arcade3DCylinder({
                         className={`w-1.5 h-1.5 rounded-full ${
                           isSelected
                             ? "bg-emerald-400"
-                            : isCurrent
+                            : isTargetCenter
                               ? "bg-amber-400"
                               : isTargetBomb
                                 ? "bg-rose-500"
@@ -401,7 +373,7 @@ export function Arcade3DCylinder({
                         className={`w-1.5 h-1.5 rounded-full ${
                           isSelected
                             ? "bg-emerald-400"
-                            : isCurrent
+                            : isTargetCenter
                               ? "bg-amber-400"
                               : isTargetBomb
                                 ? "bg-rose-500"
@@ -417,7 +389,7 @@ export function Arcade3DCylinder({
         </div>
       </div>
 
-      {/* 3D Glowing Green Confirm Move Button */}
+      {/* 3D Glowing Green Confirm Move Button (Solid, 100% Stable) */}
       <AnimatePresence>
         {myTurn && selectedCards.length > 0 && status === "playing" && (
           <motion.div
