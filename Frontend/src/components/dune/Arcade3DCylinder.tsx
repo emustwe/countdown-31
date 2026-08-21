@@ -67,7 +67,7 @@ export function Arcade3DCylinder({
   const baseCenterX = "50%"; // Exact 50% Dead Center of the drum machine container!
 
   return (
-    <div className="relative w-full max-w-[920px] mx-auto my-1 select-none flex flex-col items-center gap-2">
+    <div className="relative w-full max-w-[1000px] mx-auto my-1 select-none flex flex-col items-center gap-2">
       {/* Tactical Skill Event Combat Banner */}
       {lastSkillUsed && (
         <div className="flex items-center justify-center animate-fadeIn">
@@ -80,14 +80,7 @@ export function Arcade3DCylinder({
       )}
 
       {/* Physical 3D Machine Housing */}
-      <div
-        className="relative w-full h-[225px] sm:h-[255px] md:h-[275px] rounded-3xl overflow-hidden bg-gradient-to-b from-[#0e1612] via-[#09100c] to-[#040806] border-2 border-amber-500/40 shadow-[0_20px_50px_rgba(0,0,0,0.9),inset_0_0_40px_rgba(0,0,0,0.8)] flex items-center justify-center"
-        style={
-          {
-            "--card-step": "126px",
-          } as React.CSSProperties
-        }
-      >
+      <div className="relative w-full h-[225px] sm:h-[255px] md:h-[275px] rounded-3xl overflow-hidden bg-gradient-to-b from-[#0e1612] via-[#09100c] to-[#040806] border-2 border-amber-500/40 shadow-[0_20px_50px_rgba(0,0,0,0.9),inset_0_0_40px_rgba(0,0,0,0.8)] flex items-center justify-center">
         {/* Background Radial Glow */}
         <div
           className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${
@@ -125,7 +118,7 @@ export function Arcade3DCylinder({
         </div>
 
         {/* Center Illuminated "NEXT" Bracket Frame (Hugs Center Card Cleanly with Zero Neighbor Overlap) */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92px] sm:w-[108px] md:w-[118px] h-[148px] sm:h-[168px] md:h-[188px] rounded-2xl border-2 sm:border-3 border-amber-400/90 bg-gradient-to-b from-amber-400/15 via-transparent to-amber-400/10 shadow-[0_0_30px_rgba(245,158,11,0.45),inset_0_0_20px_rgba(245,158,11,0.25)] z-25 pointer-events-none flex flex-col justify-between items-center py-2 sm:py-3">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90px] sm:w-[104px] md:w-[114px] h-[148px] sm:h-[168px] md:h-[188px] rounded-2xl border-2 sm:border-3 border-amber-400/90 bg-gradient-to-b from-amber-400/15 via-transparent to-amber-400/10 shadow-[0_0_30px_rgba(245,158,11,0.45),inset_0_0_20px_rgba(245,158,11,0.25)] z-25 pointer-events-none flex flex-col justify-between items-center py-2 sm:py-3">
           <span className="text-[9px] sm:text-[11px] font-title font-black tracking-widest text-amber-300 uppercase bg-amber-950/90 px-2 py-0.5 rounded-md border border-amber-400/50 shadow flex items-center gap-1">
             <Star size={10} className="text-yellow-400 fill-yellow-400" />
             <span>{myTurn ? "PICK 1ST" : "NEXT"}</span>
@@ -156,8 +149,7 @@ export function Arcade3DCylinder({
             const isTileDanger = tileNum >= 28 && tileNum < TARGET;
             const isSelected = selectedCards.includes(tileNum);
 
-            // Wide, Chunky, Non-Overlapping Spacing Math:
-            // 7 Thick, Premium Cards with generous 12px separation gaps!
+            // Wide, Chunky, 100% Fully Visible 7-Card Spacing Math:
             let posX = 0;
             let posZ = 0;
             let rotY = 0;
@@ -165,7 +157,7 @@ export function Arcade3DCylinder({
             let cardOpacity = 1.0;
             let cardZIndex = 20;
 
-            const STEP = 126; // 126px step with 114px card width = 12px clean breathing space!
+            const STEP = 118; // 118px step with 110px card width = 8px clean separation gap, and fits fully inside drum with 65px side clearance!
 
             if (isTargetCenter) {
               // 0 (Center Next Playable Card under Arrow)
@@ -249,7 +241,7 @@ export function Arcade3DCylinder({
                   damping: 25,
                   mass: 0.9,
                 }}
-                className={`absolute top-1/2 w-[88px] sm:w-[104px] md:w-[114px] h-[140px] sm:h-[160px] md:h-[175px] rounded-2xl flex flex-col items-center justify-center border-2 transition-all select-none ${
+                className={`absolute top-1/2 w-[86px] sm:w-[100px] md:w-[110px] h-[140px] sm:h-[160px] md:h-[175px] rounded-2xl flex flex-col items-center justify-center border-2 transition-all select-none ${
                   isSelected
                     ? "bg-gradient-to-b from-emerald-900 via-emerald-800 to-black border-emerald-300 shadow-[0_0_35px_rgba(52,211,153,0.9),inset_0_0_15px_rgba(52,211,153,0.5)] cursor-pointer z-35"
                     : isLastTurnPick

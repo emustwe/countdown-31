@@ -258,10 +258,10 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         showModeToggle={true}
       />
 
-      {/* Main Arcade Arena Battlefield (3 Columns on Desktop) - Generous Clearance */}
-      <main className="w-full max-w-[1500px] mx-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start mt-10 sm:mt-14 md:mt-16 mb-4">
+      {/* Main Arcade Arena Battlefield (3 Columns on Desktop with Expanded Center) */}
+      <main className="w-full max-w-[1580px] mx-auto flex-1 grid grid-cols-1 lg:grid-cols-[270px_minmax(0,1fr)_270px] gap-3 sm:gap-4 items-start mt-10 sm:mt-14 md:mt-16 mb-4">
         {/* Left Column: Local Player Big Battle Card Showcase */}
-        <div className="lg:col-span-3 flex items-start justify-center order-2 lg:order-1 w-full max-w-[280px] mx-auto">
+        <div className="flex items-start justify-center order-2 lg:order-1 w-full max-w-[270px] mx-auto">
           <div className="w-full">
             <ArcadePlayerCard
               myPlayer={myPlayer}
@@ -274,7 +274,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         </div>
 
         {/* Center Column: 3D Horizontal Number Cylinder Drum & Action/Skill Hand */}
-        <div className="lg:col-span-6 flex flex-col items-center justify-start gap-3 order-1 lg:order-2 w-full max-w-[920px] mx-auto">
+        <div className="flex flex-col items-center justify-start gap-3 order-1 lg:order-2 w-full max-w-[1000px] mx-auto">
           {/* The Hero 3D Horizontal Arcade Cylinder with Direct Card Selection */}
           <Arcade3DCylinder
             currentCount={count}
@@ -346,7 +346,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         </div>
 
         {/* Right Column: Opponent Panel & Match Roster */}
-        <div className="lg:col-span-3 flex flex-row lg:flex-col items-start justify-center order-3 w-full max-w-xs mx-auto">
+        <div className="flex flex-row lg:flex-col items-start justify-center order-3 w-full max-w-[270px] mx-auto">
           <div className="w-full">
             <ArcadeOpponentCard
               opponentPlayer={opponentPlayer}
