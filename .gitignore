@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+Backend/node_modules/
+Frontend/node_modules/
+
+# Env files (real secrets - never commit)
+.env
+.env.local
+.env.*.local
+Backend/.env
+Frontend/.env.local
+
+# Build output
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Prisma
+Backend/prisma/*.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor/OS
+.DS_Store
+.vscode/
+.idea/
+
+# Test/coverage
+coverage/
+.turbo/
+test-results/
+playwright-report/
+blob-report/
+
+# Heavy design assets (not code — keep out of git)
+VA_Theme_Files/
+Zip_Files/
+*.zip
+*.pdf
+game-frontend-for-designer.zip

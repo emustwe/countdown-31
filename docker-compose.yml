@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: slot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: slot_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: slot_platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U slot_user -d slot_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: slot-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Optional local mail catcher — only needed if EMAIL_ENABLED=true in Backend/.env.
+  # Currently OFF by default; enable with `docker compose --profile email up`.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: slot-mailpit
+    restart: unless-stopped
+    profiles: ["email"]
+    ports:
+      - "8025:8025" # web UI
+      - "1025:1025" # SMTP
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,199 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   Two admin-selectable theme families — Desert (default) and Monster —
+   each with a light and a dark appearance. The family is set site-wide
+   via data-theme-family; the viewer's own light/dark choice is data-theme
+   (default light). Components only ever read the tokens below.
+   ------------------------------------------------------------------ */
+
+/* ---- Desert (default) · light ---- */
+:root,
+:root[data-theme-family="desert"] {
+  --color-bg: #f6f0e6;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1e9d9;
+  --color-border: #e5d9c2;
+  --color-text: #2b2016;
+  --color-text-dim: #8a775a;
+  --color-accent: #c68a1c;
+  --color-accent-2: #0e9488;
+  --color-win: #15925f;
+  --color-danger: #c0392b;
+  --color-neon-violet: #7c3aed;
+  --color-neon-pink: #db2777;
+  --gradient-brand: linear-gradient(135deg, #7a3212 0%, #b8791a 60%, #e8a252 100%);
+  --shadow-card: 0 1px 2px rgba(43, 32, 22, 0.06), 0 8px 24px rgba(43, 32, 22, 0.06);
+  --shadow-pop: 0 12px 40px rgba(43, 32, 22, 0.14);
+}
+
+/* ---- Desert · dark ---- */
+:root[data-theme="dark"],
+:root[data-theme-family="desert"][data-theme="dark"] {
+  --color-bg: #16110c;
+  --color-surface: #211a12;
+  --color-surface-2: #2c2318;
+  --color-border: #433525;
+  --color-text: #f6ecda;
+  --color-text-dim: #ad9c80;
+  --color-accent: #e6b23f;
+  --color-accent-2: #2ee6c4;
+  --color-win: #34d399;
+  --color-danger: #ff6b6b;
+  --color-neon-violet: #a855f7;
+  --color-neon-pink: #ff3ec8;
+  --gradient-brand: linear-gradient(135deg, #3a1408 0%, #8a5410 55%, #c9762f 100%);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-pop: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* ---- Monster · light (toxic green + blood red) ---- */
+:root[data-theme-family="monster"] {
+  --color-bg: #eef2e8;
+  --color-surface: #ffffff;
+  --color-surface-2: #e5ede0;
+  --color-border: #cedcc2;
+  --color-text: #17231a;
+  --color-text-dim: #5e7358;
+  --color-accent: #2f9e4f;
+  --color-accent-2: #c0392b;
+  --color-win: #2f9e4f;
+  --color-danger: #b32d1f;
+  --color-neon-violet: #7c3aed;
+  --color-neon-pink: #d6336c;
+  --gradient-brand: linear-gradient(135deg, #14532d 0%, #2f9e4f 52%, #9e2a1f 100%);
+  --shadow-card: 0 1px 2px rgba(20, 40, 25, 0.07), 0 8px 24px rgba(20, 40, 25, 0.08);
+  --shadow-pop: 0 12px 40px rgba(20, 40, 25, 0.18);
+}
+
+/* ---- Monster · dark ---- */
+:root[data-theme-family="monster"][data-theme="dark"] {
+  --color-bg: #0a130e;
+  --color-surface: #101f16;
+  --color-surface-2: #16291d;
+  --color-border: #274434;
+  --color-text: #e9f6ea;
+  --color-text-dim: #8cb396;
+  --color-accent: #46d178;
+  --color-accent-2: #ff5147;
+  --color-win: #46d178;
+  --color-danger: #ff6b6b;
+  --color-neon-violet: #a855f7;
+  --color-neon-pink: #ff3ec8;
+  --gradient-brand: linear-gradient(135deg, #0c3b21 0%, #2fae5a 50%, #c0392b 100%);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+:root {
+  --font-display: var(--font-orbitron), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-wordmark: var(--font-cinzel), Georgia, "Times New Roman", serif;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
+}
+
+.surface {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-wordmark {
+  font-family: var(--font-wordmark);
+}
+
+/* ---- Monster theme motion (original art) ---- */
+@keyframes monsterFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1deg);
+  }
+}
+@keyframes monsterBlink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes monsterEyesBlink {
+  0%,
+  90%,
+  100% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 0.15;
+  }
+}
+.monster-float {
+  animation: monsterFloat 5s ease-in-out infinite;
+}
+.monster-blink {
+  animation: monsterBlink 5.5s ease-in-out infinite;
+}
+.monster-eyes-blink {
+  animation: monsterEyesBlink 4s ease-in-out infinite;
+}
+
+/* Slime drip along the top of cards, only in the Monster theme. */
+:root[data-theme-family="monster"] .surface {
+  position: relative;
+}
+:root[data-theme-family="monster"] .monster-drip::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 10px;
+  background:
+    radial-gradient(6px 10px at 12% 0, var(--color-accent) 60%, transparent 62%),
+    radial-gradient(5px 8px at 34% 0, var(--color-accent) 60%, transparent 62%),
+    radial-gradient(7px 12px at 60% 0, var(--color-accent) 60%, transparent 62%),
+    radial-gradient(5px 9px at 82% 0, var(--color-accent) 60%, transparent 62%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+@keyframes driftA {
+  0%, 100% { transform: translate(0, 0) rotate(-2deg); }
+  50% { transform: translate(14px, -22px) rotate(2deg); }
+}
+@keyframes driftB {
+  0%, 100% { transform: translate(0, 0) rotate(2deg); }
+  50% { transform: translate(-18px, -14px) rotate(-3deg); }
+}
+@keyframes spinSlow {
+  to { transform: rotate(360deg); }
+}
+.drift-a { animation: driftA 9s ease-in-out infinite; }
+.drift-b { animation: driftB 11s ease-in-out infinite; }
+.spin-slow { animation: spinSlow 18s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .monster-float,
+  .monster-blink,
+  .monster-eyes-blink,
+  .drift-a,
+  .drift-b,
+  .spin-slow {
+    animation: none;
+  }
+}

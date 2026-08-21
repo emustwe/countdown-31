@@ -1,0 +1,442 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PLAYER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  fullName      String?
+  avatarUrl     String?
+  passwordHash  String
+  role          Role           @default(PLAYER)
+  status        UserStatus     @default(ACTIVE)
+  // System accounts (e.g. the treasury) hold balances but are NOT real people: they can never be
+  // logged into, reset, or listed in admin user surfaces. Keeps a money-holding account from being
+  // a login/takeover target.
+  isSystem      Boolean        @default(false)
+  // Bumped on logout-all / password reset / ban so every outstanding access token minted with an
+  // older value is rejected immediately, without waiting for the 15-minute expiry.
+  tokenVersion  Int            @default(0)
+  // Null until the user confirms their email via a one-time code. Gates money-moving actions.
+  emailVerifiedAt DateTime?
+  // TOTP two-factor. mfaSecret is the base32 secret, encrypted-at-rest (secret-box). mfaEnabled flips
+  // true only after the user proves a code. mfaRecoveryCodes holds argon2 hashes of one-time codes.
+  mfaSecret        String?
+  mfaEnabled       Boolean     @default(false)
+  mfaRecoveryCodes Json        @default("[]")
+  // Shop cosmetics (card design, and later avatar/board/cloth/shoes). Free-form JSON so the
+  // catalog can grow without a migration per option.
+  cosmeticsJson Json           @default("{}")
+  // The shop item keys this user has PURCHASED (owned). Basic/default items are free for everyone
+  // and are not listed here. Equipping a non-basic item requires owning it.
+  cosmeticsOwned Json          @default("[]")
+  createdAt         DateTime          @default(now())
+  refreshTokens     RefreshToken[]
+  wallet            Wallet?
+  notifications     Notification[]
+  cryptoTransfers   CryptoTransfer[]
+  promoEntries      PromoEntry[]
+  passwordResets    PasswordReset[]
+  depositBindings   DepositBinding[]
+  emailVerifications EmailVerification[]
+}
+
+// Binds an external Solana source address to exactly one user. A deposit is credited ONLY to the
+// user the sending address is bound to (first-claim-wins, locked by the @unique), which stops one
+// user from claiming an on-chain transfer that another user actually sent.
+model DepositBinding {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address   String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// DB-backed (distributed) failed-login tracker. Replaces the old in-memory Map so a temporary
+// lock is global across instances and survives a restart. Keyed by scope ("user" | "sponsor") +
+// a lowercased identifier (email / sponsor username).
+model AuthThrottle {
+  id          String    @id @default(uuid())
+  scope       String
+  identifier  String
+  failCount   Int       @default(0)
+  lastFailAt  DateTime  @default(now())
+  lockedUntil DateTime?
+
+  @@unique([scope, identifier])
+}
+
+// An email-verification OTP. Same shape/discipline as PasswordReset: 6-digit code stored only as a
+// hash, short TTL, single-use, small attempt cap.
+model EmailVerification {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  otpHash    String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// A sponsor account, created by an admin. Sponsors get their own login (separate from player
+// Users) and their own dashboard to run co-branded tournaments (subject to admin approval). The
+// password is stored ONLY as a hash; the plaintext is shown to the admin once at generation and on
+// regeneration — never persisted in the clear.
+model Sponsor {
+  id           String              @id @default(uuid())
+  name         String
+  username     String              @unique
+  passwordHash String
+  // Reversibly-encrypted copy of the password so an admin can view/manage it (sponsor accounts are
+  // admin-issued). Encrypted at rest; see common/crypto/secret-box.
+  passwordEnc  String?
+  status       UserStatus          @default(ACTIVE)
+  createdAt    DateTime            @default(now())
+  tournaments  SponsorTournament[]
+  inquiries    Inquiry[]
+}
+
+// A sponsor/promo tournament — the tournament type shown on the user Tournaments page.
+//
+// PUBLIC tournaments are open to everyone: admin-created ones are auto-APPROVED; sponsor-created
+// ones start PENDING until an admin approves them.
+//
+// PRIVATE tournaments are created by an admin and gated by two codes: `sponsorCode` (a sponsor
+// enters it in their dashboard to CLAIM the tournament, linking sponsorId — admin keeps full
+// control) and `joinCode` (a user must supply it to join — otherwise they can only join public
+// tournaments). Private tournaments are never shown in the public list; users reach them by
+// redeeming their joinCode.
+model SponsorTournament {
+  id          String           @id @default(uuid())
+  title       String
+  description String           @default("")
+  visibility  PromoVisibility  @default(PUBLIC)
+  status      PromoStatus      @default(PENDING)
+  // REGULAR = a normal knockout. INFLUENCER = a team battle with `groupCount` teams: each team has a
+  // captain (influencer) who invites players with the team's captain code; the last player standing
+  // wins the whole tournament for their team.
+  type        PromoType        @default(REGULAR)
+  // INFLUENCER only: how many teams/captains (influencers). 2..6. One TournamentTeam row per group.
+  groupCount  Int              @default(2)
+  // Whether the tournament features named influencer-captains. Independent of `type`:
+  //  • GROUP  (type=INFLUENCER) + true  → each group is led by a named captain-influencer (captain code + special card)
+  //  • GROUP  + false → groups exist but with no named captains (players join via member code)
+  //  • REGULAR + true  → a solo knockout that also features named influencer players (invite codes)
+  //  • REGULAR + false → a plain solo knockout
+  hasInfluencers Boolean       @default(false)
+  // INFLUENCER only: target players PER GROUP (the regular min/max apply to the whole field).
+  minGroupPlayers Int?
+  maxGroupPlayers Int?
+  // The admin picks the DATE (as GMT/UTC midnight). Players then vote for the start TIME (GMT) from
+  // `timeOptions` — the most-voted slot resolves the effective `startAt`.
+  startDate   DateTime?
+  timeOptions Json             @default("[]") // ["14:00","18:00",...] GMT time slots users vote on
+  // When play starts (GMT). Entry closes at startAt. Resolved from startDate + the winning time
+  // vote (or set directly). Null = not scheduled yet.
+  startAt     DateTime?
+  endAt       DateTime?
+  // Prize as admin-entered free text (e.g. "1,000 USDT") + how many ranks get paid. A private
+  // tournament may be created with no prize yet (set later once a sponsor is secured).
+  prizePool   String           @default("")
+  winnerCount Int              @default(1)
+  // Target participation. Admin sets these at creation for both public and private tournaments.
+  minPlayers  Int?
+  maxPlayers  Int?
+  // PRIVATE only: when true and no sponsor is assigned yet, the tournament is advertised on the
+  // public Sponsorship page as an opportunity people can offer to sponsor.
+  seekingSponsor Boolean       @default(false)
+  // Private-tournament gate codes (null for public).
+  sponsorCode String?          @unique // sponsor enters this to claim the tournament
+  joinCode    String?          @unique // user must supply this to join
+  sponsorId   String?
+  sponsor     Sponsor?         @relation(fields: [sponsorId], references: [id], onDelete: SetNull)
+  createdBy   String           // "admin" or the sponsor id
+  createdAt   DateTime         @default(now())
+  entries     PromoEntry[]
+  inquiries   Inquiry[]
+  teams       TournamentTeam[]
+  timeVotes   TournamentTimeVote[]
+
+  @@index([status])
+  @@index([visibility, status])
+}
+
+enum PromoType {
+  REGULAR
+  INFLUENCER
+}
+
+// One team in an INFLUENCER tournament. Two entry codes: `captainCode` is the influencer's own
+// "special code" — using it enters them AS the captain (they play with a special card). `memberCode`
+// is the code the influencer shares with followers to join the team as a regular player. The last
+// surviving player wins for their team.
+model TournamentTeam {
+  id           String            @id @default(uuid())
+  tournamentId String
+  tournament   SponsorTournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  name         String
+  captainName  String
+  captainCode  String            @unique // influencer/captain entry code (special card)
+  memberCode   String?           @unique // code the captain shares with players to join the team
+  color        String            @default("#5aa8ff")
+  createdAt    DateTime          @default(now())
+  entries      PromoEntry[]
+
+  @@index([tournamentId])
+}
+
+// A player's vote for the tournament's start TIME (GMT slot). One vote per user; the most-voted
+// slot resolves the tournament's startAt.
+model TournamentTimeVote {
+  id           String            @id @default(uuid())
+  tournamentId String
+  tournament   SponsorTournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  userId       String
+  timeSlot     String            // "HH:MM" GMT
+  createdAt    DateTime          @default(now())
+
+  @@unique([tournamentId, userId])
+  @@index([tournamentId])
+}
+
+// A contact request from the public site. SPONSORSHIP = someone offering to sponsor a tournament
+// (routed to the admin, who may then issue a sponsor code). ENTRY = a user asking to join a
+// (usually private) tournament; the admin checks eligibility and can issue a join code, and if the
+// tournament already has a sponsor the request is also visible to that sponsor's dashboard.
+model Inquiry {
+  id           String             @id @default(uuid())
+  type         InquiryType
+  status       InquiryStatus      @default(NEW)
+  name         String?
+  email        String
+  message      String             @default("")
+  // A user-typed tournament name/reference (for entry requests where no specific tournament was
+  // selected from a list). tournamentId is set when the request came from a specific opportunity.
+  tournamentRef String?
+  tournamentId String?
+  tournament   SponsorTournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  sponsorId    String?            // set when the request should also reach an assigned sponsor
+  sponsor      Sponsor?           @relation(fields: [sponsorId], references: [id], onDelete: SetNull)
+  userId       String?            // set when the sender was signed in
+  createdAt    DateTime           @default(now())
+
+  @@index([type, status])
+  @@index([sponsorId, status])
+}
+
+enum InquiryType {
+  SPONSORSHIP
+  ENTRY
+}
+
+enum InquiryStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
+enum PromoStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PromoVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+// One user's registration in a promo tournament. Public tournaments accept anyone; private ones
+// require the correct joinCode. Entry is rejected once the tournament's startAt has passed.
+model PromoEntry {
+  id           String            @id @default(uuid())
+  tournamentId String
+  tournament   SponsorTournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // For INFLUENCER tournaments: which team the player joined, and whether they entered as the
+  // captain (influencer) — captains play with a special card everyone can recognise.
+  teamId       String?
+  team         TournamentTeam?   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  isCaptain    Boolean           @default(false)
+  joinedAt     DateTime          @default(now())
+
+  @@unique([tournamentId, userId])
+  @@index([userId])
+  @@index([teamId])
+}
+
+// A lightweight in-app notification (e.g. "Round 2 starts at ..."). Shown in the nav bell.
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  refType   String?
+  refId     String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Rotating refresh tokens: the raw token is only ever returned to the client once. We
+// store a hash so a stolen DB dump can't be replayed as a valid refresh token. Revoking a
+// token (on rotation or reuse detection) sets revokedAt rather than deleting the row, so a
+// reused-after-rotation token can still be detected and its whole family revoked.
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// A password-reset OTP sent to the user's email. The 6-digit code is stored only as an argon2 hash;
+// it expires quickly and is single-use, with a small attempt cap to resist brute force.
+model PasswordReset {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  otpHash    String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Append-only trail of security-relevant events (logins, password resets, withdrawals, admin
+// actions). Immutable — never updated or deleted — so an incident can be reconstructed.
+model SecurityEvent {
+  id        String   @id @default(uuid())
+  actor     String   // userId / sponsor id / email / "system" / "guest"
+  action    String   // e.g. LOGIN_SUCCESS, LOGIN_FAILURE, PASSWORD_RESET_COMPLETE, WITHDRAWAL, SPONSOR_DELETE
+  detail    Json     @default("{}")
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([actor, createdAt])
+}
+
+enum LedgerEntryType {
+  DEPOSIT
+  WITHDRAWAL
+  BET_STAKE
+  BET_WIN
+  JACKPOT_WIN
+  ADJUSTMENT
+  TOURNAMENT_ENTRY
+  TOURNAMENT_PRIZE
+  TOURNAMENT_REFUND
+  SHOP_PURCHASE
+  SHOP_REVENUE
+}
+
+// The wallet's cachedBalance is a read-optimized projection, never the source of truth.
+// The source of truth is the sum of this wallet's LedgerEntry rows, which are append-only
+// (no updates, no deletes) — every money movement is a permanent, auditable record.
+model Wallet {
+  id            String        @id @default(uuid())
+  userId        String        @unique
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency      String        @default("USDT")
+  cachedBalance BigInt        @default(0)
+  version       Int           @default(0)
+  updatedAt     DateTime      @updatedAt
+  ledgerEntries LedgerEntry[]
+}
+
+enum CryptoDirection {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum CryptoTransferStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// A record of an on/off-ramp movement between a player's in-app USDT wallet and the
+// Solana chain. Today the on-chain settlement is stubbed (instant mock: created COMPLETED
+// with a mock txSignature), but this row is the durable seam — when the real Solana/USDT
+// integration lands it fills in the true signature and drives status PENDING -> COMPLETED.
+// The paired LedgerEntry references this row via refType="CRYPTO_TRANSFER", refId=id.
+model CryptoTransfer {
+  id              String               @id @default(uuid())
+  userId          String
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  direction       CryptoDirection
+  amount          BigInt               // USDT base units (6 dp; 1_000_000 = 1 USDT)
+  asset           String               @default("USDT")
+  network         String               @default("SOLANA")
+  // Withdrawals: the player's external destination address. Deposits: the platform
+  // deposit address the player sent to.
+  address         String
+  destinationType String               @default("SOLANA") // reserved for a future "BANK" off-ramp
+  txSignature     String?              // on-chain signature (mock placeholder for now)
+  status          CryptoTransferStatus @default(COMPLETED)
+  createdAt       DateTime             @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model LedgerEntry {
+  id        String          @id @default(uuid())
+  walletId  String
+  // onDelete: Cascade here is purely to let test fixtures clean up a whole user's data in
+  // one delete — the app itself never deletes a User (only bans), so this never fires
+  // against a real ledger. If a user-deletion flow is added later, use anonymization
+  // instead of cascade delete to keep the audit trail intact.
+  wallet    Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  amount    BigInt
+  type      LedgerEntryType
+  refType   String?
+  refId     String?
+  createdAt DateTime        @default(now())
+
+  @@index([walletId, createdAt])
+}
+
+// Guards money-moving endpoints (deposit/withdraw/spin) against duplicate charges from
+// client retries: the same key always returns the original stored response, never
+// re-executes the movement.
+model IdempotencyKey {
+  key          String   @id
+  userId       String
+  endpoint     String
+  requestHash  String
+  responseJson Json
+  createdAt    DateTime @default(now())
+
+  @@index([userId, endpoint])
+}
+
