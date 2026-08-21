@@ -67,7 +67,7 @@ export function Arcade3DCylinder({
   const baseCenterX = "50%"; // Exact 50% Dead Center of the drum machine container!
 
   return (
-    <div className="relative w-full max-w-5xl mx-auto my-1 select-none flex flex-col items-center gap-2">
+    <div className="relative w-full max-w-[920px] mx-auto my-1 select-none flex flex-col items-center gap-2">
       {/* Tactical Skill Event Combat Banner */}
       {lastSkillUsed && (
         <div className="flex items-center justify-center animate-fadeIn">
@@ -80,7 +80,14 @@ export function Arcade3DCylinder({
       )}
 
       {/* Physical 3D Machine Housing */}
-      <div className="relative w-full h-[215px] sm:h-[245px] md:h-[265px] rounded-3xl overflow-hidden bg-gradient-to-b from-[#0e1612] via-[#09100c] to-[#040806] border-2 border-amber-500/40 shadow-[0_20px_50px_rgba(0,0,0,0.9),inset_0_0_40px_rgba(0,0,0,0.8)] flex items-center justify-center">
+      <div
+        className="relative w-full h-[225px] sm:h-[255px] md:h-[275px] rounded-3xl overflow-hidden bg-gradient-to-b from-[#0e1612] via-[#09100c] to-[#040806] border-2 border-amber-500/40 shadow-[0_20px_50px_rgba(0,0,0,0.9),inset_0_0_40px_rgba(0,0,0,0.8)] flex items-center justify-center"
+        style={
+          {
+            "--card-step": "126px",
+          } as React.CSSProperties
+        }
+      >
         {/* Background Radial Glow */}
         <div
           className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${
@@ -94,7 +101,7 @@ export function Arcade3DCylinder({
 
         {/* Top Heavy Brass Rim with Rivets */}
         <div className="absolute top-0 inset-x-0 h-6 sm:h-7 bg-gradient-to-r from-amber-700 via-amber-400 to-amber-700 border-b border-amber-300/60 shadow-md flex items-center justify-around px-4 z-30 pointer-events-none">
-          {[...Array(18)].map((_, i) => (
+          {[...Array(20)].map((_, i) => (
             <div
               key={i}
               className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-gradient-to-br from-amber-200 to-amber-900 border border-amber-950/60 shadow-[inset_0_1px_2px_rgba(255,255,255,0.6)]"
@@ -104,7 +111,7 @@ export function Arcade3DCylinder({
 
         {/* Bottom Heavy Brass Rim with Rivets */}
         <div className="absolute bottom-0 inset-x-0 h-6 sm:h-7 bg-gradient-to-r from-amber-700 via-amber-400 to-amber-700 border-t border-amber-300/60 shadow-md flex items-center justify-around px-4 z-30 pointer-events-none">
-          {[...Array(18)].map((_, i) => (
+          {[...Array(20)].map((_, i) => (
             <div
               key={i}
               className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-gradient-to-br from-amber-200 to-amber-900 border border-amber-950/60 shadow-[inset_0_1px_2px_rgba(255,255,255,0.6)]"
@@ -117,9 +124,9 @@ export function Arcade3DCylinder({
           <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-b from-amber-300 via-amber-500 to-amber-600 rotate-45 border-2 border-amber-200 shadow-[0_4px_12px_rgba(245,158,11,0.8)] -mb-2.5 sm:-mb-3" />
         </div>
 
-        {/* Center Illuminated "NEXT" Bracket Frame (Locked in 50% Dead Center over Start of Turn Card) */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[80px] sm:w-[90px] md:w-[96px] h-[145px] sm:h-[165px] md:h-[185px] rounded-2xl border-2 sm:border-3 border-amber-400/90 bg-gradient-to-b from-amber-400/15 via-transparent to-amber-400/10 shadow-[0_0_25px_rgba(245,158,11,0.45),inset_0_0_15px_rgba(245,158,11,0.25)] z-25 pointer-events-none flex flex-col justify-between items-center py-2 sm:py-3">
-          <span className="text-[9px] sm:text-[10px] font-title font-black tracking-widest text-amber-300 uppercase bg-amber-950/90 px-2 py-0.5 rounded-md border border-amber-400/50 shadow flex items-center gap-1">
+        {/* Center Illuminated "NEXT" Bracket Frame (Hugs Center Card Cleanly with Zero Neighbor Overlap) */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92px] sm:w-[108px] md:w-[118px] h-[148px] sm:h-[168px] md:h-[188px] rounded-2xl border-2 sm:border-3 border-amber-400/90 bg-gradient-to-b from-amber-400/15 via-transparent to-amber-400/10 shadow-[0_0_30px_rgba(245,158,11,0.45),inset_0_0_20px_rgba(245,158,11,0.25)] z-25 pointer-events-none flex flex-col justify-between items-center py-2 sm:py-3">
+          <span className="text-[9px] sm:text-[11px] font-title font-black tracking-widest text-amber-300 uppercase bg-amber-950/90 px-2 py-0.5 rounded-md border border-amber-400/50 shadow flex items-center gap-1">
             <Star size={10} className="text-yellow-400 fill-yellow-400" />
             <span>{myTurn ? "PICK 1ST" : "NEXT"}</span>
           </span>
@@ -149,10 +156,8 @@ export function Arcade3DCylinder({
             const isTileDanger = tileNum >= 28 && tileNum < TARGET;
             const isSelected = selectedCards.includes(tileNum);
 
-            // Symmetrical, 7-Card Flat Spacing Math:
-            // Left cards (-3, -2, -1): All 3 previous played numbers (e.g. 12, 13, 14)
-            // Center (0): Next playable number (e.g. 15)
-            // Right cards (1, 2, 3): Future playable choices (e.g. 16, 17, 18)
+            // Wide, Chunky, Non-Overlapping Spacing Math:
+            // 7 Thick, Premium Cards with generous 12px separation gaps!
             let posX = 0;
             let posZ = 0;
             let rotY = 0;
@@ -160,7 +165,7 @@ export function Arcade3DCylinder({
             let cardOpacity = 1.0;
             let cardZIndex = 20;
 
-            const STEP = 100; // 100px step with 92px card width = 8px clean separation gap!
+            const STEP = 126; // 126px step with 114px card width = 12px clean breathing space!
 
             if (isTargetCenter) {
               // 0 (Center Next Playable Card under Arrow)
@@ -244,7 +249,7 @@ export function Arcade3DCylinder({
                   damping: 25,
                   mass: 0.9,
                 }}
-                className={`absolute top-1/2 w-[76px] sm:w-[86px] md:w-[92px] h-[135px] sm:h-[155px] md:h-[170px] rounded-2xl flex flex-col items-center justify-center border-2 transition-all select-none ${
+                className={`absolute top-1/2 w-[88px] sm:w-[104px] md:w-[114px] h-[140px] sm:h-[160px] md:h-[175px] rounded-2xl flex flex-col items-center justify-center border-2 transition-all select-none ${
                   isSelected
                     ? "bg-gradient-to-b from-emerald-900 via-emerald-800 to-black border-emerald-300 shadow-[0_0_35px_rgba(52,211,153,0.9),inset_0_0_15px_rgba(52,211,153,0.5)] cursor-pointer z-35"
                     : isLastTurnPick
@@ -282,7 +287,7 @@ export function Arcade3DCylinder({
                 {/* Selected Checkmark Badge */}
                 {isSelected && (
                   <span className="absolute top-1.5 left-1.5 text-emerald-300 bg-emerald-950 p-0.5 rounded-full border border-emerald-400 shadow animate-bounce z-20">
-                    <CheckCircle2 size={13} className="fill-emerald-400 text-slate-950" />
+                    <CheckCircle2 size={14} className="fill-emerald-400 text-slate-950" />
                   </span>
                 )}
 
@@ -306,7 +311,7 @@ export function Arcade3DCylinder({
                 {isTargetBomb && (
                   <span className="absolute top-1 text-[8px] sm:text-[9px] font-title font-black text-rose-300 bg-rose-950 px-1.5 py-0.5 rounded border border-rose-500/60 shadow flex items-center gap-1">
                     <span className="text-xs">💣</span>
-                    <Skull size={10} className="text-rose-400 animate-pulse" />
+                    <Skull size={11} className="text-rose-400 animate-pulse" />
                     <span>31</span>
                   </span>
                 )}
@@ -314,18 +319,18 @@ export function Arcade3DCylinder({
                 {/* Progressive Flame Badges (28 = 🔥, 29 = 🔥🔥, 30 = 🔥🔥🔥) */}
                 {isTileDanger && !isTargetBomb && (
                   <span className="absolute top-1 text-[8px] sm:text-[9px] font-title font-black text-amber-300 bg-amber-950 px-1.5 py-0.5 rounded border border-amber-500/60 shadow flex items-center gap-0.5">
-                    {tileNum === 28 && <Flame size={10} className="text-amber-400" />}
+                    {tileNum === 28 && <Flame size={11} className="text-amber-400" />}
                     {tileNum === 29 && (
                       <>
-                        <Flame size={10} className="text-orange-400" />
-                        <Flame size={10} className="text-orange-400" />
+                        <Flame size={11} className="text-orange-400" />
+                        <Flame size={11} className="text-orange-400" />
                       </>
                     )}
                     {tileNum === 30 && (
                       <>
-                        <Flame size={10} className="text-rose-400 animate-bounce" />
-                        <Flame size={10} className="text-rose-400 animate-bounce" />
-                        <Flame size={10} className="text-rose-400 animate-bounce" />
+                        <Flame size={11} className="text-rose-400 animate-bounce" />
+                        <Flame size={11} className="text-rose-400 animate-bounce" />
+                        <Flame size={11} className="text-rose-400 animate-bounce" />
                       </>
                     )}
                   </span>
