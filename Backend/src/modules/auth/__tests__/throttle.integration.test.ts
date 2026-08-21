@@ -27,7 +27,7 @@ describe("Auth rate limiting (integration)", () => {
     for (let i = 0; i < 25; i++) {
       const res = await request(app.getHttpServer())
         .post("/auth/register")
-        .send({ email: `${testEmailPrefix}-${i}@example.com`, password: "password123" });
+        .send({ email: `${testEmailPrefix}-${i}@example.com`, password: "Str0ng!Pw9" });
       statuses.push(res.status);
     }
 

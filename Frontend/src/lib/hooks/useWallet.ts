@@ -37,7 +37,9 @@ export function useDeposit() {
 export function useWithdraw() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { amount: string; destinationAddress: string; idempotencyKey: string }) =>
+    // A withdrawal is step-up protected: the user re-enters their password (and a 2FA code if
+    // enabled) so a hijacked access token alone can't move funds.
+    mutationFn: (input: { amount: string; destinationAddress: string; idempotencyKey: string; password: string; mfaCode?: string }) =>
       apiRequest<MoneyMovementResult>("/wallet/withdraw", { method: "POST", body: input }),
     onSuccess: () => invalidateWallet(queryClient),
   });

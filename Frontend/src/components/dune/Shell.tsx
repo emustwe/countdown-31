@@ -210,8 +210,7 @@ function TopNav({ activeKey, authed, initials, avatarUrl, name, email, brandVa =
 /** Ported page shell — top nav + footer, wired to the real profile. */
 export function PageShell({ children, className = "", brandVa = false }: { children: ReactNode; className?: string; brandVa?: boolean }) {
   const pathname = usePathname();
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const authed = !!accessToken;
+  const authed = !!useAuthStore((s) => s.user); // memory-only token (#4) → gate on persisted user
   const { data: profile } = useProfile();
   useBalanceSocket();
 

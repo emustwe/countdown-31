@@ -15,14 +15,40 @@ export interface SponsorRow {
 
 export type Visibility = "PUBLIC" | "PRIVATE";
 export type PromoStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type PromoType = "REGULAR" | "INFLUENCER";
+
+// A team in an INFLUENCER (team-battle) tournament. captainCode is only present for the
+// admin/sponsor who owns the tournament (the invite code the influencer/captain shares).
+export interface PromoTeam {
+  id: string;
+  name: string;
+  captainName: string;
+  color: string;
+  memberCount: number;
+  captainCode?: string; // influencer's special entry code (admin/sponsor only)
+  memberCode?: string; // code the captain shares with players (admin/sponsor only)
+}
+
+// One GMT start-time slot users can vote on, with its running tally.
+export interface TimeVoteTally {
+  slot: string; // "HH:MM" in GMT
+  votes: number;
+}
 
 export interface PromoTournament {
   id: string;
   title: string;
   description: string;
   visibility: Visibility;
+  type: PromoType;
   status: PromoStatus;
-  startAt: string | null;
+  hasInfluencers: boolean; // whether named influencer-captains are featured (both types)
+  groupCount: number; // GROUP: number of teams; REGULAR+influencers: number of influencers
+  minGroupPlayers: number | null; // GROUP: players per group
+  maxGroupPlayers: number | null;
+  startDate: string | null; // admin-chosen GMT calendar date (midnight UTC)
+  timeOptions: string[]; // GMT "HH:MM" slots users vote among
+  startAt: string | null; // effective resolved start (date + winning time)
   endAt: string | null;
   prizePool: string;
   winnerCount: number;
@@ -30,6 +56,7 @@ export interface PromoTournament {
   maxPlayers: number | null;
   seekingSponsor: boolean;
   sponsor: { id?: string; name: string } | null;
+  teams: PromoTeam[];
   createdBy: string;
   createdAt: string;
   entryCount: number;
@@ -51,6 +78,14 @@ export interface PromoInput {
   title: string;
   description?: string;
   visibility?: Visibility;
+  type?: PromoType;
+  startDate?: string | null; // GMT calendar date the admin picks
+  timeOptions?: string[]; // GMT "HH:MM" slots users vote among
+  teams?: { name?: string; captainName?: string }[]; // one per group/influencer
+  hasInfluencers?: boolean; // feature named influencer-captains
+  groupCount?: number; // GROUP: number of teams; REGULAR+influencers: number of influencers
+  minGroupPlayers?: number | null; // GROUP: players per group
+  maxGroupPlayers?: number | null;
   startAt?: string | null;
   endAt?: string | null;
   prizePool?: string;
@@ -150,13 +185,12 @@ export function useSetPromoStatus() {
 export function usePublicPromoTournaments() {
   return useQuery({ queryKey: ["public-promos"], queryFn: () => apiRequest<PromoTournament[]>("/promo-tournaments", { auth: false }) });
 }
-export function useRedeemJoinCode() {
-  return useMutation({
-    mutationFn: (joinCode: string) => apiRequest<PromoTournament>("/promo-tournaments/redeem", { method: "POST", body: { joinCode }, auth: false }),
-  });
-}
 export interface PromoDetail extends PromoTournament {
   joined?: boolean;
+  myTeamId?: string | null; // which team the signed-in user joined (INFLUENCER)
+  myIsCaptain?: boolean; // did the user enter as the captain (influencer)?
+  myTimeVote?: string | null; // the signed-in user's chosen GMT start-time slot
+  timeVotes?: TimeVoteTally[]; // running tally per slot
 }
 export function usePromoDetail(id: string, opts: { code?: string; authed: boolean }) {
   return useQuery({
@@ -172,11 +206,28 @@ export function usePromoDetail(id: string, opts: { code?: string; authed: boolea
 export function useJoinPromo() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, joinCode }: { id: string; joinCode?: string }) =>
-      apiRequest<{ joined: boolean }>(`/promo-tournaments/${id}/join`, { method: "POST", body: { joinCode } }),
+    // joinCode → PRIVATE tournaments; teamCode → a team code (captain's special code or a player code).
+    mutationFn: ({ id, joinCode, teamCode }: { id: string; joinCode?: string; teamCode?: string }) =>
+      apiRequest<{ joined: boolean; teamId?: string | null; isCaptain?: boolean }>(`/promo-tournaments/${id}/join`, { method: "POST", body: { joinCode, teamCode } }),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: ["promo-detail", v.id] });
       qc.invalidateQueries({ queryKey: ["my-joined-promos"] });
+    },
+  });
+}
+// Vote for a GMT start-time slot; the backend recomputes the tournament's effective startAt
+// from the most-voted slot and returns the fresh tally.
+export function useVoteStartTime() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, slot }: { id: string; slot: string }) =>
+      apiRequest<{ myTimeVote: string; startAt: string | null; timeVotes: TimeVoteTally[] }>(
+        `/promo-tournaments/${id}/vote-time`,
+        { method: "POST", body: { slot } },
+      ),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: ["promo-detail", v.id] });
+      qc.invalidateQueries({ queryKey: ["public-promos"] });
     },
   });
 }
@@ -245,6 +296,7 @@ export interface Cosmetics {
   card?: CardCosmetics;
   avatar?: Record<string, string>;
   board?: BoardCosmetics;
+  owned?: string[]; // shop item keys the player has purchased
   [k: string]: unknown;
 }
 export function useCosmetics(enabled = true) {
@@ -255,5 +307,26 @@ export function useUpdateCosmetics() {
   return useMutation({
     mutationFn: (patch: Partial<Cosmetics>) => apiRequest<Cosmetics>("/me/cosmetics", { method: "PATCH", body: patch }),
     onSuccess: (data) => qc.setQueryData(["cosmetics"], data),
+  });
+}
+
+// ---- Shop (wallet-backed purchases) ---------------------------------------------------------
+export interface ShopState {
+  price: string; // flat item price in USDT base units (6 dp) — "500000" = 0.5 USDT
+  owned: string[]; // item keys the player owns
+  balance: string; // wallet balance in USDT base units
+}
+export function useShop(enabled = true) {
+  return useQuery({ queryKey: ["shop"], queryFn: () => apiRequest<ShopState>("/shop"), enabled });
+}
+export function usePurchaseItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemKey: string) =>
+      apiRequest<{ owned: string[]; balance: string; charged: string }>("/shop/purchase", { method: "POST", body: { itemKey } }),
+    onSuccess: (data) => {
+      qc.setQueryData<ShopState>(["shop"], (prev) => (prev ? { ...prev, owned: data.owned, balance: data.balance } : prev));
+      qc.invalidateQueries({ queryKey: ["wallet"] });
+    },
   });
 }

@@ -38,9 +38,11 @@ const short = (a: string) => (a.length > 16 ? `${a.slice(0, 6)}…${a.slice(-6)}
 const explorerTx = (sig: string) => `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
 
 export default function WalletPage() {
-  const accessToken = useAuthStore((s) => s.accessToken);
+  // Gate on the persisted user, not the access token — the token is memory-only now (#4) and is
+  // null for a split second on reload while it's re-minted from the refresh cookie.
+  const user = useAuthStore((s) => s.user);
   const router = useRouter();
-  if (!accessToken) {
+  if (!user) {
     return (
       <PageShell>
         <main className="page-main">
@@ -62,6 +64,7 @@ export default function WalletPage() {
 }
 
 function WalletContent() {
+  const user = useAuthStore((s) => s.user);
   const { data: wallet } = useWallet();
   const { data: tx } = useTransactions();
   const deposit = useDeposit();
@@ -71,6 +74,8 @@ function WalletContent() {
   const [mode, setMode] = useState<"deposit" | "withdraw">("deposit");
   const [amount, setAmount] = useState("50");
   const [destination, setDestination] = useState("");
+  const [wpassword, setWpassword] = useState("");
+  const [wmfa, setWmfa] = useState("");
   const [depositFrom, setDepositFrom] = useState("");
   const [copied, setCopied] = useState(false);
   const [filter, setFilter] = useState("All");
@@ -151,8 +156,20 @@ function WalletContent() {
       setMsg({ text: ko ? "올바른 Solana(USDT) 주소를 입력하세요." : "Enter a valid Solana (USDT) address.", bad: true });
       return;
     }
+    if (!wpassword) {
+      setMsg({ text: ko ? "확인을 위해 비밀번호를 입력하세요." : "Enter your password to confirm the withdrawal.", bad: true });
+      return;
+    }
     try {
-      const res = await withdraw.mutateAsync({ amount: base, destinationAddress: destination.trim(), idempotencyKey: crypto.randomUUID() });
+      const res = await withdraw.mutateAsync({
+        amount: base,
+        destinationAddress: destination.trim(),
+        idempotencyKey: crypto.randomUUID(),
+        password: wpassword,
+        mfaCode: wmfa.trim() || undefined,
+      });
+      setWpassword("");
+      setWmfa("");
       setMsg({ text: ko ? `${amount} USDT 출금 완료` : `Withdrew ${amount} USDT`, sig: res.txSignature });
     } catch (e) {
       setMsg({ text: e instanceof ApiError ? String(e.message) : ko ? "실패" : "Failed", bad: true });
@@ -261,6 +278,18 @@ function WalletContent() {
 
               <label>{ko ? "받는 Solana 주소" : "Destination Solana address"}</label>
               <input className="addr-input" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder={ko ? "예: 7xKqABC…9fJ2" : "e.g. 7xKqABC…9fJ2"} />
+
+              {/* Step-up re-authentication: a withdrawal requires the account password (and a 2FA
+                  code if enabled), so a stolen session alone can't move money. */}
+              <label>{ko ? "비밀번호로 확인" : "Confirm with your password"}</label>
+              <input className="addr-input" type="password" autoComplete="current-password" value={wpassword} onChange={(e) => setWpassword(e.target.value)} placeholder={ko ? "계정 비밀번호" : "Account password"} />
+
+              {user?.mfaEnabled && (
+                <>
+                  <label>{ko ? "인증 앱 코드" : "Authenticator code"}</label>
+                  <input className="addr-input" inputMode="numeric" value={wmfa} onChange={(e) => setWmfa(e.target.value)} placeholder="123456" />
+                </>
+              )}
 
               <button className="primary full xl" disabled={busy} onClick={onWithdraw}>
                 {busy ? (ko ? "처리 중…" : "Processing…") : ko ? `${amount} USDT 출금` : `Withdraw ${amount} USDT`}

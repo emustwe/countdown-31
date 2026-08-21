@@ -11,16 +11,14 @@ export interface PublicUser {
   role: "PLAYER" | "ADMIN";
   status: "ACTIVE" | "BANNED";
   createdAt: string;
+  emailVerified: boolean;
+  mfaEnabled: boolean;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-}
-
-export type RegisterResponse = { user: PublicUser } & AuthTokens;
-export type LoginResponse = { user: PublicUser } & AuthTokens;
-export type RefreshResponse = AuthTokens;
+// Only the short-lived access token is returned in the body; the refresh token is an httpOnly cookie.
+export type RegisterResponse = { user: PublicUser; accessToken: string };
+export type LoginResponse = { user: PublicUser; accessToken: string };
+export type RefreshResponse = { accessToken: string };
 export type MeResponse = PublicUser & { balance: string };
 
 export interface WalletSnapshot {

@@ -24,10 +24,15 @@ describe("Wallet (integration)", () => {
     return app.getHttpServer();
   }
 
+  const PW = "Str0ng!Pw9";
+
   async function registerAndGetToken(suffix: string): Promise<{ accessToken: string; userId: string }> {
     const email = `${testEmailPrefix}-${suffix}@example.com`;
-    const res = await request(server()).post("/auth/register").send({ email, password: "password123" });
-    return { accessToken: res.body.accessToken, userId: res.body.user.id };
+    const res = await request(server()).post("/auth/register").send({ email, password: PW });
+    const userId = res.body.user.id as string;
+    // Money-moving actions now require a verified email; mark it verified directly for the test.
+    await prisma.user.update({ where: { id: userId }, data: { emailVerifiedAt: new Date() } });
+    return { accessToken: res.body.accessToken, userId };
   }
 
   it("a new wallet starts with the configured demo balance, reconciled with the ledger", async () => {
@@ -111,21 +116,28 @@ describe("Wallet (integration)", () => {
     const tooMuch = await request(server())
       .post("/wallet/withdraw")
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({ amount: (balance + 1000n).toString(), destinationAddress: dest, idempotencyKey: randomUUID() });
+      .send({ amount: (balance + 1000n).toString(), destinationAddress: dest, idempotencyKey: randomUUID(), password: PW });
     expect(tooMuch.status).toBe(400);
 
     // Invalid destination address.
     const badAddr = await request(server())
       .post("/wallet/withdraw")
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({ amount: "1000", destinationAddress: "not-a-real-address", idempotencyKey: randomUUID() });
+      .send({ amount: "1000", destinationAddress: "not-a-real-address", idempotencyKey: randomUUID(), password: PW });
     expect(badAddr.status).toBe(400);
 
-    // Valid withdrawal.
+    // Step-up: a wrong password is rejected even with everything else valid.
+    const wrongPw = await request(server())
+      .post("/wallet/withdraw")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: "1000", destinationAddress: dest, idempotencyKey: randomUUID(), password: "not-the-password" });
+    expect(wrongPw.status).toBe(401);
+
+    // Valid withdrawal (correct step-up password).
     const ok = await request(server())
       .post("/wallet/withdraw")
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({ amount: "1000", destinationAddress: dest, idempotencyKey: randomUUID() });
+      .send({ amount: "1000", destinationAddress: dest, idempotencyKey: randomUUID(), password: PW });
     expect(ok.status).toBe(201);
     expect(BigInt(ok.body.balance)).toBe(balance - 1000n);
     expect(ok.body.address).toBe(dest);

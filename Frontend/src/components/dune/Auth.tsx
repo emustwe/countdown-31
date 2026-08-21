@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronRight, Clock3, Eye, EyeOff, ShieldCheck, Trophy } from "lucide-react";
 import { Logo, Pill } from "./Shell";
 import { FlipText, useFlipIndex } from "./FlipText";
+import { ForgotPassword } from "./ForgotPassword";
 import { useLogin, useRegister } from "../../lib/hooks/useAuth";
 import { ApiError } from "../../lib/api-client";
 
@@ -18,7 +19,10 @@ export function DuneAuth({ register = false }: { register?: boolean }) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaNeeded, setMfaNeeded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showForgot, setShowForgot] = useState(false);
   const pending = login.isPending || signup.isPending;
   const ko = useFlipIndex(5000) === 1; // drives labels/placeholders (attributes) + buttons
 
@@ -29,10 +33,17 @@ export function DuneAuth({ register = false }: { register?: boolean }) {
       if (register) {
         await signup.mutateAsync({ fullName, email, password });
       } else {
-        await login.mutateAsync({ email, password });
+        await login.mutateAsync({ email, password, mfaCode: mfaCode.trim() || undefined });
       }
       router.push(next && next.startsWith("/") ? next : "/home");
     } catch (err) {
+      // The server asks for a second factor by returning an MFA_REQUIRED message — reveal the code
+      // field instead of showing it as a hard error.
+      if (err instanceof ApiError && String(err.message).includes("MFA_REQUIRED")) {
+        setMfaNeeded(true);
+        setError(ko ? "인증 앱 코드를 입력하세요." : "Enter your authenticator code to continue.");
+        return;
+      }
       setError(err instanceof ApiError ? String(err.message) : "Something went wrong");
     }
   }
@@ -165,13 +176,25 @@ export function DuneAuth({ register = false }: { register?: boolean }) {
               </button>
             </div>
           </label>
+          {!register && mfaNeeded && (
+            <label>
+              {ko ? "인증 앱 코드" : "Authenticator code"}
+              <input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="123456"
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+              />
+            </label>
+          )}
           {!register && (
             <div className="form-meta">
               <label>
                 <input type="checkbox" />
                 {ko ? "로그인 상태 유지" : "Remember me"}
               </label>
-              <button type="button">{ko ? "비밀번호를 잊으셨나요?" : "Forgot password?"}</button>
+              <button type="button" onClick={() => setShowForgot(true)}>{ko ? "비밀번호를 잊으셨나요?" : "Forgot password?"}</button>
             </div>
           )}
           {error && <p style={{ color: "var(--danger)", fontSize: "13px", margin: "2px 0" }}>{error}</p>}
@@ -222,6 +245,7 @@ export function DuneAuth({ register = false }: { register?: boolean }) {
           </p>
         </form>
       </div>
+      <ForgotPassword open={showForgot} initialEmail={email} onClose={() => setShowForgot(false)} />
     </div>
   );
 }

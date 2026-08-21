@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, CheckCircle2, Clock, Copy, Handshake, Link2, Mail, Ticket, Users, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Copy, Handshake, Link2, Ticket, XCircle } from "lucide-react";
 import {
   usePromoOverview,
-  useSponsors,
   useAdminPromoTournaments,
   useSetPromoStatus,
   useAdminInquiries,
@@ -13,11 +12,10 @@ import {
   type Inquiry,
 } from "../../lib/hooks/useSponsors";
 
-// New admin dashboard: at-a-glance counts, the sponsor roster, and pending sponsor tournaments the
-// admin can approve or reject.
+// New admin dashboard: at-a-glance counts, pending sponsor tournaments to approve/reject, and the
+// two kinds of incoming requests (sponsorship offers and entry requests) in their own sections.
 export default function NewAdminDashboardPage() {
   const { data: ov } = usePromoOverview();
-  const { data: sponsors } = useSponsors();
   const { data: promos } = useAdminPromoTournaments();
   const { data: inquiries } = useAdminInquiries();
   const setStatus = useSetPromoStatus();
@@ -25,6 +23,8 @@ export default function NewAdminDashboardPage() {
   const [assignFor, setAssignFor] = useState<Inquiry | null>(null);
   const pending = (promos ?? []).filter((t) => t.status === "PENDING");
   const openInquiries = (inquiries ?? []).filter((i) => i.status !== "CLOSED");
+  const sponsorshipReqs = openInquiries.filter((i) => i.type === "SPONSORSHIP");
+  const entryReqs = openInquiries.filter((i) => i.type === "ENTRY");
 
   const stats: [string, string | number][] = [
     ["Total users", ov?.totalUsers ?? "—"],
@@ -34,13 +34,52 @@ export default function NewAdminDashboardPage() {
     ["Pending approvals", ov?.pendingTournaments ?? "—"],
   ];
 
+  function InquiryRow({ i }: { i: Inquiry }) {
+    const sponsorSpecific = i.type === "SPONSORSHIP" && !!i.tournament;
+    const desc =
+      i.type === "ENTRY"
+        ? `Wants to join: ${i.tournament?.title ?? i.tournamentRef ?? "a tournament"}`
+        : sponsorSpecific
+          ? `Wants to sponsor: ${i.tournament?.title}`
+          : "General sponsorship request";
+    return (
+      <div className="pending-row">
+        <div>
+          <b>{i.name || i.email}</b>
+          <small><b style={{ color: "var(--text)" }}>{desc}</b>{i.tournamentRef ? ` · Ref ${i.tournamentRef}` : ""}</small>
+          <small>
+            <a href={`mailto:${i.email}`} style={{ color: "var(--gold2)" }}>{i.email}</a>
+            {i.sponsor ? ` · sponsor: ${i.sponsor.name}` : ""}
+            {" · "}<span className={`promo-status ${i.status === "NEW" ? "pending" : "approved"}`}>{i.status}</span>
+          </small>
+          {i.message && <small style={{ color: "var(--muted)" }}>“{i.message}”</small>}
+        </div>
+        <div className="pending-actions">
+          {sponsorSpecific && !i.sponsor && (
+            <button className="mini primary" onClick={() => setAssignFor(i)}>
+              <Link2 size={13} /> Assign sponsor
+            </button>
+          )}
+          {i.status === "NEW" && (
+            <button className="mini secondary" onClick={() => setInquiry.mutate({ id: i.id, status: "CONTACTED" })}>
+              <CheckCircle2 size={13} /> Mark contacted
+            </button>
+          )}
+          <button className="mini secondary" onClick={() => setInquiry.mutate({ id: i.id, status: "CLOSED" })}>
+            <XCircle size={13} /> Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <main className="admin-main">
       <div className="admin-heading">
         <div>
           <p className="eyebrow">NEW DASHBOARD</p>
           <h1>Overview</h1>
-          <p>Users, sponsors, and tournaments awaiting approval.</p>
+          <p>Tournaments awaiting approval, plus sponsorship and entry requests.</p>
         </div>
       </div>
 
@@ -55,111 +94,57 @@ export default function NewAdminDashboardPage() {
         ))}
       </div>
 
-      <div className="admin-grid">
-        <div className="admin-card glass wide">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">APPROVALS</p>
-              <h2>Pending sponsor tournaments</h2>
-            </div>
-            <Clock size={18} />
+      <div className="admin-card glass wide">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">APPROVALS</p>
+            <h2>Pending sponsor tournaments</h2>
           </div>
-          {pending.length === 0 && <div style={{ padding: 18, color: "var(--muted)" }}>Nothing pending — all caught up.</div>}
-          {pending.map((t) => (
-            <div className="pending-row" key={t.id}>
-              <div>
-                <b>{t.title}</b>
-                <small>{t.sponsor ? `by ${t.sponsor.name}` : "house"} · {t.description || "no description"}</small>
-              </div>
-              <div className="pending-actions">
-                <button className="primary" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => setStatus.mutate({ id: t.id, action: "approve" })}>
-                  <CheckCircle2 size={14} /> Approve
-                </button>
-                <button className="secondary" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => setStatus.mutate({ id: t.id, action: "reject" })}>
-                  <XCircle size={14} /> Reject
-                </button>
-              </div>
-            </div>
-          ))}
+          <Clock size={18} />
         </div>
-
-        <div className="admin-card glass">
-          <div className="section-heading">
+        {pending.length === 0 && <div style={{ padding: 18, color: "var(--muted)" }}>Nothing pending — all caught up.</div>}
+        {pending.map((t) => (
+          <div className="pending-row" key={t.id}>
             <div>
-              <p className="eyebrow">PARTNERS</p>
-              <h2>Sponsors</h2>
+              <b>{t.title}</b>
+              <small>{t.sponsor ? `by ${t.sponsor.name}` : "house"} · {t.description || "no description"}</small>
             </div>
-            <Building2 size={18} />
-          </div>
-          {(sponsors ?? []).length === 0 && <div style={{ padding: 14, color: "var(--muted)" }}>No sponsors yet.</div>}
-          {(sponsors ?? []).map((s) => (
-            <div className="sponsor-mini" key={s.id}>
-              <span className="sponsor-ava"><Building2 size={15} /></span>
-              <span>
-                <b>{s.name}</b>
-                <small>@{s.username} · {s.tournamentCount} tournaments</small>
-              </span>
+            <div className="pending-actions">
+              <button className="primary" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => setStatus.mutate({ id: t.id, action: "approve" })}>
+                <CheckCircle2 size={14} /> Approve
+              </button>
+              <button className="secondary" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => setStatus.mutate({ id: t.id, action: "reject" })}>
+                <XCircle size={14} /> Reject
+              </button>
             </div>
-          ))}
-          <div className="system-status" style={{ marginTop: 14 }}>
-            <p><Users size={14} /> {ov?.totalUsers ?? "—"} total users · <b>{ov?.activeUsers7d ?? "—"} active</b></p>
           </div>
-        </div>
+        ))}
       </div>
 
-      {/* Contact requests: sponsorship offers + entry requests */}
+      {/* Sponsorship requests — people offering to sponsor a tournament. */}
       <div className="admin-card glass wide" style={{ marginTop: 18 }}>
         <div className="section-heading">
           <div>
             <p className="eyebrow">REQUESTS</p>
-            <h2>Sponsorship &amp; entry requests</h2>
+            <h2>Sponsorship requests</h2>
           </div>
-          <Mail size={18} />
+          <Handshake size={18} />
         </div>
-        {openInquiries.length === 0 && <div className="empty-line">No open requests.</div>}
-        {openInquiries.map((i) => {
-          const sponsorSpecific = i.type === "SPONSORSHIP" && !!i.tournament;
-          const kind =
-            i.type === "ENTRY"
-              ? { label: "ENTRY", cls: "public", desc: `Wants to join: ${i.tournament?.title ?? i.tournamentRef ?? "a tournament"}` }
-              : sponsorSpecific
-                ? { label: "SPONSOR", cls: "private", desc: `Wants to sponsor: ${i.tournament?.title}` }
-                : { label: "SPONSOR", cls: "seeking", desc: "General sponsorship request" };
-          return (
-            <div className="pending-row" key={i.id}>
-              <div>
-                <b>
-                  <span className={`vis-pill ${kind.cls}`}>
-                    {i.type === "SPONSORSHIP" ? <Handshake size={11} /> : <Ticket size={11} />} {kind.label}
-                  </span>{" "}
-                  {i.name || i.email}
-                </b>
-                <small><b style={{ color: "var(--text)" }}>{kind.desc}</b>{i.tournamentRef ? ` · Ref ${i.tournamentRef}` : ""}</small>
-                <small>
-                  <a href={`mailto:${i.email}`} style={{ color: "var(--gold2)" }}>{i.email}</a>
-                  {i.sponsor ? ` · sponsor: ${i.sponsor.name}` : ""}
-                  {" · "}<span className={`promo-status ${i.status === "NEW" ? "pending" : "approved"}`}>{i.status}</span>
-                </small>
-                {i.message && <small style={{ color: "var(--muted)" }}>“{i.message}”</small>}
-              </div>
-              <div className="pending-actions">
-                {sponsorSpecific && !i.sponsor && (
-                  <button className="mini primary" onClick={() => setAssignFor(i)}>
-                    <Link2 size={13} /> Assign sponsor
-                  </button>
-                )}
-                {i.status === "NEW" && (
-                  <button className="mini secondary" onClick={() => setInquiry.mutate({ id: i.id, status: "CONTACTED" })}>
-                    <CheckCircle2 size={13} /> Mark contacted
-                  </button>
-                )}
-                <button className="mini secondary" onClick={() => setInquiry.mutate({ id: i.id, status: "CLOSED" })}>
-                  <XCircle size={13} /> Close
-                </button>
-              </div>
-            </div>
-          );
-        })}
+        {sponsorshipReqs.length === 0 && <div className="empty-line">No open sponsorship requests.</div>}
+        {sponsorshipReqs.map((i) => <InquiryRow key={i.id} i={i} />)}
+      </div>
+
+      {/* Entry requests — players asking to join a tournament. */}
+      <div className="admin-card glass wide" style={{ marginTop: 18 }}>
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">REQUESTS</p>
+            <h2>Entry requests</h2>
+          </div>
+          <Ticket size={18} />
+        </div>
+        {entryReqs.length === 0 && <div className="empty-line">No open entry requests.</div>}
+        {entryReqs.map((i) => <InquiryRow key={i.id} i={i} />)}
       </div>
 
       {assignFor && <AssignSponsorModal inquiry={assignFor} onClose={() => setAssignFor(null)} />}

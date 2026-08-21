@@ -28,7 +28,10 @@ export class WalletController {
     @CurrentUser() user: AccessTokenPayload,
     @Body(new ZodValidationPipe(WithdrawDtoSchema)) dto: WithdrawDto,
   ) {
-    return this.walletService.withdraw(user.sub, dto.amount, dto.destinationAddress, dto.idempotencyKey);
+    return this.walletService.withdraw(user.sub, dto.amount, dto.destinationAddress, dto.idempotencyKey, {
+      password: dto.password,
+      mfaCode: dto.mfaCode,
+    });
   }
 
   @Post("deposit/verify")

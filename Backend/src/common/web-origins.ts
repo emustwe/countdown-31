@@ -17,10 +17,14 @@ export function webOrigins(): string[] {
 
 const PRIVATE_LAN = /^https?:\/\/(localhost|127\.0\.0\.1|(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)[0-9.]+)(?::\d+)?$/;
 
-/** Whether a browser Origin should be allowed. Non-browser callers (no Origin) are allowed. */
+/** Whether a browser Origin should be allowed. Non-browser callers (no Origin) are allowed.
+ * In production ONLY the explicit WEB_ORIGIN allowlist is honored; the private-LAN convenience
+ * (any 10.x/192.168.x/172.16-31.x on any port) applies only in dev so a production deployment
+ * isn't open to every device on its network. */
 export function isAllowedOrigin(origin?: string): boolean {
   if (!origin) return true;
   if (webOrigins().includes(origin)) return true;
+  if (process.env.NODE_ENV === "production") return false;
   return PRIVATE_LAN.test(origin);
 }
 

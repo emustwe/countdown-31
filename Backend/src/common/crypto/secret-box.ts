@@ -4,7 +4,12 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 // (e.g. sponsor passwords, which the admin issues and manages). This is NOT for user passwords —
 // those stay one-way hashed. A DB dump alone can't reveal these without the server key.
 function key(): Buffer {
-  const secret = process.env.CRED_SECRET || process.env.JWT_ACCESS_SECRET || "dev-only-cred-secret";
+  // A dedicated key, required — no hardcoded fallback and no reuse of the JWT secret. If it's
+  // missing the app must fail rather than silently encrypt with a guessable/shared key.
+  const secret = process.env.CRED_SECRET;
+  if (!secret || secret.length < 16) {
+    throw new Error("CRED_SECRET is not set (or too short). Set a strong, unique CRED_SECRET.");
+  }
   return createHash("sha256").update(secret).digest(); // 32 bytes for AES-256
 }
 

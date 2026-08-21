@@ -18,13 +18,13 @@ const refOf = (id: string) => "#" + id.slice(0, 6).toUpperCase();
 // tournament (→ admin, and the assigned sponsor if there is one).
 export default function SponsorshipPage() {
   const { data: opportunities } = useSponsorshipOpportunities();
-  const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user); // gate on persisted user (token is memory-only, #4)
   const [contact, setContact] = useState<ContactState>(null);
   const [gate, setGate] = useState(false);
 
   // Requesting entry to a (private) tournament requires an account.
   function requestEntry() {
-    if (accessToken) setContact({ type: "ENTRY" });
+    if (user) setContact({ type: "ENTRY" });
     else setGate(true);
   }
 

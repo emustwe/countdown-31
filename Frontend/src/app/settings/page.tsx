@@ -1,16 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, IdCard, LogOut, Moon, Sparkles, Sun, UserRound, Volume2, WandSparkles, Zap } from "lucide-react";
+import { Camera, IdCard, LogOut, Moon, ShieldCheck, Sparkles, Sun, UserRound, Volume2, WandSparkles, Zap } from "lucide-react";
 import { AuthGuard } from "../../components/AuthGuard";
 import { PageShell, ToggleRow } from "../../components/dune/Shell";
 import { FlipText, useFlipIndex } from "../../components/dune/FlipText";
 import { useRouter } from "next/navigation";
-import { useProfile, useLogout, useUpdateProfile } from "../../lib/hooks/useAuth";
+import {
+  useProfile,
+  useLogout,
+  useUpdateProfile,
+  useResendVerification,
+  useVerifyEmail,
+  useBeginMfa,
+  useConfirmMfa,
+  useDisableMfa,
+  useLogoutAll,
+} from "../../lib/hooks/useAuth";
 import { useCosmetics } from "../../lib/hooks/useSponsors";
 import { CardPreview } from "../../components/dune/CardPreview";
 import { useSettingsStore } from "../../stores/settings-store";
 import { fileToAvatarDataUrl } from "../../lib/avatar";
+import { ApiError } from "../../lib/api-client";
 
 export default function SettingsPage() {
   return (
@@ -104,6 +115,10 @@ function SettingsContent() {
           <button className={tab === "card" ? "active" : ""} onClick={() => setTab("card")}>
             <IdCard />
             <FlipText intervalMs={5500} items={[<>Card</>, <>카드</>]} />
+          </button>
+          <button className={tab === "security" ? "active" : ""} onClick={() => setTab("security")}>
+            <ShieldCheck />
+            <FlipText intervalMs={5600} items={[<>Security</>, <>보안</>]} />
           </button>
           <button className="danger" onClick={() => logout.mutate()}>
             <LogOut />
@@ -269,6 +284,8 @@ function SettingsContent() {
             </div>
           )}
 
+          {tab === "security" && <SecurityPanel ko={ko} />}
+
           {tab === "card" && (
             <div className="settings-card glass">
               <p className="eyebrow">
@@ -303,5 +320,150 @@ function SettingsContent() {
         </div>
       </section>
     </main>
+  );
+}
+
+function SecurityPanel({ ko }: { ko: boolean }) {
+  const { data: profile } = useProfile();
+  const resendVerification = useResendVerification();
+  const verifyEmail = useVerifyEmail();
+  const beginMfa = useBeginMfa();
+  const confirmMfa = useConfirmMfa();
+  const disableMfa = useDisableMfa();
+  const logoutAll = useLogoutAll();
+
+  const [otp, setOtp] = useState("");
+  const [emailMsg, setEmailMsg] = useState("");
+  const [mfaSecret, setMfaSecret] = useState<string | null>(null);
+  const [mfaOtpauth, setMfaOtpauth] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [recovery, setRecovery] = useState<string[] | null>(null);
+  const [mfaErr, setMfaErr] = useState("");
+
+  const emailVerified = profile?.emailVerified;
+  const mfaEnabled = profile?.mfaEnabled;
+
+  async function onResend() {
+    setEmailMsg("");
+    const res = await resendVerification.mutateAsync();
+    setEmailMsg(res.devOtp ? `${ko ? "개발 코드" : "Dev code"}: ${res.devOtp}` : ko ? "코드를 이메일로 보냈습니다." : "We emailed you a code.");
+  }
+  async function onVerify() {
+    setEmailMsg("");
+    try {
+      await verifyEmail.mutateAsync(otp.trim());
+      setEmailMsg(ko ? "이메일이 확인되었습니다 ✓" : "Email verified ✓");
+      setOtp("");
+    } catch (e) {
+      setEmailMsg(e instanceof ApiError ? String(e.message) : ko ? "실패" : "Failed");
+    }
+  }
+  async function onBeginMfa() {
+    setMfaErr("");
+    setRecovery(null);
+    const res = await beginMfa.mutateAsync();
+    setMfaSecret(res.secret);
+    setMfaOtpauth(res.otpauthUri);
+  }
+  async function onConfirmMfa() {
+    setMfaErr("");
+    try {
+      const res = await confirmMfa.mutateAsync(mfaCode.trim());
+      setRecovery(res.recoveryCodes);
+      setMfaSecret(null);
+      setMfaOtpauth(null);
+      setMfaCode("");
+    } catch (e) {
+      setMfaErr(e instanceof ApiError ? String(e.message) : ko ? "실패" : "Failed");
+    }
+  }
+  async function onDisableMfa() {
+    setMfaErr("");
+    const code = window.prompt(ko ? "2단계 인증을 끄려면 인증 앱 코드를 입력하세요" : "Enter an authenticator code to turn off 2FA");
+    if (!code) return;
+    try {
+      await disableMfa.mutateAsync(code.trim());
+      setRecovery(null);
+    } catch (e) {
+      setMfaErr(e instanceof ApiError ? String(e.message) : ko ? "실패" : "Failed");
+    }
+  }
+
+  return (
+    <div className="settings-card glass">
+      <p className="eyebrow">
+        <FlipText intervalMs={5000} items={[<>ACCOUNT SECURITY</>, <>계정 보안</>]} />
+      </p>
+      <h2>{ko ? "보안" : "Security"}</h2>
+
+      {/* Email verification */}
+      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+        <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <ShieldCheck size={18} /> {ko ? "이메일 인증" : "Email verification"}
+        </h3>
+        {emailVerified ? (
+          <p className="muted" style={{ color: "var(--green)" }}>{ko ? "이메일이 확인되었습니다 ✓" : "Your email is verified ✓"}</p>
+        ) : (
+          <div style={{ display: "grid", gap: 8, marginTop: 8, maxWidth: 340 }}>
+            <p className="muted">{ko ? "입출금 전에 이메일을 확인하세요." : "Verify your email before you can move funds."}</p>
+            <button className="secondary" onClick={onResend} disabled={resendVerification.isPending}>
+              {ko ? "인증 코드 보내기" : "Send verification code"}
+            </button>
+            <input placeholder={ko ? "6자리 코드" : "6-digit code"} inputMode="numeric" value={otp} onChange={(e) => setOtp(e.target.value)} />
+            <button className="primary" onClick={onVerify} disabled={verifyEmail.isPending || otp.trim().length !== 6}>
+              {ko ? "이메일 확인" : "Verify email"}
+            </button>
+            {emailMsg && <small style={{ color: "var(--gold)" }}>{emailMsg}</small>}
+          </div>
+        )}
+        {emailVerified && emailMsg && <small style={{ color: "var(--gold)" }}>{emailMsg}</small>}
+      </div>
+
+      {/* Two-factor */}
+      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+        <h3 style={{ margin: 0 }}>{ko ? "2단계 인증 (2FA)" : "Two-factor authentication (2FA)"}</h3>
+        {mfaEnabled ? (
+          <div style={{ marginTop: 8 }}>
+            <p className="muted" style={{ color: "var(--green)" }}>{ko ? "2FA가 켜져 있습니다 ✓" : "Two-factor is on ✓"}</p>
+            <button className="ghost" onClick={onDisableMfa} disabled={disableMfa.isPending}>{ko ? "2FA 끄기" : "Turn off 2FA"}</button>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 10, marginTop: 8, maxWidth: 380 }}>
+            <p className="muted">{ko ? "인증 앱(Google Authenticator 등)으로 로그인을 보호하세요." : "Protect logins with an authenticator app (Google Authenticator, Authy, 1Password)."}</p>
+            {!mfaSecret ? (
+              <button className="secondary" onClick={onBeginMfa} disabled={beginMfa.isPending}>{ko ? "2FA 설정 시작" : "Set up 2FA"}</button>
+            ) : (
+              <>
+                <p className="muted">{ko ? "인증 앱에 이 키를 추가하세요:" : "Add this key to your authenticator app:"}</p>
+                <code style={{ wordBreak: "break-all", background: "rgba(255,255,255,0.06)", padding: "8px 10px", borderRadius: 8 }}>{mfaSecret}</code>
+                {mfaOtpauth && <small className="muted" style={{ wordBreak: "break-all" }}>{mfaOtpauth}</small>}
+                <input placeholder={ko ? "앱의 6자리 코드" : "6-digit code from the app"} inputMode="numeric" value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} />
+                <button className="primary" onClick={onConfirmMfa} disabled={confirmMfa.isPending || mfaCode.trim().length < 6}>{ko ? "확인 후 켜기" : "Confirm & enable"}</button>
+              </>
+            )}
+            {mfaErr && <small style={{ color: "var(--danger)" }}>{mfaErr}</small>}
+          </div>
+        )}
+        {recovery && (
+          <div style={{ marginTop: 10 }}>
+            <p style={{ color: "var(--gold)" }}>{ko ? "복구 코드를 안전하게 저장하세요 (한 번만 표시됩니다):" : "Save these recovery codes somewhere safe (shown once):"}</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 6, fontFamily: "monospace" }}>
+              {recovery.map((c) => (
+                <code key={c} style={{ background: "rgba(255,255,255,0.06)", padding: "6px 8px", borderRadius: 6 }}>{c}</code>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Sessions */}
+      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+        <h3 style={{ margin: 0 }}>{ko ? "세션" : "Sessions"}</h3>
+        <p className="muted">{ko ? "모든 기기에서 로그아웃하고 활성 세션을 무효화합니다." : "Sign out everywhere and invalidate all active sessions."}</p>
+        <button className="ghost" onClick={() => logoutAll.mutate()} disabled={logoutAll.isPending}>
+          {ko ? "모든 기기에서 로그아웃" : "Log out of all devices"}
+        </button>
+      </div>
+    </div>
   );
 }

@@ -29,22 +29,24 @@ describe("Auth (integration)", () => {
     const email = `${testEmailPrefix}-register@example.com`;
     const res = await request(server())
       .post("/auth/register")
-      .send({ email, password: "password123" });
+      .send({ email, password: "Str0ng!Pw9" });
 
     expect(res.status).toBe(201);
     expect(res.body.user.email).toBe(email);
     expect(res.body.user.role).toBe("PLAYER");
     expect(typeof res.body.accessToken).toBe("string");
-    expect(typeof res.body.refreshToken).toBe("string");
+    // The refresh token is delivered ONLY as an httpOnly cookie, never in the response body.
+    expect(res.body.refreshToken).toBeUndefined();
+    expect(rtCookie(res)).not.toBe("");
   });
 
   it("rejects registering the same email twice", async () => {
     const email = `${testEmailPrefix}-dup@example.com`;
-    await request(server()).post("/auth/register").send({ email, password: "password123" });
+    await request(server()).post("/auth/register").send({ email, password: "Str0ng!Pw9" });
 
     const res = await request(server())
       .post("/auth/register")
-      .send({ email, password: "password123" });
+      .send({ email, password: "Str0ng!Pw9" });
 
     expect(res.status).toBe(409);
   });
@@ -52,7 +54,7 @@ describe("Auth (integration)", () => {
   it("rejects registration payloads with unknown fields", async () => {
     const res = await request(server())
       .post("/auth/register")
-      .send({ email: `${testEmailPrefix}-strict@example.com`, password: "password123", isAdmin: true });
+      .send({ email: `${testEmailPrefix}-strict@example.com`, password: "Str0ng!Pw9", isAdmin: true });
 
     expect(res.status).toBe(400);
   });
@@ -67,9 +69,9 @@ describe("Auth (integration)", () => {
 
   it("logs in with correct credentials and rejects incorrect ones", async () => {
     const email = `${testEmailPrefix}-login@example.com`;
-    await request(server()).post("/auth/register").send({ email, password: "password123" });
+    await request(server()).post("/auth/register").send({ email, password: "Str0ng!Pw9" });
 
-    const good = await request(server()).post("/auth/login").send({ email, password: "password123" });
+    const good = await request(server()).post("/auth/login").send({ email, password: "Str0ng!Pw9" });
     expect(good.status).toBe(201);
     expect(typeof good.body.accessToken).toBe("string");
 
@@ -80,10 +82,10 @@ describe("Auth (integration)", () => {
   it("rejects login for a banned account", async () => {
     const email = `${testEmailPrefix}-banned@example.com`;
     await prisma.user.create({
-      data: { email, passwordHash: await argon2.hash("password123"), status: "BANNED" },
+      data: { email, passwordHash: await argon2.hash("Str0ng!Pw9"), status: "BANNED" },
     });
 
-    const res = await request(server()).post("/auth/login").send({ email, password: "password123" });
+    const res = await request(server()).post("/auth/login").send({ email, password: "Str0ng!Pw9" });
     expect(res.status).toBe(403);
   });
 
@@ -94,7 +96,7 @@ describe("Auth (integration)", () => {
     const email = `${testEmailPrefix}-me@example.com`;
     const registered = await request(server())
       .post("/auth/register")
-      .send({ email, password: "password123" });
+      .send({ email, password: "Str0ng!Pw9" });
 
     const withToken = await request(server())
       .get("/auth/me")
@@ -103,43 +105,46 @@ describe("Auth (integration)", () => {
     expect(withToken.body.email).toBe(email);
   });
 
-  it("refresh rotates the refresh token and the old one can no longer be used", async () => {
+  it("refresh (via cookie) rotates the refresh token and the old one can no longer be used", async () => {
     const email = `${testEmailPrefix}-refresh@example.com`;
     const registered = await request(server())
       .post("/auth/register")
-      .send({ email, password: "password123" });
-    const originalRefreshToken = registered.body.refreshToken;
+      .send({ email, password: "Str0ng!Pw9" });
+    const originalCookie = rtCookie(registered);
 
-    const refreshed = await request(server())
-      .post("/auth/refresh")
-      .send({ refreshToken: originalRefreshToken });
+    const refreshed = await request(server()).post("/auth/refresh").set("Cookie", originalCookie);
     expect(refreshed.status).toBe(201);
-    expect(refreshed.body.refreshToken).not.toBe(originalRefreshToken);
+    const rotatedCookie = rtCookie(refreshed);
+    expect(rotatedCookie).not.toBe("");
+    expect(rotatedCookie).not.toBe(originalCookie);
 
-    // Reuse detection: presenting the now-rotated-out token again must fail...
-    const reused = await request(server())
-      .post("/auth/refresh")
-      .send({ refreshToken: originalRefreshToken });
+    // Reuse detection: presenting the now-rotated-out cookie again must fail...
+    const reused = await request(server()).post("/auth/refresh").set("Cookie", originalCookie);
     expect(reused.status).toBe(401);
 
     // ...and must have revoked the whole family, including the token issued by the refresh above.
-    const afterReuse = await request(server())
-      .post("/auth/refresh")
-      .send({ refreshToken: refreshed.body.refreshToken });
+    const afterReuse = await request(server()).post("/auth/refresh").set("Cookie", rotatedCookie);
     expect(afterReuse.status).toBe(401);
   });
 
-  it("logout revokes the refresh token", async () => {
+  it("logout (via cookie) revokes the refresh token", async () => {
     const email = `${testEmailPrefix}-logout@example.com`;
     const registered = await request(server())
       .post("/auth/register")
-      .send({ email, password: "password123" });
-    const refreshToken = registered.body.refreshToken;
+      .send({ email, password: "Str0ng!Pw9" });
+    const cookie = rtCookie(registered);
 
-    const logoutRes = await request(server()).post("/auth/logout").send({ refreshToken });
+    const logoutRes = await request(server()).post("/auth/logout").set("Cookie", cookie);
     expect(logoutRes.status).toBe(204);
 
-    const refreshAfterLogout = await request(server()).post("/auth/refresh").send({ refreshToken });
+    const refreshAfterLogout = await request(server()).post("/auth/refresh").set("Cookie", cookie);
     expect(refreshAfterLogout.status).toBe(401);
   });
 });
+
+// Extract the `rt=...` refresh cookie string from a response's Set-Cookie header.
+function rtCookie(res: { headers: Record<string, unknown> }): string {
+  const cookies = (res.headers["set-cookie"] as string[] | undefined) ?? [];
+  const rt = cookies.find((c) => c.startsWith("rt="));
+  return rt ? (rt.split(";")[0] ?? "") : "";
+}

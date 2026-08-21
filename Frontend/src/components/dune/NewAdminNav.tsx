@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { Building2, ChevronLeft, LayoutDashboard, LogOut, Settings as SettingsIcon, Trophy, Users } from "lucide-react";
-import { useLogout, useProfile } from "../../lib/hooks/useAuth";
+import { Building2, ChevronLeft, LayoutDashboard, LogOut, Trophy } from "lucide-react";
+import { useLogout } from "../../lib/hooks/useAuth";
 
 // Navbar for the NEW admin dashboard. Reuses the .admin-nav styling (already responsive) so it
 // collapses to icons on tablets and scrolls on phones.
@@ -10,15 +10,11 @@ export function NewAdminNav() {
   const router = useRouter();
   const pathname = usePathname();
   const logout = useLogout();
-  const { data: profile } = useProfile();
-  const initials = (profile?.fullName || profile?.email || "AD").slice(0, 2).toUpperCase();
 
   const items: [string, typeof Trophy, string][] = [
     ["Dashboard", LayoutDashboard, "/admin"],
     ["Tournament", Trophy, "/admin/tournament"],
-    ["Users", Users, "/admin/users"],
     ["Sponsor", Building2, "/admin/sponsor"],
-    ["Settings", SettingsIcon, "/admin/settings"],
   ];
 
   return (
@@ -35,14 +31,6 @@ export function NewAdminNav() {
         ))}
       </nav>
       <div>
-        <span className="avatar" style={profile?.avatarUrl ? { padding: 0, overflow: "hidden" } : undefined}>
-          {profile?.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={profile.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-            initials
-          )}
-        </span>
         <button className="icon-button" onClick={() => logout.mutate()} aria-label="Log out">
           <LogOut size={18} />
         </button>

@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "../stores/auth-store";
 
 export default function RootPage() {
-  const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
   const router = useRouter();
 
   useEffect(() => {
     // Signed-in players go straight to the app; everyone else sees the landing page.
-    router.replace(accessToken ? "/home" : "/landing");
-  }, [accessToken, router]);
+    // Gate on the persisted user (the access token is memory-only now — see auth-store #4).
+    router.replace(user ? "/home" : "/landing");
+  }, [user, router]);
 
   return null;
 }

@@ -1,0 +1,74 @@
+name: security
+
+# Continuous security gates (#14 dependency/supply-chain + secret scanning). Runs on every push and
+# PR so a vulnerable dependency, a leaked secret, or a broken security test blocks the merge.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, so newly-disclosed CVEs surface even without a push
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Audit backend dependencies
+        working-directory: Backend
+        run: npm audit --audit-level=high
+      - name: Audit frontend dependencies
+        working-directory: Frontend
+        run: npm audit --audit-level=high
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  backend-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: slot_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: slot_platform
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://slot_user:test_password@localhost:5432/slot_platform
+      JWT_ACCESS_SECRET: test-access-secret-000000
+      JWT_REFRESH_SECRET: test-refresh-secret-00000
+      CRED_SECRET: test-cred-secret-0000000
+      SOLANA_TREASURY_ADDRESS: So11111111111111111111111111111111111111112
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install
+        working-directory: Backend
+        run: npm ci
+      - name: Migrate
+        working-directory: Backend
+        run: npx prisma migrate deploy && npx prisma generate
+      - name: Build
+        working-directory: Backend
+        run: npm run build
+      - name: Test (includes the security regression suite)
+        working-directory: Backend
+        run: npm test

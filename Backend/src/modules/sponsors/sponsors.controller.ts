@@ -5,6 +5,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import type { AccessTokenPayload } from "../auth/token.types";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe";
 import {
   SponsorsService,
   type AdminCreatePromoInput,
@@ -13,6 +14,20 @@ import {
   type InquiryInput,
 } from "./sponsors.service";
 import { SponsorAuthGuard } from "./sponsor-auth.guard";
+import {
+  PromoCreateSchema,
+  PromoUpdateSchema,
+  SponsorCreateSchema,
+  SponsorUpdateSchema,
+  SponsorLoginSchema,
+  ClaimSchema,
+  InquiryCreateSchema,
+  InquiryStatusSchema,
+  AssignSponsorSchema,
+  JoinSchema,
+  VoteTimeSchema,
+  CosmeticsSchema,
+} from "./dto/write.dto";
 
 // Admin-only sponsor management.
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -22,7 +37,7 @@ export class AdminSponsorsController {
   constructor(private readonly sponsors: SponsorsService) {}
 
   @Post()
-  create(@Body() body: { name?: string; username?: string; password?: string }) {
+  create(@Body(new ZodValidationPipe(SponsorCreateSchema)) body: { name?: string; username?: string; password?: string }) {
     return this.sponsors.createSponsor(body?.name ?? "", body?.username, body?.password);
   }
   @Get()
@@ -32,7 +47,7 @@ export class AdminSponsorsController {
   @Patch(":id")
   update(
     @Param("id") id: string,
-    @Body() body: { name?: string; username?: string; password?: string; status?: string },
+    @Body(new ZodValidationPipe(SponsorUpdateSchema)) body: { name?: string; username?: string; password?: string; status?: string },
   ) {
     return this.sponsors.updateSponsor(id, body ?? {});
   }
@@ -58,11 +73,11 @@ export class AdminPromoController {
     return this.sponsors.listAll();
   }
   @Post()
-  create(@Body() body: AdminCreatePromoInput) {
+  create(@Body(new ZodValidationPipe(PromoCreateSchema)) body: AdminCreatePromoInput) {
     return this.sponsors.createByAdmin(body ?? {});
   }
   @Patch(":id")
-  update(@Param("id") id: string, @Body() body: UpdatePromoInput) {
+  update(@Param("id") id: string, @Body(new ZodValidationPipe(PromoUpdateSchema)) body: UpdatePromoInput) {
     return this.sponsors.updateTournament(id, body ?? {});
   }
   @Delete(":id")
@@ -91,7 +106,7 @@ export class AdminInquiriesController {
     return this.sponsors.listInquiries();
   }
   @Patch(":id")
-  setStatus(@Param("id") id: string, @Body() body: { status?: string }) {
+  setStatus(@Param("id") id: string, @Body(new ZodValidationPipe(InquiryStatusSchema)) body: { status?: string }) {
     return this.sponsors.setInquiryStatus(id, body?.status ?? "");
   }
   // Resolve a specific-tournament sponsorship request: create/assign a sponsor and attach the
@@ -99,7 +114,7 @@ export class AdminInquiriesController {
   @Post(":id/assign-sponsor")
   assignSponsor(
     @Param("id") id: string,
-    @Body() body: { name?: string; username?: string; password?: string; sponsorId?: string },
+    @Body(new ZodValidationPipe(AssignSponsorSchema)) body: { name?: string; username?: string; password?: string; sponsorId?: string },
   ) {
     return this.sponsors.assignSponsorToInquiry(id, body ?? {});
   }
@@ -111,7 +126,7 @@ export class SponsorController {
   constructor(private readonly sponsors: SponsorsService) {}
 
   @Post("login")
-  login(@Body() body: { username?: string; password?: string }) {
+  login(@Body(new ZodValidationPipe(SponsorLoginSchema)) body: { username?: string; password?: string }) {
     return this.sponsors.login(body?.username ?? "", body?.password ?? "");
   }
 
@@ -127,12 +142,12 @@ export class SponsorController {
   }
   @UseGuards(SponsorAuthGuard)
   @Post("tournaments")
-  createTournament(@Req() req: Request & { sponsor: { id: string } }, @Body() body: SponsorCreatePromoInput) {
+  createTournament(@Req() req: Request & { sponsor: { id: string } }, @Body(new ZodValidationPipe(PromoCreateSchema)) body: SponsorCreatePromoInput) {
     return this.sponsors.createBySponsor(req.sponsor.id, body ?? {});
   }
   @UseGuards(SponsorAuthGuard)
   @Post("claim")
-  claim(@Req() req: Request & { sponsor: { id: string } }, @Body() body: { sponsorCode?: string }) {
+  claim(@Req() req: Request & { sponsor: { id: string } }, @Body(new ZodValidationPipe(ClaimSchema)) body: { sponsorCode?: string }) {
     return this.sponsors.claimByCode(req.sponsor.id, body?.sponsorCode ?? "");
   }
   @UseGuards(SponsorAuthGuard)
@@ -150,11 +165,6 @@ export class PublicPromoController {
   @Get()
   list() {
     return this.sponsors.listApproved();
-  }
-  // Redeem a private join code (guests may preview before signing in to join).
-  @Post("redeem")
-  redeem(@Body() body: { joinCode?: string }) {
-    return this.sponsors.redeemJoinCode(body?.joinCode ?? "");
   }
   // The signed-in user's joined tournaments.
   @UseGuards(JwtAuthGuard)
@@ -182,8 +192,13 @@ export class PublicPromoController {
   }
   @UseGuards(JwtAuthGuard)
   @Post(":id/join")
-  join(@CurrentUser() user: AccessTokenPayload, @Param("id") id: string, @Body() body: { joinCode?: string }) {
-    return this.sponsors.joinTournament(user.sub, id, body?.joinCode);
+  join(@CurrentUser() user: AccessTokenPayload, @Param("id") id: string, @Body(new ZodValidationPipe(JoinSchema)) body: { joinCode?: string; teamCode?: string }) {
+    return this.sponsors.joinTournament(user.sub, id, { joinCode: body?.joinCode, teamCode: body?.teamCode });
+  }
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/vote-time")
+  voteTime(@CurrentUser() user: AccessTokenPayload, @Param("id") id: string, @Body(new ZodValidationPipe(VoteTimeSchema)) body: { slot?: string }) {
+    return this.sponsors.voteStartTime(user.sub, id, (body?.slot ?? "").trim());
   }
 }
 
@@ -197,7 +212,7 @@ export class PublicSponsorshipController {
     return this.sponsors.listSponsorshipOpportunities();
   }
   @Post("inquiries")
-  createInquiry(@Body() body: InquiryInput) {
+  createInquiry(@Body(new ZodValidationPipe(InquiryCreateSchema)) body: InquiryInput) {
     return this.sponsors.createInquiry(body ?? {});
   }
 }
@@ -213,7 +228,7 @@ export class CosmeticsController {
     return this.sponsors.getCosmetics(user.sub);
   }
   @Patch()
-  update(@CurrentUser() user: AccessTokenPayload, @Body() body: Record<string, unknown>) {
+  update(@CurrentUser() user: AccessTokenPayload, @Body(new ZodValidationPipe(CosmeticsSchema)) body: Record<string, unknown>) {
     return this.sponsors.updateCosmetics(user.sub, body ?? {});
   }
 }

@@ -30,6 +30,9 @@ export const WithdrawDtoSchema = z
     destinationAddress: z.string().regex(SOLANA_ADDRESS_RE, "Enter a valid Solana (USDT) address"),
     destinationType: z.enum(["SOLANA"]).default("SOLANA"),
     idempotencyKey: z.string().min(1).max(200),
+    // Step-up re-authentication: current password (required) + MFA code (if the account has 2FA).
+    password: z.string().min(1).max(200),
+    mfaCode: z.string().trim().max(20).optional(),
   })
   .strict();
 

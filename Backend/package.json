@@ -19,6 +19,9 @@
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
+  "overrides": {
+    "deepmerge-ts": "^8.0.1"
+  },
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",
     "@nestjs/testing": "^11.1.28",
@@ -36,11 +39,10 @@
     "supertest": "^7.2.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "unplugin-swc": "^1.5.9",
-    "vitest": "^2.1.5"
+    "unplugin-swc": "^1.5.11",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
-    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.1.28",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.28",
@@ -55,11 +57,14 @@
     "@prisma/client": "^6.19.3",
     "@solana/spl-token": "^0.3.11",
     "@solana/web3.js": "^1.98.4",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/nodemailer": "^8.0.1",
     "argon2": "^0.44.0",
-    "bullmq": "^5.80.2",
+    "cookie-parser": "^1.4.7",
     "helmet": "^8.3.0",
     "ioredis": "^5.11.1",
     "nest-winston": "^1.10.2",
+    "nodemailer": "^9.0.5",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",

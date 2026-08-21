@@ -9,6 +9,7 @@ import {
   useDeleteSponsor,
   type SponsorRow,
 } from "../../../lib/hooks/useSponsors";
+import { ConfirmDialog } from "../../../components/dune/ConfirmDialog";
 
 // Sponsor management: create accounts (admin can set a custom username + password, or leave blank to
 // auto-generate), and view/edit any sponsor's credentials — including the password — at any time.
@@ -23,6 +24,7 @@ export default function SponsorAdminPage() {
   const [reveal, setReveal] = useState<{ name: string; username?: string; password: string } | null>(null);
   const [editing, setEditing] = useState<SponsorRow | null>(null);
   const [shown, setShown] = useState<Record<string, boolean>>({});
+  const [confirmDel, setConfirmDel] = useState<SponsorRow | null>(null);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -123,7 +125,7 @@ export default function SponsorAdminPage() {
                 <button className="mini secondary" onClick={() => { setEditing(s); setError(""); }}>
                   <Pencil size={12} /> Edit
                 </button>
-                <button className="icon-button" style={{ width: 32, height: 32 }} onClick={() => { if (confirm(`Delete sponsor "${s.name}"?`)) del.mutate(s.id); }} aria-label="Delete">
+                <button className="icon-button" style={{ width: 32, height: 32 }} onClick={() => setConfirmDel(s)} aria-label="Delete">
                   <Trash2 size={14} />
                 </button>
               </span>
@@ -162,6 +164,20 @@ export default function SponsorAdminPage() {
           saving={update.isPending}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmDel}
+        title="Delete sponsor?"
+        message={confirmDel ? `“${confirmDel.name}” and their sign-in will be permanently removed. This cannot be undone.` : ""}
+        confirmLabel="Delete sponsor"
+        busy={del.isPending}
+        onConfirm={async () => {
+          if (!confirmDel) return;
+          await del.mutateAsync(confirmDel.id);
+          setConfirmDel(null);
+        }}
+        onClose={() => setConfirmDel(null)}
+      />
     </main>
   );
 }

@@ -7,6 +7,9 @@ import { isSolanaAddress } from "../../common/crypto/solana-address";
 import { LedgerService } from "./ledger.service";
 import { SolanaService } from "./solana.service";
 import { BalanceGateway } from "../realtime/balance.gateway";
+import { AuditService } from "../../common/audit/audit.service";
+import { AccountSecurityService } from "../../common/account-security/account-security.service";
+import { MailService } from "../../common/mail/mail.service";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -62,6 +65,9 @@ export class WalletService {
     private readonly config: ConfigService,
     private readonly balanceGateway: BalanceGateway,
     private readonly solana: SolanaService,
+    private readonly audit: AuditService,
+    private readonly accountSecurity: AccountSecurityService,
+    private readonly mail: MailService,
   ) {}
 
   /** Called from within the same transaction that creates the User row, so a user can
@@ -83,22 +89,80 @@ export class WalletService {
     }
   }
 
-  /** On-ramp: player sends USDT to the platform's Solana deposit address; we credit their
-   * in-app wallet. On-chain confirmation is stubbed (instant mock) for now — the paired
-   * CryptoTransfer + mock signature is the seam the real integration replaces. */
+  /** Cap how much a single user can withdraw per UTC day, to bound the damage from a compromised
+   * account or a treasury-drain attempt. MAX_WITHDRAWAL_PER_DAY is in USDT base units; 0 disables. */
+  private async assertDailyWithdrawalCap(userId: string, amount: bigint): Promise<void> {
+    const cap = BigInt(this.config.get<string>("MAX_WITHDRAWAL_PER_DAY") ?? "1000000000"); // default 1,000 USDT/day
+    if (cap <= 0n) return;
+    if (amount > cap) throw new BadRequestException("Amount exceeds the daily withdrawal limit");
+    const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
+    if (!wallet) return;
+    const since = new Date();
+    since.setUTCHours(0, 0, 0, 0);
+    const agg = await this.prisma.ledgerEntry.aggregate({
+      where: { walletId: wallet.id, type: "WITHDRAWAL", createdAt: { gte: since } },
+      _sum: { amount: true },
+    });
+    const alreadyOut = -(agg._sum.amount ?? 0n); // WITHDRAWAL rows are stored as negative amounts
+    if (alreadyOut + amount > cap) {
+      throw new BadRequestException("Daily withdrawal limit reached — try again tomorrow or contact support");
+    }
+  }
+
+  /** The instant, un-verified "mock money" path exists ONLY for local dev/test. It is a faucet, so
+   * it must never be reachable in production: it requires a non-production NODE_ENV plus an explicit
+   * ALLOW_MOCK_MONEY=true opt-in (integration tests always run against it). */
+  private mockMoneyAllowed(): boolean {
+    if (process.env.NODE_ENV === "test") return true;
+    return process.env.NODE_ENV !== "production" && this.config.get<string>("ALLOW_MOCK_MONEY") === "true";
+  }
+
+  /** On-ramp: real deposits are credited ONLY after the on-chain transfer is confirmed (see
+   * verifyDeposit). The instant credit here is a dev/test faucet and is refused otherwise — this is
+   * what stops anyone from minting balance out of thin air. */
   async deposit(userId: string, amount: bigint, idempotencyKey: string): Promise<MoneyMovementResult> {
+    if (!this.mockMoneyAllowed()) {
+      throw new BadRequestException("Direct deposits are disabled — send USDT on-chain to the deposit address, then verify it from your wallet.");
+    }
     const depositAddress = this.config.getOrThrow<string>("SOLANA_TREASURY_ADDRESS");
     return this.moveMoney(userId, "wallet.deposit", idempotencyKey, amount, "DEPOSIT", depositAddress);
   }
 
-  /** Off-ramp: debit the player's in-app USDT wallet and send USDT on-chain to their
-   * external Solana address. Live mode sends real USDT; otherwise it's the instant mock. */
-  async withdraw(userId: string, amount: bigint, destinationAddress: string, idempotencyKey: string): Promise<MoneyMovementResult> {
+  /** Off-ramp: debit the player's in-app USDT wallet and send USDT on-chain to their external
+   * Solana address. In live mode this sends real USDT; the instant mock is dev/test only (a
+   * misconfigured production must fail closed rather than silently swallow a withdrawal). */
+  async withdraw(
+    userId: string,
+    amount: bigint,
+    destinationAddress: string,
+    idempotencyKey: string,
+    stepUp: { password: string; mfaCode?: string },
+  ): Promise<MoneyMovementResult> {
     if (!isSolanaAddress(destinationAddress)) {
       throw new BadRequestException("Enter a valid Solana (USDT) address");
     }
-    if (this.solana.isLive) return this.liveWithdraw(userId, amount, destinationAddress, idempotencyKey);
-    return this.moveMoney(userId, "wallet.withdraw", idempotencyKey, amount, "WITHDRAWAL", destinationAddress);
+    // A withdrawal is the highest-value action: require a confirmed email AND a fresh re-auth
+    // (password + MFA if enrolled) so a hijacked session with only an access token can't drain funds.
+    await this.accountSecurity.assertEmailVerified(userId);
+    await this.accountSecurity.assertReauthenticated(userId, stepUp.password, stepUp.mfaCode);
+    await this.assertDailyWithdrawalCap(userId, amount);
+    let result: MoneyMovementResult;
+    if (this.solana.isLive) {
+      result = await this.liveWithdraw(userId, amount, destinationAddress, idempotencyKey);
+    } else {
+      if (!this.mockMoneyAllowed()) {
+        throw new BadRequestException("Withdrawals are temporarily unavailable (on-chain settlement is not enabled).");
+      }
+      result = await this.moveMoney(userId, "wallet.withdraw", idempotencyKey, amount, "WITHDRAWAL", destinationAddress);
+    }
+    this.audit.record("WITHDRAWAL", { actor: userId, detail: { amount: amount.toString(), address: destinationAddress, transferId: result.transferId } });
+    // #19: notify the account owner of the withdrawal so an unauthorized cash-out is noticed fast.
+    const owner = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (owner?.email) {
+      const usdt = (Number(amount) / 1_000_000).toFixed(2);
+      this.mail.sendSecurityNotice(owner.email, "Withdrawal requested", `A withdrawal of ${usdt} USDT to ${destinationAddress} was requested on your account. If this wasn't you, contact support immediately.`);
+    }
+    return result;
   }
 
   /** Live withdrawal: reserve funds (debit + PENDING transfer), send USDT on-chain, then
@@ -162,6 +226,14 @@ export class WalletService {
   async verifyDeposit(userId: string, fromAddress: string): Promise<{ credited: { amount: string; txSignature: string }[]; balance: string }> {
     if (!this.solana.isLive) throw new BadRequestException("Live deposits are not enabled");
     if (!isSolanaAddress(fromAddress)) throw new BadRequestException("Enter a valid Solana address");
+    // Funds only move for a confirmed account.
+    await this.accountSecurity.assertEmailVerified(userId);
+
+    // IDOR fix: a source address is bound to exactly one user (first-claim-wins, enforced by the
+    // unique index). We only credit transfers from an address that belongs to THIS caller — so a
+    // user can never claim an on-chain deposit that another user actually sent. If the address is
+    // unclaimed we bind it now; if it's already claimed by someone else, refuse.
+    await this.claimDepositAddress(userId, fromAddress);
 
     const incoming = await this.solana.findIncomingTransfers(fromAddress);
     const wallet = await this.prisma.wallet.findUniqueOrThrow({ where: { userId } });
@@ -184,6 +256,28 @@ export class WalletService {
     const updated = await this.prisma.wallet.findUniqueOrThrow({ where: { userId } });
     if (credited.length) this.balanceGateway.emitBalanceUpdate(userId, updated.cachedBalance.toString());
     return { credited, balance: updated.cachedBalance.toString() };
+  }
+
+  /** Bind a source address to this user, or verify it's already theirs. Throws if another user
+   * owns it. Uses the unique index to make the first claim atomic under races. */
+  private async claimDepositAddress(userId: string, address: string): Promise<void> {
+    const existing = await this.prisma.depositBinding.findUnique({ where: { address } });
+    if (existing) {
+      if (existing.userId !== userId) {
+        this.audit.record("DEPOSIT_ADDRESS_CONFLICT", { actor: userId, detail: { address } });
+        throw new BadRequestException("This sending address is already linked to another account.");
+      }
+      return;
+    }
+    try {
+      await this.prisma.depositBinding.create({ data: { userId, address } });
+    } catch {
+      // Lost the race to bind — re-read; only OK if the winner was us.
+      const now = await this.prisma.depositBinding.findUnique({ where: { address } });
+      if (!now || now.userId !== userId) {
+        throw new BadRequestException("This sending address is already linked to another account.");
+      }
+    }
   }
 
   async getWallet(userId: string): Promise<WalletSnapshot> {

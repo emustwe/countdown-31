@@ -1,8 +1,5 @@
-import type { TournamentSummary } from "./hooks/useTournaments";
-import type { BrandKey } from "./brands";
-
-/** The six themed slot "machines" from the design. Each real tournament is assigned one
- * deterministically by its id, so the same tournament always shows the same creature/tone. */
+/** The six themed "machines" from the design. Assigned deterministically by id so the same
+ * entity always shows the same creature/tone. */
 export const SKINS = [
   { creature: "slime", tone: "cyan", accent: "#21e6d7", stageTitle: "SLIME KINGDOM", crownTitle: "SLIME MAYHEM" },
   { creature: "jackal", tone: "gold", accent: "#f59e0b", stageTitle: "SOLAR CITADEL", crownTitle: "FIRE ANUBIS" },
@@ -79,51 +76,3 @@ export function shortCountdown(iso: string): string {
   return `${pad(m)}:${pad(sec)}`;
 }
 
-export interface CardItem {
-  id: string;
-  name: string;
-  label: string;
-  fee: string;
-  prize: string;
-  coins: string;
-  players: string;
-  time: string;
-  tone: string;
-  creature: string;
-  format: "LEADERBOARD" | "BRACKET" | "WEEKLY" | "MONTHLY";
-  brand: BrandKey;
-}
-
-/** Where a tournament card / row should take the player. WEEKLY/MONTHLY open the group
- * tournament page (register + rounds); legacy BRACKET opens the bracket; LEADERBOARD opens
- * the game directly. */
-export function tournamentHref(t: Pick<TournamentSummary, "id" | "format">): string {
-  if (t.format === "WEEKLY" || t.format === "MONTHLY") return `/tournaments/${t.id}/group`;
-  if (t.format === "BRACKET") return `/tournaments/${t.id}/bracket`;
-  return `/game/tournament/${t.id}`;
-}
-
-/** Maps a real tournament into the shape the ported design cards expect. */
-export function toCardItem(t: TournamentSummary): CardItem {
-  const skin = skinFor(t.id);
-  // VA prize pool is dynamic (2× total entry fees); WM uses the fixed prize table.
-  const prizePool =
-    t.brand === "VA"
-      ? (BigInt(t.entryFee) * BigInt(t.entryCount) * 2n).toString()
-      : t.prizes.reduce((s, p) => s + BigInt(p.amount), 0n).toString();
-  const label = t.state === "RUNNING" ? "LIVE NOW" : t.state === "SCHEDULED" ? "STARTS SOON" : t.state;
-  return {
-    id: t.id,
-    name: t.name,
-    label,
-    fee: usdtLabel(t.entryFee),
-    prize: usdtLabel(prizePool),
-    coins: coins(t.startingCredits).toLocaleString(),
-    players: `${t.entryCount}${t.maxEntries ? ` / ${t.maxEntries}` : ""}`,
-    time: shortCountdown(t.state === "RUNNING" ? t.endAt : t.startAt),
-    tone: skin.tone,
-    creature: skin.creature,
-    format: t.format,
-    brand: t.brand ?? "WM",
-  };
-}

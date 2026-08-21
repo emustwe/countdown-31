@@ -8,7 +8,9 @@ import { useAuthStore } from "../stores/auth-store";
  * middleware hydrates from localStorage asynchronously on mount, so we wait one tick
  * before deciding — otherwise every protected page would flash-redirect on refresh. */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const accessToken = useAuthStore((s) => s.accessToken);
+  // "Logged in" is decided by the persisted user, not the access token: the token is memory-only
+  // now (#4) and is null on reload until it's silently re-minted from the refresh cookie.
+  const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const [hydrated, setHydrated] = useState(false);
 
@@ -17,12 +19,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (hydrated && !accessToken) {
+    if (hydrated && !user) {
       router.replace("/login");
     }
-  }, [hydrated, accessToken, router]);
+  }, [hydrated, user, router]);
 
-  if (!hydrated || !accessToken) {
+  if (!hydrated || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center text-[var(--color-text-dim)]">
         Loading…

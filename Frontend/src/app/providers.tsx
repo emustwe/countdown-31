@@ -4,6 +4,16 @@ import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useSettingsStore } from "../stores/settings-store";
 import { usePlatformTheme } from "../lib/hooks/useTheme";
+import { bootstrapSession } from "../stores/auth-store";
+
+/** Re-mint the in-memory access token from the refresh cookie on first load (the token is no longer
+ * persisted to localStorage — see auth-store #4). */
+function SessionBootstrap() {
+  useEffect(() => {
+    void bootstrapSession();
+  }, []);
+  return null;
+}
 
 /** Applies the per-viewer light/dark choice (data-theme) and the admin-set platform theme
  * family (data-theme-family). The family is cached in localStorage so the pre-paint script
@@ -46,6 +56,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeApplier />
+      <SessionBootstrap />
       {children}
     </QueryClientProvider>
   );

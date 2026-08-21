@@ -1,31 +1,10 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "../api-client";
+// The platform renders in a single fixed theme family ("monster"). The old admin-controlled
+// desert/monster toggle (backed by the removed slot GameConfig) is gone; this returns a constant so
+// providers keep working with no backend dependency.
+export type ThemeFamily = "monster";
 
-export type ThemeFamily = "desert" | "monster";
-
-/** Platform-wide theme family, set by admins. Public (works on pre-login pages). Polled so a
- * change propagates to everyone without a manual refresh. */
 export function usePlatformTheme() {
-  return useQuery({
-    queryKey: ["platform", "theme"],
-    queryFn: () => apiRequest<{ themeFamily: ThemeFamily }>("/game/theme", { auth: false }),
-    refetchInterval: 30_000,
-    staleTime: 10_000,
-  });
-}
-
-export function useSetThemeFamily() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (themeFamily: ThemeFamily) =>
-      apiRequest<{ themeFamily: ThemeFamily }>("/admin/config/theme", {
-        method: "PATCH",
-        body: { themeFamily },
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["platform", "theme"] });
-    },
-  });
+  return { data: { themeFamily: "monster" as ThemeFamily } };
 }
