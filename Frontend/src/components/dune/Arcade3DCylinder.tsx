@@ -25,7 +25,7 @@ interface Arcade3DCylinderProps {
 
 const TARGET = 31;
 const SLOTS_LEFT = 4;
-const SLOTS_RIGHT = 5;
+const SLOTS_RIGHT = 4;
 
 function calculateSlotNumber(currentCount: number, offset: number): number {
   if (currentCount === 0) {
@@ -54,7 +54,7 @@ export function Arcade3DCylinder({
   taken = {},
   forbiddenK,
 }: Arcade3DCylinderProps) {
-  // Generate list of visible slot offsets around current count (-4 to +5)
+  // Generate list of visible slot offsets around current count: -4, -3, -2, -1, 0, 1, 2, 3, 4
   const visibleOffsets = useMemo(() => {
     const offsets: number[] = [];
     for (let i = -SLOTS_LEFT; i <= SLOTS_RIGHT; i++) {
@@ -69,7 +69,7 @@ export function Arcade3DCylinder({
   const lastPicks = lastMove?.picks ?? [];
   const lastCount = lastMove?.count ?? 1;
 
-  const baseCenterX = "41%"; // Calibrated center anchor so left -2 & -1 and right +1, +2, +3 are 100% fully visible!
+  const baseCenterX = "50%"; // Exact 50% Dead Center of the drum machine container!
 
   return (
     <div className="relative w-full max-w-5xl mx-auto my-1 select-none flex flex-col items-center gap-2">
@@ -117,13 +117,13 @@ export function Arcade3DCylinder({
           ))}
         </div>
 
-        {/* Top Fixed Golden Pointer Arrow (Anchored over 41% NOW Card) */}
-        <div className="absolute top-4 sm:top-5 left-[41%] -translate-x-1/2 z-40 flex flex-col items-center pointer-events-none">
+        {/* Top Fixed Golden Pointer Arrow (Locked in Exact 50% Dead Center) */}
+        <div className="absolute top-4 sm:top-5 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center pointer-events-none">
           <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-b from-amber-300 via-amber-500 to-amber-600 rotate-45 border-2 border-amber-200 shadow-[0_4px_12px_rgba(245,158,11,0.8)] -mb-2.5 sm:-mb-3" />
         </div>
 
-        {/* Center Illuminated "NOW" Bracket Frame (Anchored over Current Count Card) */}
-        <div className="absolute left-[41%] top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90px] sm:w-[108px] md:w-[122px] h-[145px] sm:h-[165px] md:h-[185px] rounded-2xl border-2 sm:border-3 border-amber-400/90 bg-gradient-to-b from-amber-400/15 via-transparent to-amber-400/10 shadow-[0_0_30px_rgba(245,158,11,0.45),inset_0_0_20px_rgba(245,158,11,0.25)] z-25 pointer-events-none flex flex-col justify-between items-center py-2 sm:py-3">
+        {/* Center Illuminated "NOW" Bracket Frame (Locked in Exact 50% Dead Center over Current Card) */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[86px] sm:w-[100px] md:w-[112px] h-[145px] sm:h-[165px] md:h-[185px] rounded-2xl border-2 sm:border-3 border-amber-400/90 bg-gradient-to-b from-amber-400/15 via-transparent to-amber-400/10 shadow-[0_0_30px_rgba(245,158,11,0.45),inset_0_0_20px_rgba(245,158,11,0.25)] z-25 pointer-events-none flex flex-col justify-between items-center py-2 sm:py-3">
           <span className="text-[9px] sm:text-[11px] font-title font-black tracking-widest text-amber-300 uppercase bg-amber-950/90 px-2 py-0.5 rounded-md border border-amber-400/50 shadow flex items-center gap-1">
             <Star size={10} className="text-yellow-400 fill-yellow-400" />
             <span>NOW</span>
@@ -157,7 +157,8 @@ export function Arcade3DCylinder({
             const isTileDanger = tileNum >= 28 && tileNum < TARGET;
             const isSelected = selectedCards.includes(tileNum);
 
-            // Calibrated Coordinate Math for 6 to 7 Clear, Flat, Fully Visible Cards:
+            // Symmetrical, 7-Card Flat Spacing Math:
+            // Cards: [-3, -2, -1, 0, 1, 2, 3] are 7 completely flat, 100% visible front-facing cards!
             let posX = 0;
             let posZ = 0;
             let rotY = 0;
@@ -165,9 +166,10 @@ export function Arcade3DCylinder({
             let cardOpacity = 1.0;
             let cardZIndex = 20;
 
-            const STEP = 106; // Optimal horizontal step distance for perfect card spacing
+            const STEP = 100; // 100px step creates 7 fully visible cards spanning 600px perfectly inside the 780px container!
 
             if (isCurrent) {
+              // 0 (Center NOW Card)
               posX = 0;
               posZ = 0;
               rotY = 0;
@@ -175,77 +177,69 @@ export function Arcade3DCylinder({
               cardOpacity = 1.0;
               cardZIndex = 30;
             } else if (isRight1) {
-              // Flat Front-Facing Card +1
+              // +1 (Next Card Right)
               posX = STEP;
               posZ = 0;
-              rotY = 0; // Flat
+              rotY = 0;
               cardScale = 1.0;
               cardOpacity = 1.0;
               cardZIndex = 28;
             } else if (isRight2) {
-              // Flat Front-Facing Card +2
+              // +2 (Next Card Right)
               posX = STEP * 2;
               posZ = 0;
-              rotY = 0; // Flat
-              cardScale = 0.98;
+              rotY = 0;
+              cardScale = 1.0;
               cardOpacity = 1.0;
               cardZIndex = 26;
             } else if (isRight3) {
-              // Flat Front-Facing Card +3
+              // +3 (Next Card Right)
               posX = STEP * 3;
               posZ = 0;
-              rotY = 0; // Flat
-              cardScale = 0.96;
-              cardOpacity = 0.98;
+              rotY = 0;
+              cardScale = 1.0;
+              cardOpacity = 1.0;
               cardZIndex = 24;
-            } else if (offset === 4) {
-              // Peek Card (+4) on Right
-              posX = STEP * 3.95;
-              posZ = -30;
-              rotY = -10;
-              cardScale = 0.88;
-              cardOpacity = 0.85;
-              cardZIndex = 18;
-            } else if (offset >= 5) {
-              // Far Right Tucked Edge (+5)
-              posX = STEP * 4.8;
-              posZ = -70;
-              rotY = -20;
-              cardScale = 0.76;
-              cardOpacity = 0.5;
-              cardZIndex = 12;
+            } else if (offset >= 4) {
+              // +4 (Far Right Peek Edge)
+              posX = STEP * 3.85;
+              posZ = -40;
+              rotY = -16;
+              cardScale = 0.82;
+              cardOpacity = 0.45;
+              cardZIndex = 14;
             } else if (isLeft1) {
-              // Flat Front-Facing Previous Card -1
+              // -1 (Previous Card Left)
               posX = -STEP;
               posZ = 0;
-              rotY = 0; // Flat
+              rotY = 0;
               cardScale = 1.0;
               cardOpacity = 1.0;
               cardZIndex = 28;
             } else if (isLeft2) {
-              // Flat Front-Facing Previous Card -2
+              // -2 (Previous Card Left)
               posX = -STEP * 2;
               posZ = 0;
-              rotY = 0; // Flat
-              cardScale = 0.98;
+              rotY = 0;
+              cardScale = 1.0;
               cardOpacity = 1.0;
               cardZIndex = 26;
             } else if (isLeft3) {
-              // Peek Previous Card (-3) on Left
-              posX = -STEP * 2.95;
-              posZ = -30;
-              rotY = 10;
-              cardScale = 0.88;
-              cardOpacity = 0.85;
-              cardZIndex = 18;
+              // -3 (Previous Card Left)
+              posX = -STEP * 3;
+              posZ = 0;
+              rotY = 0;
+              cardScale = 1.0;
+              cardOpacity = 1.0;
+              cardZIndex = 24;
             } else {
-              // Far Left Tucked Edge (-4)
-              posX = -STEP * 3.8;
-              posZ = -70;
-              rotY = 20;
-              cardScale = 0.76;
-              cardOpacity = 0.5;
-              cardZIndex = 12;
+              // -4 (Far Left Peek Edge)
+              posX = -STEP * 3.85;
+              posZ = -40;
+              rotY = 16;
+              cardScale = 0.82;
+              cardOpacity = 0.45;
+              cardZIndex = 14;
             }
 
             // Identify whether this card was part of the previous move (1, 2, or 3 cards)
@@ -272,7 +266,7 @@ export function Arcade3DCylinder({
                   damping: 25,
                   mass: 0.9,
                 }}
-                className={`absolute top-1/2 w-[84px] sm:w-[98px] md:w-[110px] h-[135px] sm:h-[155px] md:h-[170px] rounded-2xl flex flex-col items-center justify-center border-2 transition-all select-none ${
+                className={`absolute top-1/2 w-[82px] sm:w-[94px] md:w-[104px] h-[135px] sm:h-[155px] md:h-[170px] rounded-2xl flex flex-col items-center justify-center border-2 transition-all select-none ${
                   isSelected
                     ? "bg-gradient-to-b from-emerald-900 via-emerald-800 to-black border-emerald-300 shadow-[0_0_35px_rgba(52,211,153,0.9),inset_0_0_15px_rgba(52,211,153,0.5)] cursor-pointer z-35"
                     : isCurrent
