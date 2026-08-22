@@ -253,7 +253,46 @@ export function useCountdownLive(roomId = "practice") {
     [processNextTurn],
   );
 
+  // Local Human Player Turn Timeout Monitor
   useEffect(() => {
+    if (!isLocalPracticeRef.current || !state || state.status !== "playing" || !myId || state.currentId !== myId || !state.turnEndsAt) return;
+
+    const timer = setInterval(() => {
+      const cur = stateRef.current;
+      if (!cur || cur.status !== "playing" || !myId || cur.currentId !== myId || !cur.turnEndsAt) return;
+
+      if (Date.now() >= cur.turnEndsAt) {
+        soundManager.playBlunder();
+        eliminatePlayer(myId, "timeout", cur, "Turn timer expired! ⏰");
+      }
+    }, 250);
+
+    return () => clearInterval(timer);
+  }, [state?.status, state?.currentId, state?.turnEndsAt, myId, eliminatePlayer]);
+
+  useEffect(() => {
+    // Pure local mode for practice room — never connects to background headless tournament bot sockets
+    if (roomId === "practice") {
+      isLocalPracticeRef.current = true;
+      setMyId("player_local");
+      setState({
+        mode: "practice",
+        gameMode: "skills",
+        count: 0,
+        players: [],
+        currentId: null,
+        lastK: null,
+        lastMove: null,
+        turnEndsAt: null,
+        round: 1,
+        status: "waiting",
+        winner: null,
+        lastEliminated: null,
+        taken: {},
+      });
+      return;
+    }
+
     let socket: Socket | null = null;
     try {
       socket = io(`${wsBaseUrl()}/countdown`, {
