@@ -1,9 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { Crown, Sparkles, RefreshCw, Check, Flame, Trophy, Shield, Zap, Sliders, Move, Maximize2, RotateCw } from "lucide-react";
+import { Crown, Sparkles, RefreshCw, Check, Flame, Trophy, Shield, Zap, Sliders, Move, Maximize2, RotateCw, Save, Lock } from "lucide-react";
 import Link from "next/link";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
+import { useAuthStore } from "../../stores/auth-store";
+import { AuthGateModal } from "./AuthGateModal";
+import { soundManager } from "../../lib/soundManager";
 
 interface BaseSkinOption {
   id: AvatarConfig["skinId"];
@@ -71,8 +74,13 @@ const DEFAULT_OFFSETS: Record<"crown" | "glasses" | "mustache", TransformOffset>
 
 export function AvatarStudio() {
   const avatar = useAvatarStore();
+  const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
+
   const [activeTab, setActiveTab] = useState<"wearables" | "fine_tune" | "backgrounds" | "skins" | "frames">("wearables");
   const [activeRigItem, setActiveRigItem] = useState<"crown" | "glasses" | "mustache">("glasses");
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Fine-tuning offsets for live adjustment
   const [offsets, setOffsets] = useState(DEFAULT_OFFSETS);
@@ -89,6 +97,17 @@ export function AvatarStudio() {
         [field]: val,
       },
     }));
+  }
+
+  function handleSaveAvatar() {
+    soundManager.playClick();
+    if (!accessToken) {
+      setShowAuthGate(true);
+      return;
+    }
+    soundManager.playVictory();
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3000);
   }
 
   return (
@@ -266,6 +285,32 @@ export function AvatarStudio() {
               </button>
             </div>
           )}
+
+          {/* Master Save & Equip CTA */}
+          <div className="w-full pt-2">
+            <button
+              onClick={handleSaveAvatar}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-title font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.6)] hover:brightness-110 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              {savedSuccess ? (
+                <>
+                  <Check size={16} />
+                  <span>AVATAR SAVED & EQUIPPED!</span>
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  <span>SAVE & EQUIP AVATAR</span>
+                </>
+              )}
+            </button>
+            {!user && (
+              <p className="text-[10px] text-center text-slate-400 mt-1.5 flex items-center justify-center gap-1">
+                <Lock size={10} className="text-amber-400" />
+                <span>Guest mode — Sign in to save across matches</span>
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Right Column: Customizer Controls & Transform Calibration Engine */}
@@ -542,6 +587,15 @@ export function AvatarStudio() {
           )}
         </div>
       </div>
+
+      <AuthGateModal
+        isOpen={showAuthGate}
+        onClose={() => setShowAuthGate(false)}
+        title="Avatar Studio Cloud Sync"
+        description="Sign in or create an account to save your customized cow avatar, rare accessories, and equipped skins across all online matches!"
+        featureName="Avatar Customization"
+        redirectTo="/avatar"
+      />
     </div>
   );
 }

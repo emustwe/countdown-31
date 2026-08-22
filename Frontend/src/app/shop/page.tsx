@@ -5,6 +5,8 @@ import { ShoppingBag, Sparkles, Crown, Zap, Shield, RotateCcw, Moon, Check, Coin
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
+import { AuthGateModal } from "../../components/dune/AuthGateModal";
+import { useAuthStore } from "../../stores/auth-store";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
 import { soundManager } from "../../lib/soundManager";
 
@@ -49,6 +51,10 @@ export default function ShopPage() {
   const [tab, setTab] = useState<ShopTab>("skins");
   const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
+
   const avatar = useAvatarStore();
   const setSkin = useAvatarStore((s) => s.setSkin);
   const setFrame = useAvatarStore((s) => s.setFrame);
@@ -59,6 +65,13 @@ export default function ShopPage() {
 
   function handleBuyOrEquip(item: ShopItem) {
     soundManager.playClick();
+
+    // Guest protection: prompt account creation on purchases
+    if (!accessToken && item.price > 0 && !purchasedIds.includes(item.id)) {
+      setShowAuthGate(true);
+      return;
+    }
+
     const isPurchased = purchasedIds.includes(item.id);
 
     if (isPurchased) {
@@ -244,7 +257,7 @@ export default function ShopPage() {
         </div>
       </main>
 
-      {/* Drawer & Modal */}
+      {/* Drawer & Modals */}
       <ArcadeDrawerMenu
         isOpen={showDrawer}
         onClose={() => setShowDrawer(false)}
@@ -253,6 +266,14 @@ export default function ShopPage() {
       <OfficialRulesModal
         isOpen={showRules}
         onClose={() => setShowRules(false)}
+      />
+      <AuthGateModal
+        isOpen={showAuthGate}
+        onClose={() => setShowAuthGate(false)}
+        title="Marketplace Account Required"
+        description="Sign in or create an account to unlock rare skins, frames, and power-up packs with your coins & gems!"
+        featureName="the Marketplace"
+        redirectTo="/shop"
       />
     </div>
   );
