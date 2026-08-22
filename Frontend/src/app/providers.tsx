@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useSettingsStore } from "../stores/settings-store";
 import { usePlatformTheme } from "../lib/hooks/useTheme";
+import { InteractionSounds } from "../components/InteractionSounds";
 
 /** Applies the per-viewer light/dark choice (data-theme) and the admin-set platform theme
  * family (data-theme-family). The family is cached in localStorage so the pre-paint script
@@ -46,6 +47,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeApplier />
+      <InteractionSounds />
       {children}
     </QueryClientProvider>
   );

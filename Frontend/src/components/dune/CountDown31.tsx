@@ -53,6 +53,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const [now, setNow] = useState(() => Date.now());
   const prevCount = useRef(0);
   const prevStatus = useRef(state?.status);
+  const prevMyTurn = useRef(false);
   const soundRef = useRef(soundOn);
   soundRef.current = soundOn;
 
@@ -101,6 +102,11 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     }
   }, [count]);
 
+  useEffect(() => {
+    if (myTurn && !prevMyTurn.current && status === "playing") soundManager.playTurnStart();
+    prevMyTurn.current = myTurn;
+  }, [myTurn, status]);
+
   // Audio & confetti on game end / defeat / victory
   useEffect(() => {
     if (status === "over" && prevStatus.current !== "over") {
@@ -137,6 +143,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     // If card is already selected, allow toggling off if it is the last card
     if (selectedCards.includes(num)) {
       if (num === selectedCards[selectedCards.length - 1]) {
+        soundManager.playClose();
         setSelectedCards((prev) => prev.slice(0, -1));
       }
       return;
@@ -145,12 +152,14 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     // Adding first card
     if (selectedCards.length === 0) {
       if (num !== count + 1) {
+        soundManager.playError();
         // Player committed a blunder and skipped to a higher card!
         setIsShaking(true);
         setTimeout(() => setIsShaking(false), 700);
         submit([num]); // Triggers blunder elimination in useCountdownLive!
         return;
       }
+      soundManager.playCardSelect();
       setSelectedCards([num]);
       return;
     }
@@ -158,12 +167,14 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     // Adding 2nd card
     if (selectedCards.length === 1) {
       if (num !== count + 2) {
+        soundManager.playError();
         // Player committed a blunder and skipped card (count + 2)!
         setIsShaking(true);
         setTimeout(() => setIsShaking(false), 700);
         submit([...selectedCards, num]); // Triggers blunder elimination!
         return;
       }
+      soundManager.playCardSelect();
       setSelectedCards([count + 1, count + 2]);
       return;
     }
@@ -171,12 +182,14 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     // Adding 3rd card
     if (selectedCards.length === 2) {
       if (num !== count + 3) {
+        soundManager.playError();
         // Player committed a blunder!
         setIsShaking(true);
         setTimeout(() => setIsShaking(false), 700);
         submit([...selectedCards, num]); // Triggers blunder elimination!
         return;
       }
+      soundManager.playCardSelect();
       // 3 cards max reached -> automatically submit the 3-card move!
       submit([count + 1, count + 2, count + 3]);
       setSelectedCards([]);

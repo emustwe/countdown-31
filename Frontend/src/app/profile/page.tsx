@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Crown, Trophy, Flame, Zap, Shield, RotateCcw, Swords, Award, Calendar, CheckCircle2, Star, Sparkles, User, Mail, Wallet, Clock } from "lucide-react";
+import { Crown, Trophy, Flame, Zap, RotateCcw, Swords, Award, Calendar, Sparkles, Mail, Wallet, Clock } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
@@ -9,7 +9,6 @@ import { MasterAvatar } from "../../components/dune/MasterAvatar";
 import { useAvatarStore } from "../../stores/avatar-customization-store";
 import { useProfile } from "../../lib/hooks/useAuth";
 import { formatUsdt } from "../../lib/money";
-import { soundManager } from "../../lib/soundManager";
 
 const MATCH_HISTORY = [
   { id: "m1", result: "VICTORY", opponent: "Daisy Cow 🌸", score: "Conquered 31", date: "Just now", trophies: "+45 🏆", coins: "+150 🪙" },
@@ -22,11 +21,11 @@ export default function ProfilePage() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const avatar = useAvatarStore();
-  const { data: profile, isLoading } = useProfile();
+  const { data: profile } = useProfile();
 
   const playerName = profile?.fullName || profile?.email?.split("@")[0] || "Sameer Khan";
   const memberSince = profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "August 2026";
-  const balanceUsdt = profile ? formatUsdt(profile.balance) : "1,250.00";
+  const balanceUsdt = profile ? formatUsdt(profile.balance) : "1,250.00 USDT";
 
   return (
     <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
@@ -93,7 +92,7 @@ export default function ProfilePage() {
                 </span>
                 <span className="flex items-center gap-1">
                   <Wallet size={13} className="text-cyan-400" />
-                  <span>Balance: <b>${balanceUsdt} USDT</b></span>
+                  <span>Balance: <b>{balanceUsdt}</b></span>
                 </span>
               </div>
             </div>

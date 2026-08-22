@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogIn, UserPlus, Eye, EyeOff, ShieldCheck, AlertTriangle, Sparkles, Trophy, ArrowRight, User, Mail, Lock } from "lucide-react";
+import { LogIn, UserPlus, Eye, EyeOff, ShieldCheck, AlertTriangle, ArrowRight, User, Mail, Lock } from "lucide-react";
 import { useLogin, useRegister } from "../../lib/hooks/useAuth";
 import { ApiError } from "../../lib/api-client";
 import { soundManager } from "../../lib/soundManager";
@@ -35,9 +35,10 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
       } else {
         await loginMutation.mutateAsync({ email, password });
       }
-      soundManager.playVictory();
+      soundManager.playSuccess();
       router.push(next && next.startsWith("/") ? next : "/home");
     } catch (err) {
+      soundManager.playError();
       setError(err instanceof ApiError ? String(err.envelope?.message || err.message) : "Authentication failed. Please check your credentials.");
     }
   }

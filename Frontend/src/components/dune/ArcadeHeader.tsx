@@ -10,7 +10,6 @@ import {
   Sparkles,
   Dices,
   User,
-  Crown,
   Wallet,
   ShoppingBag,
   Palette,
@@ -18,7 +17,6 @@ import {
   LogIn,
   LogOut,
   ChevronRight,
-  Shield,
   Trophy,
 } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
@@ -47,7 +45,6 @@ export function ArcadeHeader({
   const toggleSoundStore = useSettingsStore((s) => s.toggleSound);
 
   const user = useAuthStore((s) => s.user);
-  const accessToken = useAuthStore((s) => s.accessToken);
   const logoutMutation = useLogout();
 
   const { data: profile } = useProfile();
@@ -96,7 +93,7 @@ export function ArcadeHeader({
 
   const displayName = profile?.fullName || user?.fullName || "Guest Player";
   const userInitials = displayName.slice(0, 2).toUpperCase();
-  const balanceDisplay = wallet ? formatUsdt(wallet.balance) : "0.00";
+  const balanceDisplay = wallet ? formatUsdt(wallet.balance) : "0.00 USDT";
 
   return (
     <header className="relative w-full flex items-start justify-between px-3 sm:px-8 pt-3 pb-2 z-30 select-none h-24 sm:h-28">
@@ -253,7 +250,7 @@ export function ArcadeHeader({
                     <span className="text-xs font-title font-bold text-slate-300">Balance:</span>
                   </div>
                   <span className="font-title font-black text-xs text-amber-300">
-                    ${balanceDisplay} USDT
+                    {balanceDisplay}
                   </span>
                 </div>
               )}

@@ -15,13 +15,14 @@ export function useProfile() {
       } catch {
         return {
           ...user,
-          balance: "1250.00",
+          // MeResponse balance uses integer USDT base units (6 decimals).
+          balance: "1250000000",
         };
       }
     },
     initialData: {
       ...user,
-      balance: "1250.00",
+      balance: "1250000000",
     },
   });
 }

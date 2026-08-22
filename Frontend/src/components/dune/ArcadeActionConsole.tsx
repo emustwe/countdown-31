@@ -111,7 +111,7 @@ export function ArcadeActionConsole({
 
   function handlePlayCard(skill: SkillType) {
     if (!myTurn || isSkillsLocked || (skills[skill] ?? 0) <= 0) return;
-    soundManager.playClick();
+    soundManager.playSkillCast();
     setThrownSkill(skill);
     setTimeout(() => {
       onSkill(skill);
@@ -192,6 +192,7 @@ export function ArcadeActionConsole({
               transition={{ duration: 0.4, ease: "easeOut" }}
               whileHover={canPlay ? { y: -6, scale: 1.02 } : {}}
               onClick={() => canPlay && handlePlayCard(card.type)}
+              data-sound="none"
               className={`relative rounded-3xl p-3.5 sm:p-4 flex flex-col justify-between border-2 transition-all select-none min-h-[190px] sm:min-h-[210px] ${
                 card.cardGradient
               } ${

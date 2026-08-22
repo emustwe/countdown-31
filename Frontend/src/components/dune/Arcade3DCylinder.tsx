@@ -47,7 +47,7 @@ export function Arcade3DCylinder({
   lastMove,
   lastSkillUsed,
   taken = {},
-  forbiddenK,
+  forbiddenK: _forbiddenK,
 }: Arcade3DCylinderProps) {
   // Visible slot offsets around next playable number: -3, -2, -1, 0, 1, 2, 3
   const visibleOffsets = useMemo(() => {
@@ -267,7 +267,6 @@ export function Arcade3DCylinder({
                 }}
                 onClick={() => {
                   if (myTurn && status === "playing" && (isPlayable1 || isPlayable2 || isPlayable3)) {
-                    soundManager.playCardSelect();
                     onToggleCard(tileNum);
                   }
                 }}
@@ -397,9 +396,10 @@ export function Arcade3DCylinder({
           >
             <button
               onClick={() => {
-                soundManager.playClick();
+                soundManager.playConfirm();
                 onConfirmMove();
               }}
+              data-sound="none"
               className="px-8 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-base shadow-[0_0_25px_rgba(52,211,153,0.9),0_4px_12px_rgba(0,0,0,0.5)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2.5"
             >
               <span>CONFIRM MOVE ({selectedCards.length} {selectedCards.length === 1 ? "CARD" : "CARDS"})</span>

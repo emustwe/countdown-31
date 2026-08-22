@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ShoppingBag, Sparkles, Crown, Zap, Shield, RotateCcw, Moon, Check, Coins, Gem, Star, Palette } from "lucide-react";
+import { ShoppingBag, Check, Coins, Gem, Palette } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
@@ -52,7 +52,6 @@ export default function ShopPage() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
-  const user = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
 
   const avatar = useAvatarStore();
@@ -64,10 +63,9 @@ export default function ShopPage() {
   const [purchasedIds, setPurchasedIds] = useState<string[]>(["golden_emperor", "base_bull", "mythic_gold"]);
 
   function handleBuyOrEquip(item: ShopItem) {
-    soundManager.playClick();
-
     // Guest protection: prompt account creation on purchases
     if (!accessToken && item.price > 0 && !purchasedIds.includes(item.id)) {
+      soundManager.playOpen();
       setShowAuthGate(true);
       return;
     }
@@ -75,6 +73,7 @@ export default function ShopPage() {
     const isPurchased = purchasedIds.includes(item.id);
 
     if (isPurchased) {
+      soundManager.playEquip();
       if (item.category === "skins") {
         setSkin(item.id as AvatarConfig["skinId"]);
       } else if (item.category === "frames") {
@@ -85,11 +84,15 @@ export default function ShopPage() {
 
     // Purchase
     if (item.currency === "coins" && coins >= item.price) {
+      soundManager.playCoin();
       setCoins((c) => c - item.price);
       setPurchasedIds((prev) => [...prev, item.id]);
     } else if (item.currency === "gems" && gems >= item.price) {
+      soundManager.playCoin();
       setGems((g) => g - item.price);
       setPurchasedIds((prev) => [...prev, item.id]);
+    } else {
+      soundManager.playError();
     }
   }
 
@@ -211,7 +214,6 @@ export default function ShopPage() {
                 {/* Preview Box */}
                 <div className="w-full h-32 rounded-2xl bg-black/60 border border-white/10 flex items-center justify-center relative overflow-hidden my-2 shadow-inner">
                   {item.category === "skins" ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={item.preview} alt={item.name} className="h-28 object-contain drop-shadow-xl" />
                   ) : item.category === "frames" ? (
                     <div className={`w-20 h-20 rounded-2xl border-3 bg-emerald-950/40 flex items-center justify-center ${item.preview}`}>
@@ -233,6 +235,7 @@ export default function ShopPage() {
                 {/* Buy / Equip Button */}
                 <button
                   onClick={() => handleBuyOrEquip(item)}
+                  data-sound="none"
                   className={`w-full py-2.5 rounded-2xl font-title font-black text-xs uppercase tracking-wider transition-all mt-2 cursor-pointer flex items-center justify-center gap-1.5 shadow-lg ${
                     isEquipped
                       ? "bg-slate-900 text-slate-400 border border-slate-700 cursor-default"

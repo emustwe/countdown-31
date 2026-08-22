@@ -97,7 +97,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
 
   function handleStart() {
     if (selected.length !== 2) return;
-    soundManager.playClick();
+    soundManager.playConfirm();
     onConfirm(selected);
   }
 
@@ -163,6 +163,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
                 <div
                   key={skill.type}
                   onClick={() => toggleSkill(skill.type)}
+                  data-sound="none"
                   className={`relative p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between select-none ${
                     skill.gradient
                   } ${
@@ -209,6 +210,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
           {/* Confirm Button */}
           <button
             onClick={handleStart}
+            data-sound="none"
             disabled={selected.length !== 2}
             className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-base shadow-[0_0_25px_rgba(52,211,153,0.8)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed"
           >

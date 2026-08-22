@@ -9,6 +9,9 @@ class SoundManager {
   private isMuted: boolean = false;
   private volume: number = 0.7;
   private soundCache: Map<string, Howl> = new Map();
+  private lastPlaybackAt = 0;
+  private lastHoverAt = 0;
+  private userActivated = false;
 
   private getAudioContext(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -22,6 +25,7 @@ class SoundManager {
       if (this.ctx.state === "suspended") {
         void this.ctx.resume();
       }
+      this.lastPlaybackAt = Date.now();
       return this.ctx;
     } catch {
       return null;
@@ -43,6 +47,139 @@ class SoundManager {
 
   public setVolume(vol: number) {
     this.volume = Math.max(0, Math.min(1, vol));
+  }
+
+  /** Lets the global UI sound layer avoid doubling a component-specific sound. */
+  public wasPlayedSince(timestamp: number) {
+    return this.lastPlaybackAt >= timestamp;
+  }
+
+  public unlock() {
+    this.userActivated = true;
+    if (this.ctx?.state === "suspended") void this.ctx.resume();
+  }
+
+  private playNotes(
+    notes: Array<{ frequency: number; delay?: number; duration?: number; gain?: number }>,
+    wave: OscillatorType = "sine",
+  ) {
+    if (this.isMuted) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    notes.forEach(({ frequency, delay = 0, duration = 0.09, gain = 0.16 }) => {
+      const start = ctx.currentTime + delay;
+      const oscillator = ctx.createOscillator();
+      const envelope = ctx.createGain();
+      oscillator.type = wave;
+      oscillator.frequency.setValueAtTime(frequency, start);
+      envelope.gain.setValueAtTime(Math.max(0.001, gain * this.volume), start);
+      envelope.gain.exponentialRampToValueAtTime(0.001, start + duration);
+      oscillator.connect(envelope);
+      envelope.connect(ctx.destination);
+      oscillator.start(start);
+      oscillator.stop(start + duration);
+    });
+  }
+
+  /** Very quiet focus cue; throttled so moving across a menu never becomes noisy. */
+  public playHover() {
+    if (!this.userActivated) return;
+    const now = Date.now();
+    if (now - this.lastHoverAt < 75) return;
+    this.lastHoverAt = now;
+    this.playNotes([{ frequency: 720, duration: 0.025, gain: 0.045 }], "sine");
+  }
+
+  public playNavigate() {
+    this.playNotes([
+      { frequency: 330, duration: 0.07, gain: 0.12 },
+      { frequency: 520, delay: 0.045, duration: 0.09, gain: 0.13 },
+    ], "triangle");
+  }
+
+  public playOpen() {
+    this.playNotes([
+      { frequency: 440, duration: 0.08, gain: 0.11 },
+      { frequency: 660, delay: 0.055, duration: 0.11, gain: 0.13 },
+    ], "sine");
+  }
+
+  public playClose() {
+    this.playNotes([
+      { frequency: 560, duration: 0.07, gain: 0.1 },
+      { frequency: 350, delay: 0.04, duration: 0.09, gain: 0.11 },
+    ], "sine");
+  }
+
+  public playToggle(on: boolean) {
+    this.playNotes(
+      on
+        ? [{ frequency: 480, duration: 0.055, gain: 0.12 }, { frequency: 760, delay: 0.04, duration: 0.08, gain: 0.13 }]
+        : [{ frequency: 610, duration: 0.055, gain: 0.11 }, { frequency: 360, delay: 0.04, duration: 0.08, gain: 0.11 }],
+      "square",
+    );
+  }
+
+  public playConfirm() {
+    this.playNotes([
+      { frequency: 523.25, duration: 0.09, gain: 0.15 },
+      { frequency: 659.25, delay: 0.055, duration: 0.11, gain: 0.16 },
+      { frequency: 783.99, delay: 0.11, duration: 0.14, gain: 0.17 },
+    ], "triangle");
+  }
+
+  public playSuccess() {
+    this.playNotes([
+      { frequency: 659.25, duration: 0.12, gain: 0.16 },
+      { frequency: 783.99, delay: 0.07, duration: 0.14, gain: 0.17 },
+      { frequency: 1046.5, delay: 0.14, duration: 0.2, gain: 0.18 },
+    ], "sine");
+  }
+
+  public playError() {
+    this.playNotes([
+      { frequency: 185, duration: 0.16, gain: 0.18 },
+      { frequency: 155, delay: 0.08, duration: 0.2, gain: 0.17 },
+    ], "sawtooth");
+  }
+
+  public playCopy() {
+    this.playNotes([
+      { frequency: 880, duration: 0.045, gain: 0.1 },
+      { frequency: 1174.66, delay: 0.035, duration: 0.07, gain: 0.11 },
+    ], "sine");
+  }
+
+  public playCoin() {
+    this.playNotes([
+      { frequency: 1046.5, duration: 0.08, gain: 0.16 },
+      { frequency: 1318.5, delay: 0.05, duration: 0.09, gain: 0.16 },
+      { frequency: 1568, delay: 0.1, duration: 0.12, gain: 0.15 },
+    ], "square");
+  }
+
+  public playEquip() {
+    this.playNotes([
+      { frequency: 280, duration: 0.08, gain: 0.14 },
+      { frequency: 560, delay: 0.045, duration: 0.12, gain: 0.16 },
+      { frequency: 840, delay: 0.09, duration: 0.14, gain: 0.15 },
+    ], "triangle");
+  }
+
+  public playSkillCast() {
+    this.playNotes([
+      { frequency: 300, duration: 0.08, gain: 0.17 },
+      { frequency: 620, delay: 0.04, duration: 0.13, gain: 0.18 },
+      { frequency: 980, delay: 0.085, duration: 0.16, gain: 0.16 },
+    ], "sawtooth");
+  }
+
+  public playTurnStart() {
+    this.playNotes([
+      { frequency: 740, duration: 0.07, gain: 0.13 },
+      { frequency: 988, delay: 0.065, duration: 0.13, gain: 0.16 },
+    ], "triangle");
   }
 
   /**
