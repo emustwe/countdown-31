@@ -20,4 +20,10 @@ describe("avatar catalog", () => {
     expect(getAvatarVariant("retired_avatar").id).toBe("cow_v1_base");
     expect(getAvatarVariant(undefined).id).toBe("cow_v1_base");
   });
+
+  it("uses cache-busted approved static renders for every accessory look", () => {
+    const accessoryLooks = AVATAR_VARIANTS.filter((variant) => variant.hasHat || variant.hasGlasses);
+    expect(accessoryLooks).toHaveLength(3);
+    expect(accessoryLooks.every((variant) => variant.image.endsWith("_static_v2.webp"))).toBe(true);
+  });
 });

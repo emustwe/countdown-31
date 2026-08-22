@@ -57,7 +57,7 @@ export function AvatarCatalogStudio() {
         <section className="relative overflow-hidden rounded-[2rem] border-2 border-amber-400/40 bg-[radial-gradient(circle_at_50%_20%,rgba(245,158,11,.24),transparent_42%),linear-gradient(155deg,#14251a,#07100b_70%)] p-4 shadow-2xl sm:p-6">
           <div className="mb-3 flex items-center justify-between">
             <span className="flex items-center gap-2 rounded-full bg-emerald-400 px-3 py-1 font-title text-xs font-black text-slate-950">
-              <ShieldCheck size={14} /> SAME COW GUARANTEE
+              <ShieldCheck size={14} /> READY-MADE LOOK
             </span>
             <span className="font-title text-xs font-black text-amber-300">{preview.label}</span>
           </div>

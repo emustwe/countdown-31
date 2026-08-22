@@ -15,24 +15,24 @@
       "label": "Cool Glasses",
       "hatId": null,
       "glassesId": "gold_aviator",
-      "image": "/assets/avatar-catalog/cow-v1/renders/cow_v1_glasses.webp",
-      "sha256": "2a57479e33b40088ad1a410c9df3483af3f622a6a64d37f40d07b06bc7f41458"
+      "image": "/assets/avatar-catalog/cow-v1/renders/cow_v1_glasses_static_v2.webp",
+      "sha256": "b2c7f66f1fc077ac01e4044ead4cdaaf065236bfa315c942363c186a325100fe"
     },
     {
       "id": "cow_v1_cowboy",
       "label": "Cowboy Hat",
       "hatId": "cowboy",
       "glassesId": null,
-      "image": "/assets/avatar-catalog/cow-v1/renders/cow_v1_cowboy.webp",
-      "sha256": "89667ef5fc3db70c6bee97deb34b835e79b6dcf1d407d3522fec11efb92d7a19"
+      "image": "/assets/avatar-catalog/cow-v1/renders/cow_v1_cowboy_static_v2.webp",
+      "sha256": "521deb88c4fc98be07723a6288c4795fe18f011105e721e7a41cfd73e658fa93"
     },
     {
       "id": "cow_v1_cowboy_glasses",
       "label": "Cowboy Cool",
       "hatId": "cowboy",
       "glassesId": "gold_aviator",
-      "image": "/assets/avatar-catalog/cow-v1/renders/cow_v1_cowboy_glasses.webp",
-      "sha256": "345de54128ad9b640783e9006e338390eaefef632d2ddc2f7594ea6e3d9d1fb1"
+      "image": "/assets/avatar-catalog/cow-v1/renders/cow_v1_cowboy_glasses_static_v2.webp",
+      "sha256": "708a624fea95002b9d8159ed153d3a018486434bcc4de6858a25c1873150bb1b"
     }
   ]
 }
