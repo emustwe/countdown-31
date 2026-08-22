@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { AvatarStudio } from "../../components/dune/AvatarStudio";
+import { AvatarCatalogStudio } from "../../components/dune/AvatarCatalogStudio";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
@@ -26,7 +26,7 @@ export default function AvatarPage() {
 
       {/* Main Studio Area - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
       <main className="relative z-10 w-full flex-1 mt-8 sm:mt-12 md:mt-14 mb-6">
-        <AvatarStudio />
+        <AvatarCatalogStudio />
       </main>
 
       {/* Slide-in Menu Drawer */}

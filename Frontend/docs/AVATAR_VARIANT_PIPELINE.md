@@ -79,3 +79,17 @@ canonical cow.
 - Transparent edges contain no white or dark fringe.
 - Hat/glasses combinations have physically correct overlap.
 - Review a contact sheet at both 512px and the final 96px avatar size.
+
+## Implemented MVP
+
+The `/avatar` page now uses the `cow-v1` catalog. It offers two simple
+on/off choices (cowboy hat and glasses) and resolves them to one of four
+pre-baked variant IDs. Equipping saves only that ID in the existing persisted
+avatar store. `MasterAvatar` reads the same ID, so the equipped result appears
+on profile and in player-card surfaces without changing game logic.
+
+Run `npm run avatar:build` after approving a new layer. The script aligns the
+source hat, composites every supported combination onto the frozen cow,
+exports lossless WebP renders, and rewrites `manifest.json` with SHA-256 hashes.
+The AI-generated source is retained for provenance; the browser never performs
+live compositing and never asks AI to redraw the cow.

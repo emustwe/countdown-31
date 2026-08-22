@@ -2,6 +2,7 @@
 
 import React from "react";
 import { type AvatarConfig } from "../../stores/avatar-customization-store";
+import { getAvatarVariant, isAvatarVariantId } from "../../lib/avatar-catalog";
 
 interface MasterAvatarProps {
   config?: Partial<AvatarConfig>;
@@ -47,6 +48,7 @@ export function MasterAvatar({
   const hasGlasses = config?.hasGlasses ?? true;
   const hasMustache = config?.hasMustache ?? true;
   const hasCrown = config?.hasCrown ?? true;
+  const catalogVariant = isAvatarVariantId(config?.variantId) ? getAvatarVariant(config.variantId) : null;
 
   const isPlainBull = skinId === "base_bull";
   const isEmperor = skinId === "golden_emperor";
@@ -64,7 +66,15 @@ export function MasterAvatar({
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18)_0%,transparent_70%)]" />
 
       {/* Layer 1: Base Character Skin */}
-      {isPlainBull && (
+      {catalogVariant && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={catalogVariant.image}
+          alt={catalogVariant.label}
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+        />
+      )}
+      {isPlainBull && !catalogVariant && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src="/assets/master/base_bull_1024.png"
@@ -90,7 +100,7 @@ export function MasterAvatar({
       )}
 
       {/* Layer 2: Mustache (Only on customizable Plain Bull) */}
-      {isPlainBull && hasMustache && (
+      {isPlainBull && !catalogVariant && hasMustache && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src="/assets/master/mustache_1024.png"
@@ -100,7 +110,7 @@ export function MasterAvatar({
       )}
 
       {/* Layer 3: Glasses (Only on customizable Plain Bull) */}
-      {isPlainBull && hasGlasses && (
+      {isPlainBull && !catalogVariant && hasGlasses && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src="/assets/master/glasses_1024.png"
@@ -110,7 +120,7 @@ export function MasterAvatar({
       )}
 
       {/* Layer 4: Crown (Only on customizable Plain Bull) */}
-      {isPlainBull && hasCrown && (
+      {isPlainBull && !catalogVariant && hasCrown && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src="/assets/master/crown_1024.png"

@@ -26,6 +26,8 @@ import { useWallet } from "../../lib/hooks/useWallet";
 import { formatUsdt } from "../../lib/money";
 import { soundManager } from "../../lib/soundManager";
 import { type GameMode } from "../../lib/hooks/useCountdownLive";
+import { useAvatarStore } from "../../stores/avatar-customization-store";
+import { MasterAvatar } from "./MasterAvatar";
 
 interface ArcadeHeaderProps {
   onMenuClick?: () => void;
@@ -45,6 +47,7 @@ export function ArcadeHeader({
   const toggleSoundStore = useSettingsStore((s) => s.toggleSound);
 
   const user = useAuthStore((s) => s.user);
+  const avatar = useAvatarStore();
   const logoutMutation = useLogout();
 
   const { data: profile } = useProfile();
@@ -202,13 +205,10 @@ export function ArcadeHeader({
           aria-label="Profile Menu"
         >
           <div className="w-full h-full rounded-full bg-[#0d1a12] flex items-center justify-center overflow-hidden border border-amber-200">
-            {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <span className="font-title font-black text-sm text-amber-300">
-                {user ? userInitials : "🐮"}
-              </span>
-            )}
+            <MasterAvatar
+              config={{ ...avatar, backgroundId: "none", frameId: "none" }}
+              className="h-full w-full rounded-full"
+            />
           </div>
 
           {/* Level / Status Mini Badge */}
@@ -274,7 +274,7 @@ export function ArcadeHeader({
                 >
                   <div className="flex items-center gap-2.5">
                     <Palette size={15} className="text-amber-400" />
-                    <span>Avatar Studio</span>
+                    <span>My Cow</span>
                   </div>
                   <ChevronRight size={14} className="text-slate-500" />
                 </button>

@@ -1,0 +1,38 @@
+{
+  "catalogId": "cow-v1",
+  "version": 1,
+  "variants": [
+    {
+      "id": "cow_v1_base",
+      "label": "Classic",
+      "hatId": null,
+      "glassesId": null,
+      "image": "/assets/avatar-catalog/cow-v1/renders/cow_v1_base.webp",
+      "sha256": "48dffe8f9a2d61be26d8ffb69ff2a02319f5c50cbc5973c41c285ce9e978c9fc"
+    },
+    {
+      "id": "cow_v1_glasses",
+      "label": "Cool Glasses",
+      "hatId": null,
+      "glassesId": "gold_aviator",
+      "image": "/assets/avatar-catalog/cow-v1/renders/cow_v1_glasses.webp",
+      "sha256": "2a57479e33b40088ad1a410c9df3483af3f622a6a64d37f40d07b06bc7f41458"
+    },
+    {
+      "id": "cow_v1_cowboy",
+      "label": "Cowboy Hat",
+      "hatId": "cowboy",
+      "glassesId": null,
+      "image": "/assets/avatar-catalog/cow-v1/renders/cow_v1_cowboy.webp",
+      "sha256": "89667ef5fc3db70c6bee97deb34b835e79b6dcf1d407d3522fec11efb92d7a19"
+    },
+    {
+      "id": "cow_v1_cowboy_glasses",
+      "label": "Cowboy Cool",
+      "hatId": "cowboy",
+      "glassesId": "gold_aviator",
+      "image": "/assets/avatar-catalog/cow-v1/renders/cow_v1_cowboy_glasses.webp",
+      "sha256": "345de54128ad9b640783e9006e338390eaefef632d2ddc2f7594ea6e3d9d1fb1"
+    }
+  ]
+}
