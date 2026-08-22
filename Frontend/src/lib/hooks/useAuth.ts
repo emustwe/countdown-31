@@ -2,28 +2,16 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../api-client";
-import { useAuthStore, DUMMY_USER } from "../../stores/auth-store";
+import { useAuthStore } from "../../stores/auth-store";
 import type { LoginResponse, MeResponse, PublicUser, RegisterResponse } from "../api-types";
 
 export function useProfile() {
-  const user = useAuthStore((s) => s.user) ?? DUMMY_USER;
+  const accessToken = useAuthStore((s) => s.accessToken);
   return useQuery({
     queryKey: ["me"],
-    queryFn: async () => {
-      try {
-        return await apiRequest<MeResponse>("/auth/me");
-      } catch {
-        return {
-          ...user,
-          // MeResponse balance uses integer USDT base units (6 decimals).
-          balance: "1250000000",
-        };
-      }
-    },
-    initialData: {
-      ...user,
-      balance: "1250000000",
-    },
+    queryFn: () => apiRequest<MeResponse>("/auth/me"),
+    enabled: !!accessToken,
+    retry: false,
   });
 }
 
@@ -42,7 +30,7 @@ export function useLogin() {
   const setSession = useAuthStore((s) => s.setSession);
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { email: string; password: string }) =>
+    mutationFn: (input: { email: string; password: string; mfaCode?: string }) =>
       apiRequest<LoginResponse>("/auth/login", { method: "POST", body: input, auth: false }),
     onSuccess: (data) => {
       setSession(data);
@@ -65,21 +53,14 @@ export function useRegister() {
 }
 
 export function useLogout() {
-  const refreshToken = useAuthStore((s) => s.refreshToken);
   const clear = useAuthStore((s) => s.clear);
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      if (refreshToken) {
-        try {
-          await apiRequest("/auth/logout", {
-            method: "POST",
-            body: { refreshToken },
-            auth: false,
-          });
-        } catch {
-          // ignore offline logout errors
-        }
+      try {
+        await apiRequest("/auth/logout", { method: "POST", auth: false });
+      } catch {
+        // The local session must still be cleared when the API is temporarily unavailable.
       }
       clear();
     },

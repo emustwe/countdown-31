@@ -11,11 +11,12 @@ export interface PublicUser {
   role: "PLAYER" | "ADMIN";
   status: "ACTIVE" | "BANNED";
   createdAt: string;
+  emailVerified: boolean;
+  mfaEnabled: boolean;
 }
 
 export interface AuthTokens {
   accessToken: string;
-  refreshToken: string;
 }
 
 export type RegisterResponse = { user: PublicUser } & AuthTokens;
@@ -54,7 +55,16 @@ export interface CryptoTransferDto {
 export interface LedgerEntryDto {
   id: string;
   amount: string;
-  type: "DEPOSIT" | "WITHDRAWAL" | "BET_STAKE" | "BET_WIN" | "JACKPOT_WIN" | "ADJUSTMENT" | "TOURNAMENT_ENTRY" | "TOURNAMENT_PRIZE" | "TOURNAMENT_REFUND";
+  type:
+    | "DEPOSIT"
+    | "WITHDRAWAL"
+    | "BET_STAKE"
+    | "BET_WIN"
+    | "JACKPOT_WIN"
+    | "ADJUSTMENT"
+    | "TOURNAMENT_ENTRY"
+    | "TOURNAMENT_PRIZE"
+    | "TOURNAMENT_REFUND";
   refType: string | null;
   refId: string | null;
   createdAt: string;

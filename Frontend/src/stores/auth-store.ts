@@ -4,47 +4,46 @@ import type { PublicUser } from "../lib/api-types";
 
 export interface AuthSession {
   accessToken: string;
-  refreshToken: string;
   user: PublicUser;
 }
 
 interface AuthState {
   accessToken: string | null;
-  refreshToken: string | null;
   user: PublicUser | null;
   setSession: (session: AuthSession) => void;
-  setTokens: (tokens: { accessToken: string; refreshToken: string }) => void;
+  setAccessToken: (accessToken: string) => void;
   setUser: (user: PublicUser) => void;
   clear: () => void;
 }
 
-export const DUMMY_USER: PublicUser = {
-  id: "user_sameer_khan",
-  email: "sameer@countdown31.com",
-  fullName: "Sameer Khan",
-  avatarUrl: "/assets/Avatar1",
-  role: "PLAYER",
-  status: "ACTIVE",
-  createdAt: new Date().toISOString(),
-};
-
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      accessToken: "dummy_access_token_sameer",
-      refreshToken: "dummy_refresh_token_sameer",
-      user: DUMMY_USER,
+      accessToken: null,
+      user: null,
       setSession: (session) =>
         set({
           accessToken: session.accessToken,
-          refreshToken: session.refreshToken,
           user: session.user,
         }),
-      setTokens: (tokens) => set({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken }),
+      setAccessToken: (accessToken) => set({ accessToken }),
       setUser: (user) => set({ user }),
-      clear: () => set({ accessToken: "dummy_access_token_sameer", refreshToken: "dummy_refresh_token_sameer", user: DUMMY_USER }),
+      clear: () => set({ accessToken: null, user: null }),
     }),
-    { name: "aurora-ways-auth" },
+    {
+      name: "aurora-ways-auth",
+      version: 2,
+      migrate: (persisted) => {
+        const old = persisted as Partial<AuthState> & { refreshToken?: string | null };
+        const wasDummy =
+          old.accessToken?.startsWith("dummy_") || old.user?.id === "user_sameer_khan";
+        return {
+          accessToken: wasDummy ? null : (old.accessToken ?? null),
+          user: wasDummy ? null : (old.user ?? null),
+        };
+      },
+      partialize: (state) => ({ accessToken: state.accessToken, user: state.user }),
+    },
   ),
 );
 

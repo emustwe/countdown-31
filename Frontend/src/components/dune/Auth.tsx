@@ -3,7 +3,18 @@
 import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogIn, UserPlus, Eye, EyeOff, ShieldCheck, AlertTriangle, ArrowRight, User, Mail, Lock } from "lucide-react";
+import {
+  LogIn,
+  UserPlus,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  AlertTriangle,
+  ArrowRight,
+  User,
+  Mail,
+  Lock,
+} from "lucide-react";
 import { useLogin, useRegister } from "../../lib/hooks/useAuth";
 import { ApiError } from "../../lib/api-client";
 import { soundManager } from "../../lib/soundManager";
@@ -18,6 +29,8 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [requiresMfa, setRequiresMfa] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loginMutation = useLogin();
@@ -33,13 +46,22 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
       if (isRegister) {
         await registerMutation.mutateAsync({ fullName, email, password });
       } else {
-        await loginMutation.mutateAsync({ email, password });
+        await loginMutation.mutateAsync({ email, password, ...(requiresMfa ? { mfaCode } : {}) });
       }
       soundManager.playSuccess();
       router.push(next && next.startsWith("/") ? next : "/home");
     } catch (err) {
       soundManager.playError();
-      setError(err instanceof ApiError ? String(err.envelope?.message || err.message) : "Authentication failed. Please check your credentials.");
+      const message =
+        err instanceof ApiError
+          ? String(err.envelope?.message || err.message)
+          : "Authentication failed. Please check your credentials.";
+      if (message === "MFA_REQUIRED") {
+        setRequiresMfa(true);
+        setError("Enter the 6-digit code from your authenticator app.");
+      } else {
+        setError(message);
+      }
     }
   }
 
@@ -54,7 +76,10 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
 
       {/* Top Header Marquee */}
       <header className="relative z-20 w-full max-w-5xl mx-auto flex items-center justify-between px-4 py-3 rounded-2xl bg-gradient-to-r from-amber-950/80 via-black/90 to-amber-950/80 border-2 border-amber-500/50 shadow-xl backdrop-blur-md">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push("/home")}>
+        <div
+          className="flex items-center gap-3 cursor-pointer"
+          onClick={() => router.push("/home")}
+        >
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-700 border-2 border-amber-300 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.6)]">
             <span className="text-xl">🐮</span>
           </div>
@@ -91,7 +116,10 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
           {/* Top Rivet Accents */}
           <div className="absolute top-0 inset-x-0 h-4 bg-gradient-to-r from-amber-700 via-amber-400 to-amber-700 border-b border-amber-300/60 shadow flex items-center justify-around px-4 pointer-events-none">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="w-1.5 h-1.5 rounded-full bg-amber-950 border border-amber-300 shadow-inner" />
+              <div
+                key={i}
+                className="w-1.5 h-1.5 rounded-full bg-amber-950 border border-amber-300 shadow-inner"
+              />
             ))}
           </div>
 
@@ -102,6 +130,8 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
               onClick={() => {
                 soundManager.playClick();
                 setIsRegister(false);
+                setRequiresMfa(false);
+                setMfaCode("");
                 setError(null);
               }}
               className={`py-2 rounded-xl font-title font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
@@ -119,6 +149,8 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
               onClick={() => {
                 soundManager.playClick();
                 setIsRegister(true);
+                setRequiresMfa(false);
+                setMfaCode("");
                 setError(null);
               }}
               className={`py-2 rounded-xl font-title font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
@@ -190,6 +222,7 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
                 <Mail size={16} className="absolute left-3.5 text-slate-400" />
                 <input
                   type="email"
+                  autoComplete="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -209,10 +242,11 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
                 <input
                   type={showPassword ? "text" : "password"}
                   required
-                  minLength={isRegister ? 8 : undefined}
+                  minLength={isRegister ? 10 : undefined}
+                  autoComplete={isRegister ? "new-password" : "current-password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={isRegister ? "At least 8 characters" : "••••••••"}
+                  placeholder={isRegister ? "10+ characters" : "••••••••"}
                   className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2.5 pl-10 pr-11 text-sm text-white placeholder-slate-500 outline-none transition-colors"
                 />
                 <button
@@ -224,6 +258,25 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
                 </button>
               </div>
             </div>
+
+            {requiresMfa && !isRegister && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-title font-bold text-slate-300 uppercase tracking-wider">
+                  Authenticator Code
+                </label>
+                <input
+                  type="text"
+                  required
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={20}
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\s/g, ""))}
+                  placeholder="6-digit code"
+                  className="w-full bg-black/80 border-2 border-slate-700 focus:border-cyan-400 rounded-xl py-2.5 px-4 text-center font-title tracking-[0.3em] text-white placeholder-slate-500 outline-none transition-colors"
+                />
+              </div>
+            )}
 
             {/* Terms Notice (Register only) */}
             {isRegister && (
@@ -243,7 +296,9 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
                   : "bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 text-slate-950 shadow-[0_0_25px_rgba(245,158,11,0.7)] hover:brightness-110 active:scale-98"
               } ${isPending ? "opacity-75 cursor-not-allowed" : ""}`}
             >
-              <span>{isPending ? "AUTHENTICATING..." : isRegister ? "CREATE ACCOUNT ➔" : "SIGN IN ➔"}</span>
+              <span>
+                {isPending ? "AUTHENTICATING..." : isRegister ? "CREATE ACCOUNT ➔" : "SIGN IN ➔"}
+              </span>
             </button>
           </form>
 

@@ -22,23 +22,20 @@ interface RequestOptions {
 let refreshInFlight: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
-  const { refreshToken } = getAuthState();
-  if (!refreshToken) return null;
-
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
         const res = await fetch(`${apiBaseUrl()}/auth/refresh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
+          credentials: "include",
         });
         if (!res.ok) {
           useAuthStore.getState().clear();
           return null;
         }
         const data = (await res.json()) as RefreshResponse;
-        useAuthStore.getState().setTokens(data);
+        useAuthStore.getState().setAccessToken(data.accessToken);
         return data.accessToken;
       } catch {
         return null;
@@ -60,7 +57,11 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
   return url.toString();
 }
 
-async function rawRequest<T>(path: string, options: RequestOptions, accessToken: string | null): Promise<T> {
+async function rawRequest<T>(
+  path: string,
+  options: RequestOptions,
+  accessToken: string | null,
+): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (options.auth !== false && accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
@@ -70,6 +71,7 @@ async function rawRequest<T>(path: string, options: RequestOptions, accessToken:
     method: options.method ?? "GET",
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    credentials: "include",
   });
 
   if (res.status === 204) {
