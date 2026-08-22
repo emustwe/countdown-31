@@ -23,6 +23,7 @@ let refreshInFlight: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshInFlight) {
+    const accessTokenAtStart = getAuthState().accessToken;
     refreshInFlight = (async () => {
       try {
         const res = await fetch(`${apiBaseUrl()}/auth/refresh`, {
@@ -35,6 +36,8 @@ async function refreshAccessToken(): Promise<string | null> {
           return null;
         }
         const data = (await res.json()) as RefreshResponse;
+        // A logout (or a newer session) happened while refresh was in flight.
+        if (getAuthState().accessToken !== accessTokenAtStart) return null;
         useAuthStore.getState().setAccessToken(data.accessToken);
         return data.accessToken;
       } catch {

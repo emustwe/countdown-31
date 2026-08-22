@@ -57,14 +57,16 @@ export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
+      // Hide account UI immediately; the cookie revocation can finish in the background.
+      clear();
+      queryClient.clear();
       try {
         await apiRequest("/auth/logout", { method: "POST", auth: false });
       } catch {
         // The local session must still be cleared when the API is temporarily unavailable.
       }
-      clear();
     },
-    onSuccess: () => {
+    onSettled: () => {
       clear();
       queryClient.clear();
     },

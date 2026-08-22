@@ -47,6 +47,8 @@ export function ArcadeHeader({
   const toggleSoundStore = useSettingsStore((s) => s.toggleSound);
 
   const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const isAuthenticated = !!accessToken && !!user;
   const avatar = useAvatarStore();
   const logoutMutation = useLogout();
 
@@ -71,6 +73,10 @@ export function ArcadeHeader({
     };
   }, [showProfileMenu]);
 
+  useEffect(() => {
+    if (!isAuthenticated) setShowProfileMenu(false);
+  }, [isAuthenticated]);
+
   // Only show the game mode selector if explicitly enabled or if onToggleMode is supplied
   const canToggle = showModeToggle || !!onToggleMode;
 
@@ -91,10 +97,10 @@ export function ArcadeHeader({
     soundManager.playClick();
     setShowProfileMenu(false);
     await logoutMutation.mutateAsync();
-    router.push("/home");
+    router.replace("/login");
   }
 
-  const displayName = profile?.fullName || user?.fullName || "Guest Player";
+  const displayName = profile?.fullName || user?.fullName || "Player";
   const userInitials = displayName.slice(0, 2).toUpperCase();
   const balanceDisplay = wallet ? formatUsdt(wallet.balance) : "0.00 USDT";
 
@@ -195,31 +201,33 @@ export function ArcadeHeader({
         </button>
 
         {/* Circular Profile Avatar Button */}
-        <button
-          onClick={() => {
-            soundManager.playClick();
-            setShowProfileMenu(!showProfileMenu);
-          }}
-          className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.6)] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-          title="Profile & Account Menu"
-          aria-label="Profile Menu"
-        >
-          <div className="w-full h-full rounded-full bg-[#0d1a12] flex items-center justify-center overflow-hidden border border-amber-200">
-            <MasterAvatar
-              config={{ ...avatar, backgroundId: "none", frameId: "none" }}
-              className="h-full w-full rounded-full"
-            />
-          </div>
+        {isAuthenticated && (
+          <button
+            onClick={() => {
+              soundManager.playClick();
+              setShowProfileMenu(!showProfileMenu);
+            }}
+            className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.6)] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+            title="Profile & Account Menu"
+            aria-label="Profile Menu"
+          >
+            <div className="w-full h-full rounded-full bg-[#0d1a12] flex items-center justify-center overflow-hidden border border-amber-200">
+              <MasterAvatar
+                config={{ ...avatar, backgroundId: "none", frameId: "none" }}
+                className="h-full w-full rounded-full"
+              />
+            </div>
 
-          {/* Level / Status Mini Badge */}
-          <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-full text-[8px] font-title font-black bg-gradient-to-r from-emerald-400 to-green-600 text-slate-950 border border-black shadow">
-            {user ? "Lv.12" : "GUEST"}
-          </span>
-        </button>
+            {/* Level / Status Mini Badge */}
+            <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-full text-[8px] font-title font-black bg-gradient-to-r from-emerald-400 to-green-600 text-slate-950 border border-black shadow">
+              Lv.12
+            </span>
+          </button>
+        )}
 
         {/* Profile Dropdown Menu Card */}
         <AnimatePresence>
-          {showProfileMenu && (
+          {isAuthenticated && showProfileMenu && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

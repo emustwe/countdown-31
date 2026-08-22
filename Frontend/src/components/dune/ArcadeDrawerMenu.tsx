@@ -29,13 +29,11 @@ interface ArcadeDrawerMenuProps {
   onOpenRules: () => void;
 }
 
-export function ArcadeDrawerMenu({
-  isOpen,
-  onClose,
-  onOpenRules,
-}: ArcadeDrawerMenuProps) {
+export function ArcadeDrawerMenu({ isOpen, onClose, onOpenRules }: ArcadeDrawerMenuProps) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const isAuthenticated = !!accessToken && !!user;
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
   const toggleSoundStore = useSettingsStore((s) => s.toggleSound);
 
@@ -117,27 +115,29 @@ export function ArcadeDrawerMenu({
 
             {/* User Profile Card Snippet / Auth Button */}
             <div className="p-3 rounded-2xl bg-black/40 border border-amber-500/30 mb-4 flex flex-col gap-2.5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-300 font-title font-black text-sm">
-                  {user?.fullName?.slice(0, 2).toUpperCase() || "🐮"}
+              {isAuthenticated && (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-300 font-title font-black text-sm">
+                    {user.fullName?.slice(0, 2).toUpperCase() || "🐮"}
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="font-title font-black text-sm text-white truncate">
+                      {user.fullName || user.email.split("@")[0]}
+                    </span>
+                    <span className="text-[11px] font-title font-semibold text-amber-300/80 truncate">
+                      {user.email}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="font-title font-black text-sm text-white truncate">
-                    {user?.fullName || "Guest Player"}
-                  </span>
-                  <span className="text-[11px] font-title font-semibold text-amber-300/80 truncate">
-                    {user?.email || "Playing Locally"}
-                  </span>
-                </div>
-              </div>
+              )}
 
-              {!user ? (
+              {!isAuthenticated ? (
                 <button
                   onClick={() => handleNavigate("/login")}
                   className="w-full py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-600 text-slate-950 font-title font-black text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(245,158,11,0.5)] hover:brightness-110 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <User size={13} />
-                  <span>SIGN IN / REGISTER</span>
+                  <span>LOG IN / SIGN UP</span>
                 </button>
               ) : (
                 <button
@@ -172,7 +172,10 @@ export function ArcadeDrawerMenu({
                           {item.badge}
                         </span>
                       )}
-                      <ChevronRight size={14} className="text-amber-400/40 group-hover:text-amber-300" />
+                      <ChevronRight
+                        size={14}
+                        className="text-amber-400/40 group-hover:text-amber-300"
+                      />
                     </div>
                   </button>
                 );
@@ -204,13 +207,15 @@ export function ArcadeDrawerMenu({
               onClick={handleToggleSound}
               className="flex items-center gap-2 text-xs font-title font-bold text-amber-200/80 hover:text-white cursor-pointer"
             >
-              {soundEnabled ? <Volume2 size={16} className="text-emerald-400" /> : <VolumeX size={16} className="text-slate-400" />}
+              {soundEnabled ? (
+                <Volume2 size={16} className="text-emerald-400" />
+              ) : (
+                <VolumeX size={16} className="text-slate-400" />
+              )}
               <span>{soundEnabled ? "Sound On" : "Muted"}</span>
             </button>
 
-            <span className="text-[10px] font-title text-amber-400/50">
-              COUNT DOWN 31
-            </span>
+            <span className="text-[10px] font-title text-amber-400/50">COUNT DOWN 31</span>
           </div>
         </motion.aside>
       </div>

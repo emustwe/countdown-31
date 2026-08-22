@@ -2,13 +2,12 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, Volume2, VolumeX, Sparkles, Smartphone, Shield, User, Bell, Check, Save, LogOut, Camera, WandSparkles } from "lucide-react";
+import { Settings, Volume2, Sparkles, User, Check, Save, LogOut, Camera } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { AuthGuard } from "../../components/AuthGuard";
 import { useSettingsStore } from "../../stores/settings-store";
-import { useAvatarStore } from "../../stores/avatar-customization-store";
 import { useProfile, useLogout, useUpdateProfile } from "../../lib/hooks/useAuth";
 import { fileToAvatarDataUrl } from "../../lib/avatar";
 import { soundManager } from "../../lib/soundManager";
@@ -22,7 +21,6 @@ export default function SettingsPage() {
 }
 
 function SettingsLayout() {
-  const router = useRouter();
   const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
 
@@ -51,10 +49,7 @@ function SettingsLayout() {
         onClose={() => setShowDrawer(false)}
         onOpenRules={() => setShowRules(true)}
       />
-      <OfficialRulesModal
-        isOpen={showRules}
-        onClose={() => setShowRules(false)}
-      />
+      <OfficialRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
     </div>
   );
 }
@@ -113,7 +108,7 @@ function SettingsContent() {
   async function handleLogout() {
     soundManager.playClick();
     await logout.mutateAsync();
-    router.push("/home");
+    router.replace("/login");
   }
 
   return (
@@ -144,7 +139,10 @@ function SettingsContent() {
       {/* Settings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Profile Card & Account Details */}
-        <form onSubmit={handleSaveProfile} className="md:col-span-2 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 rounded-3xl p-6 shadow-xl flex flex-col gap-4">
+        <form
+          onSubmit={handleSaveProfile}
+          className="md:col-span-2 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 rounded-3xl p-6 shadow-xl flex flex-col gap-4"
+        >
           <div className="flex items-center gap-2 border-b border-white/10 pb-2">
             <User size={18} className="text-amber-400" />
             <span className="font-title font-black text-sm text-amber-300 uppercase tracking-wider">
@@ -157,7 +155,6 @@ function SettingsContent() {
             <div className="relative group shrink-0">
               <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-amber-400 bg-black/80 flex items-center justify-center">
                 {avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-3xl font-title font-black text-emerald-400">
@@ -173,13 +170,21 @@ function SettingsContent() {
                 <Camera size={20} />
                 <span>Upload</span>
               </button>
-              <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onPickImage} className="hidden" />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={onPickImage}
+                className="hidden"
+              />
             </div>
 
             {/* Inputs */}
             <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-title font-bold text-slate-300">Display Name / Nickname:</label>
+                <label className="text-xs font-title font-bold text-slate-300">
+                  Display Name / Nickname:
+                </label>
                 <input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -189,7 +194,9 @@ function SettingsContent() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-title font-bold text-slate-300">Account Email:</label>
+                <label className="text-xs font-title font-bold text-slate-300">
+                  Account Email:
+                </label>
                 <input
                   disabled
                   value={profile?.email ?? ""}

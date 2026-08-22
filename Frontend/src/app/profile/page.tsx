@@ -1,7 +1,20 @@
 "use client";
 
 import React, { useState } from "react";
-import { Crown, Trophy, Flame, Zap, RotateCcw, Swords, Award, Calendar, Sparkles, Mail, Wallet, Clock } from "lucide-react";
+import {
+  Crown,
+  Trophy,
+  Flame,
+  Zap,
+  RotateCcw,
+  Swords,
+  Award,
+  Calendar,
+  Sparkles,
+  Mail,
+  Wallet,
+  Clock,
+} from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
@@ -11,10 +24,42 @@ import { useProfile } from "../../lib/hooks/useAuth";
 import { formatUsdt } from "../../lib/money";
 
 const MATCH_HISTORY = [
-  { id: "m1", result: "VICTORY", opponent: "Daisy Cow 🌸", score: "Conquered 31", date: "Just now", trophies: "+45 🏆", coins: "+150 🪙" },
-  { id: "m2", result: "VICTORY", opponent: "Bessie AI 🐮", score: "Trap at #30", date: "15m ago", trophies: "+38 🏆", coins: "+120 🪙" },
-  { id: "m3", result: "DEFEAT", opponent: "Barnaby Horns 👑", score: "Hit 31 Bomb", date: "1h ago", trophies: "-15 🏆", coins: "+20 🪙" },
-  { id: "m4", result: "VICTORY", opponent: "Daisy Cow 🌸", score: "Conquered 31", date: "3h ago", trophies: "+50 🏆", coins: "+200 🪙" },
+  {
+    id: "m1",
+    result: "VICTORY",
+    opponent: "Daisy Cow 🌸",
+    score: "Conquered 31",
+    date: "Just now",
+    trophies: "+45 🏆",
+    coins: "+150 🪙",
+  },
+  {
+    id: "m2",
+    result: "VICTORY",
+    opponent: "Bessie AI 🐮",
+    score: "Trap at #30",
+    date: "15m ago",
+    trophies: "+38 🏆",
+    coins: "+120 🪙",
+  },
+  {
+    id: "m3",
+    result: "DEFEAT",
+    opponent: "Barnaby Horns 👑",
+    score: "Hit 31 Bomb",
+    date: "1h ago",
+    trophies: "-15 🏆",
+    coins: "+20 🪙",
+  },
+  {
+    id: "m4",
+    result: "VICTORY",
+    opponent: "Daisy Cow 🌸",
+    score: "Conquered 31",
+    date: "3h ago",
+    trophies: "+50 🏆",
+    coins: "+200 🪙",
+  },
 ];
 
 export default function ProfilePage() {
@@ -23,9 +68,11 @@ export default function ProfilePage() {
   const avatar = useAvatarStore();
   const { data: profile } = useProfile();
 
-  const playerName = profile?.fullName || profile?.email?.split("@")[0] || "Sameer Khan";
-  const memberSince = profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "August 2026";
-  const balanceUsdt = profile ? formatUsdt(profile.balance) : "1,250.00 USDT";
+  const playerName = profile?.fullName || profile?.email?.split("@")[0] || "Player";
+  const memberSince = profile?.createdAt
+    ? new Date(profile.createdAt).toLocaleDateString()
+    : "Loading…";
+  const balanceUsdt = profile ? formatUsdt(profile.balance) : "Loading…";
 
   return (
     <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
@@ -84,7 +131,7 @@ export default function ProfilePage() {
               <div className="flex items-center justify-center sm:justify-start gap-4 text-xs text-slate-400 mt-3 flex-wrap">
                 <span className="flex items-center gap-1">
                   <Mail size={13} className="text-amber-400" />
-                  <span>{profile?.email ?? "sameer@countdown31.com"}</span>
+                  <span>{profile?.email ?? "Loading…"}</span>
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock size={13} className="text-emerald-400" />
@@ -92,7 +139,9 @@ export default function ProfilePage() {
                 </span>
                 <span className="flex items-center gap-1">
                   <Wallet size={13} className="text-cyan-400" />
-                  <span>Balance: <b>{balanceUsdt}</b></span>
+                  <span>
+                    Balance: <b>{balanceUsdt}</b>
+                  </span>
                 </span>
               </div>
             </div>
@@ -103,25 +152,33 @@ export default function ProfilePage() {
             <div className="p-3.5 rounded-2xl bg-black/60 border border-amber-400/30 flex flex-col items-center justify-center text-center">
               <Trophy size={20} className="text-yellow-400 fill-yellow-400 mb-1" />
               <span className="font-title font-black text-xl text-white">1,250</span>
-              <span className="text-[10px] font-title font-bold text-slate-400 uppercase">Trophy Rating</span>
+              <span className="text-[10px] font-title font-bold text-slate-400 uppercase">
+                Trophy Rating
+              </span>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-black/60 border border-emerald-400/30 flex flex-col items-center justify-center text-center">
               <Award size={20} className="text-emerald-400 mb-1" />
               <span className="font-title font-black text-xl text-emerald-300">82%</span>
-              <span className="text-[10px] font-title font-bold text-slate-400 uppercase">Win Rate</span>
+              <span className="text-[10px] font-title font-bold text-slate-400 uppercase">
+                Win Rate
+              </span>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-black/60 border border-rose-400/30 flex flex-col items-center justify-center text-center">
               <Flame size={20} className="text-rose-400 fill-rose-400 mb-1" />
               <span className="font-title font-black text-xl text-rose-300">9 Wins</span>
-              <span className="text-[10px] font-title font-bold text-slate-400 uppercase">Best Streak</span>
+              <span className="text-[10px] font-title font-bold text-slate-400 uppercase">
+                Best Streak
+              </span>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-black/60 border border-cyan-400/30 flex flex-col items-center justify-center text-center">
               <Swords size={20} className="text-cyan-400 mb-1" />
               <span className="font-title font-black text-xl text-cyan-300">142</span>
-              <span className="text-[10px] font-title font-bold text-slate-400 uppercase">Total Matches</span>
+              <span className="text-[10px] font-title font-bold text-slate-400 uppercase">
+                Total Matches
+              </span>
             </div>
           </div>
         </div>
@@ -148,9 +205,13 @@ export default function ProfilePage() {
                 <div className="flex flex-col flex-1">
                   <div className="flex items-center justify-between">
                     <span className="font-title font-black text-sm text-white">Chrono Rewind</span>
-                    <span className="text-[10px] font-title font-bold text-cyan-300 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-400/50">-2 STEPS</span>
+                    <span className="text-[10px] font-title font-bold text-cyan-300 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-400/50">
+                      -2 STEPS
+                    </span>
                   </div>
-                  <span className="text-[11px] text-slate-300 mt-0.5">Rewinds the live counter back by -2 numbers.</span>
+                  <span className="text-[11px] text-slate-300 mt-0.5">
+                    Rewinds the live counter back by -2 numbers.
+                  </span>
                 </div>
               </div>
 
@@ -161,9 +222,13 @@ export default function ProfilePage() {
                 <div className="flex flex-col flex-1">
                   <div className="flex items-center justify-between">
                     <span className="font-title font-black text-sm text-white">Turbo Leap</span>
-                    <span className="text-[10px] font-title font-bold text-amber-300 bg-amber-950 px-2 py-0.5 rounded border border-amber-400/50">+3 LEAP</span>
+                    <span className="text-[10px] font-title font-bold text-amber-300 bg-amber-950 px-2 py-0.5 rounded border border-amber-400/50">
+                      +3 LEAP
+                    </span>
                   </div>
-                  <span className="text-[11px] text-slate-300 mt-0.5">Instantly surges forward +3 numbers in a burst.</span>
+                  <span className="text-[11px] text-slate-300 mt-0.5">
+                    Instantly surges forward +3 numbers in a burst.
+                  </span>
                 </div>
               </div>
             </div>
@@ -209,12 +274,12 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="flex items-center gap-2 font-title font-black text-xs sm:text-sm">
-                    <span className={match.result === "VICTORY" ? "text-emerald-400" : "text-rose-400"}>
+                    <span
+                      className={match.result === "VICTORY" ? "text-emerald-400" : "text-rose-400"}
+                    >
                       {match.trophies}
                     </span>
-                    <span className="text-amber-300">
-                      {match.coins}
-                    </span>
+                    <span className="text-amber-300">{match.coins}</span>
                   </div>
                 </div>
               ))}
@@ -229,10 +294,7 @@ export default function ProfilePage() {
         onClose={() => setShowDrawer(false)}
         onOpenRules={() => setShowRules(true)}
       />
-      <OfficialRulesModal
-        isOpen={showRules}
-        onClose={() => setShowRules(false)}
-      />
+      <OfficialRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
     </div>
   );
 }
