@@ -1,6 +1,6 @@
 import catalogManifest from "../../public/assets/avatar-catalog/cow-v1/manifest.json";
 
-export const AVATAR_CHARACTER_IDS = ["champion", "daisy", "rusty", "nova"] as const;
+export const AVATAR_CHARACTER_IDS = ["champion", "daisy", "rusty", "nova", "luna", "moss"] as const;
 export type AvatarCharacterId = (typeof AVATAR_CHARACTER_IDS)[number];
 
 export const AVATAR_VARIANT_IDS = [
@@ -20,6 +20,14 @@ export const AVATAR_VARIANT_IDS = [
   "nova_v1_glasses",
   "nova_v1_cowboy",
   "nova_v1_cowboy_glasses",
+  "luna_v1_base",
+  "luna_v1_glasses",
+  "luna_v1_cowboy",
+  "luna_v1_cowboy_glasses",
+  "moss_v1_base",
+  "moss_v1_glasses",
+  "moss_v1_cowboy",
+  "moss_v1_cowboy_glasses",
 ] as const;
 
 export type AvatarVariantId = (typeof AVATAR_VARIANT_IDS)[number];
@@ -48,6 +56,8 @@ const CHARACTER_DETAILS: Record<AvatarCharacterId, Omit<AvatarCharacter, "id" | 
   daisy: { name: "Daisy", tagline: "Kind farm star", accent: "from-emerald-300 to-teal-500" },
   rusty: { name: "Rusty", tagline: "Wild highland pal", accent: "from-orange-300 to-red-500" },
   nova: { name: "Nova", tagline: "Cosmic adventurer", accent: "from-cyan-300 to-violet-500" },
+  luna: { name: "Luna", tagline: "Space explorer", accent: "from-cyan-300 to-purple-500" },
+  moss: { name: "Moss", tagline: "Forest guardian", accent: "from-lime-300 to-emerald-600" },
 };
 
 function isAvatarCharacterId(value: unknown): value is AvatarCharacterId {

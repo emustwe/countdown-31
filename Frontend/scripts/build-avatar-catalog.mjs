@@ -18,6 +18,8 @@ const variants = [
   ...collection("daisy", "Daisy", "daisy"),
   ...collection("rusty", "Rusty", "rusty"),
   ...collection("nova", "Nova", "nova"),
+  ...collection("luna", "Luna", "luna"),
+  ...collection("moss", "Moss", "moss"),
 ];
 
 function collection(characterId, characterLabel, sourcePrefix) {

@@ -3,6 +3,7 @@
 import React from "react";
 import { type AvatarConfig } from "../../stores/avatar-customization-store";
 import { getAvatarVariant, isAvatarVariantId } from "../../lib/avatar-catalog";
+import { getAvatarBackground, getAvatarFrame } from "../../lib/avatar-decorations";
 
 interface MasterAvatarProps {
   config?: Partial<AvatarConfig>;
@@ -14,23 +15,6 @@ interface MasterAvatarProps {
   rarityText?: string;
   rarityColor?: string;
 }
-
-const BG_GRADIENTS: Record<string, string> = {
-  emerald: "bg-gradient-to-b from-[#0e2a1b] via-[#08170e] to-[#040c07]",
-  golden: "bg-gradient-to-b from-[#3a2806] via-[#1a1203] to-[#0a0701]",
-  cyber: "bg-gradient-to-b from-[#0a1f2e] via-[#040e16] to-[#010508]",
-  inferno: "bg-gradient-to-b from-[#350d14] via-[#170508] to-[#0a0203]",
-  obsidian: "bg-gradient-to-b from-[#161616] via-[#0a0a0a] to-[#000000]",
-  none: "bg-transparent",
-};
-
-const FRAME_PATHS: Record<string, string> = {
-  mythic_gold: "/assets/master/frame_mythic_gold_1024.png",
-  neon_glacier: "/assets/master/frame_neon_glacier_1024.png",
-  inferno: "/assets/master/frame_inferno_1024.png",
-  emerald: "/assets/master/frame_emerald_1024.png",
-  none: "",
-};
 
 export function MasterAvatar({
   config,
@@ -54,12 +38,12 @@ export function MasterAvatar({
   const isEmperor = skinId === "golden_emperor";
   const isBarnaby = skinId === "barnaby";
 
-  const frameSrc = FRAME_PATHS[frameId] ?? FRAME_PATHS.mythic_gold;
-  const bgClass = BG_GRADIENTS[bgId] ?? BG_GRADIENTS.emerald;
+  const frame = getAvatarFrame(frameId);
+  const background = getAvatarBackground(bgId);
 
   return (
     <div
-      className={`relative aspect-square overflow-hidden rounded-2xl sm:rounded-3xl select-none shrink-0 ${bgClass} ${className}`}
+      className={`relative aspect-square overflow-hidden rounded-2xl sm:rounded-3xl select-none shrink-0 ${background.className} ${className}`}
       style={size ? { width: size, height: size } : undefined}
     >
       {/* Layer 0: Background Radial Glow */}
@@ -71,7 +55,7 @@ export function MasterAvatar({
         <img
           src={catalogVariant.image}
           alt={catalogVariant.label}
-          className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+          className="absolute inset-[6%] w-[88%] h-[88%] rounded-[18%] object-cover pointer-events-none shadow-[0_0_18px_rgba(0,0,0,.35)]"
         />
       )}
       {isPlainBull && !catalogVariant && (
@@ -130,13 +114,16 @@ export function MasterAvatar({
       )}
 
       {/* Layer 5: Master Outer Battle Frame */}
-      {frameSrc && (
+      {frame.image && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={frameSrc}
+          src={frame.image}
           alt="Battle Frame"
           className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
         />
+      )}
+      {!frame.image && frame.id !== "none" && (
+        <div className={`pointer-events-none absolute inset-0 z-10 rounded-[inherit] ${frame.className}`} aria-hidden="true" />
       )}
 
       {/* Optional Level Badge */}

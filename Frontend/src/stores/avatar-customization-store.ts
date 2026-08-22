@@ -5,12 +5,13 @@ import {
   getAvatarVariant,
   type AvatarVariantId,
 } from "../lib/avatar-catalog";
+import type { AvatarBackgroundId, AvatarFrameId } from "../lib/avatar-decorations";
 
 export interface AvatarConfig {
   variantId: AvatarVariantId | null;
   skinId: "base_bull" | "golden_emperor" | "barnaby";
-  backgroundId: "emerald" | "golden" | "cyber" | "inferno" | "obsidian" | "none";
-  frameId: "mythic_gold" | "neon_glacier" | "inferno" | "emerald" | "none";
+  backgroundId: AvatarBackgroundId;
+  frameId: AvatarFrameId;
   hasGlasses: boolean;
   hasMustache: boolean;
   hasCrown: boolean;

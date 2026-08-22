@@ -21,6 +21,8 @@ public/assets/avatar-catalog/cow-v1/
   source/daisy-*.png
   source/rusty-*.png
   source/nova-*.png
+  source/luna-*.png
+  source/moss-*.png
   renders/cow_v1_base.webp
   renders/cow_v1_glasses_static_v2.webp
   renders/cow_v1_cowboy_static_v2.webp
@@ -28,14 +30,24 @@ public/assets/avatar-catalog/cow-v1/
   manifest.json
 ```
 
-The catalog contains 16 approved looks: Champion, Daisy, Rusty, and Nova each
-have Classic, Glasses, Cowboy Hat, and Hat + Glasses renders. The `/avatar`
+The catalog contains 24 approved looks: Champion, Daisy, Rusty, Nova, Luna,
+and Moss each have Classic, Glasses, Cowboy Hat, and Hat + Glasses renders. The `/avatar`
 page resolves the cow and accessory buttons to one of these stable IDs.
 Equipping persists only the ID. `MasterAvatar` uses the same finished file
 in the account button, profile, and player-card surfaces.
 
 Daisy is intentionally family-friendly: every render uses the same modest,
 long-sleeved, high-collar farm dress and a neutral torso silhouette.
+Luna follows the same rule with a loose, long-sleeved, high-collar space dress.
+
+## Background and frame skins
+
+`src/lib/avatar-decorations.ts` defines the decoration catalog. It adds ten
+new background skins and ten new frame skins alongside the original themes.
+These decorations are code-rendered gradients, borders, and glows, so they stay
+sharp at every size and do not add image downloads. The cow portrait is inset
+slightly so backgrounds remain visible even when a static portrait has a baked
+studio backdrop.
 
 ## Adding a scenario
 

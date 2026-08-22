@@ -11,18 +11,36 @@ import {
   resolveAvatarVariant,
   type AvatarCharacterId,
 } from "../../lib/avatar-catalog";
+import {
+  AVATAR_BACKGROUNDS,
+  AVATAR_FRAMES,
+  type AvatarBackgroundId,
+  type AvatarFrameId,
+} from "../../lib/avatar-decorations";
 import { soundManager } from "../../lib/soundManager";
 import { useAvatarStore } from "../../stores/avatar-customization-store";
+import { MasterAvatar } from "./MasterAvatar";
 
 export function AvatarCatalogStudio() {
   const variantId = useAvatarStore((state) => state.variantId);
+  const backgroundId = useAvatarStore((state) => state.backgroundId);
+  const frameId = useAvatarStore((state) => state.frameId);
   const setVariant = useAvatarStore((state) => state.setVariant);
+  const setBackground = useAvatarStore((state) => state.setBackground);
+  const setFrame = useAvatarStore((state) => state.setFrame);
   const current = getAvatarVariant(variantId);
   const [previewId, setPreviewId] = useState(current.id);
+  const [previewBackgroundId, setPreviewBackgroundId] = useState<AvatarBackgroundId>(backgroundId);
+  const [previewFrameId, setPreviewFrameId] = useState<AvatarFrameId>(frameId);
+  const [finishTab, setFinishTab] = useState<"background" | "frame">("background");
   const preview = getAvatarVariant(previewId);
-  const isEquipped = current.id === preview.id;
+  const isEquipped = current.id === preview.id && backgroundId === previewBackgroundId && frameId === previewFrameId;
 
-  useEffect(() => setPreviewId(current.id), [current.id]);
+  useEffect(() => {
+    setPreviewId(current.id);
+    setPreviewBackgroundId(backgroundId);
+    setPreviewFrameId(frameId);
+  }, [backgroundId, current.id, frameId]);
 
   const selection = useMemo(
     () => ({ hasHat: preview.hasHat, hasGlasses: preview.hasGlasses }),
@@ -51,6 +69,8 @@ export function AvatarCatalogStudio() {
 
   function equip() {
     setVariant(preview.id);
+    setBackground(previewBackgroundId);
+    setFrame(previewFrameId);
     soundManager.playEquip();
   }
 
@@ -74,23 +94,26 @@ export function AvatarCatalogStudio() {
         <section className="relative overflow-hidden rounded-[2rem] border-2 border-amber-400/40 bg-[radial-gradient(circle_at_50%_20%,rgba(245,158,11,.24),transparent_42%),linear-gradient(155deg,#14251a,#07100b_70%)] p-4 shadow-2xl sm:p-6">
           <div className="mb-3 flex items-center justify-between">
             <span className="flex items-center gap-2 rounded-full bg-emerald-400 px-3 py-1 font-title text-xs font-black text-slate-950">
-              <ShieldCheck size={14} /> 16 READY-MADE LOOKS
+              <ShieldCheck size={14} /> 24 READY-MADE LOOKS
             </span>
             <span className="font-title text-xs font-black text-amber-300">{preview.characterLabel}</span>
           </div>
 
           <div className="relative mx-auto aspect-square w-full max-w-[440px] overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle,#173d27,#07110b_72%)] shadow-[inset_0_0_50px_rgba(0,0,0,.65)]">
             <AnimatePresence initial={false}>
-              <motion.img
-                key={preview.id}
-                src={preview.image}
-                alt={preview.label}
+              <motion.div
+                key={`${preview.id}-${previewBackgroundId}-${previewFrameId}`}
                 initial={{ opacity: 0, scale: 0.9, rotate: -2 }}
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 exit={{ opacity: 0, scale: 1.04, rotate: 2 }}
                 transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                className="absolute inset-0 h-full w-full object-contain"
-              />
+                className="absolute inset-0"
+              >
+                <MasterAvatar
+                  config={{ variantId: preview.id, backgroundId: previewBackgroundId, frameId: previewFrameId }}
+                  className="h-full w-full rounded-[2rem]"
+                />
+              </motion.div>
             </AnimatePresence>
             <motion.div
               key={`${preview.id}-shine`}
@@ -107,7 +130,7 @@ export function AvatarCatalogStudio() {
             <h2 className="font-title text-xl font-black">1. Pick a cow</h2>
           </div>
 
-          <div className="grid grid-cols-4 gap-2" aria-label="Cow characters">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6" aria-label="Cow characters">
             {AVATAR_CHARACTERS.map((character) => {
               const selected = preview.characterId === character.id;
               return (
@@ -176,13 +199,86 @@ export function AvatarCatalogStudio() {
             disabled={isEquipped}
             className="mt-auto flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 px-5 font-title text-base font-black text-slate-950 shadow-[0_10px_30px_rgba(245,158,11,.3)] transition hover:brightness-110 active:scale-[.98] disabled:cursor-default disabled:from-emerald-400 disabled:to-green-500"
           >
-            {isEquipped ? <><Check size={21} strokeWidth={4} /> Equipped!</> : <><Sparkles size={21} /> Equip this cow</>}
+            {isEquipped ? <><Check size={21} strokeWidth={4} /> Equipped!</> : <><Sparkles size={21} /> Equip this avatar</>}
           </button>
 
           <p className="text-center text-xs font-semibold text-white/45">Saved on this device · No dragging or resizing</p>
         </section>
       </div>
+
+      <section className="rounded-[2rem] border border-white/10 bg-black/70 p-4 shadow-2xl backdrop-blur-xl sm:p-6">
+        <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <h2 className="font-title text-xl font-black">3. Finish your avatar</h2>
+          <div className="grid grid-cols-2 rounded-2xl bg-white/5 p-1">
+            <FinishTabButton active={finishTab === "background"} onClick={() => setFinishTab("background")} label="Backgrounds" count="10 new" />
+            <FinishTabButton active={finishTab === "frame"} onClick={() => setFinishTab("frame")} label="Frames" count="10 new" />
+          </div>
+        </div>
+
+        {finishTab === "background" ? (
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-8" aria-label="Avatar backgrounds">
+            {AVATAR_BACKGROUNDS.filter((item) => item.id !== "none").map((item) => (
+              <DecorationButton
+                key={item.id}
+                active={previewBackgroundId === item.id}
+                label={item.name}
+                onClick={() => {
+                  setPreviewBackgroundId(item.id);
+                  soundManager.playCardSelect();
+                }}
+              >
+                <span className={`h-10 w-10 rounded-full bg-gradient-to-br ${item.previewClass} shadow-inner`} />
+              </DecorationButton>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-8" aria-label="Avatar frames">
+            {AVATAR_FRAMES.filter((item) => item.id !== "none").map((item) => (
+              <DecorationButton
+                key={item.id}
+                active={previewFrameId === item.id}
+                label={item.name}
+                onClick={() => {
+                  setPreviewFrameId(item.id);
+                  soundManager.playCardSelect();
+                }}
+              >
+                <span className={`h-10 w-10 rounded-xl border-4 bg-slate-900 ${item.previewClass}`} />
+              </DecorationButton>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
+  );
+}
+
+function FinishTabButton({ active, onClick, label, count }: { active: boolean; onClick: () => void; label: string; count: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-h-11 whitespace-nowrap rounded-xl px-3 font-title text-xs font-black transition active:scale-95 sm:px-4 ${active ? "bg-amber-300 text-slate-950" : "text-white/60"}`}
+    >
+      {label} <span className="ml-1 text-[9px] opacity-70">{count}</span>
+    </button>
+  );
+}
+
+function DecorationButton({ active, label, onClick, children }: { active: boolean; label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`relative flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-2 transition hover:-translate-y-1 active:scale-95 ${
+        active ? "border-amber-300 bg-amber-300/15 shadow-[0_0_16px_rgba(251,191,36,.3)]" : "border-white/10 bg-white/5"
+      }`}
+    >
+      {children}
+      <span className="truncate font-title text-[10px] font-black text-white/80">{label}</span>
+      {active && <span className="absolute right-1 top-1 rounded-full bg-emerald-400 p-0.5 text-slate-950"><Check size={10} strokeWidth={4} /></span>}
+    </button>
   );
 }
 

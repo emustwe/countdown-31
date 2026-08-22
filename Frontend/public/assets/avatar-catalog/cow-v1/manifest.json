@@ -161,6 +161,86 @@
       "glassesId": "gold_aviator",
       "image": "/assets/avatar-catalog/cow-v1/renders/nova_v1_cowboy_glasses_static_v1.webp",
       "sha256": "b5a72d55afc3c7c16cdbd2c9406b64e5d3050abaa8c1889421fee21a1a35c343"
+    },
+    {
+      "id": "luna_v1_base",
+      "characterId": "luna",
+      "characterLabel": "Luna",
+      "label": "Luna Classic",
+      "hatId": null,
+      "glassesId": null,
+      "image": "/assets/avatar-catalog/cow-v1/renders/luna_v1_base_static_v1.webp",
+      "sha256": "af81718a84ec7c94c499f495c454af43dfcc189baebe4cba1c4c1ad0e37cef78"
+    },
+    {
+      "id": "luna_v1_glasses",
+      "characterId": "luna",
+      "characterLabel": "Luna",
+      "label": "Luna Glasses",
+      "hatId": null,
+      "glassesId": "gold_aviator",
+      "image": "/assets/avatar-catalog/cow-v1/renders/luna_v1_glasses_static_v1.webp",
+      "sha256": "189ddbd716e371e05817219b1f04d2c66508f34900ae8e581009d88cd9b7bc75"
+    },
+    {
+      "id": "luna_v1_cowboy",
+      "characterId": "luna",
+      "characterLabel": "Luna",
+      "label": "Luna Cowboy",
+      "hatId": "cowboy",
+      "glassesId": null,
+      "image": "/assets/avatar-catalog/cow-v1/renders/luna_v1_cowboy_static_v1.webp",
+      "sha256": "91d7ab96b056cea1adb047c28325e4dbcb62f19b9cd02cdb3fb21176a5318326"
+    },
+    {
+      "id": "luna_v1_cowboy_glasses",
+      "characterId": "luna",
+      "characterLabel": "Luna",
+      "label": "Luna Cowboy Cool",
+      "hatId": "cowboy",
+      "glassesId": "gold_aviator",
+      "image": "/assets/avatar-catalog/cow-v1/renders/luna_v1_cowboy_glasses_static_v1.webp",
+      "sha256": "daa8d778e5a712b6c7156b6644d9b77204fd9b2076ba446f595ae3a69be089e5"
+    },
+    {
+      "id": "moss_v1_base",
+      "characterId": "moss",
+      "characterLabel": "Moss",
+      "label": "Moss Classic",
+      "hatId": null,
+      "glassesId": null,
+      "image": "/assets/avatar-catalog/cow-v1/renders/moss_v1_base_static_v1.webp",
+      "sha256": "dd3faa2215727d049f5e7ebd4a4578a2daa55d8ee6b7c63bf2485ebdc685c7b4"
+    },
+    {
+      "id": "moss_v1_glasses",
+      "characterId": "moss",
+      "characterLabel": "Moss",
+      "label": "Moss Glasses",
+      "hatId": null,
+      "glassesId": "gold_aviator",
+      "image": "/assets/avatar-catalog/cow-v1/renders/moss_v1_glasses_static_v1.webp",
+      "sha256": "58edbbd80d8fdd21ea0cac25bb70e60774b941af2b9bc8f5feecaf6b7970b860"
+    },
+    {
+      "id": "moss_v1_cowboy",
+      "characterId": "moss",
+      "characterLabel": "Moss",
+      "label": "Moss Cowboy",
+      "hatId": "cowboy",
+      "glassesId": null,
+      "image": "/assets/avatar-catalog/cow-v1/renders/moss_v1_cowboy_static_v1.webp",
+      "sha256": "5e6ffca6074961e75eaa7a6396b5fc8d01d6222f60a44cda7dbc49377391a042"
+    },
+    {
+      "id": "moss_v1_cowboy_glasses",
+      "characterId": "moss",
+      "characterLabel": "Moss",
+      "label": "Moss Cowboy Cool",
+      "hatId": "cowboy",
+      "glassesId": "gold_aviator",
+      "image": "/assets/avatar-catalog/cow-v1/renders/moss_v1_cowboy_glasses_static_v1.webp",
+      "sha256": "f4fcf9a049b73d4d9a42ce7aaee7f4b5e9a3512318c82af4c83e221d36259971"
     }
   ]
 }
