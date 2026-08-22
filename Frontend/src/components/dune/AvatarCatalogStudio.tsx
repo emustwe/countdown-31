@@ -4,7 +4,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronLeft, Glasses, HatGlasses, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AVATAR_VARIANTS, getAvatarVariant, resolveAvatarVariant } from "../../lib/avatar-catalog";
+import {
+  AVATAR_CHARACTERS,
+  AVATAR_VARIANTS,
+  getAvatarVariant,
+  resolveAvatarVariant,
+  type AvatarCharacterId,
+} from "../../lib/avatar-catalog";
 import { soundManager } from "../../lib/soundManager";
 import { useAvatarStore } from "../../stores/avatar-customization-store";
 
@@ -22,9 +28,20 @@ export function AvatarCatalogStudio() {
     () => ({ hasHat: preview.hasHat, hasGlasses: preview.hasGlasses }),
     [preview.hasHat, preview.hasGlasses],
   );
+  const characterVariants = useMemo(
+    () => AVATAR_VARIANTS.filter((variant) => variant.characterId === preview.characterId),
+    [preview.characterId],
+  );
+
+  function changeCharacter(characterId: AvatarCharacterId) {
+    const next = resolveAvatarVariant(characterId, selection.hasHat, selection.hasGlasses);
+    setPreviewId(next.id);
+    soundManager.playCardSelect();
+  }
 
   function changeAccessory(kind: "hat" | "glasses") {
     const next = resolveAvatarVariant(
+      preview.characterId,
       kind === "hat" ? !selection.hasHat : selection.hasHat,
       kind === "glasses" ? !selection.hasGlasses : selection.hasGlasses,
     );
@@ -57,9 +74,9 @@ export function AvatarCatalogStudio() {
         <section className="relative overflow-hidden rounded-[2rem] border-2 border-amber-400/40 bg-[radial-gradient(circle_at_50%_20%,rgba(245,158,11,.24),transparent_42%),linear-gradient(155deg,#14251a,#07100b_70%)] p-4 shadow-2xl sm:p-6">
           <div className="mb-3 flex items-center justify-between">
             <span className="flex items-center gap-2 rounded-full bg-emerald-400 px-3 py-1 font-title text-xs font-black text-slate-950">
-              <ShieldCheck size={14} /> READY-MADE LOOK
+              <ShieldCheck size={14} /> 16 READY-MADE LOOKS
             </span>
-            <span className="font-title text-xs font-black text-amber-300">{preview.label}</span>
+            <span className="font-title text-xs font-black text-amber-300">{preview.characterLabel}</span>
           </div>
 
           <div className="relative mx-auto aspect-square w-full max-w-[440px] overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle,#173d27,#07110b_72%)] shadow-[inset_0_0_50px_rgba(0,0,0,.65)]">
@@ -87,9 +104,33 @@ export function AvatarCatalogStudio() {
 
         <section className="flex flex-col gap-4 rounded-[2rem] border border-white/10 bg-black/70 p-4 shadow-2xl backdrop-blur-xl sm:p-6">
           <div>
-            <h2 className="font-title text-xl font-black">Choose your look</h2>
-            <p className="mt-1 text-sm font-semibold text-white/60">Each tap swaps a finished, approved image.</p>
+            <h2 className="font-title text-xl font-black">1. Pick a cow</h2>
           </div>
+
+          <div className="grid grid-cols-4 gap-2" aria-label="Cow characters">
+            {AVATAR_CHARACTERS.map((character) => {
+              const selected = preview.characterId === character.id;
+              return (
+                <button
+                  key={character.id}
+                  type="button"
+                  onClick={() => changeCharacter(character.id)}
+                  aria-pressed={selected}
+                  className={`group relative overflow-hidden rounded-2xl border-2 p-1.5 transition hover:-translate-y-1 active:scale-95 ${
+                    selected ? "border-amber-300 bg-amber-300/15 shadow-[0_0_18px_rgba(251,191,36,.35)]" : "border-white/10 bg-white/5"
+                  }`}
+                >
+                  <img src={character.baseVariant.image} alt="" className="mx-auto aspect-square w-full rounded-xl object-cover" />
+                  <span className={`mt-1 block truncate bg-gradient-to-r ${character.accent} bg-clip-text font-title text-[11px] font-black text-transparent sm:text-xs`}>
+                    {character.name}
+                  </span>
+                  {selected && <span className="absolute right-1 top-1 rounded-full bg-amber-300 p-1 text-slate-950"><Check size={11} strokeWidth={4} /></span>}
+                </button>
+              );
+            })}
+          </div>
+
+          <h2 className="font-title text-xl font-black">2. Pick a style</h2>
 
           <div className="grid grid-cols-2 gap-3">
             <AccessoryButton
@@ -106,8 +147,8 @@ export function AvatarCatalogStudio() {
             />
           </div>
 
-          <div className="grid grid-cols-4 gap-2" aria-label="Ready-made cow styles">
-            {AVATAR_VARIANTS.map((variant) => (
+          <div className="grid grid-cols-4 gap-2" aria-label={`${preview.characterLabel} styles`}>
+            {characterVariants.map((variant) => (
               <button
                 key={variant.id}
                 type="button"
@@ -121,7 +162,7 @@ export function AvatarCatalogStudio() {
                   preview.id === variant.id ? "border-amber-300 shadow-[0_0_18px_rgba(251,191,36,.45)]" : "border-white/10"
                 }`}
               >
-                <img src={variant.image} alt="" className="h-full w-full object-contain" />
+                <img src={variant.image} alt="" className="h-full w-full object-cover" />
                 {preview.id === variant.id && (
                   <span className="absolute right-1 top-1 rounded-full bg-amber-300 p-1 text-slate-950"><Check size={12} strokeWidth={4} /></span>
                 )}

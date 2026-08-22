@@ -1,9 +1,11 @@
 {
   "catalogId": "cow-v1",
-  "version": 1,
+  "version": 2,
   "variants": [
     {
       "id": "cow_v1_base",
+      "characterId": "champion",
+      "characterLabel": "Champion",
       "label": "Classic",
       "hatId": null,
       "glassesId": null,
@@ -12,6 +14,8 @@
     },
     {
       "id": "cow_v1_glasses",
+      "characterId": "champion",
+      "characterLabel": "Champion",
       "label": "Cool Glasses",
       "hatId": null,
       "glassesId": "gold_aviator",
@@ -20,6 +24,8 @@
     },
     {
       "id": "cow_v1_cowboy",
+      "characterId": "champion",
+      "characterLabel": "Champion",
       "label": "Cowboy Hat",
       "hatId": "cowboy",
       "glassesId": null,
@@ -28,11 +34,133 @@
     },
     {
       "id": "cow_v1_cowboy_glasses",
+      "characterId": "champion",
+      "characterLabel": "Champion",
       "label": "Cowboy Cool",
       "hatId": "cowboy",
       "glassesId": "gold_aviator",
       "image": "/assets/avatar-catalog/cow-v1/renders/cow_v1_cowboy_glasses_static_v2.webp",
       "sha256": "708a624fea95002b9d8159ed153d3a018486434bcc4de6858a25c1873150bb1b"
+    },
+    {
+      "id": "daisy_v1_base",
+      "characterId": "daisy",
+      "characterLabel": "Daisy",
+      "label": "Daisy Classic",
+      "hatId": null,
+      "glassesId": null,
+      "image": "/assets/avatar-catalog/cow-v1/renders/daisy_v1_base_static_v1.webp",
+      "sha256": "e913e1ef30d2fffbb7a21714e6f9c822fa6d767a13d8118cf63418740af9b77b"
+    },
+    {
+      "id": "daisy_v1_glasses",
+      "characterId": "daisy",
+      "characterLabel": "Daisy",
+      "label": "Daisy Glasses",
+      "hatId": null,
+      "glassesId": "gold_aviator",
+      "image": "/assets/avatar-catalog/cow-v1/renders/daisy_v1_glasses_static_v1.webp",
+      "sha256": "990cad1177b470a3f46f82d7dfc6b016a9f611d1c5437316a657809cfcc4ac25"
+    },
+    {
+      "id": "daisy_v1_cowboy",
+      "characterId": "daisy",
+      "characterLabel": "Daisy",
+      "label": "Daisy Cowboy",
+      "hatId": "cowboy",
+      "glassesId": null,
+      "image": "/assets/avatar-catalog/cow-v1/renders/daisy_v1_cowboy_static_v1.webp",
+      "sha256": "af0d9106d8b6f8c20993849c88f71c57132906a462f7015cd3f520cc1fc7a11d"
+    },
+    {
+      "id": "daisy_v1_cowboy_glasses",
+      "characterId": "daisy",
+      "characterLabel": "Daisy",
+      "label": "Daisy Cowboy Cool",
+      "hatId": "cowboy",
+      "glassesId": "gold_aviator",
+      "image": "/assets/avatar-catalog/cow-v1/renders/daisy_v1_cowboy_glasses_static_v1.webp",
+      "sha256": "adf047f29adcef0fbeed9b509f54446e31a1caa582c5886b4828c86fd26ad6df"
+    },
+    {
+      "id": "rusty_v1_base",
+      "characterId": "rusty",
+      "characterLabel": "Rusty",
+      "label": "Rusty Classic",
+      "hatId": null,
+      "glassesId": null,
+      "image": "/assets/avatar-catalog/cow-v1/renders/rusty_v1_base_static_v1.webp",
+      "sha256": "b83f6bb4025f23eb6053f7efe581d0e1c8f4ae54aab7a0723baf47420e2e56f5"
+    },
+    {
+      "id": "rusty_v1_glasses",
+      "characterId": "rusty",
+      "characterLabel": "Rusty",
+      "label": "Rusty Glasses",
+      "hatId": null,
+      "glassesId": "gold_aviator",
+      "image": "/assets/avatar-catalog/cow-v1/renders/rusty_v1_glasses_static_v1.webp",
+      "sha256": "33a18e1be9f3db81ba87f3ad8fc7e68f2e8a31c500dc5809a4c5c261a34e8b26"
+    },
+    {
+      "id": "rusty_v1_cowboy",
+      "characterId": "rusty",
+      "characterLabel": "Rusty",
+      "label": "Rusty Cowboy",
+      "hatId": "cowboy",
+      "glassesId": null,
+      "image": "/assets/avatar-catalog/cow-v1/renders/rusty_v1_cowboy_static_v1.webp",
+      "sha256": "d00c1d8b0952aa600295205369a216398dd83d0815f196dbf8db1a4cb175911d"
+    },
+    {
+      "id": "rusty_v1_cowboy_glasses",
+      "characterId": "rusty",
+      "characterLabel": "Rusty",
+      "label": "Rusty Cowboy Cool",
+      "hatId": "cowboy",
+      "glassesId": "gold_aviator",
+      "image": "/assets/avatar-catalog/cow-v1/renders/rusty_v1_cowboy_glasses_static_v1.webp",
+      "sha256": "0264fa321b1b88796d263b2b7bcec80ae8438760decd21d2d63b7bbc759c1d87"
+    },
+    {
+      "id": "nova_v1_base",
+      "characterId": "nova",
+      "characterLabel": "Nova",
+      "label": "Nova Classic",
+      "hatId": null,
+      "glassesId": null,
+      "image": "/assets/avatar-catalog/cow-v1/renders/nova_v1_base_static_v1.webp",
+      "sha256": "15d1dc125189940d16cde548fb6f036adf28a4f7053ae83c28aca842fbb3ec6a"
+    },
+    {
+      "id": "nova_v1_glasses",
+      "characterId": "nova",
+      "characterLabel": "Nova",
+      "label": "Nova Glasses",
+      "hatId": null,
+      "glassesId": "gold_aviator",
+      "image": "/assets/avatar-catalog/cow-v1/renders/nova_v1_glasses_static_v1.webp",
+      "sha256": "a5e0eeb917e26d4a01f9ac59d1e7269fa5209e6eb5e71898e21cf64a3b32f823"
+    },
+    {
+      "id": "nova_v1_cowboy",
+      "characterId": "nova",
+      "characterLabel": "Nova",
+      "label": "Nova Cowboy",
+      "hatId": "cowboy",
+      "glassesId": null,
+      "image": "/assets/avatar-catalog/cow-v1/renders/nova_v1_cowboy_static_v1.webp",
+      "sha256": "c7c8048baf6be58422ab34b6095493b0835dcb7b9501d4e0797b31c4f115ef96"
+    },
+    {
+      "id": "nova_v1_cowboy_glasses",
+      "characterId": "nova",
+      "characterLabel": "Nova",
+      "label": "Nova Cowboy Cool",
+      "hatId": "cowboy",
+      "glassesId": "gold_aviator",
+      "image": "/assets/avatar-catalog/cow-v1/renders/nova_v1_cowboy_glasses_static_v1.webp",
+      "sha256": "b5a72d55afc3c7c16cdbd2c9406b64e5d3050abaa8c1889421fee21a1a35c343"
     }
   ]
 }
