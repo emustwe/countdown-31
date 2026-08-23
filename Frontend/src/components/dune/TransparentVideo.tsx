@@ -9,6 +9,10 @@ interface TransparentVideoProps {
   width?: number;
   height?: number;
   audioEnabled?: boolean;
+  /** When false (default) the clip plays through once and holds its last frame. */
+  loop?: boolean;
+  /** Fired once when a non-looping clip finishes. */
+  onEnded?: () => void;
 }
 
 const VERTEX_SHADER = `
@@ -99,10 +103,14 @@ export function TransparentVideo({
   width = 360,
   height = 640,
   audioEnabled = true,
+  loop = false,
+  onEnded,
 }: TransparentVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const soundEnabled = useSettingsStore((state) => state.soundEnabled);
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
 
   /* The video element stays visually hidden because WebGL draws its transparent
      picture, but its original audio is allowed through when game sound is on. */
@@ -198,7 +206,8 @@ export function TransparentVideo({
         ref={videoRef}
         src={src}
         autoPlay
-        loop
+        loop={loop}
+        onEnded={() => onEndedRef.current?.()}
         muted={!soundEnabled || !audioEnabled}
         playsInline
         preload="auto"

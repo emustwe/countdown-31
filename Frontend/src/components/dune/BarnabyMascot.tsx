@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { RotateCcw } from "lucide-react";
 import { TransparentVideo } from "./TransparentVideo";
@@ -14,6 +15,9 @@ interface BarnabyMascotProps {
   onPlayAgain?: () => void;
 }
 
+// The dance clip is ~3s; this is the safety fallback in case the video's `ended` event is missed.
+const DANCE_MAX_MS = 4200;
+
 export function BarnabyMascot({
   status,
   winner,
@@ -22,6 +26,30 @@ export function BarnabyMascot({
   isLocalDefeat,
   onPlayAgain,
 }: BarnabyMascotProps) {
+  // Play the dancing-cow clip ONCE per elimination, then hide it so it doesn't loop forever.
+  // A new elimination is a fresh `lastEliminated` object reference from the engine.
+  const [dancing, setDancing] = useState(false);
+  const [danceKey, setDanceKey] = useState(0);
+  const prevElimRef = useRef<typeof lastEliminated>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (lastEliminated && lastEliminated !== prevElimRef.current) {
+      prevElimRef.current = lastEliminated;
+      setDanceKey((k) => k + 1); // remount the video so it replays from the first frame
+      setDancing(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setDancing(false), DANCE_MAX_MS);
+    }
+    if (!lastEliminated) prevElimRef.current = null; // reset on a fresh game
+  }, [lastEliminated]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
   const resultText = lastEliminated
     ? lastEliminated.reason === "skip"
       ? `${lastEliminated.name} skipped a number`
@@ -29,6 +57,10 @@ export function BarnabyMascot({
         ? `${lastEliminated.name} repeated a count`
         : `${lastEliminated.name} hit 31`
     : "Round complete";
+
+  // The cow is only on stage while a dance is playing or the game is over (result screen).
+  const showCow = dancing || status === "over";
+  if (!showCow) return <div className="defeat-cow-layer" aria-live="polite" />;
 
   return (
     <div className="defeat-cow-layer" aria-live="polite">
@@ -48,9 +80,11 @@ export function BarnabyMascot({
         )}
 
         <TransparentVideo
+          key={danceKey}
           src="/assets/lose-animation-60fps.mp4"
           audioEnabled={isLocalDefeat}
           className="h-full w-full aspect-[9/16]"
+          onEnded={() => setDancing(false)}
         />
 
         {isLocalDefeat && (
