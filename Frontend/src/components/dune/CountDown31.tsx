@@ -6,11 +6,7 @@ import { useSettingsStore } from "../../stores/settings-store";
 import { useGuestStore } from "../../stores/guest-store";
 import { useAuthStore } from "../../stores/auth-store";
 import { useCosmetics } from "../../lib/hooks/useSponsors";
-import {
-  useCountdownLive,
-  type SkillType,
-  type GameMode,
-} from "../../lib/hooks/useCountdownLive";
+import { useCountdownLive, type SkillType, type GameMode } from "../../lib/hooks/useCountdownLive";
 import { soundManager } from "../../lib/soundManager";
 import { BarnabyMascot } from "./BarnabyMascot";
 import { ArcadeHeader } from "./ArcadeHeader";
@@ -22,8 +18,12 @@ import { ArcadeDrawerMenu } from "./ArcadeDrawerMenu";
 import { OfficialRulesModal } from "./OfficialRulesModal";
 import { SkillLoadoutModal } from "./SkillLoadoutModal";
 import confetti from "canvas-confetti";
+import { useGameConfig } from "../../lib/hooks/useGameConfig";
+import { useRouter } from "next/navigation";
 
 export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
+  const router = useRouter();
+  const { data: gameConfig } = useGameConfig();
   const guestName = useGuestStore((s) => s.username);
   const setGuestName = useGuestStore((s) => s.setUsername);
   const user = useAuthStore((s) => s.user);
@@ -32,7 +32,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const soundOn = useSettingsStore((s) => s.soundEnabled);
   const { data: cosmetics } = useCosmetics(!!accessToken);
   const { state, myId, join, submit, useSkill } = useCountdownLive(roomId);
-  const [botCount, setBotCount] = useState<number>(1); // 1 = 1v1 Duel for fastest testing!
+  const [botCount, setBotCount] = useState<number>(gameConfig.gameplay.defaultBotCount);
 
   const [chosenName, setChosenName] = useState("");
   const [showNameGate, setShowNameGate] = useState(false);
@@ -44,8 +44,13 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const [testDefeatActive, setTestDefeatActive] = useState(false);
 
   // Game Mode: Classic 31 (pure counting) vs. Tactical Skill Mode (loadout cards)
-  const [gameMode, setGameMode] = useState<GameMode>("skills");
-  const [equippedSkills, setEquippedSkills] = useState<SkillType[]>(["rewind", "turbo"]);
+  const [gameMode, setGameMode] = useState<GameMode>(gameConfig.gameplay.defaultMode);
+  const [equippedSkills, setEquippedSkills] = useState<SkillType[]>(() =>
+    gameConfig.skills
+      .filter((skill) => skill.enabled)
+      .slice(0, 2)
+      .map((skill) => skill.id),
+  );
 
   // Direct Card Selection State on the 3D Reel
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
@@ -61,6 +66,18 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     const id = setInterval(() => setNow(Date.now()), 200);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (chosenName) return;
+    setBotCount(gameConfig.gameplay.defaultBotCount);
+    setGameMode(gameConfig.gameplay.defaultMode);
+    setEquippedSkills(
+      gameConfig.skills
+        .filter((skill) => skill.enabled)
+        .slice(0, 2)
+        .map((skill) => skill.id),
+    );
+  }, [chosenName, gameConfig]);
 
   const count = state?.count ?? 0;
   const players = state?.players ?? [];
@@ -113,7 +130,8 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 700);
 
-      const isWinner = state?.winner && players.find((p) => p.id === myId)?.name === state.winner.name;
+      const isWinner =
+        state?.winner && players.find((p) => p.id === myId)?.name === state.winner.name;
       if (isWinner) {
         soundManager.playVictory();
         try {
@@ -214,13 +232,25 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
       if (mode === "skills") {
         setShowSkillModal(true);
       } else {
-        join(chosenName, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", []);
+        join(
+          chosenName,
+          {
+            card: cosmetics?.card as Record<string, unknown> | undefined,
+            avatar: cosmetics?.avatar,
+          },
+          "classic",
+          [],
+        );
       }
     }
   }
 
   function openNameGate() {
     soundManager.playClick();
+    if (!accessToken && !gameConfig.gameplay.guestPlayEnabled) {
+      router.push("/login?next=%2Fhome");
+      return;
+    }
     setNameInput(chosenName || defaultName);
     setShowNameGate(true);
   }
@@ -228,7 +258,8 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   function confirmJoin() {
     soundManager.playClick();
     setTestDefeatActive(false);
-    const name = nameInput.trim().slice(0, 20) || `Player ${Math.floor(1000 + Math.random() * 9000)}`;
+    const name =
+      nameInput.trim().slice(0, 20) || `Player ${Math.floor(1000 + Math.random() * 9000)}`;
     setChosenName(name);
     if (!user) setGuestName(name);
     setShowNameGate(false);
@@ -236,7 +267,13 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     if (gameMode === "skills") {
       setShowSkillModal(true);
     } else {
-      join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", [], botCount);
+      join(
+        name,
+        { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar },
+        "classic",
+        [],
+        botCount,
+      );
     }
   }
 
@@ -244,7 +281,13 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     setEquippedSkills(skills);
     setShowSkillModal(false);
     const name = chosenName || defaultName || "Player 1";
-    join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "skills", skills, botCount);
+    join(
+      name,
+      { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar },
+      "skills",
+      skills,
+      botCount,
+    );
   }
 
   function rejoin() {
@@ -254,7 +297,16 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
       if (gameMode === "skills") {
         setShowSkillModal(true);
       } else {
-        join(chosenName, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", [], botCount);
+        join(
+          chosenName,
+          {
+            card: cosmetics?.card as Record<string, unknown> | undefined,
+            avatar: cosmetics?.avatar,
+          },
+          "classic",
+          [],
+          botCount,
+        );
       }
     } else {
       openNameGate();
@@ -262,13 +314,15 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   }
 
   return (
-    <div className={`relative w-full min-h-screen flex flex-col justify-between px-2 sm:px-6 py-2 overflow-x-hidden ${isShaking ? "animate-screen-shake" : ""}`}>
+    <div
+      className={`relative w-full min-h-screen flex flex-col justify-between px-2 sm:px-6 py-2 overflow-x-hidden ${isShaking ? "animate-screen-shake" : ""}`}
+    >
       {/* Top Arcade Header Marquee with Game Mode Switcher */}
       <ArcadeHeader
         onMenuClick={() => setShowDrawer(true)}
         gameMode={gameMode}
         onToggleMode={handleModeChange}
-        showModeToggle={true}
+        showModeToggle={gameConfig.gameplay.allowClassic && gameConfig.gameplay.allowSkills}
       />
 
       {/* Main Arcade Arena Battlefield (3 Columns on Desktop with Expanded Center) */}
@@ -309,9 +363,22 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
               count={count}
               status="over"
               myTurn={myTurn}
-              winner={testDefeatActive ? { name: "Champion", color: "#34d399" } : state?.winner ?? null}
-              lastEliminated={testDefeatActive ? { name: "Test Cow", reason: "31" } : state?.lastEliminated ?? null}
-              isMyWin={testDefeatActive ? false : !!(state?.winner && players.find((p) => p.id === myId)?.name === state.winner.name)}
+              winner={
+                testDefeatActive ? { name: "Champion", color: "#34d399" } : (state?.winner ?? null)
+              }
+              lastEliminated={
+                testDefeatActive
+                  ? { name: "Test Cow", reason: "31" }
+                  : (state?.lastEliminated ?? null)
+              }
+              isMyWin={
+                testDefeatActive
+                  ? false
+                  : !!(
+                      state?.winner &&
+                      players.find((p) => p.id === myId)?.name === state.winner.name
+                    )
+              }
               onPlayAgain={rejoin}
             />
           ) : amIn && status === "playing" ? (
@@ -379,65 +446,78 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           playerCount={players.length}
           maxPlayers={botCount + 1}
           round={state?.round ?? 1}
-          arenaName="Pasture"
-          turnTime={7}
+          arenaName={gameConfig.arena.name}
+          turnTime={gameConfig.gameplay.turnSeconds}
           pingMs={48}
+          showPing={gameConfig.features.showPing}
         />
 
         {/* Quick Testing Bar: Bot Count & Instant Defeat Trigger */}
-        <div className="flex items-center justify-between flex-wrap gap-2 px-3 py-1.5 rounded-2xl bg-black/60 border border-amber-400/40 backdrop-blur-md">
-          {/* Bot Count Selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-title font-bold text-slate-300">OPPONENT BOTS:</span>
-            <div className="flex items-center gap-1 bg-black/80 p-0.5 rounded-xl border border-slate-700">
-              <button
-                type="button"
-                onClick={() => {
-                  soundManager.playClick();
-                  setBotCount(1);
-                  if (chosenName) rejoin();
-                }}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-title font-black transition-all cursor-pointer ${
-                  botCount === 1 ? "bg-emerald-400 text-slate-950 shadow" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                1v1 DUEL (1 Bot)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  soundManager.playClick();
-                  setBotCount(3);
-                  if (chosenName) rejoin();
-                }}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-title font-black transition-all cursor-pointer ${
-                  botCount === 3 ? "bg-amber-400 text-slate-950 shadow" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                4-PLAYER (3 Bots)
-              </button>
-            </div>
-          </div>
+        {(gameConfig.features.showBotSelector || gameConfig.features.showDefeatTester) && (
+          <div className="flex items-center justify-between flex-wrap gap-2 px-3 py-1.5 rounded-2xl bg-black/60 border border-amber-400/40 backdrop-blur-md">
+            {/* Bot Count Selector */}
+            {gameConfig.features.showBotSelector && (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-title font-bold text-slate-300">
+                  OPPONENT BOTS:
+                </span>
+                <div className="flex items-center gap-1 bg-black/80 p-0.5 rounded-xl border border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundManager.playClick();
+                      setBotCount(1);
+                      if (chosenName) rejoin();
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-title font-black transition-all cursor-pointer ${
+                      botCount === 1
+                        ? "bg-emerald-400 text-slate-950 shadow"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    1v1 DUEL (1 Bot)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundManager.playClick();
+                      setBotCount(Math.min(3, gameConfig.bots.filter((bot) => bot.enabled).length));
+                      if (chosenName) rejoin();
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-title font-black transition-all cursor-pointer ${
+                      botCount > 1
+                        ? "bg-amber-400 text-slate-950 shadow"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    GROUP ({Math.min(3, gameConfig.bots.filter((bot) => bot.enabled).length)} Bots)
+                  </button>
+                </div>
+              </div>
+            )}
 
-          {/* Defeat animation preview toggle. This is local UI state, so testing
+            {/* Defeat animation preview toggle. This is local UI state, so testing
               never changes the real match or player state. */}
-          <button
-            type="button"
-            onClick={() => {
-              soundManager.playClick();
-              setTestDefeatActive((active) => !active);
-            }}
-            aria-pressed={testDefeatActive}
-            className={`px-3.5 py-1 rounded-xl text-white font-title font-black text-[10px] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1 ${
-              testDefeatActive
-                ? "bg-gradient-to-r from-red-600 to-rose-500 shadow-[0_0_14px_rgba(239,68,68,0.72)]"
-                : "bg-gradient-to-r from-rose-500 to-amber-500 shadow-[0_0_12px_rgba(244,63,94,0.6)]"
-            }`}
-          >
-            {testDefeatActive ? <Square size={11} fill="currentColor" /> : <span>⚡</span>}
-            <span>{testDefeatActive ? "STOP COW ANIMATION" : "TEST DEFEAT COW ANIMATION"}</span>
-          </button>
-        </div>
+            {gameConfig.features.showDefeatTester && (
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playClick();
+                  setTestDefeatActive((active) => !active);
+                }}
+                aria-pressed={testDefeatActive}
+                className={`px-3.5 py-1 rounded-xl text-white font-title font-black text-[10px] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1 ${
+                  testDefeatActive
+                    ? "bg-gradient-to-r from-red-600 to-rose-500 shadow-[0_0_14px_rgba(239,68,68,0.72)]"
+                    : "bg-gradient-to-r from-rose-500 to-amber-500 shadow-[0_0_12px_rgba(244,63,94,0.6)]"
+                }`}
+              >
+                {testDefeatActive ? <Square size={11} fill="currentColor" /> : <span>⚡</span>}
+                <span>{testDefeatActive ? "STOP COW ANIMATION" : "TEST DEFEAT COW ANIMATION"}</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Pre-Match 2-Skill Loadout Selector Modal */}
@@ -455,22 +535,23 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
       />
 
       {/* Official 31 Game Rules Modal */}
-      <OfficialRulesModal
-        isOpen={showRules}
-        onClose={() => setShowRules(false)}
-      />
+      <OfficialRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
 
       {/* Choose Your Name Gate Modal */}
       {showNameGate && (
         <div className="cd31-gate-overlay" onClick={() => setShowNameGate(false)}>
           <div className="cd31-gate glass" onClick={(e) => e.stopPropagation()}>
-            <span className="cd31-gate-ico"><Crown size={22} /></span>
-            <h2 className="font-title text-2xl font-black">Choose Your Name</h2>
+            <span className="cd31-gate-ico">
+              <Crown size={22} />
+            </span>
+            <h2 className="font-title text-2xl font-black">
+              {gameConfig.gameplay.guestNamePrompt}
+            </h2>
             <p className="font-ui text-sm">Enter the arcade pasture and battle for the crown!</p>
             <input
               autoFocus
               value={nameInput}
-              maxLength={20}
+              maxLength={gameConfig.gameplay.maxGuestNameLength}
               placeholder="Your cow name"
               onChange={(e) => setNameInput(e.target.value)}
               onKeyDown={(e) => {

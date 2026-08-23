@@ -23,6 +23,8 @@ import {
 import { useAuthStore } from "../../stores/auth-store";
 import { useSettingsStore } from "../../stores/settings-store";
 import { soundManager } from "../../lib/soundManager";
+import { useGameConfig } from "../../lib/hooks/useGameConfig";
+import type { MenuIconId } from "../../lib/game-config";
 
 interface ArcadeDrawerMenuProps {
   isOpen: boolean;
@@ -30,19 +32,34 @@ interface ArcadeDrawerMenuProps {
   onOpenRules: () => void;
 }
 
+const MENU_ICONS: Record<MenuIconId, typeof Home> = {
+  home: Home,
+  cow: Crown,
+  trophy: Trophy,
+  sponsor: Handshake,
+  shop: ShoppingBag,
+  profile: User,
+  wallet: Wallet,
+  history: HistoryIcon,
+  settings: Settings,
+};
+
 export function ArcadeDrawerMenu({ isOpen, onClose, onOpenRules }: ArcadeDrawerMenuProps) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
   const isAuthenticated = !!accessToken && !!user;
+  const { data: gameConfig } = useGameConfig();
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
   const toggleSoundStore = useSettingsStore((s) => s.toggleSound);
 
   if (!isOpen) return null;
 
-  function handleNavigate(path: string) {
+  function handleNavigate(path: string, requiresAuth = false) {
     soundManager.playClick();
-    router.push(path);
+    router.push(
+      requiresAuth && !isAuthenticated ? `/login?next=${encodeURIComponent(path)}` : path,
+    );
     onClose();
   }
 
@@ -54,16 +71,25 @@ export function ArcadeDrawerMenu({ isOpen, onClose, onOpenRules }: ArcadeDrawerM
   }
 
   const navItems = [
-    { label: "Play", icon: Home, path: "/home", badge: "Live" },
-    { label: "My Cow", icon: Crown, path: "/avatar" },
-    { label: "Tournaments", icon: Trophy, path: "/events" },
-    { label: "Sponsor", icon: Handshake, path: "/sponsorship" },
-    { label: "Shop", icon: ShoppingBag, path: "/shop" },
-    { label: "My Profile", icon: User, path: "/profile" },
-    { label: "Wallet", icon: Wallet, path: "/wallet" },
-    { label: "Past Games", icon: HistoryIcon, path: "/history" },
-    { label: "Settings", icon: Settings, path: "/settings" },
-    ...(user?.role === "ADMIN" ? [{ label: "Admin Console", icon: ShieldAlert, path: "/admin", badge: "Admin" }] : []),
+    ...gameConfig.menuItems
+      .filter((item) => item.enabled)
+      .sort((a, b) => a.order - b.order)
+      .map((item) => ({
+        ...item,
+        icon: MENU_ICONS[item.icon],
+        badge: undefined as string | undefined,
+      })),
+    ...(user?.role === "ADMIN"
+      ? [
+          {
+            label: "Admin Console",
+            icon: ShieldAlert,
+            path: "/admin",
+            badge: "Admin",
+            requiresAuth: true,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -158,7 +184,7 @@ export function ArcadeDrawerMenu({ isOpen, onClose, onOpenRules }: ArcadeDrawerM
                 return (
                   <button
                     key={item.path}
-                    onClick={() => handleNavigate(item.path)}
+                    onClick={() => handleNavigate(item.path, item.requiresAuth)}
                     className="w-full flex items-center justify-between p-2.5 rounded-xl text-amber-100/90 hover:text-white hover:bg-amber-400/10 hover:border-amber-400/40 border border-transparent font-title font-bold text-sm transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">

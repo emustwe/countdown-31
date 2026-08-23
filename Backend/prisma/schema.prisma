@@ -346,6 +346,14 @@ model SecurityEvent {
   @@index([actor, createdAt])
 }
 
+// Versioned platform configuration edited through the admin Game Studio. JSON keeps the visual
+// configuration flexible while all writes are still validated by the API before persistence.
+model PlatformConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
 enum LedgerEntryType {
   DEPOSIT
   WITHDRAWAL

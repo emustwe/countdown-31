@@ -29,6 +29,7 @@ import { soundManager } from "../../lib/soundManager";
 import { type GameMode } from "../../lib/hooks/useCountdownLive";
 import { useAvatarStore } from "../../stores/avatar-customization-store";
 import { MasterAvatar } from "./MasterAvatar";
+import { useGameConfig } from "../../lib/hooks/useGameConfig";
 
 interface ArcadeHeaderProps {
   onMenuClick?: () => void;
@@ -51,6 +52,7 @@ export function ArcadeHeader({
   const accessToken = useAuthStore((s) => s.accessToken);
   const isAuthenticated = !!accessToken && !!user;
   const avatar = useAvatarStore();
+  const { data: config } = useGameConfig();
   const logoutMutation = useLogout();
 
   const { data: profile } = useProfile();
@@ -170,7 +172,7 @@ export function ArcadeHeader({
           <span className="absolute bottom-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
 
           <h1 className="font-title font-black text-xl sm:text-3xl md:text-4xl tracking-wider text-white drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)]">
-            COUNT DOWN
+            {config.branding.gameTitle}
           </h1>
 
           {/* 3D Golden "31" Shield Badge */}
@@ -184,7 +186,9 @@ export function ArcadeHeader({
         {/* Subtitle Warning Pill - ONLY shown in Game Arena */}
         {canToggle && (
           <span className="mt-1.5 text-[10px] sm:text-xs font-title font-black tracking-widest text-amber-300 uppercase bg-black/80 px-3.5 py-0.5 rounded-full border border-amber-400/40 shadow pointer-events-auto">
-            {gameMode === "skills" ? "⚡ Tactical Skills Activated!" : "🎲 Classic Pure Counting!"}
+            {gameMode === "skills"
+              ? `⚡ ${config.branding.announcement}`
+              : "🎲 Classic Pure Counting!"}
           </span>
         )}
       </div>

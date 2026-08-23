@@ -5,13 +5,13 @@ import { useRouter, usePathname } from "next/navigation";
 import {
   Building2,
   ChevronLeft,
+  Gamepad2,
   LayoutDashboard,
   LogOut,
   Settings as SettingsIcon,
   Trophy,
   Users,
   ShieldAlert,
-  Sparkles,
 } from "lucide-react";
 import { useLogout, useProfile } from "../../lib/hooks/useAuth";
 import { soundManager } from "../../lib/soundManager";
@@ -25,6 +25,7 @@ export function NewAdminNav() {
 
   const items = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/admin" },
+    { label: "Game Studio", icon: Gamepad2, path: "/admin/game" },
     { label: "Tournaments", icon: Trophy, path: "/admin/tournament" },
     { label: "Sponsors", icon: Building2, path: "/admin/sponsor" },
     { label: "Users", icon: Users, path: "/admin/users" },
@@ -58,7 +59,10 @@ export function NewAdminNav() {
           <ChevronLeft size={20} />
         </button>
 
-        <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => handleNavigate("/admin")}>
+        <div
+          className="flex items-center gap-2.5 cursor-pointer"
+          onClick={() => handleNavigate("/admin")}
+        >
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 border border-amber-200 flex items-center justify-center text-slate-950 font-title font-black shadow-[0_0_15px_rgba(245,158,11,0.6)]">
             <ShieldAlert size={20} className="drop-shadow" />
           </div>

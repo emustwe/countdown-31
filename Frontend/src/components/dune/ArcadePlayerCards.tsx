@@ -1,10 +1,22 @@
 "use client";
 
 import React from "react";
-import { Trophy, Crown, Skull, Swords, Flame, RotateCcw, Zap, Shield, Moon, Sparkles, Award } from "lucide-react";
+import {
+  Trophy,
+  Crown,
+  Skull,
+  Swords,
+  Flame,
+  RotateCcw,
+  Zap,
+  Shield,
+  Moon,
+  Award,
+} from "lucide-react";
 import { MasterAvatar } from "./MasterAvatar";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
 import { type LivePlayer, type SkillType, type GameMode } from "../../lib/hooks/useCountdownLive";
+import { useGameConfig } from "../../lib/hooks/useGameConfig";
 
 interface BotProfile {
   title: string;
@@ -15,12 +27,48 @@ interface BotProfile {
   skills: { type: SkillType; name: string; icon: React.ReactNode; badge: string; color: string }[];
 }
 
-const ALL_SKILL_META: Record<SkillType, { type: SkillType; name: string; icon: React.ReactNode; badge: string; color: string }> = {
-  rewind: { type: "rewind", name: "Chrono Rewind", icon: <RotateCcw size={14} className="text-cyan-300" />, badge: "-2 STEPS", color: "border-cyan-400/80 bg-cyan-950/90 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.4)]" },
-  turbo: { type: "turbo", name: "Turbo Leap", icon: <Zap size={14} className="text-amber-300 fill-amber-300" />, badge: "+3 LEAP", color: "border-amber-400/80 bg-amber-950/90 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.4)]" },
-  shield: { type: "shield", name: "Bovine Barrier", icon: <Shield size={14} className="text-purple-300 fill-purple-300" />, badge: "IMMUNITY", color: "border-purple-400/80 bg-purple-950/90 text-purple-300 shadow-[0_0_12px_rgba(192,132,252,0.4)]" },
-  nudge: { type: "nudge", name: "Pasture Snooze", icon: <Moon size={14} className="text-emerald-300 fill-emerald-300" />, badge: "SKIP TURN", color: "border-emerald-400/80 bg-emerald-950/90 text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.4)]" },
-  double: { type: "double", name: "Double Trouble", icon: <Zap size={14} className="text-rose-300 fill-rose-300" />, badge: "FORCE +2", color: "border-rose-400/80 bg-rose-950/90 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.4)]" },
+const ALL_SKILL_META: Record<
+  SkillType,
+  { type: SkillType; name: string; icon: React.ReactNode; badge: string; color: string }
+> = {
+  rewind: {
+    type: "rewind",
+    name: "Chrono Rewind",
+    icon: <RotateCcw size={14} className="text-cyan-300" />,
+    badge: "-2 STEPS",
+    color: "border-cyan-400/80 bg-cyan-950/90 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.4)]",
+  },
+  turbo: {
+    type: "turbo",
+    name: "Turbo Leap",
+    icon: <Zap size={14} className="text-amber-300 fill-amber-300" />,
+    badge: "+3 LEAP",
+    color:
+      "border-amber-400/80 bg-amber-950/90 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.4)]",
+  },
+  shield: {
+    type: "shield",
+    name: "Bovine Barrier",
+    icon: <Shield size={14} className="text-purple-300 fill-purple-300" />,
+    badge: "IMMUNITY",
+    color:
+      "border-purple-400/80 bg-purple-950/90 text-purple-300 shadow-[0_0_12px_rgba(192,132,252,0.4)]",
+  },
+  nudge: {
+    type: "nudge",
+    name: "Pasture Snooze",
+    icon: <Moon size={14} className="text-emerald-300 fill-emerald-300" />,
+    badge: "SKIP TURN",
+    color:
+      "border-emerald-400/80 bg-emerald-950/90 text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.4)]",
+  },
+  double: {
+    type: "double",
+    name: "Double Trouble",
+    icon: <Zap size={14} className="text-rose-300 fill-rose-300" />,
+    badge: "FORCE +2",
+    color: "border-rose-400/80 bg-rose-950/90 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.4)]",
+  },
 };
 
 const BOT_PROFILES: Record<string, BotProfile> = {
@@ -38,10 +86,7 @@ const BOT_PROFILES: Record<string, BotProfile> = {
     },
     trophies: 1380,
     level: 15,
-    skills: [
-      ALL_SKILL_META.turbo,
-      ALL_SKILL_META.rewind,
-    ],
+    skills: [ALL_SKILL_META.turbo, ALL_SKILL_META.rewind],
   },
   cpu_daisy: {
     title: "Modulo Queen 🌸",
@@ -57,10 +102,7 @@ const BOT_PROFILES: Record<string, BotProfile> = {
     },
     trophies: 1190,
     level: 11,
-    skills: [
-      ALL_SKILL_META.shield,
-      ALL_SKILL_META.nudge,
-    ],
+    skills: [ALL_SKILL_META.shield, ALL_SKILL_META.nudge],
   },
   cpu_barnaby: {
     title: "Grand Champion 👑",
@@ -76,10 +118,7 @@ const BOT_PROFILES: Record<string, BotProfile> = {
     },
     trophies: 1850,
     level: 25,
-    skills: [
-      ALL_SKILL_META.turbo,
-      ALL_SKILL_META.shield,
-    ],
+    skills: [ALL_SKILL_META.turbo, ALL_SKILL_META.shield],
   },
 };
 
@@ -97,6 +136,7 @@ export function ArcadePlayerCard({
   gameMode?: GameMode;
 }) {
   const avatar = useAvatarStore();
+  const { data: gameConfig } = useGameConfig();
   const isSkillMode = gameMode === "skills";
 
   if (!amIn || !myPlayer) {
@@ -117,9 +157,10 @@ export function ArcadePlayerCard({
     );
   }
 
-  const equipped = myPlayer.equippedSkills && myPlayer.equippedSkills.length > 0
-    ? myPlayer.equippedSkills
-    : ["rewind" as SkillType, "turbo" as SkillType];
+  const equipped =
+    myPlayer.equippedSkills && myPlayer.equippedSkills.length > 0
+      ? myPlayer.equippedSkills
+      : ["rewind" as SkillType, "turbo" as SkillType];
 
   return (
     <div className="w-full flex flex-col gap-3">
@@ -138,8 +179,20 @@ export function ArcadePlayerCard({
             showLevel={true}
             level={12}
             showRarity={true}
-            rarityText={avatar.skinId === "golden_emperor" ? "Mythic" : avatar.skinId === "barnaby" ? "Epic" : "Common"}
-            rarityColor={avatar.skinId === "golden_emperor" ? "#f59e0b" : avatar.skinId === "barnaby" ? "#ef4444" : "#22c55e"}
+            rarityText={
+              avatar.skinId === "golden_emperor"
+                ? "Mythic"
+                : avatar.skinId === "barnaby"
+                  ? "Epic"
+                  : "Common"
+            }
+            rarityColor={
+              avatar.skinId === "golden_emperor"
+                ? "#f59e0b"
+                : avatar.skinId === "barnaby"
+                  ? "#ef4444"
+                  : "#22c55e"
+            }
           />
         </div>
 
@@ -147,7 +200,11 @@ export function ArcadePlayerCard({
         {isSkillMode && (
           <div className="flex flex-col gap-2 shrink-0">
             {equipped.map((skType) => {
-              const meta = ALL_SKILL_META[skType] ?? ALL_SKILL_META.rewind;
+              const baseMeta = ALL_SKILL_META[skType] ?? ALL_SKILL_META.rewind;
+              const configured = gameConfig.skills.find((skill) => skill.id === skType);
+              const meta = configured
+                ? { ...baseMeta, name: configured.name, badge: configured.shortLabel }
+                : baseMeta;
               const available = (myPlayer.skills?.[skType] ?? 0) > 0;
               return (
                 <div
@@ -259,10 +316,25 @@ export function ArcadeOpponentCard({
   currentId?: string | null;
   gameMode?: GameMode;
 }) {
-  const activeP = allPlayers.find((p) => p.id === currentId && p.id !== "player_local") ?? opponentPlayer;
+  const { data: gameConfig } = useGameConfig();
+  const activeP =
+    allPlayers.find((p) => p.id === currentId && p.id !== "player_local") ?? opponentPlayer;
   const oppId = activeP?.id ?? "cpu_daisy";
   const oppName = activeP?.name ?? "Daisy Cow 🌸";
-  const profile = BOT_PROFILES[oppId] ?? BOT_PROFILES.cpu_daisy!;
+  const configuredBot = gameConfig.bots.find(
+    (bot) => `cpu_${bot.id}` === oppId || bot.name === activeP?.name,
+  );
+  const fallbackProfile = BOT_PROFILES[oppId] ?? BOT_PROFILES.cpu_daisy!;
+  const profile: BotProfile = configuredBot
+    ? {
+        ...fallbackProfile,
+        title: configuredBot.title,
+        config: {
+          ...fallbackProfile.config,
+          variantId: configuredBot.avatarVariantId as AvatarConfig["variantId"],
+        },
+      }
+    : fallbackProfile;
   const isSkillMode = gameMode === "skills";
 
   return (
@@ -300,9 +372,7 @@ export function ArcadeOpponentCard({
                 <span className="text-[9px] sm:text-[10px] font-title font-black text-center leading-tight">
                   {s.badge}
                 </span>
-                <span className="text-[8px] font-title font-bold text-slate-400 mt-0.5">
-                  READY
-                </span>
+                <span className="text-[8px] font-title font-bold text-slate-400 mt-0.5">READY</span>
               </div>
             ))}
           </div>
@@ -326,7 +396,10 @@ export function ArcadeOpponentCard({
                 : "bg-purple-500/20 border-purple-400/50 text-purple-300"
             }`}
           >
-            <Swords size={12} className={isOpponentTurn ? "text-cyan-300 animate-spin" : "text-purple-300"} />
+            <Swords
+              size={12}
+              className={isOpponentTurn ? "text-cyan-300 animate-spin" : "text-purple-300"}
+            />
             <span>{isOpponentTurn ? "⚡ ACTIVE TURN" : "ON DECK"}</span>
           </div>
 
@@ -383,7 +456,9 @@ export function ArcadeOpponentCard({
                         : "bg-slate-900/70 text-slate-300 border-slate-800"
                   }`}
                 >
-                  <span className="truncate max-w-[80px]">{p.name.replace(/[^a-zA-Z0-9 ]/g, "")}</span>
+                  <span className="truncate max-w-[80px]">
+                    {p.name.replace(/[^a-zA-Z0-9 ]/g, "")}
+                  </span>
                   {p.eliminated ? (
                     <Skull size={12} className="text-rose-400 shrink-0" />
                   ) : isTurn ? (
