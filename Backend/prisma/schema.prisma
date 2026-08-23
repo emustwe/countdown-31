@@ -332,6 +332,14 @@ model PasswordReset {
   @@index([userId])
 }
 
+// Singleton platform configuration (one row, id="singleton"). Currently just the admin-selected
+// theme family that skins the whole app (desert | monster).
+model PlatformConfig {
+  id          String   @id @default("singleton")
+  themeFamily String   @default("monster")
+  updatedAt   DateTime @updatedAt
+}
+
 // Append-only trail of security-relevant events (logins, password resets, withdrawals, admin
 // actions). Immutable — never updated or deleted — so an incident can be reconstructed.
 model SecurityEvent {

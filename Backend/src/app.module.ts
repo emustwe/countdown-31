@@ -16,6 +16,7 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
 import { CountdownModule } from "./modules/countdown/countdown.module";
 import { SponsorsModule } from "./modules/sponsors/sponsors.module";
 import { ShopModule } from "./modules/shop/shop.module";
+import { PlatformModule } from "./modules/platform/platform.module";
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ShopModule } from "./modules/shop/shop.module";
     CountdownModule,
     SponsorsModule,
     ShopModule,
+    PlatformModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
