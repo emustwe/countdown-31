@@ -35,12 +35,15 @@ import { MasterAvatar } from "./MasterAvatar";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
 import type { MenuIconId } from "../../lib/game-config";
 import { MobileBottomNav } from "./MobileBottomNav";
+import { DEFAULT_GAME_CONFIG, type GameConfig } from "../../lib/game-config";
 
 interface ArcadeHeaderProps {
   onOpenRules?: () => void;
   gameMode?: GameMode;
   onToggleMode?: (mode: GameMode) => void;
   showModeToggle?: boolean;
+  isTournament?: boolean;
+  config?: GameConfig;
 }
 
 export function ArcadeHeader({
@@ -48,6 +51,8 @@ export function ArcadeHeader({
   gameMode = "skills",
   onToggleMode,
   showModeToggle = false,
+  isTournament = false,
+  config: passedConfig,
 }: ArcadeHeaderProps) {
   const router = useRouter();
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
@@ -57,7 +62,8 @@ export function ArcadeHeader({
   const accessToken = useAuthStore((s) => s.accessToken);
   const isAuthenticated = !!accessToken && !!user;
   const avatar = useAvatarStore();
-  const { data: config } = useGameConfig();
+  const { data: serverConfig } = useGameConfig();
+  const config = passedConfig ?? (isTournament ? (serverConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG);
   const logoutMutation = useLogout();
 
   const { data: profile } = useProfile();

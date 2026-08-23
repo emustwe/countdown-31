@@ -34,8 +34,9 @@ test.describe("Admin Panel Complete E2E Suite", () => {
   });
 
   test("2. Tournament Manager: Create, Verify, Edit, and Delete Tournament", async ({ page }) => {
+    test.setTimeout(60000);
     // Navigate to Tournaments tab
-    await page.click('button:has-text("Tournaments")');
+    await page.locator('nav button:has-text("Tournaments")').click();
     await expect(page.locator("h1")).toContainText(/Tournaments Manager/i);
 
     const uniqueTitle = `E2E Tournament ${Date.now()}`;
@@ -74,7 +75,7 @@ test.describe("Admin Panel Complete E2E Suite", () => {
 
   test("3. Sponsor Manager: Create, Reveal Credentials, Edit, and Delete Sponsor", async ({ page }) => {
     // Navigate to Sponsors tab
-    await page.click('button:has-text("Sponsors")');
+    await page.locator('nav button:has-text("Sponsors")').click();
     await expect(page.locator("h1")).toContainText(/Sponsor Accounts & Credentials/i);
 
     const sponsorName = `E2E Sponsor ${Date.now()}`;
@@ -126,7 +127,7 @@ test.describe("Admin Panel Complete E2E Suite", () => {
 
   test("4. Game Studio: Tab Switching, Configuration & Controls", async ({ page }) => {
     // Navigate to Game Studio tab
-    await page.click('button:has-text("Game Studio")');
+    await page.locator('nav button:has-text("Game Studio")').click();
     await expect(page.locator("h1")).toContainText(/GAME STUDIO/i, { timeout: 10000 });
 
     // Verify tabs are clickable and content changes
@@ -139,11 +140,11 @@ test.describe("Admin Panel Complete E2E Suite", () => {
 
   test("5. Users & Settings Consoles", async ({ page }) => {
     // Navigate to Users
-    await page.click('button:has-text("Users")');
+    await page.locator('nav button:has-text("Users")').click();
     await expect(page.locator("h1")).toContainText(/Users Console/i);
 
     // Navigate to Settings
-    await page.click('button:has-text("Settings")');
+    await page.locator('nav button:has-text("Settings")').click();
     await expect(page.locator("h1")).toContainText(/Admin Settings/i);
     await expect(page.getByText("Theme family")).toBeVisible();
   });

@@ -3,9 +3,17 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
+import { DEFAULT_GAME_CONFIG, type GameConfig } from "../../lib/game-config";
 
-export function PastureAmbiance() {
-  const { data: config } = useGameConfig();
+export function PastureAmbiance({
+  config: passedConfig,
+  isTournament = false,
+}: {
+  config?: GameConfig;
+  isTournament?: boolean;
+} = {}) {
+  const { data: serverConfig } = useGameConfig();
+  const config = passedConfig ?? (isTournament ? (serverConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG);
   return (
     <div className="fixed inset-0 pointer-events-none select-none overflow-hidden z-0">
       <div

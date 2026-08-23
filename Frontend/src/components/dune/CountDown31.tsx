@@ -19,9 +19,13 @@ import confetti from "canvas-confetti";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
 import { useRouter } from "next/navigation";
 
+import { DEFAULT_GAME_CONFIG } from "../../lib/game-config";
+
 export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const router = useRouter();
-  const { data: gameConfig } = useGameConfig();
+  const { data: serverConfig } = useGameConfig();
+  const isTournament = roomId !== "practice";
+  const gameConfig = isTournament ? (serverConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG;
   const guestName = useGuestStore((s) => s.username);
   const setGuestName = useGuestStore((s) => s.setUsername);
   const user = useAuthStore((s) => s.user);

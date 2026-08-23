@@ -60,8 +60,10 @@ export interface JoinCosmetics {
 
 export function useCountdownLive(roomId = "practice") {
   const { data: gameConfig } = useGameConfig();
-  const runtimeConfigRef = useRef(gameConfig ?? DEFAULT_GAME_CONFIG);
-  runtimeConfigRef.current = gameConfig ?? DEFAULT_GAME_CONFIG;
+  const isTournament = roomId !== "practice";
+  const activeConfig = isTournament ? (gameConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG;
+  const runtimeConfigRef = useRef(activeConfig);
+  runtimeConfigRef.current = activeConfig;
   const [state, setState] = useState<LiveState | null>(null);
   const [myId, setMyId] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
