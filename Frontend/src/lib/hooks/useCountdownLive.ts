@@ -267,8 +267,18 @@ export function useCountdownLive(roomId = "practice") {
         setState(overState);
       } else {
         const nextRound = baseState.round + 1;
-        const currentIdx = surviving.findIndex((p) => p.id === eliminatedId);
-        const nextPlayer = surviving[currentIdx >= 0 ? currentIdx % surviving.length : 0]!;
+        // Turn passes to the next SURVIVING player after the one just eliminated (seating order,
+        // wrapping) — not back to player #1. (The eliminated player isn't in `surviving`, so the old
+        // findIndex returned -1 and always fell back to surviving[0], i.e. player #1 every time.)
+        const elimIdx = updatedPlayers.findIndex((p) => p.id === eliminatedId);
+        let nextPlayer = surviving[0]!;
+        for (let i = 1; i <= updatedPlayers.length; i++) {
+          const cand = updatedPlayers[(elimIdx + i) % updatedPlayers.length];
+          if (cand && !cand.eliminated) {
+            nextPlayer = cand;
+            break;
+          }
+        }
 
         const nextRoundState: LiveState = {
           ...baseState,

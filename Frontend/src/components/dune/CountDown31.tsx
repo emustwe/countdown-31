@@ -73,6 +73,8 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const amIn = !!myId && players.some((p) => p.id === myId);
   const myTurn = status === "playing" && currentId === myId;
   const myPlayer = players.find((p) => p.id === myId) ?? null;
+  // "In and alive" — an eliminated player should get an immediate rejoin, not a spectator strip.
+  const amInAlive = amIn && !!myPlayer && !myPlayer.eliminated;
   const opponentPlayer = players.find((p) => p.id !== myId) ?? players[1] ?? null;
   const isOpponentTurn = status === "playing" && currentId !== myId && currentId !== null;
   const isMyWin = !!(
@@ -343,7 +345,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           />
 
           {/* A compact turn prompt leaves the arena open; tactical skills live beside the avatar. */}
-          {status !== "over" && amIn && status === "playing" ? (
+          {status !== "over" && amInAlive && status === "playing" ? (
             <div className="arena-turn-strip mx-auto flex w-full max-w-xl items-center justify-between rounded-2xl border-2 border-amber-400/50 bg-gradient-to-r from-amber-950/80 via-black/90 to-amber-950/80 px-5 py-2 shadow-xl">
               <div className="flex items-center gap-2">
                 <Dices size={18} className="text-amber-400" />

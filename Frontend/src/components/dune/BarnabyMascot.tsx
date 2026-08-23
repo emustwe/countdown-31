@@ -15,7 +15,7 @@ interface BarnabyMascotProps {
   onPlayAgain?: () => void;
 }
 
-// The dance clip is ~3s; this is the safety fallback in case the video's `ended` event is missed.
+// The lose clip is ~3s; this is a safety fallback in case the video's `ended` event is missed.
 const DANCE_MAX_MS = 4200;
 
 export function BarnabyMascot({
@@ -26,17 +26,16 @@ export function BarnabyMascot({
   isLocalDefeat,
   onPlayAgain,
 }: BarnabyMascotProps) {
-  // Play the dancing-cow clip ONCE per elimination, then hide it so it doesn't loop forever.
-  // A new elimination is a fresh `lastEliminated` object reference from the engine.
+  // The cow is ALWAYS on stage (idle at the side, holding frame 0). On each new elimination it
+  // plays its clip exactly ONCE; when it's the local player's defeat it slides to centre-stage for
+  // the clip and then slides back to the side. `dancing` drives one-shot playback + the position.
   const [dancing, setDancing] = useState(false);
-  const [danceKey, setDanceKey] = useState(0);
   const prevElimRef = useRef<typeof lastEliminated>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (lastEliminated && lastEliminated !== prevElimRef.current) {
       prevElimRef.current = lastEliminated;
-      setDanceKey((k) => k + 1); // remount the video so it replays from the first frame
       setDancing(true);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setDancing(false), DANCE_MAX_MS);
@@ -58,14 +57,13 @@ export function BarnabyMascot({
         : `${lastEliminated.name} hit 31`
     : "Round complete";
 
-  // The cow is only on stage while a dance is playing or the game is over (result screen).
-  const showCow = dancing || status === "over";
-  if (!showCow) return <div className="defeat-cow-layer" aria-live="polite" />;
+  // Slide to centre only while the LOCAL player's defeat clip is playing; otherwise idle at the side.
+  const centreStage = dancing && isLocalDefeat;
 
   return (
     <div className="defeat-cow-layer" aria-live="polite">
-      <div className={`defeat-cow-stage ${isLocalDefeat ? "is-local-defeat" : "is-idle"}`}>
-        {isLocalDefeat && (
+      <div className={`defeat-cow-stage ${centreStage ? "is-local-defeat" : "is-idle"}`}>
+        {centreStage && (
           <div className="defeat-cow-stars" aria-hidden="true">
             {[0, 1, 2, 3, 4].map((star) => (
               <motion.span
@@ -80,14 +78,14 @@ export function BarnabyMascot({
         )}
 
         <TransparentVideo
-          key={danceKey}
           src="/assets/lose-animation-60fps.mp4"
-          audioEnabled={isLocalDefeat}
-          className="h-full w-full aspect-[9/16]"
+          audioEnabled={centreStage}
+          playing={dancing}
           onEnded={() => setDancing(false)}
+          className="h-full w-full aspect-[9/16]"
         />
 
-        {isLocalDefeat && (
+        {centreStage && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -96,22 +94,11 @@ export function BarnabyMascot({
           >
             <strong>{status === "over" ? "ROUND OVER" : "YOU'RE OUT"}</strong>
             <span>{resultText}</span>
-            {status === "over" && (
-              <button
-                type="button"
-                onClick={() => {
-                  soundManager.playClick();
-                  onPlayAgain?.();
-                }}
-              >
-                <RotateCcw size={14} /> PLAY AGAIN
-              </button>
-            )}
           </motion.div>
         )}
       </div>
 
-      {status === "over" && !isLocalDefeat && (
+      {status === "over" && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}

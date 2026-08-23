@@ -11,6 +11,9 @@ interface TransparentVideoProps {
   audioEnabled?: boolean;
   /** When false (default) the clip plays through once and holds its last frame. */
   loop?: boolean;
+  /** Drives one-shot playback: flip to true to play from frame 0; false pauses + resets to
+   * frame 0 (an idle pose). Undefined keeps the legacy autoplay behavior. */
+  playing?: boolean;
   /** Fired once when a non-looping clip finishes. */
   onEnded?: () => void;
 }
@@ -104,6 +107,7 @@ export function TransparentVideo({
   height = 640,
   audioEnabled = true,
   loop = false,
+  playing,
   onEnded,
 }: TransparentVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -119,11 +123,25 @@ export function TransparentVideo({
     if (!video) return;
     video.muted = !soundEnabled || !audioEnabled;
     video.volume = 0.85;
-    if (soundEnabled && audioEnabled) {
+  }, [audioEnabled, soundEnabled, src]);
+
+  /* One-shot playback control. When `playing` is controlled: true → replay from frame 0;
+     false → pause and hold frame 0 (a calm idle pose so the cow is always on stage). */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || playing === undefined) return;
+    if (playing) {
       video.currentTime = 0;
       video.play().catch(() => undefined);
+    } else {
+      video.pause();
+      try {
+        video.currentTime = 0;
+      } catch {
+        /* seeking before metadata is loaded — ignored */
+      }
     }
-  }, [audioEnabled, soundEnabled, src]);
+  }, [playing]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -187,7 +205,7 @@ export function TransparentVideo({
       frameId = requestAnimationFrame(draw);
     };
 
-    video.play().catch(() => undefined);
+    if (playing === undefined || playing) video.play().catch(() => undefined);
     draw();
 
     return () => {
@@ -205,7 +223,7 @@ export function TransparentVideo({
       <video
         ref={videoRef}
         src={src}
-        autoPlay
+        autoPlay={playing === undefined}
         loop={loop}
         onEnded={() => onEndedRef.current?.()}
         muted={!soundEnabled || !audioEnabled}
