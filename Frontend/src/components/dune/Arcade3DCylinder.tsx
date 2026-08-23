@@ -228,6 +228,10 @@ export function Arcade3DCylinder({
             return (
               <motion.div
                 key={`${offset}-${tileNum}`}
+                role="button"
+                aria-label={`Number ${tileNum}`}
+                data-tile-number={tileNum}
+                tabIndex={myTurn && status === "playing" && (isPlayable1 || isPlayable2 || isPlayable3) ? 0 : -1}
                 initial={false}
                 animate={{
                   transform: `translate(-50%, -50%) translateX(${posX}px) translateZ(${posZ}px) rotateY(${rotY}deg) scale(${
@@ -267,6 +271,17 @@ export function Arcade3DCylinder({
                 }}
                 onClick={() => {
                   if (myTurn && status === "playing" && (isPlayable1 || isPlayable2 || isPlayable3)) {
+                    onToggleCard(tileNum);
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    (event.key === "Enter" || event.key === " ") &&
+                    myTurn &&
+                    status === "playing" &&
+                    (isPlayable1 || isPlayable2 || isPlayable3)
+                  ) {
+                    event.preventDefault();
                     onToggleCard(tileNum);
                   }
                 }}

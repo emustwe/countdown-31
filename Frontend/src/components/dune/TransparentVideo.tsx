@@ -8,6 +8,7 @@ interface TransparentVideoProps {
   className?: string;
   width?: number;
   height?: number;
+  audioEnabled?: boolean;
 }
 
 const VERTEX_SHADER = `
@@ -97,6 +98,7 @@ export function TransparentVideo({
   className = "w-64 aspect-[9/16] sm:w-72",
   width = 360,
   height = 640,
+  audioEnabled = true,
 }: TransparentVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -107,10 +109,13 @@ export function TransparentVideo({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    video.muted = !soundEnabled;
+    video.muted = !soundEnabled || !audioEnabled;
     video.volume = 0.85;
-    if (soundEnabled) video.play().catch(() => undefined);
-  }, [soundEnabled, src]);
+    if (soundEnabled && audioEnabled) {
+      video.currentTime = 0;
+      video.play().catch(() => undefined);
+    }
+  }, [audioEnabled, soundEnabled, src]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -194,7 +199,7 @@ export function TransparentVideo({
         src={src}
         autoPlay
         loop
-        muted={!soundEnabled}
+        muted={!soundEnabled || !audioEnabled}
         playsInline
         preload="auto"
         aria-hidden="true"

@@ -1,12 +1,18 @@
 import { describe, it, expect } from "vitest";
 import { CountdownGameService } from "./countdown.service";
+import { DEFAULT_GAME_CONFIG } from "../platform-config/game-config.schema";
+import type { PlatformConfigService } from "../platform-config/platform-config.service";
 
 // Two team definitions for an influencer (team-battle) knockout room.
 const TA = { name: "Alpha", color: "#5aa8ff" };
 const TB = { name: "Bravo", color: "#ff6b7f" };
 
 function newSvc(): CountdownGameService {
-  const s = new CountdownGameService();
+  const config = {
+    getGameConfig: () => structuredClone(DEFAULT_GAME_CONFIG),
+    onGameConfigChange: () => () => {},
+  } as unknown as PlatformConfigService;
+  const s = new CountdownGameService(config);
   s.setBroadcaster(() => {}); // no-op; we read state via getState()
   return s; // NB: we don't call onModuleInit(), so no real tick interval runs
 }
@@ -16,7 +22,8 @@ function newSvc(): CountdownGameService {
 function seat(s: CountdownGameService, room: string, n: number, startAt?: number): void {
   for (let i = 0; i < n; i++) {
     const team = i % 2 === 0 ? TA : TB;
-    const cos = i === 0 ? { team, teams: [TA, TB], ...(startAt !== undefined ? { startAt } : {}) } : { team };
+    const cos =
+      i === 0 ? { team, teams: [TA, TB], ...(startAt !== undefined ? { startAt } : {}) } : { team };
     s.join(room, `H${i}`, `Human ${i}`, cos);
   }
 }
@@ -30,7 +37,11 @@ function eliminateCurrent(s: CountdownGameService, room: string): void {
 function safeAdvance(s: CountdownGameService, room: string): void {
   const st = s.getState(room);
   const m = [1, 2, 3].find((k) => k !== st.lastK && st.count + k <= 30) ?? 1;
-  s.submit(room, st.currentId!, Array.from({ length: m }, (_, j) => st.count + 1 + j));
+  s.submit(
+    room,
+    st.currentId!,
+    Array.from({ length: m }, (_, j) => st.count + 1 + j),
+  );
 }
 
 describe("knockout tournament rules", () => {

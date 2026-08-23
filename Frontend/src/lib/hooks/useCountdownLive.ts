@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { wsBaseUrl } from "../runtime-host";
 import { soundManager } from "../soundManager";
+import { useGameConfig } from "./useGameConfig";
+import { DEFAULT_GAME_CONFIG } from "../game-config";
 
 export type LiveReason = "31" | "repeat" | "over3" | "skip" | "timeout" | "left";
 export type SkillType = "rewind" | "turbo" | "shield" | "nudge" | "double";
@@ -56,10 +58,12 @@ export interface JoinCosmetics {
   chosenSkills?: SkillType[];
 }
 
-const TURN_TIME_MS = 7000; // 7 seconds per turn
-const BOT_DELAY_MS = 2000; // 2 seconds per bot decision
-
 export function useCountdownLive(roomId = "practice") {
+  const { data: gameConfig } = useGameConfig();
+  const isTournament = roomId !== "practice";
+  const activeConfig = isTournament ? (gameConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG;
+  const runtimeConfigRef = useRef(activeConfig);
+  runtimeConfigRef.current = activeConfig;
   const [state, setState] = useState<LiveState | null>(null);
   const [myId, setMyId] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -75,135 +79,161 @@ export function useCountdownLive(roomId = "practice") {
     const currentP = cur.players.find((p) => p.id === cur.currentId);
     if (!currentP || !currentP.cpu || currentP.eliminated) return;
 
-    setTimeout(() => {
-      const activeState = stateRef.current;
-      if (!activeState || activeState.status !== "playing" || activeState.currentId !== currentP.id) return;
+    setTimeout(
+      () => {
+        const activeState = stateRef.current;
+        if (
+          !activeState ||
+          activeState.status !== "playing" ||
+          activeState.currentId !== currentP.id
+        )
+          return;
 
-      const currentCount = activeState.count;
-      const forbiddenK = activeState.lastK;
+        const currentCount = activeState.count;
+        const forbiddenK = activeState.lastK;
 
-      // AI has a chance to use one of its equipped skills in Skill Mode (count between 5 and 20)
-      if (activeState.gameMode === "skills" && currentCount >= 8 && currentCount <= 21 && Math.random() < 0.2) {
-        const availableSkills = (currentP.equippedSkills ?? []).filter(
-          (sk) => (currentP.skills?.[sk] ?? 0) > 0
-        );
-        if (availableSkills.length > 0) {
-          const chosenSkill = availableSkills[0]!;
-          if (chosenSkill === "turbo" && currentCount + 3 <= 29) {
-            soundManager.playSkillTurbo();
-            const newCount = currentCount + 3;
-            const newTaken = { ...activeState.taken };
-            for (let i = currentCount + 1; i <= newCount; i++) {
-              newTaken[i] = currentP.color;
+        // AI has a chance to use one of its equipped skills in Skill Mode (count between 5 and 20)
+        if (
+          activeState.gameMode === "skills" &&
+          currentCount >= 8 &&
+          currentCount <= 21 &&
+          Math.random() < 0.2
+        ) {
+          const availableSkills = (currentP.equippedSkills ?? []).filter(
+            (sk) => (currentP.skills?.[sk] ?? 0) > 0,
+          );
+          if (availableSkills.length > 0) {
+            const chosenSkill = availableSkills[0]!;
+            if (chosenSkill === "turbo" && currentCount + 3 <= 29) {
+              soundManager.playSkillTurbo();
+              const newCount = currentCount + 3;
+              const newTaken = { ...activeState.taken };
+              for (let i = currentCount + 1; i <= newCount; i++) {
+                newTaken[i] = currentP.color;
+              }
+              const updatedP = activeState.players.map((p) =>
+                p.id === currentP.id && p.skills ? { ...p, skills: { ...p.skills, turbo: 0 } } : p,
+              );
+              const nextState: LiveState = {
+                ...activeState,
+                count: newCount,
+                taken: newTaken,
+                players: updatedP,
+                lastSkillUsed: {
+                  skill: "turbo",
+                  userName: currentP.name,
+                  description: "Turbo Leaped +3 steps forward! ⚡",
+                },
+              };
+              setState(nextState);
+              processNextTurn(nextState);
+              return;
             }
-            const updatedP = activeState.players.map((p) =>
-              p.id === currentP.id && p.skills ? { ...p, skills: { ...p.skills, turbo: 0 } } : p
-            );
-            const nextState: LiveState = {
-              ...activeState,
-              count: newCount,
-              taken: newTaken,
-              players: updatedP,
-              lastSkillUsed: {
-                skill: "turbo",
-                userName: currentP.name,
-                description: "Turbo Leaped +3 steps forward! ⚡",
-              },
-            };
-            setState(nextState);
-            processNextTurn(nextState);
-            return;
-          }
-        }
-      }
-
-      // AI mistake chances
-      const makesRepeatMistake = Math.random() < 0.05 && forbiddenK !== null;
-      const makesSkipMistake = Math.random() < 0.04;
-
-      if (makesSkipMistake && currentCount + 2 <= 30) {
-        soundManager.playBlunder();
-        eliminatePlayer(currentP.id, "skip", activeState, `Skipped #${currentCount + 1}!`);
-        return;
-      }
-
-      let chosenK = 1;
-
-      if (makesRepeatMistake && forbiddenK !== null) {
-        chosenK = forbiddenK;
-      } else {
-        const allowedMoves = [1, 2, 3].filter((k) => k !== forbiddenK && currentCount + k <= 31);
-        const validMoves = allowedMoves.length > 0 ? allowedMoves : [1, 2, 3].filter((k) => currentCount + k <= 31);
-        chosenK = validMoves[0] ?? 1;
-
-        // Smart Nim Strategy targeting safe numbers
-        for (const k of validMoves) {
-          const landing = currentCount + k;
-          if (landing === 30 || (landing < 30 && (30 - landing) % 4 === 0)) {
-            chosenK = k;
-            break;
           }
         }
 
-        // Avoid landing on 31 if possible
-        if (currentCount + chosenK === 31 && validMoves.length > 1) {
-          chosenK = validMoves.find((k) => currentCount + k < 31) ?? chosenK;
+        // AI mistake chances
+        const difficulty = String(currentP.card?.difficulty ?? "normal");
+        const mistakeRate = difficulty === "easy" ? 0.13 : difficulty === "hard" ? 0.018 : 0.05;
+        const makesRepeatMistake = Math.random() < mistakeRate && forbiddenK !== null;
+        const makesSkipMistake = Math.random() < mistakeRate * 0.8;
+
+        if (makesSkipMistake && currentCount + 2 <= 30) {
+          soundManager.playBlunder();
+          eliminatePlayer(currentP.id, "skip", activeState, `Skipped #${currentCount + 1}!`);
+          return;
         }
-      }
 
-      // Check Rule #6 Repeat Elimination
-      if (forbiddenK !== null && chosenK === forbiddenK) {
-        soundManager.playBlunder();
-        eliminatePlayer(currentP.id, "repeat", activeState, "Repeated previous count!");
-        return;
-      }
+        let chosenK = 1;
 
-      const picks: number[] = [];
-      for (let i = 1; i <= chosenK; i++) {
-        if (currentCount + i <= 31) picks.push(currentCount + i);
-      }
+        if (makesRepeatMistake && forbiddenK !== null) {
+          chosenK = forbiddenK;
+        } else {
+          const allowedMoves = [1, 2, 3].filter((k) => k !== forbiddenK && currentCount + k <= 31);
+          const validMoves =
+            allowedMoves.length > 0
+              ? allowedMoves
+              : [1, 2, 3].filter((k) => currentCount + k <= 31);
+          chosenK = validMoves[0] ?? 1;
 
-      const nextCount = picks[picks.length - 1] ?? currentCount;
-      const nextTaken = { ...activeState.taken };
-      picks.forEach((p) => {
-        nextTaken[p] = currentP.color;
-      });
+          // Smart Nim Strategy targeting safe numbers
+          for (const k of validMoves) {
+            const landing = currentCount + k;
+            if (landing === 30 || (landing < 30 && (30 - landing) % 4 === 0)) {
+              chosenK = k;
+              break;
+            }
+          }
 
-      const moveInfo: LastMoveInfo = {
-        playerId: currentP.id,
-        playerName: currentP.name,
-        playerColor: currentP.color,
-        picks,
-        count: chosenK,
-      };
+          // Avoid landing on 31 if possible
+          if (currentCount + chosenK === 31 && validMoves.length > 1) {
+            chosenK = validMoves.find((k) => currentCount + k < 31) ?? chosenK;
+          }
+        }
 
-      if (nextCount >= 31) {
-        eliminatePlayer(currentP.id, "31", {
-          ...activeState,
-          count: 31,
-          taken: nextTaken,
-          lastMove: moveInfo,
-        }, "Hit 31 💣");
-      } else {
-        const survivingPlayers = activeState.players.filter((p) => !p.eliminated);
-        const currentIdx = survivingPlayers.findIndex((p) => p.id === currentP.id);
-        const nextPlayer = survivingPlayers[(currentIdx + 1) % survivingPlayers.length]!;
+        // Check Rule #6 Repeat Elimination
+        if (forbiddenK !== null && chosenK === forbiddenK) {
+          soundManager.playBlunder();
+          eliminatePlayer(currentP.id, "repeat", activeState, "Repeated previous count!");
+          return;
+        }
 
-        const nextState: LiveState = {
-          ...activeState,
-          count: nextCount,
-          taken: nextTaken,
-          lastK: chosenK,
-          lastMove: moveInfo,
-          currentId: nextPlayer.id,
-          turnEndsAt: Date.now() + TURN_TIME_MS,
-          lastSkillUsed: null,
+        const picks: number[] = [];
+        for (let i = 1; i <= chosenK; i++) {
+          if (currentCount + i <= 31) picks.push(currentCount + i);
+        }
+
+        const nextCount = picks[picks.length - 1] ?? currentCount;
+        const nextTaken = { ...activeState.taken };
+        picks.forEach((p) => {
+          nextTaken[p] = currentP.color;
+        });
+
+        const moveInfo: LastMoveInfo = {
+          playerId: currentP.id,
+          playerName: currentP.name,
+          playerColor: currentP.color,
+          picks,
+          count: chosenK,
         };
 
-        setState(nextState);
-        processNextTurn(nextState);
-      }
-    }, BOT_DELAY_MS);
+        if (nextCount >= 31) {
+          eliminatePlayer(
+            currentP.id,
+            "31",
+            {
+              ...activeState,
+              count: 31,
+              taken: nextTaken,
+              lastMove: moveInfo,
+            },
+            "Hit 31 💣",
+          );
+        } else {
+          const survivingPlayers = activeState.players.filter((p) => !p.eliminated);
+          const currentIdx = survivingPlayers.findIndex((p) => p.id === currentP.id);
+          const nextPlayer = survivingPlayers[(currentIdx + 1) % survivingPlayers.length]!;
+
+          const nextState: LiveState = {
+            ...activeState,
+            count: nextCount,
+            taken: nextTaken,
+            lastK: chosenK,
+            lastMove: moveInfo,
+            currentId: nextPlayer.id,
+            turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
+            lastSkillUsed: null,
+          };
+
+          setState(nextState);
+          processNextTurn(nextState);
+        }
+      },
+      runtimeConfigRef.current.gameplay.botThinkMinMs +
+        Math.random() *
+          (runtimeConfigRef.current.gameplay.botThinkMaxMs -
+            runtimeConfigRef.current.gameplay.botThinkMinMs),
+    );
   }, []);
 
   // Player Elimination Handler
@@ -211,7 +241,7 @@ export function useCountdownLive(roomId = "practice") {
     (eliminatedId: string, reason: LiveReason, baseState: LiveState, note?: string) => {
       const eliminatedPlayer = baseState.players.find((p) => p.id === eliminatedId);
       const updatedPlayers = baseState.players.map((p) =>
-        p.id === eliminatedId ? { ...p, eliminated: true } : p
+        p.id === eliminatedId ? { ...p, eliminated: true } : p,
       );
 
       const surviving = updatedPlayers.filter((p) => !p.eliminated);
@@ -240,7 +270,7 @@ export function useCountdownLive(roomId = "practice") {
           round: nextRound,
           players: updatedPlayers,
           currentId: nextPlayer.id,
-          turnEndsAt: Date.now() + TURN_TIME_MS,
+          turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
           status: "playing",
           lastEliminated: eliminatedPlayer ? { name: eliminatedPlayer.name, reason, note } : null,
           lastSkillUsed: null,
@@ -255,11 +285,20 @@ export function useCountdownLive(roomId = "practice") {
 
   // Local Human Player Turn Timeout Monitor
   useEffect(() => {
-    if (!isLocalPracticeRef.current || !state || state.status !== "playing" || !myId || state.currentId !== myId || !state.turnEndsAt) return;
+    if (
+      !isLocalPracticeRef.current ||
+      !state ||
+      state.status !== "playing" ||
+      !myId ||
+      state.currentId !== myId ||
+      !state.turnEndsAt
+    )
+      return;
 
     const timer = setInterval(() => {
       const cur = stateRef.current;
-      if (!cur || cur.status !== "playing" || !myId || cur.currentId !== myId || !cur.turnEndsAt) return;
+      if (!cur || cur.status !== "playing" || !myId || cur.currentId !== myId || !cur.turnEndsAt)
+        return;
 
       if (Date.now() >= cur.turnEndsAt) {
         soundManager.playBlunder();
@@ -366,10 +405,16 @@ export function useCountdownLive(roomId = "practice") {
       cos?: JoinCosmetics,
       mode: GameMode = "skills",
       chosenSkills: SkillType[] = ["rewind", "turbo"],
-      botCount: number = 3
+      botCount: number = 3,
     ) => {
       if (socketRef.current?.connected) {
-        socketRef.current.emit("join", { roomId, name, card: cos?.card, avatar: cos?.avatar, mode });
+        socketRef.current.emit("join", {
+          roomId,
+          name,
+          card: cos?.card,
+          avatar: cos?.avatar,
+          mode,
+        });
         return;
       }
 
@@ -389,35 +434,40 @@ export function useCountdownLive(roomId = "practice") {
 
       setMyId("player_local");
 
-      const allBots: LivePlayer[] = [
-        {
-          id: "cpu_bessie",
-          name: "Bessie AI 🐮",
-          cpu: true,
-          color: "#ff43c4",
-          skills: mode === "skills" ? { rewind: 1, turbo: 1, shield: 0, nudge: 0, double: 0 } : playerSkills,
-          equippedSkills: mode === "skills" ? ["turbo", "rewind"] : [],
-          eliminated: false,
-        },
-        {
-          id: "cpu_daisy",
-          name: "Daisy Cow 🌸",
-          cpu: true,
-          color: "#21e6d7",
-          skills: mode === "skills" ? { rewind: 0, turbo: 0, shield: 1, nudge: 1, double: 0 } : playerSkills,
-          equippedSkills: mode === "skills" ? ["shield", "nudge"] : [],
-          eliminated: false,
-        },
-        {
-          id: "cpu_barnaby",
-          name: "Barnaby Horns 👑",
-          cpu: true,
-          color: "#f4b942",
-          skills: mode === "skills" ? { rewind: 0, turbo: 1, shield: 1, nudge: 0, double: 0 } : playerSkills,
-          equippedSkills: mode === "skills" ? ["turbo", "shield"] : [],
-          eliminated: false,
-        },
-      ];
+      const botColors = ["#ff43c4", "#21e6d7", "#f4b942", "#a78bfa", "#38bdf8"];
+      const enabledSkills = runtimeConfigRef.current.skills.filter((skill) => skill.enabled);
+      const allBots: LivePlayer[] = runtimeConfigRef.current.bots
+        .filter((bot) => bot.enabled)
+        .sort((a, b) => a.order - b.order)
+        .map((bot, index) => {
+          const equipped = enabledSkills
+            .slice(
+              index % Math.max(1, enabledSkills.length),
+              (index % Math.max(1, enabledSkills.length)) + 2,
+            )
+            .map((skill) => skill.id);
+          const chosen =
+            equipped.length === 2 ? equipped : enabledSkills.slice(0, 2).map((skill) => skill.id);
+          const skills = { rewind: 0, turbo: 0, shield: 0, nudge: 0, double: 0 } as Record<
+            SkillType,
+            number
+          >;
+          if (mode === "skills")
+            chosen.forEach((skill) => {
+              skills[skill] = 1;
+            });
+          return {
+            id: `cpu_${bot.id}`,
+            name: bot.name,
+            cpu: true,
+            color: botColors[index % botColors.length]!,
+            card: { difficulty: bot.difficulty, title: bot.title },
+            avatar: { variantId: bot.avatarVariantId },
+            skills,
+            equippedSkills: mode === "skills" ? chosen : [],
+            eliminated: false,
+          };
+        });
 
       const localPlayers: LivePlayer[] = [
         {
@@ -431,7 +481,7 @@ export function useCountdownLive(roomId = "practice") {
           equippedSkills: mode === "skills" ? chosenSkills : [],
           eliminated: false,
         },
-        ...allBots.slice(0, Math.max(1, Math.min(3, botCount))),
+        ...allBots.slice(0, Math.max(1, Math.min(5, botCount))),
       ];
 
       const newState: LiveState = {
@@ -442,7 +492,7 @@ export function useCountdownLive(roomId = "practice") {
         currentId: "player_local",
         lastK: null,
         lastMove: null,
-        turnEndsAt: Date.now() + TURN_TIME_MS,
+        turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
         round: 1,
         status: "playing",
         winner: null,
@@ -464,7 +514,7 @@ export function useCountdownLive(roomId = "practice") {
     if (stateRef.current) {
       setState({
         ...stateRef.current,
-        turnEndsAt: Date.now() + TURN_TIME_MS,
+        turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
       });
     }
   }, [roomId]);
@@ -477,7 +527,8 @@ export function useCountdownLive(roomId = "practice") {
       }
 
       const cur = stateRef.current;
-      if (!cur || cur.status !== "playing" || picks.length === 0 || !myId || cur.currentId !== myId) return;
+      if (!cur || cur.status !== "playing" || picks.length === 0 || !myId || cur.currentId !== myId)
+        return;
 
       const currentCount = cur.count;
       const sortedPicks = [...picks].sort((a, b) => a - b);
@@ -492,7 +543,7 @@ export function useCountdownLive(roomId = "practice") {
           myId,
           "skip",
           cur,
-          `Blunder! You skipped card #${currentCount + 1} and started at #${sortedPicks[0]}! 💣`
+          `Blunder! You skipped card #${currentCount + 1} and started at #${sortedPicks[0]}! 💣`,
         );
         return;
       }
@@ -504,7 +555,7 @@ export function useCountdownLive(roomId = "practice") {
             myId,
             "skip",
             cur,
-            `Blunder! You skipped card #${sortedPicks[i - 1]! + 1}! 💣`
+            `Blunder! You skipped card #${sortedPicks[i - 1]! + 1}! 💣`,
           );
           return;
         }
@@ -538,12 +589,17 @@ export function useCountdownLive(roomId = "practice") {
 
       if (nextCount >= 31) {
         soundManager.playSpinDefeat();
-        eliminatePlayer(myId, "31", {
-          ...cur,
-          count: 31,
-          taken: nextTaken,
-          lastMove: moveInfo,
-        }, "Hit 31 💣💀");
+        eliminatePlayer(
+          myId,
+          "31",
+          {
+            ...cur,
+            count: 31,
+            taken: nextTaken,
+            lastMove: moveInfo,
+          },
+          "Hit 31 💣💀",
+        );
       } else {
         const survivingPlayers = cur.players.filter((p) => !p.eliminated);
         const currentIdx = survivingPlayers.findIndex((p) => p.id === myId);
@@ -556,7 +612,7 @@ export function useCountdownLive(roomId = "practice") {
           lastK: k,
           lastMove: moveInfo,
           currentId: nextPlayer.id,
-          turnEndsAt: Date.now() + TURN_TIME_MS,
+          turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
           lastSkillUsed: null,
         };
 
@@ -570,7 +626,14 @@ export function useCountdownLive(roomId = "practice") {
   const useSkill = useCallback(
     (skill: SkillType) => {
       const cur = stateRef.current;
-      if (!cur || cur.status !== "playing" || cur.gameMode !== "skills" || !myId || cur.currentId !== myId) return false;
+      if (
+        !cur ||
+        cur.status !== "playing" ||
+        cur.gameMode !== "skills" ||
+        !myId ||
+        cur.currentId !== myId
+      )
+        return false;
 
       if (cur.count >= 22) return false;
 
@@ -603,7 +666,7 @@ export function useCountdownLive(roomId = "practice") {
           count: newCount,
           taken: newTaken,
           players: updatedPlayers,
-          turnEndsAt: Date.now() + TURN_TIME_MS,
+          turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
           lastSkillUsed: {
             skill: "rewind",
             userName: player?.name ?? "Player",
@@ -627,7 +690,7 @@ export function useCountdownLive(roomId = "practice") {
           count: newCount,
           taken: newTaken,
           players: updatedPlayers,
-          turnEndsAt: Date.now() + TURN_TIME_MS,
+          turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
           lastSkillUsed: {
             skill: "turbo",
             userName: player?.name ?? "Player",
@@ -643,7 +706,7 @@ export function useCountdownLive(roomId = "practice") {
         const nextState: LiveState = {
           ...cur,
           players: updatedPlayers,
-          turnEndsAt: Date.now() + TURN_TIME_MS,
+          turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
           lastSkillUsed: {
             skill: "shield",
             userName: player?.name ?? "Player",
@@ -664,7 +727,7 @@ export function useCountdownLive(roomId = "practice") {
           ...cur,
           players: updatedPlayers,
           currentId: nextPlayer.id,
-          turnEndsAt: Date.now() + TURN_TIME_MS,
+          turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
           lastSkillUsed: {
             skill: "nudge",
             userName: player?.name ?? "Player",

@@ -15,7 +15,7 @@ const PLAYER_EMAILS = ["alice@auroraways.demo", "bob@auroraways.demo", "carol@au
 async function ensureUser(email: string, passwordHash: string, role: "ADMIN" | "PLAYER") {
   return prisma.user.upsert({
     where: { email },
-    update: {},
+    update: { passwordHash, role },
     create: { email, passwordHash, role },
   });
 }

@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Wallet, ArrowDownToLine, ArrowUpFromLine, Coins, ShieldCheck, Copy, Check, ExternalLink, Sparkles, RefreshCw, AlertCircle } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
-import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { AuthGate } from "../../components/AuthGate";
 import { useAuthStore } from "../../stores/auth-store";
@@ -33,7 +32,6 @@ const explorerTx = (sig: string) => `https://explorer.solana.com/tx/${sig}?clust
 export default function WalletPage() {
   const router = useRouter();
   const accessToken = useAuthStore((s) => s.accessToken);
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
 
   if (!accessToken) {
@@ -46,7 +44,7 @@ export default function WalletPage() {
         <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.3)_0%,#040906_90%)]" />
 
         <div className="relative z-20">
-          <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+          <ArcadeHeader onOpenRules={() => setShowRules(true)} />
         </div>
 
         <main className="relative z-10 w-full max-w-xl mx-auto flex-1 mt-12 mb-6 flex flex-col items-center justify-center text-center p-8 rounded-3xl bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400 shadow-2xl">
@@ -66,7 +64,6 @@ export default function WalletPage() {
         </main>
 
         <AuthGate open onClose={() => router.push("/home")} title="Sign in to open your wallet" message="Log in or create an account to view your balance and make deposits." />
-        <ArcadeDrawerMenu isOpen={showDrawer} onClose={() => setShowDrawer(false)} onOpenRules={() => setShowRules(true)} />
         <OfficialRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
       </div>
     );
@@ -83,7 +80,7 @@ export default function WalletPage() {
 
       {/* Header */}
       <div className="relative z-20">
-        <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+        <ArcadeHeader onOpenRules={() => setShowRules(true)} />
       </div>
 
       {/* Main Cashier Arena - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
@@ -91,12 +88,6 @@ export default function WalletPage() {
         <WalletContent />
       </main>
 
-      {/* Drawer & Modal */}
-      <ArcadeDrawerMenu
-        isOpen={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        onOpenRules={() => setShowRules(true)}
-      />
       <OfficialRulesModal
         isOpen={showRules}
         onClose={() => setShowRules(false)}
