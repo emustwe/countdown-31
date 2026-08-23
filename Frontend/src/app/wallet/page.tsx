@@ -1,359 +1,451 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDownToLine, ArrowUpFromLine, Check, Copy, ExternalLink, Gamepad2, Plus, ShieldCheck, Trophy, WalletCards } from "lucide-react";
+import { Wallet, ArrowDownToLine, ArrowUpFromLine, Coins, ShieldCheck, Copy, Check, ExternalLink, Sparkles, RefreshCw, AlertCircle } from "lucide-react";
+import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
+import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
+import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { AuthGate } from "../../components/AuthGate";
 import { useAuthStore } from "../../stores/auth-store";
-import { PageShell, OrbIcon } from "../../components/dune/Shell";
-import { useFlipIndex } from "../../components/dune/FlipText";
 import { useWallet, useDeposit, useWithdraw, useTransactions, useVerifyDeposit } from "../../lib/hooks/useWallet";
-import { parseUsdt, formatUsdt } from "../../lib/money";
-import { usdt } from "../../lib/dune-skins";
-import { ApiError } from "../../lib/api-client";
+import { formatUsdt, parseUsdt } from "../../lib/money";
+import { soundManager } from "../../lib/soundManager";
 
 const PRESETS = ["10", "50", "100", "500", "1000"];
 const SOLANA_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
-const TX_LABEL: Record<string, [string, string]> = {
-  DEPOSIT: ["Deposit", "입금"],
-  WITHDRAWAL: ["Withdrawal", "출금"],
-  BET_STAKE: ["Bet stake", "베팅"],
-  BET_WIN: ["Bet win", "당첨"],
-  JACKPOT_WIN: ["Jackpot win", "잭팟 당첨"],
-  ADJUSTMENT: ["Adjustment", "조정"],
-  TOURNAMENT_ENTRY: ["Tournament entry", "토너먼트 참가"],
-  TOURNAMENT_PRIZE: ["Tournament prize", "토너먼트 상금"],
-  TOURNAMENT_REFUND: ["Re-buy-in refund", "리바이인 환불"],
+const TX_LABEL: Record<string, string> = {
+  DEPOSIT: "Solana USDT Deposit",
+  WITHDRAWAL: "Vault Withdrawal",
+  BET_STAKE: "Arena Match Stake",
+  BET_WIN: "Arena Victory Bounty",
+  JACKPOT_WIN: "Pasture Jackpot Win",
+  ADJUSTMENT: "Balance Adjustment",
+  TOURNAMENT_ENTRY: "Tournament Entry Fee",
+  TOURNAMENT_PRIZE: "Tournament 1st Prize",
+  TOURNAMENT_REFUND: "Re-buy-in Refund",
 };
 
-type Kind = "win" | "deposit" | "fee" | "other";
-function classify(type: string): Kind {
-  if (["BET_WIN", "JACKPOT_WIN", "TOURNAMENT_PRIZE", "TOURNAMENT_REFUND"].includes(type)) return "win";
-  if (type === "DEPOSIT") return "deposit";
-  if (["BET_STAKE", "TOURNAMENT_ENTRY", "WITHDRAWAL"].includes(type)) return "fee";
-  return "other";
-}
 const short = (a: string) => (a.length > 16 ? `${a.slice(0, 6)}…${a.slice(-6)}` : a);
 const explorerTx = (sig: string) => `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
 
 export default function WalletPage() {
-  // Gate on the persisted user, not the access token — the token is memory-only now (#4) and is
-  // null for a split second on reload while it's re-minted from the refresh cookie.
-  const user = useAuthStore((s) => s.user);
   const router = useRouter();
-  if (!user) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+
+  if (!accessToken) {
     return (
-      <PageShell>
-        <main className="page-main">
-          <div className="coming-soon-panel glass">
-            <OrbIcon><WalletCards size={26} /></OrbIcon>
-            <h1>Your wallet</h1>
-            <p>Log in or create an account to view your balance and make deposits.</p>
+      <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+        <div
+          className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
+          style={{ backgroundImage: "url('/assets/barnaby/barnaby-field.jpg')" }}
+        />
+        <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.3)_0%,#040906_90%)]" />
+
+        <div className="relative z-20">
+          <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+        </div>
+
+        <main className="relative z-10 w-full max-w-xl mx-auto flex-1 mt-12 mb-6 flex flex-col items-center justify-center text-center p-8 rounded-3xl bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 mb-4 shadow">
+            <Wallet size={32} />
           </div>
+          <h1 className="font-title font-black text-2xl sm:text-3xl text-amber-300 mb-2">YOUR WALLET</h1>
+          <p className="text-xs sm:text-sm text-slate-300 max-w-md mb-6">
+            Log in or create an account to view your live balance, make instant Solana deposits, and withdraw tournament winnings.
+          </p>
+          <button
+            onClick={() => router.push("/login")}
+            className="btn-arcade-3d btn-arcade-amber px-8 py-3 rounded-2xl text-base"
+          >
+            SIGN IN TO OPEN VAULT
+          </button>
         </main>
+
         <AuthGate open onClose={() => router.push("/home")} title="Sign in to open your wallet" message="Log in or create an account to view your balance and make deposits." />
-      </PageShell>
+        <ArcadeDrawerMenu isOpen={showDrawer} onClose={() => setShowDrawer(false)} onOpenRules={() => setShowRules(true)} />
+        <OfficialRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
+      </div>
     );
   }
+
   return (
-    <PageShell>
-      <WalletContent />
-    </PageShell>
+    <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+      {/* Background Pasture Atmosphere */}
+      <div
+        className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
+        style={{ backgroundImage: "url('/assets/barnaby/barnaby-field.jpg')" }}
+      />
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.3)_0%,#040906_90%)]" />
+
+      {/* Header */}
+      <div className="relative z-20">
+        <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+      </div>
+
+      {/* Main Cashier Arena - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
+      <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-6">
+        <WalletContent />
+      </main>
+
+      {/* Drawer & Modal */}
+      <ArcadeDrawerMenu
+        isOpen={showDrawer}
+        onClose={() => setShowDrawer(false)}
+        onOpenRules={() => setShowRules(true)}
+      />
+      <OfficialRulesModal
+        isOpen={showRules}
+        onClose={() => setShowRules(false)}
+      />
+    </div>
   );
 }
 
 function WalletContent() {
-  const user = useAuthStore((s) => s.user);
-  const { data: wallet } = useWallet();
-  const { data: tx } = useTransactions();
+  const { data: wallet, isLoading: walletLoading, refetch: refetchWallet } = useWallet();
+  const { data: txs, isLoading: txsLoading } = useTransactions();
   const deposit = useDeposit();
   const withdraw = useWithdraw();
-  const verify = useVerifyDeposit();
+  const verifyDeposit = useVerifyDeposit();
 
-  const [mode, setMode] = useState<"deposit" | "withdraw">("deposit");
-  const [amount, setAmount] = useState("50");
-  const [destination, setDestination] = useState("");
-  const [wpassword, setWpassword] = useState("");
-  const [wmfa, setWmfa] = useState("");
-  const [depositFrom, setDepositFrom] = useState("");
+  const [tab, setTab] = useState<"deposit" | "withdraw">("deposit");
   const [copied, setCopied] = useState(false);
-  const [filter, setFilter] = useState("All");
-  const [msg, setMsg] = useState<{ text: string; bad?: boolean; sig?: string } | null>(null);
-  const ko = useFlipIndex(5000) === 1;
 
-  const live = !!wallet?.live;
-  const balanceUsdt = wallet ? usdt(wallet.balance) : 0;
-  const depositAddress = wallet?.depositAddress ?? "";
-  const busy = deposit.isPending || withdraw.isPending || verify.isPending;
+  // Deposit flow state
+  const [depositAmount, setDepositAmount] = useState("50");
+  const [txSignature, setTxSignature] = useState("");
+  const [depErr, setDepErr] = useState("");
+  const [depSuccess, setDepSuccess] = useState("");
 
-  function baseAmount(): string | null {
-    try {
-      const b = parseUsdt(amount.trim());
-      return BigInt(b) > 0n ? b : null;
-    } catch {
-      return null;
-    }
-  }
+  // Withdraw flow state
+  const [withdrawAddress, setWithdrawAddress] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("50");
+  const [withErr, setWithErr] = useState("");
+  const [withSuccess, setWithSuccess] = useState("");
 
-  function switchMode(next: "deposit" | "withdraw") {
-    setMode(next);
-    setMsg(null);
-  }
+  const depositAddress = wallet?.depositAddress || "Loading vault address...";
 
-  async function copyAddress() {
-    try {
-      await navigator.clipboard.writeText(depositAddress);
+  function handleCopy() {
+    soundManager.playClick();
+    if (wallet?.depositAddress) {
+      navigator.clipboard.writeText(wallet.depositAddress);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch {
-      /* ignore */
+      setTimeout(() => setCopied(false), 2000);
     }
   }
 
-  async function onDeposit() {
-    setMsg(null);
-    if (live) {
-      if (!SOLANA_RE.test(depositFrom.trim())) {
-        setMsg({ text: ko ? "보낸 Solana 주소를 입력하세요." : "Enter the Solana address you sent from.", bad: true });
-        return;
-      }
-      try {
-        const res = await verify.mutateAsync({ fromAddress: depositFrom.trim() });
-        if (res.credited.length === 0) {
-          setMsg({ text: ko ? "입금이 감지되지 않았습니다. Phantom에서 전송 후 다시 시도하세요." : "No deposit found yet. Send the USDT to the address above, then try again.", bad: true });
-          return;
-        }
-        const total = res.credited.reduce((s, c) => s + Number(c.amount) / 1e6, 0);
-        setMsg({ text: ko ? `${total} USDT 입금 완료` : `Deposited ${total} USDT`, sig: res.credited[0]!.txSignature });
-      } catch (e) {
-        setMsg({ text: e instanceof ApiError ? String(e.message) : ko ? "실패" : "Failed", bad: true });
-      }
-      return;
-    }
-    // Mock mode: instant credit of the entered amount.
-    const base = baseAmount();
-    if (!base) {
-      setMsg({ text: ko ? "올바른 금액을 입력하세요." : "Enter a valid amount.", bad: true });
+  async function handleVerifyDeposit(e: React.FormEvent) {
+    e.preventDefault();
+    soundManager.playClick();
+    setDepErr("");
+    setDepSuccess("");
+    if (!txSignature.trim()) {
+      setDepErr("Please provide the wallet address you sent from.");
       return;
     }
     try {
-      const res = await deposit.mutateAsync({ amount: base, idempotencyKey: crypto.randomUUID() });
-      setMsg({ text: ko ? `${amount} USDT 입금 완료` : `Deposited ${amount} USDT`, sig: res.txSignature });
-    } catch (e) {
-      setMsg({ text: e instanceof ApiError ? String(e.message) : ko ? "실패" : "Failed", bad: true });
+      await verifyDeposit.mutateAsync({ fromAddress: txSignature.trim() });
+      setDepSuccess("Deposit verified and credited successfully!");
+      setTxSignature("");
+      refetchWallet();
+    } catch (err) {
+      setDepErr(err instanceof Error ? err.message : "Failed to verify deposit.");
     }
   }
 
-  async function onWithdraw() {
-    setMsg(null);
-    const base = baseAmount();
-    if (!base) {
-      setMsg({ text: ko ? "올바른 금액을 입력하세요." : "Enter a valid amount.", bad: true });
+  async function handleWithdraw(e: React.FormEvent) {
+    e.preventDefault();
+    soundManager.playClick();
+    setWithErr("");
+    setWithSuccess("");
+    if (!SOLANA_RE.test(withdrawAddress.trim())) {
+      setWithErr("Invalid Solana wallet address.");
       return;
     }
-    if (!SOLANA_RE.test(destination.trim())) {
-      setMsg({ text: ko ? "올바른 Solana(USDT) 주소를 입력하세요." : "Enter a valid Solana (USDT) address.", bad: true });
-      return;
-    }
-    if (!wpassword) {
-      setMsg({ text: ko ? "확인을 위해 비밀번호를 입력하세요." : "Enter your password to confirm the withdrawal.", bad: true });
+    const amt = parseUsdt(withdrawAmount);
+    if (!amt || BigInt(amt) <= 0n) {
+      setWithErr("Invalid amount.");
       return;
     }
     try {
-      const res = await withdraw.mutateAsync({
-        amount: base,
-        destinationAddress: destination.trim(),
+      await withdraw.mutateAsync({
+        destinationAddress: withdrawAddress.trim(),
+        amount: amt,
         idempotencyKey: crypto.randomUUID(),
-        password: wpassword,
-        mfaCode: wmfa.trim() || undefined,
       });
-      setWpassword("");
-      setWmfa("");
-      setMsg({ text: ko ? `${amount} USDT 출금 완료` : `Withdrew ${amount} USDT`, sig: res.txSignature });
-    } catch (e) {
-      setMsg({ text: e instanceof ApiError ? String(e.message) : ko ? "실패" : "Failed", bad: true });
+      setWithSuccess(`Withdrawal of $${withdrawAmount} USDT submitted successfully!`);
+      setWithdrawAddress("");
+      refetchWallet();
+    } catch (err) {
+      setWithErr(err instanceof Error ? err.message : "Withdrawal failed.");
     }
   }
 
-  const entries = (tx?.entries ?? []).filter((e) => {
-    const k = classify(e.type);
-    if (filter === "Wins") return k === "win";
-    if (filter === "Deposits") return k === "deposit";
-    return true;
-  });
+  const rawBalance = wallet?.balance ?? "0";
+  const formattedBalance = walletLoading ? "..." : formatUsdt(rawBalance);
 
   return (
-    <main className="page-main wallet-page">
-      <section className="wallet-hero">
-        <div>
-          <p className="eyebrow">{ko ? "USDT 지갑" : "YOUR USDT WALLET"}</p>
-          <h1>{balanceUsdt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</h1>
-          <p>{ko ? "사용 가능한 잔액 · Solana USDT" : "Available balance · USDT on Solana"}</p>
+    <>
+      {/* Top Hero: Golden Vault Balance Card */}
+      <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 shadow-xl">
+            <Wallet size={32} />
+          </div>
           <div>
-            <button className={`primary ${mode === "deposit" ? "" : "secondary"}`} onClick={() => switchMode("deposit")}>
-              <ArrowDownToLine size={18} /> {ko ? "입금" : "Deposit"}
-            </button>
-            <button className={`primary ${mode === "withdraw" ? "" : "secondary"}`} onClick={() => switchMode("withdraw")}>
-              <ArrowUpFromLine size={18} /> {ko ? "출금" : "Withdraw"}
-            </button>
+            <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1">
+              <ShieldCheck size={12} />
+              <span>YOUR FUNDS</span>
+            </span>
+            <h1 className="font-title font-black text-3xl sm:text-5xl text-white tracking-tight mt-0.5">
+              {formattedBalance} <span className="text-xl font-bold text-amber-300">USDT</span>
+            </h1>
+            <span className="text-xs text-slate-300 flex items-center gap-1.5 mt-1">
+              <Coins size={14} className="text-yellow-400 fill-yellow-400" />
+              <span>Live balance · Solana Devnet Fast Payouts</span>
+            </span>
           </div>
         </div>
-        <div className="vault-art">
-          <Trophy size={54} />
-          <span>USDT · SOLANA</span>
+
+        <div className="flex gap-3 w-full md:w-auto">
+          <button
+            onClick={() => {
+              soundManager.playClick();
+              setTab("deposit");
+            }}
+            className={`flex-1 md:flex-none px-6 py-3 rounded-2xl font-title font-black text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow ${
+              tab === "deposit"
+                ? "bg-gradient-to-r from-emerald-400 to-green-500 text-slate-950 shadow-[0_0_15px_rgba(52,211,153,0.7)]"
+                : "bg-black/60 border border-emerald-400/60 text-emerald-300 hover:border-emerald-400"
+            }`}
+          >
+            <ArrowDownToLine size={18} />
+            <span>DEPOSIT</span>
+          </button>
+
+          <button
+            onClick={() => {
+              soundManager.playClick();
+              setTab("withdraw");
+            }}
+            className={`flex-1 md:flex-none px-6 py-3 rounded-2xl font-title font-black text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow ${
+              tab === "withdraw"
+                ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.7)]"
+                : "bg-black/60 border border-amber-400/60 text-amber-300 hover:border-amber-400"
+            }`}
+          >
+            <ArrowUpFromLine size={18} />
+            <span>WITHDRAW</span>
+          </button>
         </div>
-      </section>
+      </div>
 
-      <section className="content wallet-layout">
-        <div className="deposit-card glass">
-          {mode === "deposit" ? (
-            <>
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">{ko ? "USDT 충전" : "ADD USDT"}</p>
-                  <h2>{ko ? "입금" : "Deposit"}</h2>
-                </div>
-                <ShieldCheck size={22} />
-              </div>
+      {/* 2-Column Grid: Cashier Form + Transaction Ledger */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left: Deposit / Withdraw Box */}
+        <div className="lg:col-span-5 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+            <span className="font-title font-black text-sm sm:text-base text-amber-300 uppercase tracking-widest flex items-center gap-1.5">
+              {tab === "deposit" ? <ArrowDownToLine size={16} /> : <ArrowUpFromLine size={16} />}
+              <span>{tab === "deposit" ? "SOLANA USDT DEPOSIT" : "INSTANT WITHDRAWAL"}</span>
+            </span>
+            <span className="text-[10px] font-title font-bold text-emerald-400">
+              0% Vault Fee
+            </span>
+          </div>
 
-              <label>{ko ? "이 주소로 USDT(Solana)를 보내세요" : "Send USDT (Solana) to this address"}</label>
-              <button type="button" className="deposit-address" onClick={copyAddress} title="Copy address">
-                <span style={{ wordBreak: "break-all" }}>{depositAddress || "…"}</span>
-                {copied ? <Check size={16} /> : <Copy size={16} />}
-              </button>
-
-              {!live && (
-                <>
-                  <label>{ko ? "금액 (USDT)" : "Amount (USDT)"}</label>
-                  <div className="amount-grid">
-                    {PRESETS.map((x) => (
-                      <button className={amount === x ? "active" : ""} onClick={() => setAmount(x)} key={x}>
-                        {x} USDT
-                      </button>
-                    ))}
-                  </div>
-                  <div className="money-input">
-                    <span>$</span>
-                    <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
-                    <small>USDT</small>
-                  </div>
-                </>
-              )}
-
-              {live && (
-                <>
-                  <label>{ko ? "보낸 주소 (내 Solana 지갑)" : "Your sending address (the wallet you sent from)"}</label>
-                  <input className="addr-input" value={depositFrom} onChange={(e) => setDepositFrom(e.target.value)} placeholder={ko ? "예: 4PPcLxX…hXEm4" : "e.g. 4PPcLxX…hXEm4"} />
-                </>
-              )}
-
-              <button className="primary full xl" disabled={busy} onClick={onDeposit}>
-                {busy ? (ko ? "처리 중…" : "Processing…") : live ? (ko ? "입금 확인" : "Check for my deposit") : ko ? `${amount} USDT 입금` : `Deposit ${amount} USDT`}
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">{ko ? "USDT 출금" : "CASH OUT USDT"}</p>
-                  <h2>{ko ? "출금" : "Withdraw"}</h2>
-                </div>
-                <ShieldCheck size={22} />
-              </div>
-
-              <label>{ko ? "금액 (USDT)" : "Amount (USDT)"}</label>
-              <div className="amount-grid">
-                {PRESETS.map((x) => (
-                  <button className={amount === x ? "active" : ""} onClick={() => setAmount(x)} key={x}>
-                    {x} USDT
+          {tab === "deposit" ? (
+            <div className="flex flex-col gap-4">
+              {/* Deposit Address */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-title font-bold text-slate-300">Your Dedicated Solana Deposit Address:</span>
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-black/80 border border-slate-700">
+                  <span className="text-xs font-mono text-amber-300 truncate max-w-[240px]">
+                    {depositAddress}
+                  </span>
+                  <button
+                    onClick={handleCopy}
+                    className="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:text-white transition-colors cursor-pointer"
+                    title="Copy Address"
+                  >
+                    {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
                   </button>
-                ))}
-              </div>
-              <div className="money-input">
-                <span>$</span>
-                <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
-                <small>USDT</small>
+                </div>
               </div>
 
-              <label>{ko ? "받는 Solana 주소" : "Destination Solana address"}</label>
-              <input className="addr-input" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder={ko ? "예: 7xKqABC…9fJ2" : "e.g. 7xKqABC…9fJ2"} />
+              {/* Verify Tx Form */}
+              <form onSubmit={handleVerifyDeposit} className="flex flex-col gap-3 pt-2 border-t border-white/10">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-title font-bold text-slate-300">Transaction Signature (After Sending):</label>
+                  <input
+                    value={txSignature}
+                    onChange={(e) => setTxSignature(e.target.value)}
+                    placeholder="Paste Solana Tx Signature..."
+                    className="px-4 py-2.5 rounded-xl bg-black/70 border border-slate-700 text-white font-mono text-xs focus:border-amber-400 outline-none"
+                  />
+                </div>
 
-              {/* Step-up re-authentication: a withdrawal requires the account password (and a 2FA
-                  code if enabled), so a stolen session alone can't move money. */}
-              <label>{ko ? "비밀번호로 확인" : "Confirm with your password"}</label>
-              <input className="addr-input" type="password" autoComplete="current-password" value={wpassword} onChange={(e) => setWpassword(e.target.value)} placeholder={ko ? "계정 비밀번호" : "Account password"} />
+                {depErr && <span className="text-xs text-rose-400 font-bold">{depErr}</span>}
+                {depSuccess && <span className="text-xs text-emerald-400 font-bold">{depSuccess}</span>}
 
-              {user?.mfaEnabled && (
-                <>
-                  <label>{ko ? "인증 앱 코드" : "Authenticator code"}</label>
-                  <input className="addr-input" inputMode="numeric" value={wmfa} onChange={(e) => setWmfa(e.target.value)} placeholder="123456" />
-                </>
-              )}
-
-              <button className="primary full xl" disabled={busy} onClick={onWithdraw}>
-                {busy ? (ko ? "처리 중…" : "Processing…") : ko ? `${amount} USDT 출금` : `Withdraw ${amount} USDT`}
-              </button>
-            </>
-          )}
-
-          {msg && (
-            <p className="secure-note" style={{ color: msg.bad ? "var(--danger)" : "var(--green)" }}>
-              {msg.bad ? null : <Check size={15} />} {msg.text}
-              {msg.sig && (
-                <>
-                  {" "}
-                  <a href={explorerTx(msg.sig)} target="_blank" rel="noreferrer" style={{ color: "var(--cyan)", display: "inline-flex", alignItems: "center", gap: 3 }}>
-                    {short(msg.sig)} <ExternalLink size={12} />
-                  </a>
-                </>
-              )}
-            </p>
-          )}
-          <p className="secure-note">
-            <ShieldCheck size={15} /> {ko ? "USDT · Solana 네트워크로 안전하게 정산됩니다." : "Settled securely on the USDT · Solana network."}
-          </p>
-        </div>
-
-        <div className="transaction-card glass">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">{ko ? "최근 활동" : "RECENT ACTIVITY"}</p>
-              <h2>{ko ? "거래 내역" : "Transactions"}</h2>
-            </div>
-            <div className="tabs mini">
-              {(["All", "Wins", "Deposits"] as const).map((t) => (
-                <button key={t} className={filter === t ? "active" : ""} onClick={() => setFilter(t)}>
-                  {ko ? (t === "All" ? "전체" : t === "Wins" ? "당첨" : "입금") : t}
+                <button
+                  type="submit"
+                  disabled={verifyDeposit.isPending}
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-green-500 text-slate-950 font-title font-black text-sm shadow-[0_0_20px_rgba(52,211,153,0.7)] hover:brightness-110 active:scale-95 transition-all mt-1 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <RefreshCw size={16} className={verifyDeposit.isPending ? "animate-spin" : ""} />
+                  <span>{verifyDeposit.isPending ? "VERIFYING TX..." : "VERIFY & CREDIT DEPOSIT"}</span>
                 </button>
-              ))}
+              </form>
             </div>
-          </div>
-          {entries.length === 0 && <p className="muted">{ko ? "아직 거래 내역이 없습니다." : "No transactions yet."}</p>}
-          {entries.map((e) => {
-            const k = classify(e.type);
-            const positive = !e.amount.startsWith("-");
-            const sub = e.transfer
-              ? `${e.transfer.direction === "WITHDRAWAL" ? (ko ? "→ " : "to ") : ""}${short(e.transfer.address)}`
-              : e.refType ?? (ko ? "지갑" : "wallet");
-            const pair = TX_LABEL[e.type] ?? [e.type.replace(/_/g, " ").toLowerCase(), e.type];
-            return (
-              <div className="transaction" key={e.id}>
-                <OrbIcon tone={k === "win" ? "gold" : k === "deposit" ? "cyan" : "violet"}>
-                  {k === "win" ? <Trophy size={19} /> : k === "deposit" ? <Plus size={19} /> : <Gamepad2 size={19} />}
-                </OrbIcon>
-                <span>
-                  <b>{ko ? pair[1] : pair[0]}</b>
-                  <small style={{ wordBreak: "break-all" }}>
-                    {sub} · {new Date(e.createdAt).toLocaleDateString()}
-                  </small>
-                </span>
-                <strong className={positive ? "positive" : ""}>{formatUsdt(e.amount)}</strong>
+          ) : (
+            /* Withdraw Form */
+            <form onSubmit={handleWithdraw} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-title font-bold text-slate-300">Quick Amount ($):</span>
+                <div className="grid grid-cols-4 gap-2">
+                  {PRESETS.slice(0, 4).map((val) => (
+                    <button
+                      type="button"
+                      key={val}
+                      onClick={() => {
+                        soundManager.playClick();
+                        setWithdrawAmount(val);
+                      }}
+                      className={`py-2 rounded-xl font-title font-black text-xs transition-all cursor-pointer border ${
+                        withdrawAmount === val
+                          ? "bg-amber-400 text-slate-950 border-amber-300 shadow"
+                          : "bg-black/60 text-slate-300 border-slate-800 hover:border-amber-400/40"
+                      }`}
+                    >
+                      ${val}
+                    </button>
+                  ))}
+                </div>
               </div>
-            );
-          })}
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-title font-bold text-slate-300">Recipient Solana Wallet Address:</label>
+                <input
+                  required
+                  value={withdrawAddress}
+                  onChange={(e) => setWithdrawAddress(e.target.value)}
+                  placeholder="Paste destination Solana address..."
+                  className="px-4 py-2.5 rounded-xl bg-black/70 border border-slate-700 text-white font-mono text-xs focus:border-amber-400 outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-title font-bold text-slate-300">Withdraw Amount ($ USDT):</label>
+                <input
+                  required
+                  type="number"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  min="1"
+                  className="px-4 py-2.5 rounded-xl bg-black/70 border border-slate-700 text-white font-title text-sm focus:border-amber-400 outline-none"
+                />
+              </div>
+
+              {withErr && <span className="text-xs text-rose-400 font-bold">{withErr}</span>}
+              {withSuccess && <span className="text-xs text-emerald-400 font-bold">{withSuccess}</span>}
+
+              <button
+                type="submit"
+                disabled={withdraw.isPending}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 text-slate-950 font-title font-black text-sm shadow-[0_0_20px_rgba(245,158,11,0.7)] hover:brightness-110 active:scale-95 transition-all mt-1 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>{withdraw.isPending ? "PROCESSING..." : `WITHDRAW $${withdrawAmount} USDT`}</span>
+              </button>
+            </form>
+          )}
         </div>
-      </section>
-    </main>
+
+        {/* Right: Live Transaction Ledger */}
+        <div className="lg:col-span-7 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col gap-3">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+            <span className="font-title font-black text-sm sm:text-base text-amber-300 uppercase tracking-widest flex items-center gap-1.5">
+              <Coins size={16} className="text-yellow-400" />
+              <span>RECENT ACTIVITY</span>
+            </span>
+            <span className="text-[10px] font-title font-bold text-slate-400">
+              On-Chain Activity
+            </span>
+          </div>
+
+          {txsLoading ? (
+            <div className="p-12 text-center text-slate-400 font-title font-bold">
+              Loading transactions...
+            </div>
+          ) : !txs || !txs.entries || txs.entries.length === 0 ? (
+            <div className="p-8 rounded-2xl bg-black/60 border border-slate-800 text-center text-slate-400">
+              No transactions recorded yet. Make a deposit to start!
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2 max-h-[380px] overflow-y-auto pr-1">
+              {txs.entries.map((tx) => {
+                const isPositive = ["DEPOSIT", "BET_WIN", "JACKPOT_WIN", "TOURNAMENT_PRIZE", "TOURNAMENT_REFUND"].includes(tx.type);
+                const label = TX_LABEL[tx.type] || tx.type;
+                const sig = tx.transfer?.txSignature;
+
+                return (
+                  <div
+                    key={tx.id}
+                    className="flex items-center justify-between p-3.5 rounded-2xl bg-black/60 border border-slate-800 hover:border-amber-400/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`p-2 rounded-xl ${
+                          isPositive
+                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-400/40"
+                            : "bg-rose-500/20 text-rose-400 border border-rose-400/40"
+                        }`}
+                      >
+                        {isPositive ? <ArrowDownToLine size={18} /> : <ArrowUpFromLine size={18} />}
+                      </div>
+
+                      <div className="flex flex-col">
+                        <span className="font-title font-black text-xs sm:text-sm text-white">
+                          {label}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          {new Date(tx.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end">
+                      <span
+                        className={`font-title font-black text-sm sm:text-base ${
+                          isPositive ? "text-emerald-400" : "text-rose-400"
+                        }`}
+                      >
+                        {isPositive ? "+" : "-"}{formatUsdt(tx.amount)} USDT
+                      </span>
+
+                      {sig && (
+                        <a
+                          href={explorerTx(sig)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-cyan-400 hover:underline flex items-center gap-0.5"
+                        >
+                          <span>{short(sig)}</span>
+                          <ExternalLink size={10} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

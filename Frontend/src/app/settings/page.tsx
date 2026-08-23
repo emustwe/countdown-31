@@ -1,60 +1,76 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Camera, IdCard, LogOut, Moon, ShieldCheck, Sparkles, Sun, UserRound, Volume2, WandSparkles, Zap } from "lucide-react";
-import { AuthGuard } from "../../components/AuthGuard";
-import { PageShell, ToggleRow } from "../../components/dune/Shell";
-import { FlipText, useFlipIndex } from "../../components/dune/FlipText";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  useProfile,
-  useLogout,
-  useUpdateProfile,
-  useResendVerification,
-  useVerifyEmail,
-  useBeginMfa,
-  useConfirmMfa,
-  useDisableMfa,
-  useLogoutAll,
-} from "../../lib/hooks/useAuth";
-import { useCosmetics } from "../../lib/hooks/useSponsors";
-import { CardPreview } from "../../components/dune/CardPreview";
+import { Settings, Volume2, Sparkles, User, Check, Save, LogOut, Camera } from "lucide-react";
+import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
+import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
+import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
+import { AuthGuard } from "../../components/AuthGuard";
 import { useSettingsStore } from "../../stores/settings-store";
+import { useProfile, useLogout, useUpdateProfile } from "../../lib/hooks/useAuth";
 import { fileToAvatarDataUrl } from "../../lib/avatar";
-import { ApiError } from "../../lib/api-client";
+import { soundManager } from "../../lib/soundManager";
 
 export default function SettingsPage() {
   return (
     <AuthGuard>
-      <PageShell>
-        <SettingsContent />
-      </PageShell>
+      <SettingsLayout />
     </AuthGuard>
+  );
+}
+
+function SettingsLayout() {
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+
+  return (
+    <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+      {/* Background Pasture Atmosphere */}
+      <div
+        className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
+        style={{ backgroundImage: "url('/assets/barnaby/barnaby-field.jpg')" }}
+      />
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.3)_0%,#040906_90%)]" />
+
+      {/* Header */}
+      <div className="relative z-20">
+        <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+      </div>
+
+      {/* Main Settings Arena - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
+      <main className="relative z-10 w-full max-w-4xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-6">
+        <SettingsContent />
+      </main>
+
+      {/* Drawer & Modal */}
+      <ArcadeDrawerMenu
+        isOpen={showDrawer}
+        onClose={() => setShowDrawer(false)}
+        onOpenRules={() => setShowRules(true)}
+      />
+      <OfficialRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
+    </div>
   );
 }
 
 function SettingsContent() {
   const router = useRouter();
   const { data: profile } = useProfile();
-  const { data: cosmetics } = useCosmetics();
   const logout = useLogout();
   const updateProfile = useUpdateProfile();
+
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
   const animationsEnabled = useSettingsStore((s) => s.animationsEnabled);
   const toggleSound = useSettingsStore((s) => s.toggleSound);
   const toggleAnimations = useSettingsStore((s) => s.toggleAnimations);
-  const theme = useSettingsStore((s) => s.theme);
-  const setTheme = useSettingsStore((s) => s.setTheme);
-  const [tab, setTab] = useState("appearance");
-  const [saved, setSaved] = useState(false);
-  const ko = useFlipIndex(5000) === 1;
 
+  const [savedToast, setSavedToast] = useState(false);
   const [fullName, setFullName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync the editable fields once the profile loads (defaultValue wouldn't update).
   useEffect(() => {
     if (profile) {
       setFullName(profile.fullName ?? "");
@@ -69,401 +85,223 @@ function SettingsContent() {
     setAvatarError("");
     try {
       setAvatarUrl(await fileToAvatarDataUrl(file));
-      setSaved(false);
     } catch (err) {
-      setAvatarError(err instanceof Error ? err.message : "Could not read that image.");
+      setAvatarError(err instanceof Error ? err.message : "Image could not be processed.");
     }
   }
 
-  function saveProfile() {
-    setSaved(false);
-    updateProfile.mutate(
-      { fullName: fullName.trim() || undefined, avatarUrl },
-      { onSuccess: () => setSaved(true) },
-    );
+  async function handleSaveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    soundManager.playClick();
+    try {
+      await updateProfile.mutateAsync({
+        fullName: fullName.trim() || undefined,
+        avatarUrl: avatarUrl ?? undefined,
+      });
+      setSavedToast(true);
+      setTimeout(() => setSavedToast(false), 2500);
+    } catch {
+      // error handled by mutation
+    }
   }
 
-  const initials = (profile?.fullName || profile?.email || "DD").slice(0, 2).toUpperCase();
+  async function handleLogout() {
+    soundManager.playClick();
+    await logout.mutateAsync();
+    router.replace("/login");
+  }
 
   return (
-    <main className="page-main settings-page">
-      <section className="settings-heading">
-        <p className="eyebrow">
-          <FlipText intervalMs={5000} items={[<>MAKE IT YOURS</>, <>당신만의 설정</>]} />
-        </p>
-        <h1>
-          <FlipText intervalMs={5300} items={[<>Settings</>, <>설정</>]} />
-        </h1>
-        <p>
-          <FlipText intervalMs={5600} items={[<>Shape your experience across every arena.</>, <>모든 아레나에서 당신만의 경험을 만드세요.</>]} />
-        </p>
-      </section>
-      <section className="content settings-layout">
-        <div className="settings-nav glass">
-          <button className={tab === "appearance" ? "active" : ""} onClick={() => setTab("appearance")}>
-            <WandSparkles />
-            <FlipText intervalMs={5000} items={[<>Appearance</>, <>화면</>]} />
-          </button>
-          <button className={tab === "sound" ? "active" : ""} onClick={() => setTab("sound")}>
-            <Volume2 />
-            <FlipText intervalMs={5200} items={[<>Sound &amp; motion</>, <>사운드 &amp; 모션</>]} />
-          </button>
-          <button className={tab === "profile" ? "active" : ""} onClick={() => setTab("profile")}>
-            <UserRound />
-            <FlipText intervalMs={5400} items={[<>Profile</>, <>프로필</>]} />
-          </button>
-          <button className={tab === "card" ? "active" : ""} onClick={() => setTab("card")}>
-            <IdCard />
-            <FlipText intervalMs={5500} items={[<>Card</>, <>카드</>]} />
-          </button>
-          <button className={tab === "security" ? "active" : ""} onClick={() => setTab("security")}>
-            <ShieldCheck />
-            <FlipText intervalMs={5600} items={[<>Security</>, <>보안</>]} />
-          </button>
-          <button className="danger" onClick={() => logout.mutate()}>
-            <LogOut />
-            <FlipText intervalMs={5800} items={[<>Log out</>, <>로그아웃</>]} />
-          </button>
+    <>
+      {/* Title Header */}
+      <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 shadow">
+            <Settings size={24} />
+          </div>
+          <div>
+            <h1 className="font-title font-black text-2xl sm:text-3xl text-amber-300 tracking-wide">
+              SETTINGS
+            </h1>
+            <p className="text-xs text-slate-300">
+              Manage your account profile, audio effects, visuals, and preferences.
+            </p>
+          </div>
         </div>
 
-        <div className="settings-panels">
-          {tab === "appearance" && (
-            <div className="settings-card glass">
-              <p className="eyebrow">
-                <FlipText intervalMs={5000} items={[<>APPEARANCE</>, <>화면</>]} />
-              </p>
-              <h2>
-                <FlipText intervalMs={5300} items={[<>Choose your atmosphere</>, <>분위기를 선택하세요</>]} />
-              </h2>
-              <p className="muted">
-                <FlipText
-                  intervalMs={5600}
-                  items={[<>Switch between a dark and a light theme anytime.</>, <>다크 테마와 라이트 테마를 언제든 전환하세요.</>]}
-                />
-              </p>
-              <div className="theme-options">
-                <button className={theme === "dark" ? "active" : ""} onClick={() => setTheme("dark")}>
-                  <div className="theme-preview dark">
-                    <Moon />
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                  <b>{ko ? "문라이트" : "Moonlight"}</b>
-                  <small>{ko ? "풍부하고 몰입감 있으며 눈이 편안합니다" : "Rich, immersive and easy on the eyes"}</small>
-                  {theme === "dark" && <i>✓</i>}
-                </button>
-                <button className={theme === "light" ? "active" : ""} onClick={() => setTheme("light")}>
-                  <div className="theme-preview light">
-                    <Sun />
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                  <b>{ko ? "선라이즈" : "Sunrise"}</b>
-                  <small>{ko ? "밝고 깨끗하며 낮에 좋습니다" : "Bright, clean and easy in daylight"}</small>
-                  {theme === "light" && <i>✓</i>}
-                </button>
-              </div>
-            </div>
-          )}
+        {savedToast && (
+          <span className="px-4 py-1.5 rounded-full bg-emerald-500 text-slate-950 font-title font-black text-xs shadow flex items-center gap-1.5 animate-bounce">
+            <Check size={14} /> CHANGES SAVED!
+          </span>
+        )}
+      </div>
 
-          {tab === "sound" && (
-            <div className="settings-card glass">
-              <p className="eyebrow">
-                <FlipText intervalMs={5000} items={[<>SOUND &amp; MOTION</>, <>사운드 &amp; 모션</>]} />
-              </p>
-              <h2>
-                <FlipText intervalMs={5300} items={[<>Game experience</>, <>게임 경험</>]} />
-              </h2>
-              <ToggleRow
-                icon={Volume2}
-                title={<FlipText intervalMs={5000} items={[<>Game sounds</>, <>게임 사운드</>]} />}
-                copy={<FlipText intervalMs={5200} items={[<>Reels, wins and interface effects</>, <>릴, 당첨, 인터페이스 효과</>]} />}
-                active={soundEnabled}
-                onChange={toggleSound}
-              />
-              <ToggleRow
-                icon={Sparkles}
-                title={<FlipText intervalMs={5400} items={[<>Ambient animation</>, <>환경 애니메이션</>]} />}
-                copy={<FlipText intervalMs={5600} items={[<>Drifting particles and environmental motion</>, <>떠다니는 파티클과 배경 모션</>]} />}
-                active={animationsEnabled}
-                onChange={toggleAnimations}
-              />
-              <ToggleRow
-                icon={Zap}
-                title={<FlipText intervalMs={5100} items={[<>Win celebrations</>, <>당첨 연출</>]} />}
-                copy={<FlipText intervalMs={5300} items={[<>Full-screen effects for big moments</>, <>큰 순간을 위한 전체 화면 효과</>]} />}
-                active={animationsEnabled}
-                onChange={toggleAnimations}
-              />
-            </div>
-          )}
+      {/* Settings Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Profile Card & Account Details */}
+        <form
+          onSubmit={handleSaveProfile}
+          className="md:col-span-2 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 rounded-3xl p-6 shadow-xl flex flex-col gap-4"
+        >
+          <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+            <User size={18} className="text-amber-400" />
+            <span className="font-title font-black text-sm text-amber-300 uppercase tracking-wider">
+              YOUR ACCOUNT
+            </span>
+          </div>
 
-          {tab === "profile" && (
-            <div className="settings-card glass">
-              <p className="eyebrow">
-                <FlipText intervalMs={5000} items={[<>PLAYER PROFILE</>, <>플레이어 프로필</>]} />
-              </p>
-              <h2>
-                <FlipText intervalMs={5300} items={[<>Your identity</>, <>내 정보</>]} />
-              </h2>
-              <div style={{ display: "grid", gap: "16px", marginTop: "16px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
-                  <div
-                    style={{
-                      width: "84px",
-                      height: "84px",
-                      borderRadius: "50%",
-                      overflow: "hidden",
-                      display: "grid",
-                      placeItems: "center",
-                      background: "rgba(255,255,255,0.06)",
-                      border: "2px solid var(--gold)",
-                      fontFamily: "var(--serif)",
-                      fontSize: "26px",
-                      color: "var(--gold)",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {avatarUrl ? (
-                      <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    ) : (
-                      initials
-                    )}
-                  </div>
-                  <div style={{ display: "grid", gap: "8px" }}>
-                    <input ref={fileInputRef} type="file" accept="image/*" onChange={onPickImage} style={{ display: "none" }} />
-                    <button className="ghost" onClick={() => fileInputRef.current?.click()} style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-                      <Camera size={16} />
-                      {avatarUrl ? (ko ? "사진 변경" : "Change photo") : ko ? "사진 업로드" : "Upload photo"}
-                    </button>
-                    {avatarUrl && (
-                      <button
-                        className="ghost"
-                        onClick={() => {
-                          setAvatarUrl(null);
-                          setSaved(false);
-                        }}
-                        style={{ opacity: 0.75 }}
-                      >
-                        {ko ? "사진 삭제" : "Remove photo"}
-                      </button>
-                    )}
-                    {avatarError && <small style={{ color: "var(--danger, #ff6b6b)" }}>{avatarError}</small>}
-                  </div>
-                </div>
-                <label style={{ display: "block" }}>
-                  {ko ? "표시 이름" : "Display Name"}
-                  <input
-                    value={fullName}
-                    onChange={(e) => {
-                      setFullName(e.target.value);
-                      setSaved(false);
-                    }}
-                    style={{ width: "100%", padding: "12px", marginTop: "6px", borderRadius: "12px", border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)", color: "var(--text)" }}
-                  />
-                </label>
-                <label style={{ display: "block" }}>
-                  {ko ? "이메일 주소" : "Email Address"}
-                  <input
-                    defaultValue={profile?.email ?? ""}
-                    readOnly
-                    style={{ width: "100%", padding: "12px", marginTop: "6px", borderRadius: "12px", border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)", color: "var(--text)" }}
-                  />
-                </label>
-                {updateProfile.isError && (
-                  <small style={{ color: "var(--danger, #ff6b6b)" }}>
-                    {ko ? "저장할 수 없습니다. 다시 시도해 주세요." : "Could not save. Please try again."}
-                  </small>
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            {/* Avatar Photo with Upload Overlay */}
+            <div className="relative group shrink-0">
+              <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-amber-400 bg-black/80 flex items-center justify-center">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-3xl font-title font-black text-emerald-400">
+                    {fullName ? fullName.slice(0, 2).toUpperCase() : "🐮"}
+                  </span>
                 )}
-                <button className="primary" onClick={saveProfile} disabled={updateProfile.isPending}>
-                  {updateProfile.isPending ? (ko ? "저장 중…" : "Saving…") : saved ? (ko ? "저장됨 ✓" : "Saved ✓") : ko ? "변경 사항 저장" : "Save Changes"}
-                </button>
               </div>
-            </div>
-          )}
-
-          {tab === "security" && <SecurityPanel ko={ko} />}
-
-          {tab === "card" && (
-            <div className="settings-card glass">
-              <p className="eyebrow">
-                <FlipText intervalMs={5000} items={[<>YOUR CARD</>, <>내 카드</>]} />
-              </p>
-              <h2>
-                <FlipText intervalMs={5300} items={[<>Player card</>, <>플레이어 카드</>]} />
-              </h2>
-              <p className="muted">
-                <FlipText
-                  intervalMs={5600}
-                  items={[
-                    <>This is the card other players see in games. More details will be added here later.</>,
-                    <>다른 플레이어가 게임에서 보게 되는 카드입니다. 자세한 정보는 나중에 추가됩니다.</>,
-                  ]}
-                />
-              </p>
-              <div className="settings-card-preview">
-                <CardPreview
-                  card={cosmetics?.card}
-                  avatar={cosmetics?.avatar}
-                  name={profile?.fullName || profile?.email?.split("@")[0] || "Player"}
-                  size="lg"
-                />
-              </div>
-              <button className="secondary" style={{ marginTop: 16 }} onClick={() => router.push("/shop")}>
-                <Sparkles size={15} /> {ko ? "상점에서 카드 꾸미기" : "Design your card in the Shop"}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex flex-col items-center justify-center text-xs font-title font-bold text-amber-300 gap-1 cursor-pointer"
+              >
+                <Camera size={20} />
+                <span>Upload</span>
               </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={onPickImage}
+                className="hidden"
+              />
             </div>
-          )}
 
+            {/* Inputs */}
+            <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-title font-bold text-slate-300">
+                  Display Name / Nickname:
+                </label>
+                <input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Enter your name..."
+                  className="px-4 py-2.5 rounded-xl bg-black/70 border border-slate-700 text-white font-title text-sm focus:border-amber-400 outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-title font-bold text-slate-300">
+                  Account Email:
+                </label>
+                <input
+                  disabled
+                  value={profile?.email ?? ""}
+                  className="px-4 py-2.5 rounded-xl bg-black/40 border border-slate-800 text-slate-400 font-title text-sm outline-none cursor-not-allowed"
+                />
+              </div>
+            </div>
+          </div>
+
+          {avatarError && <span className="text-xs text-rose-400 font-bold">{avatarError}</span>}
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={updateProfile.isPending}
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-title font-black text-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer shadow flex items-center gap-2"
+            >
+              <Save size={14} />
+              <span>{updateProfile.isPending ? "SAVING..." : "SAVE PROFILE"}</span>
+            </button>
+          </div>
+        </form>
+
+        {/* Audio & SFX */}
+        <div className="bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col gap-4">
+          <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+            <Volume2 size={18} className="text-amber-400" />
+            <span className="font-title font-black text-sm text-amber-300 uppercase tracking-wider">
+              AUDIO & SFX
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-black/60 border border-slate-800">
+            <div className="flex flex-col">
+              <span className="font-title font-black text-sm text-white">Sound Effects</span>
+              <span className="text-xs text-slate-400">Game audio, clicks & cow sounds</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                toggleSound();
+                soundManager.setMuted(soundEnabled);
+                if (!soundEnabled) soundManager.playClick();
+              }}
+              className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${
+                soundEnabled ? "bg-emerald-500" : "bg-slate-800"
+              }`}
+            >
+              <div
+                className={`w-5 h-5 rounded-full bg-white transition-transform absolute top-0.5 ${
+                  soundEnabled ? "right-0.5" : "left-0.5"
+                }`}
+              />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => soundManager.playMoo()}
+            className="py-2.5 rounded-xl bg-amber-500/20 border border-amber-400/50 text-amber-300 font-title font-black text-xs hover:bg-amber-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>TEST BARNABY COW MOO 🐮</span>
+          </button>
         </div>
-      </section>
-    </main>
-  );
-}
 
-function SecurityPanel({ ko }: { ko: boolean }) {
-  const { data: profile } = useProfile();
-  const resendVerification = useResendVerification();
-  const verifyEmail = useVerifyEmail();
-  const beginMfa = useBeginMfa();
-  const confirmMfa = useConfirmMfa();
-  const disableMfa = useDisableMfa();
-  const logoutAll = useLogoutAll();
-
-  const [otp, setOtp] = useState("");
-  const [emailMsg, setEmailMsg] = useState("");
-  const [mfaSecret, setMfaSecret] = useState<string | null>(null);
-  const [mfaOtpauth, setMfaOtpauth] = useState<string | null>(null);
-  const [mfaCode, setMfaCode] = useState("");
-  const [recovery, setRecovery] = useState<string[] | null>(null);
-  const [mfaErr, setMfaErr] = useState("");
-
-  const emailVerified = profile?.emailVerified;
-  const mfaEnabled = profile?.mfaEnabled;
-
-  async function onResend() {
-    setEmailMsg("");
-    const res = await resendVerification.mutateAsync();
-    setEmailMsg(res.devOtp ? `${ko ? "개발 코드" : "Dev code"}: ${res.devOtp}` : ko ? "코드를 이메일로 보냈습니다." : "We emailed you a code.");
-  }
-  async function onVerify() {
-    setEmailMsg("");
-    try {
-      await verifyEmail.mutateAsync(otp.trim());
-      setEmailMsg(ko ? "이메일이 확인되었습니다 ✓" : "Email verified ✓");
-      setOtp("");
-    } catch (e) {
-      setEmailMsg(e instanceof ApiError ? String(e.message) : ko ? "실패" : "Failed");
-    }
-  }
-  async function onBeginMfa() {
-    setMfaErr("");
-    setRecovery(null);
-    const res = await beginMfa.mutateAsync();
-    setMfaSecret(res.secret);
-    setMfaOtpauth(res.otpauthUri);
-  }
-  async function onConfirmMfa() {
-    setMfaErr("");
-    try {
-      const res = await confirmMfa.mutateAsync(mfaCode.trim());
-      setRecovery(res.recoveryCodes);
-      setMfaSecret(null);
-      setMfaOtpauth(null);
-      setMfaCode("");
-    } catch (e) {
-      setMfaErr(e instanceof ApiError ? String(e.message) : ko ? "실패" : "Failed");
-    }
-  }
-  async function onDisableMfa() {
-    setMfaErr("");
-    const code = window.prompt(ko ? "2단계 인증을 끄려면 인증 앱 코드를 입력하세요" : "Enter an authenticator code to turn off 2FA");
-    if (!code) return;
-    try {
-      await disableMfa.mutateAsync(code.trim());
-      setRecovery(null);
-    } catch (e) {
-      setMfaErr(e instanceof ApiError ? String(e.message) : ko ? "실패" : "Failed");
-    }
-  }
-
-  return (
-    <div className="settings-card glass">
-      <p className="eyebrow">
-        <FlipText intervalMs={5000} items={[<>ACCOUNT SECURITY</>, <>계정 보안</>]} />
-      </p>
-      <h2>{ko ? "보안" : "Security"}</h2>
-
-      {/* Email verification */}
-      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
-        <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-          <ShieldCheck size={18} /> {ko ? "이메일 인증" : "Email verification"}
-        </h3>
-        {emailVerified ? (
-          <p className="muted" style={{ color: "var(--green)" }}>{ko ? "이메일이 확인되었습니다 ✓" : "Your email is verified ✓"}</p>
-        ) : (
-          <div style={{ display: "grid", gap: 8, marginTop: 8, maxWidth: 340 }}>
-            <p className="muted">{ko ? "입출금 전에 이메일을 확인하세요." : "Verify your email before you can move funds."}</p>
-            <button className="secondary" onClick={onResend} disabled={resendVerification.isPending}>
-              {ko ? "인증 코드 보내기" : "Send verification code"}
-            </button>
-            <input placeholder={ko ? "6자리 코드" : "6-digit code"} inputMode="numeric" value={otp} onChange={(e) => setOtp(e.target.value)} />
-            <button className="primary" onClick={onVerify} disabled={verifyEmail.isPending || otp.trim().length !== 6}>
-              {ko ? "이메일 확인" : "Verify email"}
-            </button>
-            {emailMsg && <small style={{ color: "var(--gold)" }}>{emailMsg}</small>}
+        {/* Visuals & Animations */}
+        <div className="bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col gap-4">
+          <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+            <Sparkles size={18} className="text-amber-400" />
+            <span className="font-title font-black text-sm text-amber-300 uppercase tracking-wider">
+              VISUALS & ANIMATIONS
+            </span>
           </div>
-        )}
-        {emailVerified && emailMsg && <small style={{ color: "var(--gold)" }}>{emailMsg}</small>}
-      </div>
 
-      {/* Two-factor */}
-      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
-        <h3 style={{ margin: 0 }}>{ko ? "2단계 인증 (2FA)" : "Two-factor authentication (2FA)"}</h3>
-        {mfaEnabled ? (
-          <div style={{ marginTop: 8 }}>
-            <p className="muted" style={{ color: "var(--green)" }}>{ko ? "2FA가 켜져 있습니다 ✓" : "Two-factor is on ✓"}</p>
-            <button className="ghost" onClick={onDisableMfa} disabled={disableMfa.isPending}>{ko ? "2FA 끄기" : "Turn off 2FA"}</button>
-          </div>
-        ) : (
-          <div style={{ display: "grid", gap: 10, marginTop: 8, maxWidth: 380 }}>
-            <p className="muted">{ko ? "인증 앱(Google Authenticator 등)으로 로그인을 보호하세요." : "Protect logins with an authenticator app (Google Authenticator, Authy, 1Password)."}</p>
-            {!mfaSecret ? (
-              <button className="secondary" onClick={onBeginMfa} disabled={beginMfa.isPending}>{ko ? "2FA 설정 시작" : "Set up 2FA"}</button>
-            ) : (
-              <>
-                <p className="muted">{ko ? "인증 앱에 이 키를 추가하세요:" : "Add this key to your authenticator app:"}</p>
-                <code style={{ wordBreak: "break-all", background: "rgba(255,255,255,0.06)", padding: "8px 10px", borderRadius: 8 }}>{mfaSecret}</code>
-                {mfaOtpauth && <small className="muted" style={{ wordBreak: "break-all" }}>{mfaOtpauth}</small>}
-                <input placeholder={ko ? "앱의 6자리 코드" : "6-digit code from the app"} inputMode="numeric" value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} />
-                <button className="primary" onClick={onConfirmMfa} disabled={confirmMfa.isPending || mfaCode.trim().length < 6}>{ko ? "확인 후 켜기" : "Confirm & enable"}</button>
-              </>
-            )}
-            {mfaErr && <small style={{ color: "var(--danger)" }}>{mfaErr}</small>}
-          </div>
-        )}
-        {recovery && (
-          <div style={{ marginTop: 10 }}>
-            <p style={{ color: "var(--gold)" }}>{ko ? "복구 코드를 안전하게 저장하세요 (한 번만 표시됩니다):" : "Save these recovery codes somewhere safe (shown once):"}</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 6, fontFamily: "monospace" }}>
-              {recovery.map((c) => (
-                <code key={c} style={{ background: "rgba(255,255,255,0.06)", padding: "6px 8px", borderRadius: 6 }}>{c}</code>
-              ))}
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-black/60 border border-slate-800">
+            <div className="flex flex-col">
+              <span className="font-title font-black text-sm text-white">Animations</span>
+              <span className="text-xs text-slate-400">Smooth 3D cylinder & particle effects</span>
             </div>
+            <button
+              type="button"
+              onClick={toggleAnimations}
+              className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${
+                animationsEnabled ? "bg-emerald-500" : "bg-slate-800"
+              }`}
+            >
+              <div
+                className={`w-5 h-5 rounded-full bg-white transition-transform absolute top-0.5 ${
+                  animationsEnabled ? "right-0.5" : "left-0.5"
+                }`}
+              />
+            </button>
           </div>
-        )}
-      </div>
 
-      {/* Sessions */}
-      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
-        <h3 style={{ margin: 0 }}>{ko ? "세션" : "Sessions"}</h3>
-        <p className="muted">{ko ? "모든 기기에서 로그아웃하고 활성 세션을 무효화합니다." : "Sign out everywhere and invalidate all active sessions."}</p>
-        <button className="ghost" onClick={() => logoutAll.mutate()} disabled={logoutAll.isPending}>
-          {ko ? "모든 기기에서 로그아웃" : "Log out of all devices"}
-        </button>
+          {/* Logout Button */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="py-2.5 rounded-xl bg-rose-950/60 border border-rose-500/60 text-rose-300 font-title font-black text-xs hover:bg-rose-900/60 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <LogOut size={14} />
+            <span>SIGN OUT OF ACCOUNT</span>
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

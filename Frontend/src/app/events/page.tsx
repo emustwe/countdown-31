@@ -1,108 +1,218 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, CalendarDays, ChevronRight, CircleUserRound, Gift, KeyRound, Lock, Trophy, UserPlus, Users, X } from "lucide-react";
-import { PageShell } from "../../components/dune/Shell";
-import { usePublicPromoTournaments } from "../../lib/hooks/useSponsors";
+import { Trophy, KeyRound, Swords, Users, Clock, Award, Sparkles, Flame, ShieldAlert, ArrowRight } from "lucide-react";
+import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
+import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
+import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
+import { AuthGate } from "../../components/AuthGate";
+import { usePublicPromoTournaments, useRedeemJoinCode } from "../../lib/hooks/useSponsors";
 import { useAuthStore } from "../../stores/auth-store";
+import { soundManager } from "../../lib/soundManager";
 
 function fmtStart(iso: string | null): string {
   if (!iso) return "Open now";
   const d = new Date(iso);
   return d.getTime() <= Date.now() ? "Started" : d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 }
-// A tournament's schedule label: resolved start once voted, else the admin's GMT date pending a vote.
-function fmtSchedule(startAt: string | null, startDate: string | null): string {
-  if (startAt) return fmtStart(startAt);
-  if (startDate) return new Date(startDate).toLocaleDateString([], { dateStyle: "medium", timeZone: "UTC" }) + " · time TBD";
-  return "Open now";
-}
 
-// User Tournaments page — public and private tournaments as cards. Private ones show a "Private"
-// badge and require a referral code at join time. "Enter" sends signed-in users to the detail page;
-// guests get a sign-up / log-in gate.
 export default function TournamentsHubPage() {
   const router = useRouter();
-  const { data: tournaments } = usePublicPromoTournaments();
-  const user = useAuthStore((s) => s.user); // gate on persisted user (token is memory-only, #4)
+  const { data: tournaments, isLoading } = usePublicPromoTournaments();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const redeem = useRedeemJoinCode();
+
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [showRules, setShowRules] = useState(false);
   const [gate, setGate] = useState(false);
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState("");
 
   function onEnter(id: string) {
-    if (user) router.push(`/events/${id}`);
-    else setGate(true);
+    soundManager.playClick();
+    if (accessToken) {
+      router.push(`/events/${id}`);
+    } else {
+      setGate(true);
+    }
+  }
+
+  async function onRedeem(e: React.FormEvent) {
+    e.preventDefault();
+    soundManager.playClick();
+    setCodeError("");
+    if (!code.trim()) return;
+    try {
+      const t = await redeem.mutateAsync(code.trim());
+      router.push(`/events/${t.id}?code=${encodeURIComponent(code.trim().toUpperCase())}`);
+    } catch (err) {
+      setCodeError(err instanceof Error ? err.message : "Invalid tournament code");
+    }
   }
 
   const list = tournaments ?? [];
 
   return (
-    <PageShell className="events-page">
-      <main className="page-main events-main">
-        <section className="page-banner">
-          <div>
-            <h1>Tournaments</h1>
-            <p>Join a tournament. Private ones need a referral code to enter.</p>
-          </div>
-        </section>
+    <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+      {/* Background Pasture Atmosphere */}
+      <div
+        className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
+        style={{ backgroundImage: "url('/assets/barnaby/barnaby-field.jpg')" }}
+      />
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.3)_0%,#040906_90%)]" />
 
-        {list.length === 0 ? (
-          <div className="placeholder-card" style={{ margin: "40px auto" }}>
-            <span className="placeholder-icon"><Trophy size={34} /></span>
-            <h1>No tournaments yet</h1>
-            <p>Check back soon — new events are on the way.</p>
-          </div>
-        ) : (
-          <div className="events-grid">
-            {list.map((t) => (
-              <div className="event-card glass" key={t.id}>
-                <span className="event-card-ico">{t.type === "INFLUENCER" ? <Users size={22} /> : <Trophy size={22} />}</span>
-                <div className="event-badges">
-                  <span className={`event-type-badge ${t.type === "INFLUENCER" ? "influencer" : "regular"}`}>
-                    {t.type === "INFLUENCER" ? <><Users size={11} /> Team battle</> : <><Trophy size={11} /> Knockout</>}
-                  </span>
-                  {t.visibility === "PRIVATE" && (
-                    <span className="event-type-badge private"><Lock size={11} /> Private</span>
-                  )}
-                  {t.seekingSponsor && !t.sponsor && (
-                    <span className="event-type-badge seeking"><Building2 size={11} /> Needs sponsor</span>
-                  )}
-                </div>
-                {t.sponsor && <span className="event-sponsor">{t.sponsor.name}</span>}
-                <h3>{t.title}</h3>
-                <p>{t.description || "A brand-new tournament — enter to play."}</p>
-                <div className="event-facts">
-                  {t.prizePool && <span><Gift size={13} /> {t.prizePool}{t.type !== "INFLUENCER" && t.winnerCount > 1 ? ` · top ${t.winnerCount}` : ""}</span>}
-                  <span><CalendarDays size={13} /> {fmtSchedule(t.startAt, t.startDate)}</span>
-                  {t.visibility === "PRIVATE" && <span><KeyRound size={13} /> Referral code required to enter</span>}
-                </div>
-                <button className="primary full" onClick={() => onEnter(t.id)}>
-                  Enter tournament <ChevronRight size={17} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
+      {/* Header */}
+      <div className="relative z-20">
+        <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+      </div>
 
-      {gate && (
-        <div className="name-overlay" onClick={() => setGate(false)}>
-          <div className="name-card" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="modal-close" onClick={() => setGate(false)} aria-label="Close">
-              <X size={18} />
-            </button>
-            <h2>Sign in to enter</h2>
-            <p className="muted">Create an account or log in to join tournaments.</p>
-            <div className="gate-actions">
-              <button className="gate-login" onClick={() => router.push("/login")}>
-                <CircleUserRound size={20} /> Log in
-              </button>
-              <button className="gate-signup" onClick={() => router.push("/register")}>
-                <UserPlus size={20} /> Sign up
-              </button>
+      {/* Main Tournaments Hub - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
+      <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-6">
+        {/* Top Hero Banner */}
+        <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 shadow-xl">
+              <Trophy size={32} />
+            </div>
+            <div>
+              <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1">
+                <Flame size={12} className="text-rose-400 fill-rose-400" />
+                <span>PLAY TOGETHER</span>
+              </span>
+              <h1 className="font-title font-black text-3xl sm:text-5xl text-white tracking-tight mt-0.5">
+                TOURNAMENTS
+              </h1>
+              <p className="text-xs text-slate-300 mt-1 max-w-lg">
+                Pick a game below, or use a private code.
+              </p>
             </div>
           </div>
+
+          {/* Private Join Code Input Bar */}
+          <form
+            onSubmit={onRedeem}
+            className="w-full md:w-auto flex flex-col gap-1"
+          >
+            <div className="flex items-center bg-black/80 border border-amber-400/60 rounded-2xl p-1.5 shadow-lg">
+              <div className="flex items-center gap-2 px-3 text-amber-300">
+                <KeyRound size={18} />
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="Private code"
+                  className="bg-transparent border-none outline-none font-title font-black text-xs sm:text-sm text-white placeholder:text-slate-500 w-36 sm:w-44"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={redeem.isPending}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-title font-black text-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer shadow"
+              >
+                {redeem.isPending ? "..." : "JOIN"}
+              </button>
+            </div>
+            {codeError && <span className="text-[10px] text-rose-400 font-bold px-2">{codeError}</span>}
+          </form>
         </div>
-      )}
-    </PageShell>
+
+        {/* Live Tournaments Grid */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+            <span className="font-title font-black text-base text-amber-300 uppercase tracking-widest flex items-center gap-2">
+              <Swords size={18} className="text-yellow-400" />
+              <span>GAMES TO JOIN</span>
+            </span>
+            <span className="text-xs font-title font-bold text-slate-400">
+              {list.length} Arenas
+            </span>
+          </div>
+
+          {isLoading ? (
+            <div className="p-12 text-center text-slate-400 font-title font-bold">
+              Loading tournaments...
+            </div>
+          ) : list.length === 0 ? (
+            <div className="p-8 rounded-3xl bg-black/60 border border-slate-800 text-center flex flex-col items-center gap-2">
+              <Trophy size={32} className="text-slate-500" />
+              <span className="font-title font-bold text-slate-300">No public tournaments open right now.</span>
+              <span className="text-xs text-slate-500">Try again soon, or use a private code.</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {list.map((t) => (
+                <div
+                  key={t.id}
+                  className="relative rounded-3xl p-6 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 hover:border-amber-400 transition-all flex flex-col justify-between shadow-2xl gap-4 group"
+                >
+                  {/* Header Status */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-title font-black px-3 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow uppercase">
+                      {t.status}
+                    </span>
+
+                    <span className="text-xs font-title font-bold text-slate-400 flex items-center gap-1">
+                      <Clock size={13} />
+                      <span>{fmtStart(t.startAt)}</span>
+                    </span>
+                  </div>
+
+                  {/* Title & Arena */}
+                  <div>
+                    <h3 className="font-title font-black text-lg sm:text-xl text-white group-hover:text-amber-300 transition-colors">
+                      {t.title}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">
+                      {t.description || "Compete in the 31 knockout arena for massive glory and prizes!"}
+                    </p>
+                  </div>
+
+                  {/* Info Box */}
+                  <div className="grid grid-cols-2 gap-2 p-3 rounded-2xl bg-black/60 border border-slate-800">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-title font-bold text-slate-400 uppercase">Max Players</span>
+                      <span className="font-title font-black text-base text-emerald-400">{t.maxPlayers ?? 64}</span>
+                    </div>
+
+                    <div className="flex flex-col text-right">
+                      <span className="text-[10px] font-title font-bold text-slate-400 uppercase">Elimination</span>
+                      <span className="font-title font-black text-base text-amber-300">Single KO</span>
+                    </div>
+                  </div>
+
+                  {/* Enter Button */}
+                  <button
+                    onClick={() => onEnter(t.id)}
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 text-slate-950 font-title font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.6)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                      <span>JOIN GAME</span>
+                    <ArrowRight size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* AuthGate for Guests */}
+      <AuthGate
+        open={gate}
+        onClose={() => setGate(false)}
+        title="Sign in required"
+        message="Please sign in or create an account to enter competitive tournaments."
+      />
+
+      {/* Drawer & Modal */}
+      <ArcadeDrawerMenu
+        isOpen={showDrawer}
+        onClose={() => setShowDrawer(false)}
+        onOpenRules={() => setShowRules(true)}
+      />
+      <OfficialRulesModal
+        isOpen={showRules}
+        onClose={() => setShowRules(false)}
+      />
+    </div>
   );
 }

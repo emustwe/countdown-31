@@ -1,324 +1,283 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Check, CreditCard, Eye, Glasses, Layers, Lock, Palette, Scissors, Shirt, Smile, Sparkles, User, Wallet as WalletIcon } from "lucide-react";
-import { PageShell } from "../../components/dune/Shell";
-import { AuthGate } from "../../components/AuthGate";
+import React, { useState } from "react";
+import { ShoppingBag, Check, Coins, Gem, Palette } from "lucide-react";
+import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
+import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
+import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
+import { AuthGateModal } from "../../components/dune/AuthGateModal";
 import { useAuthStore } from "../../stores/auth-store";
-import { useProfile } from "../../lib/hooks/useAuth";
-import { useCosmetics, useUpdateCosmetics, useShop, usePurchaseItem, type Cosmetics } from "../../lib/hooks/useSponsors";
-import { CardPreview, CARD_COLORS, CARD_PATTERNS, CARD_SHAPES, CARD_BORDERS, DEFAULT_CARD } from "../../components/dune/CardPreview";
-import {
-  Avatar,
-  AvatarThumb,
-  type AvatarConfig,
-  DEFAULT_AVATAR,
-  TOPS,
-  HAIR_COLORS,
-  SKIN_TONES,
-  EYES,
-  EYEBROWS,
-  MOUTHS,
-  FACIAL_HAIR,
-  GLASSES,
-  CLOTHING,
-  CLOTHES_COLORS,
-} from "../../components/dune/Avatar";
+import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
+import { soundManager } from "../../lib/soundManager";
 
-const CATS = [
-  { key: "skin", label: "Skin", Icon: Palette },
-  { key: "hair", label: "Hair", Icon: Scissors },
-  { key: "eyes", label: "Eyes", Icon: Eye },
-  { key: "eyebrows", label: "Brows", Icon: Sparkles },
-  { key: "mouth", label: "Mouth", Icon: Smile },
-  { key: "facialHair", label: "Beard", Icon: User },
-  { key: "glasses", label: "Glasses", Icon: Glasses },
-  { key: "clothing", label: "Clothes", Icon: Shirt },
-  { key: "card", label: "Card", Icon: CreditCard },
-  { key: "board", label: "Board", Icon: Layers },
-] as const;
-type CatKey = (typeof CATS)[number]["key"];
+type ShopTab = "skins" | "frames" | "skills" | "vault";
 
-const BOARD_SKINS = [
-  { key: "classic", label: "Classic" },
-  { key: "neon", label: "Neon" },
-  { key: "sunset", label: "Sunset" },
-  { key: "carbon", label: "Carbon" },
-] as const;
-
-const DEFAULTS: Cosmetics = { card: DEFAULT_CARD, avatar: DEFAULT_AVATAR as unknown as Record<string, string>, board: { skin: "classic" } };
-
-function fmtUsdt(baseUnits: string | number | undefined): string {
-  return (Number(baseUnits ?? 0) / 1e6).toFixed(2);
+interface ShopItem {
+  id: string;
+  name: string;
+  category: ShopTab;
+  rarity: "Common" | "Epic" | "Mythic" | "Legendary";
+  price: number;
+  currency: "coins" | "gems";
+  preview: string;
+  description: string;
+  unlocked?: boolean;
 }
+
+const SHOP_ITEMS: ShopItem[] = [
+  // Skins
+  { id: "golden_emperor", name: "Golden Emperor Bull", category: "skins", rarity: "Mythic", price: 1500, currency: "coins", preview: "/assets/Avatar1/avatar.png", description: "Legendary gilded monarch bull with sovereign radiance.", unlocked: true },
+  { id: "base_bull", name: "Classic Varsity Bull", category: "skins", rarity: "Common", price: 0, currency: "coins", preview: "/assets/Simple Avatar no background.png", description: "The iconic Barnaby varsity athlete bull.", unlocked: true },
+  { id: "barnaby", name: "Barnaby Pasture Master", category: "skins", rarity: "Epic", price: 750, currency: "coins", preview: "/assets/barnaby/barnaby-field.jpg", description: "The fearless captain of the 31 counting pasture." },
+  
+  // Frames
+  { id: "mythic_gold", name: "Sovereign Gold Crest", category: "frames", rarity: "Mythic", price: 1000, currency: "coins", preview: "border-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.8)]", description: "Forged from pure pasture gold with radiant corner gems." },
+  { id: "neon_glacier", name: "Neon Glacier Frame", category: "frames", rarity: "Epic", price: 500, currency: "coins", preview: "border-cyan-400 shadow-[0_0_25px_rgba(34,211,238,0.7)]", description: "Sub-zero frozen crystal border with icy pulsations." },
+  { id: "inferno", name: "Infernal Volcano Crest", category: "frames", rarity: "Epic", price: 600, currency: "coins", preview: "border-rose-500 shadow-[0_0_25px_rgba(244,63,94,0.7)]", description: "Molten volcanic rock border with burning ember particles." },
+
+  // Skills
+  { id: "skill_rewind", name: "Chrono Rewind Pack (x5)", category: "skills", rarity: "Epic", price: 300, currency: "coins", preview: "🔄 -2 STEPS", description: "Rewinds live counter by 2 digits during tough countdowns." },
+  { id: "skill_turbo", name: "Turbo Leap Pack (x5)", category: "skills", rarity: "Epic", price: 300, currency: "coins", preview: "⚡ +3 LEAP", description: "Instantly leaps forward +3 numbers in a surprise rush." },
+  { id: "skill_shield", name: "Bovine Barrier (x5)", category: "skills", rarity: "Legendary", price: 450, currency: "coins", preview: "🛡️ SHIELD", description: "Grants Divine Shield immunity for 1 turn against blunders." },
+  { id: "skill_snooze", name: "Pasture Snooze (x5)", category: "skills", rarity: "Legendary", price: 500, currency: "coins", preview: "🌙 SKIP", description: "Safely passes turn to the next player without picking cards." },
+
+  // Vault
+  { id: "vault_1", name: "Handful of Gold (500 Coins)", category: "vault", rarity: "Common", price: 5, currency: "gems", preview: "🪙 500", description: "Starter coin stash for pasture brawlers." },
+  { id: "vault_2", name: "Barnaby Chest (2,500 Coins)", category: "vault", rarity: "Epic", price: 20, currency: "gems", preview: "🪙 2,500", description: "Heavy wooden chest packed with arcade gold." },
+  { id: "vault_3", name: "Royal Bull Vault (10,000 Coins)", category: "vault", rarity: "Mythic", price: 60, currency: "gems", preview: "🪙 10,000", description: "Grand treasury of royal pasture coins with 20% bonus." },
+];
 
 export default function ShopPage() {
-  return (
-    <PageShell className="shop-page">
-      <ShopContent />
-    </PageShell>
-  );
-}
+  const [tab, setTab] = useState<ShopTab>("skins");
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const accessToken = useAuthStore((s) => s.accessToken);
 
-function ShopContent() {
-  const router = useRouter();
-  const authed = !!useAuthStore((s) => s.user); // memory-only token (#4) → gate on persisted user
-  const { data: profile } = useProfile();
-  const { data: saved } = useCosmetics(authed);
-  const { data: shop } = useShop(authed);
-  const update = useUpdateCosmetics();
-  const purchase = usePurchaseItem();
-  const name = profile?.fullName || profile?.email?.split("@")[0] || "Player";
+  const avatar = useAvatarStore();
+  const setSkin = useAvatarStore((s) => s.setSkin);
+  const setFrame = useAvatarStore((s) => s.setFrame);
 
-  const [cat, setCat] = useState<CatKey>("hair");
-  const [cos, setCos] = useState<Cosmetics>(DEFAULTS);
-  const [dirty, setDirty] = useState(false);
-  const [savedFlag, setSavedFlag] = useState(false);
-  const [gate, setGate] = useState(false);
-  // A pending purchase the player must confirm (they clicked a locked item).
-  const [buy, setBuy] = useState<{ key: string; label: string; apply: () => void } | null>(null);
-  const [buyErr, setBuyErr] = useState("");
+  const [coins, setCoins] = useState(1250);
+  const [gems, setGems] = useState(50);
+  const [purchasedIds, setPurchasedIds] = useState<string[]>(["golden_emperor", "base_bull", "mythic_gold"]);
 
-  useEffect(() => {
-    if (saved) {
-      setCos({
-        card: { ...DEFAULT_CARD, ...(saved.card ?? {}) },
-        avatar: { ...DEFAULT_AVATAR, ...(saved.avatar ?? {}) } as unknown as Record<string, string>,
-        board: { skin: saved.board?.skin ?? "classic" },
-      });
-    }
-  }, [saved]);
-
-  const av = cos.avatar as unknown as AvatarConfig;
-  const owned = new Set(shop?.owned ?? []);
-  const priceUsdt = fmtUsdt(shop?.price ?? "500000");
-  const balanceUsdt = fmtUsdt(shop?.balance);
-
-  // An item is FREE if it's the basic default for its field, or already purchased.
-  function isFree(key: string, isDefault: boolean): boolean {
-    return isDefault || owned.has(key);
-  }
-
-  function requireAuth(): boolean {
-    if (authed) return true;
-    setGate(true);
-    return false;
-  }
-
-  // Apply the selection if free/owned; otherwise open the purchase confirm.
-  function pick(key: string, isDefault: boolean, apply: () => void, label: string) {
-    if (!requireAuth()) return;
-    if (isFree(key, isDefault)) {
-      apply();
+  function handleBuyOrEquip(item: ShopItem) {
+    // Guest protection: prompt account creation on purchases
+    if (!accessToken && item.price > 0 && !purchasedIds.includes(item.id)) {
+      soundManager.playOpen();
+      setShowAuthGate(true);
       return;
     }
-    setBuyErr("");
-    setBuy({ key, label, apply });
-  }
 
-  function setAvatar(key: keyof AvatarConfig, value: string) {
-    const apply = () => {
-      setCos((c) => ({ ...c, avatar: { ...(c.avatar as object), [key]: value } as Record<string, string> }));
-      setDirty(true); setSavedFlag(false);
-    };
-    pick(`avatar:${key}:${value}`, DEFAULT_AVATAR[key] === value, apply, "this feature");
-  }
-  function setCard(key: string, value: string) {
-    const apply = () => {
-      setCos((c) => ({ ...c, card: { ...(c.card as object), [key]: value } }));
-      setDirty(true); setSavedFlag(false);
-    };
-    pick(`card:${key}:${value}`, (DEFAULT_CARD as Record<string, string>)[key] === value, apply, "this card style");
-  }
-  function setBoard(skin: string) {
-    const apply = () => {
-      setCos((c) => ({ ...c, board: { skin: skin as "classic" } }));
-      setDirty(true); setSavedFlag(false);
-    };
-    pick(`board:${skin}`, skin === "classic", apply, "this board skin");
-  }
+    const isPurchased = purchasedIds.includes(item.id);
 
-  async function confirmBuy() {
-    if (!buy) return;
-    setBuyErr("");
-    try {
-      await purchase.mutateAsync(buy.key);
-      buy.apply();
-      setBuy(null);
-    } catch (err) {
-      setBuyErr(err instanceof Error ? err.message : "Could not complete purchase");
+    if (isPurchased) {
+      soundManager.playEquip();
+      if (item.category === "skins") {
+        setSkin(item.id as AvatarConfig["skinId"]);
+      } else if (item.category === "frames") {
+        setFrame(item.id as AvatarConfig["frameId"]);
+      }
+      return;
+    }
+
+    // Purchase
+    if (item.currency === "coins" && coins >= item.price) {
+      soundManager.playCoin();
+      setCoins((c) => c - item.price);
+      setPurchasedIds((prev) => [...prev, item.id]);
+    } else if (item.currency === "gems" && gems >= item.price) {
+      soundManager.playCoin();
+      setGems((g) => g - item.price);
+      setPurchasedIds((prev) => [...prev, item.id]);
+    } else {
+      soundManager.playError();
     }
   }
 
-  async function save() {
-    if (!requireAuth()) return;
-    await update.mutateAsync(cos);
-    setDirty(false); setSavedFlag(true);
-    setTimeout(() => setSavedFlag(false), 2000);
-  }
-
-  const board = cos.board?.skin ?? "classic";
-  // Lock predicates per field (for showing the 🔒/price badge on options).
-  const lockAvatar = (field: keyof AvatarConfig) => (v: string) => !isFree(`avatar:${field}:${v}`, DEFAULT_AVATAR[field] === v);
-  const lockCardColor = (v: string) => !isFree(`card:color:#${v}`, DEFAULT_CARD.color === `#${v}`);
-  const lockCardField = (field: string) => (v: string) => !isFree(`card:${field}:${v}`, (DEFAULT_CARD as Record<string, string>)[field] === v);
-  const lockBoard = (v: string) => !isFree(`board:${v}`, v === "classic");
+  const items = SHOP_ITEMS.filter((i) => i.category === tab);
 
   return (
-    <main className="page-main shop-main">
-      <section className="page-banner shop-banner">
-        <div>
-          <h1>Avatar Studio</h1>
-          <p>Design your character and card. Every look starts free — premium items cost {priceUsdt} USDT each, paid from your wallet.</p>
-        </div>
-        {authed && (
-          <div className="shop-balance">
-            <WalletIcon size={15} /> <b>{balanceUsdt}</b> USDT
-            <button className="mini secondary" onClick={() => router.push("/wallet")}>Top up</button>
-          </div>
-        )}
-      </section>
+    <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
+      {/* Background Pasture Atmosphere */}
+      <div
+        className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
+        style={{ backgroundImage: "url('/assets/barnaby/barnaby-field.jpg')" }}
+      />
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.3)_0%,#040906_90%)]" />
 
-      <div className="studio">
-        {/* Live preview */}
-        <div className="studio-preview">
-          <div className={`avatar-stage board-skin-${board}`}>
-            <Avatar className="avatar-full" config={av} />
-          </div>
-          <CardPreview card={cos.card} avatar={cos.avatar} name={name} size="md" />
-          <button className="primary studio-save" onClick={save} disabled={update.isPending || !dirty}>
-            {update.isPending ? "Saving…" : savedFlag ? "Saved ✓" : "Save look"}
-          </button>
-        </div>
-
-        {/* Editor */}
-        <div className="studio-editor">
-          <div className="studio-cats">
-            {CATS.map(({ key, label, Icon }) => (
-              <button key={key} className={cat === key ? "active" : ""} onClick={() => setCat(key)}>
-                <Icon size={17} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="studio-panel admin-card glass">
-            {cat === "skin" && <SwatchRow label="Skin tone" colors={SKIN_TONES} value={av.skin} onPick={(v) => setAvatar("skin", v)} locked={lockAvatar("skin")} />}
-
-            {cat === "hair" && (
-              <>
-                <FeatureGrid label="Style" options={TOPS} field="top" av={av} onPick={(v) => setAvatar("top", v)} locked={lockAvatar("top")} />
-                <SwatchRow label="Hair color" colors={HAIR_COLORS} value={av.hairColor} onPick={(v) => setAvatar("hairColor", v)} locked={lockAvatar("hairColor")} />
-              </>
-            )}
-            {cat === "eyes" && <FeatureGrid label="Eyes" options={EYES} field="eyes" av={av} onPick={(v) => setAvatar("eyes", v)} locked={lockAvatar("eyes")} />}
-            {cat === "eyebrows" && <FeatureGrid label="Eyebrows" options={EYEBROWS} field="eyebrows" av={av} onPick={(v) => setAvatar("eyebrows", v)} locked={lockAvatar("eyebrows")} />}
-            {cat === "mouth" && <FeatureGrid label="Mouth" options={MOUTHS} field="mouth" av={av} onPick={(v) => setAvatar("mouth", v)} locked={lockAvatar("mouth")} />}
-            {cat === "facialHair" && (
-              <>
-                <FeatureGrid label="Facial hair" options={FACIAL_HAIR} field="facialHair" av={av} onPick={(v) => setAvatar("facialHair", v)} locked={lockAvatar("facialHair")} />
-                <SwatchRow label="Beard color" colors={HAIR_COLORS} value={av.facialHairColor} onPick={(v) => setAvatar("facialHairColor", v)} locked={lockAvatar("facialHairColor")} />
-              </>
-            )}
-            {cat === "glasses" && <FeatureGrid label="Glasses" options={GLASSES} field="glasses" av={av} onPick={(v) => setAvatar("glasses", v)} locked={lockAvatar("glasses")} />}
-            {cat === "clothing" && (
-              <>
-                <FeatureGrid label="Outfit" options={CLOTHING} field="clothing" av={av} onPick={(v) => setAvatar("clothing", v)} locked={lockAvatar("clothing")} />
-                <SwatchRow label="Outfit color" colors={CLOTHES_COLORS} value={av.clothesColor} onPick={(v) => setAvatar("clothesColor", v)} locked={lockAvatar("clothesColor")} />
-              </>
-            )}
-            {cat === "card" && (
-              <>
-                <SwatchRow label="Card color" colors={CARD_COLORS.map((c) => c.slice(1))} value={(cos.card?.color ?? "").slice(1)} onPick={(v) => setCard("color", "#" + v)} locked={lockCardColor} />
-                <ChipRow label="Pattern" options={CARD_PATTERNS} value={cos.card?.pattern ?? "stars"} onPick={(v) => setCard("pattern", v)} labels={{ none: "None", stars: "Shining stars", waves: "Waves", circuit: "Circuit" }} locked={lockCardField("pattern")} />
-                <ChipRow label="Shape" options={CARD_SHAPES} value={cos.card?.shape ?? "rounded"} onPick={(v) => setCard("shape", v)} labels={{ rounded: "Rounded", sharp: "Sharp", pill: "Pill" }} locked={lockCardField("shape")} />
-                <ChipRow label="Border" options={CARD_BORDERS} value={cos.card?.border ?? "gold"} onPick={(v) => setCard("border", v)} labels={{ none: "None", gold: "Gold", neon: "Neon" }} locked={lockCardField("border")} />
-              </>
-            )}
-            {cat === "board" && (
-              <ChipRow label="Board skin" options={BOARD_SKINS.map((b) => b.key)} value={board} onPick={setBoard} labels={Object.fromEntries(BOARD_SKINS.map((b) => [b.key, b.label]))} locked={lockBoard} />
-            )}
-          </div>
-        </div>
+      {/* Header */}
+      <div className="relative z-20">
+        <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
       </div>
 
-      {/* Purchase confirmation */}
-      {buy && (
-        <div className="modal-overlay" onClick={() => setBuy(null)}>
-          <div className="modal-card confirm-card" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
-            <span className="confirm-ico"><Lock size={22} /></span>
-            <h2 style={{ marginTop: 0 }}>Unlock {buy.label}?</h2>
-            <p className="muted">This item costs <b>{priceUsdt} USDT</b>, paid from your wallet. You&apos;ll own it permanently.</p>
-            <p className="muted" style={{ fontSize: 12 }}>Balance: {balanceUsdt} USDT</p>
-            {buyErr && <div className="sponsor-auth-err" style={{ marginTop: 6 }}>{buyErr}</div>}
-            <div className="confirm-actions">
-              <button className="secondary" onClick={() => setBuy(null)} disabled={purchase.isPending}>Cancel</button>
-              {Number(shop?.balance ?? 0) < Number(shop?.price ?? 0) ? (
-                <button className="primary" onClick={() => router.push("/wallet")}>Deposit USDT</button>
-              ) : (
-                <button className="primary" onClick={confirmBuy} disabled={purchase.isPending}>
-                  {purchase.isPending ? "Buying…" : `Buy for ${priceUsdt} USDT`}
-                </button>
-              )}
+      {/* Main Shop Arena - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
+      <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-5">
+        {/* Top Shop Banner: Live Currency Vault */}
+        <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 shadow">
+              <ShoppingBag size={24} />
+            </div>
+            <div>
+              <h1 className="font-title font-black text-2xl sm:text-3xl text-amber-300 tracking-wide">
+                ARCADE BAZAAR
+              </h1>
+              <p className="text-xs text-slate-300">
+                Unlock mythical skins, golden frames, and tactical battle powers!
+              </p>
+            </div>
+          </div>
+
+          {/* Currency Badges */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-black/70 border border-amber-400/60 shadow">
+              <Coins size={18} className="text-yellow-400 fill-yellow-400 animate-pulse" />
+              <span className="font-title font-black text-base text-amber-300">{coins.toLocaleString()}</span>
+              <span className="text-[10px] font-title font-bold text-slate-400">COINS</span>
+            </div>
+
+            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-black/70 border border-cyan-400/60 shadow">
+              <Gem size={18} className="text-cyan-400 fill-cyan-400" />
+              <span className="font-title font-black text-base text-cyan-300">{gems}</span>
+              <span className="text-[10px] font-title font-bold text-slate-400">GEMS</span>
             </div>
           </div>
         </div>
-      )}
 
-      <AuthGate
-        open={gate}
-        onClose={() => setGate(false)}
-        title="Sign up to try items"
-        message="Create an account or log in to try on and save your look."
+        {/* Category Navigation Tabs */}
+        <div className="w-full flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+          {[
+            { key: "skins", label: "👑 AVATARS & SKINS" },
+            { key: "frames", label: "🖼️ 3D METALLIC FRAMES" },
+            { key: "skills", label: "🔮 SKILLS" },
+            { key: "vault", label: "💰 COIN VAULT" },
+          ].map((t) => (
+            <button
+              key={t.key}
+              onClick={() => {
+                soundManager.playClick();
+                setTab(t.key as ShopTab);
+              }}
+              className={`px-4 sm:px-6 py-2.5 rounded-2xl font-title font-black text-xs sm:text-sm tracking-wider transition-all cursor-pointer border ${
+                tab === t.key
+                  ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.7)] scale-105"
+                  : "bg-black/60 text-slate-300 border-slate-800 hover:border-amber-400/40"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Shop Items Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {items.map((item) => {
+            const isOwned = purchasedIds.includes(item.id);
+            const isEquipped =
+              (item.category === "skins" && avatar.skinId === item.id) ||
+              (item.category === "frames" && avatar.frameId === item.id);
+
+            return (
+              <div
+                key={item.id}
+                className="relative rounded-3xl p-5 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 hover:border-amber-400 transition-all flex flex-col justify-between shadow-xl"
+              >
+                {/* Rarity & Ownership Tag */}
+                <div className="flex items-center justify-between mb-3">
+                  <span
+                    className={`text-[10px] font-title font-black px-2.5 py-0.5 rounded-full uppercase shadow ${
+                      item.rarity === "Mythic"
+                        ? "bg-amber-400 text-slate-950"
+                        : item.rarity === "Legendary"
+                          ? "bg-emerald-400 text-slate-950"
+                          : item.rarity === "Epic"
+                            ? "bg-purple-400 text-slate-950"
+                            : "bg-slate-700 text-white"
+                    }`}
+                  >
+                    {item.rarity}
+                  </span>
+
+                  {isEquipped ? (
+                    <span className="text-[10px] font-title font-black text-emerald-300 bg-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-400 flex items-center gap-1">
+                      <Check size={12} /> EQUIPPED
+                    </span>
+                  ) : isOwned ? (
+                    <span className="text-[10px] font-title font-black text-cyan-300 bg-cyan-950 px-2 py-0.5 rounded-lg border border-cyan-400">
+                      OWNED
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* Preview Box */}
+                <div className="w-full h-32 rounded-2xl bg-black/60 border border-white/10 flex items-center justify-center relative overflow-hidden my-2 shadow-inner">
+                  {item.category === "skins" ? (
+                    <img src={item.preview} alt={item.name} className="h-28 object-contain drop-shadow-xl" />
+                  ) : item.category === "frames" ? (
+                    <div className={`w-20 h-20 rounded-2xl border-3 bg-emerald-950/40 flex items-center justify-center ${item.preview}`}>
+                      <Palette size={24} className="text-amber-300" />
+                    </div>
+                  ) : (
+                    <span className="font-title font-black text-2xl text-amber-300 tracking-wider">
+                      {item.preview}
+                    </span>
+                  )}
+                </div>
+
+                {/* Name & Description */}
+                <div className="my-2">
+                  <h3 className="font-title font-black text-base text-white">{item.name}</h3>
+                  <p className="text-xs text-slate-400 mt-1 leading-snug">{item.description}</p>
+                </div>
+
+                {/* Buy / Equip Button */}
+                <button
+                  onClick={() => handleBuyOrEquip(item)}
+                  data-sound="none"
+                  className={`w-full py-2.5 rounded-2xl font-title font-black text-xs uppercase tracking-wider transition-all mt-2 cursor-pointer flex items-center justify-center gap-1.5 shadow-lg ${
+                    isEquipped
+                      ? "bg-slate-900 text-slate-400 border border-slate-700 cursor-default"
+                      : isOwned
+                        ? "bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 hover:brightness-110 active:scale-95"
+                        : "bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 hover:brightness-110 active:scale-95"
+                  }`}
+                >
+                  {isEquipped ? (
+                    <span>CURRENTLY EQUIPPED</span>
+                  ) : isOwned ? (
+                    <span>EQUIP ITEM</span>
+                  ) : (
+                    <>
+                      <span>UNLOCK FOR {item.price} {item.currency === "coins" ? "🪙" : "💎"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </main>
+
+      {/* Drawer & Modals */}
+      <ArcadeDrawerMenu
+        isOpen={showDrawer}
+        onClose={() => setShowDrawer(false)}
+        onOpenRules={() => setShowRules(true)}
       />
-    </main>
-  );
-}
-
-function FeatureGrid({ label, options, field, av, onPick, locked }: { label: string; options: string[]; field: keyof AvatarConfig; av: AvatarConfig; onPick: (v: string) => void; locked?: (v: string) => boolean }) {
-  return (
-    <div className="control-row">
-      <span className="control-label">{label}</span>
-      <div className="feature-grid">
-        {options.map((o) => (
-          <button key={o} className={`feature-thumb ${av[field] === o ? "on" : ""} ${locked?.(o) ? "locked" : ""}`} onClick={() => onPick(o)} title={o}>
-            <AvatarThumb config={{ ...av, [field]: o }} size={66} />
-            {locked?.(o) && <span className="lock-badge"><Lock size={11} /></span>}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SwatchRow({ label, colors, value, onPick, locked }: { label: string; colors: readonly string[]; value?: string; onPick: (v: string) => void; locked?: (v: string) => boolean }) {
-  return (
-    <div className="control-row">
-      <span className="control-label">{label}</span>
-      <div className="swatches">
-        {colors.map((c) => (
-          <button key={c} className={`swatch ${value === c ? "on" : ""} ${locked?.(c) ? "locked" : ""}`} style={{ background: "#" + c }} onClick={() => onPick(c)} aria-label={c}>
-            {value === c && <Check size={14} />}
-            {value !== c && locked?.(c) && <span className="lock-badge sm"><Lock size={10} /></span>}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ChipRow<T extends string>({ label, options, value, onPick, labels, locked }: { label: string; options: readonly T[]; value: T; onPick: (v: T) => void; labels: Record<string, string>; locked?: (v: string) => boolean }) {
-  return (
-    <div className="control-row">
-      <span className="control-label">{label}</span>
-      <div className="chips">
-        {options.map((o) => (
-          <button key={o} className={`chip ${value === o ? "on" : ""} ${locked?.(o) ? "locked" : ""}`} onClick={() => onPick(o)}>
-            {locked?.(o) && <Lock size={11} />} {labels[o] ?? o}
-          </button>
-        ))}
-      </div>
+      <OfficialRulesModal
+        isOpen={showRules}
+        onClose={() => setShowRules(false)}
+      />
+      <AuthGateModal
+        isOpen={showAuthGate}
+        onClose={() => setShowAuthGate(false)}
+        title="Marketplace Account Required"
+        description="Sign in or create an account to unlock rare skins, frames, and power-up packs with your coins & gems!"
+        featureName="the Marketplace"
+        redirectTo="/shop"
+      />
     </div>
   );
 }

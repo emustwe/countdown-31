@@ -15,10 +15,13 @@ export interface PublicUser {
   mfaEnabled: boolean;
 }
 
-// Only the short-lived access token is returned in the body; the refresh token is an httpOnly cookie.
-export type RegisterResponse = { user: PublicUser; accessToken: string };
-export type LoginResponse = { user: PublicUser; accessToken: string };
-export type RefreshResponse = { accessToken: string };
+export interface AuthTokens {
+  accessToken: string;
+}
+
+export type RegisterResponse = { user: PublicUser } & AuthTokens;
+export type LoginResponse = { user: PublicUser } & AuthTokens;
+export type RefreshResponse = AuthTokens;
 export type MeResponse = PublicUser & { balance: string };
 
 export interface WalletSnapshot {
@@ -52,7 +55,16 @@ export interface CryptoTransferDto {
 export interface LedgerEntryDto {
   id: string;
   amount: string;
-  type: "DEPOSIT" | "WITHDRAWAL" | "BET_STAKE" | "BET_WIN" | "JACKPOT_WIN" | "ADJUSTMENT" | "TOURNAMENT_ENTRY" | "TOURNAMENT_PRIZE" | "TOURNAMENT_REFUND";
+  type:
+    | "DEPOSIT"
+    | "WITHDRAWAL"
+    | "BET_STAKE"
+    | "BET_WIN"
+    | "JACKPOT_WIN"
+    | "ADJUSTMENT"
+    | "TOURNAMENT_ENTRY"
+    | "TOURNAMENT_PRIZE"
+    | "TOURNAMENT_REFUND";
   refType: string | null;
   refId: string | null;
   createdAt: string;

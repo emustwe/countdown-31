@@ -1,7 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Building2, CheckCircle2, Copy, Clock, Crown, Lock, Pencil, Plus, Trash2, Trophy, Unlock, Users, X, XCircle } from "lucide-react";
+import React, { useState } from "react";
+import {
+  CheckCircle2,
+  Copy,
+  Lock,
+  Pencil,
+  Plus,
+  Trash2,
+  Trophy,
+  Unlock,
+  X,
+  XCircle,
+  Sparkles,
+  Calendar,
+  DollarSign,
+  Users,
+  Check,
+} from "lucide-react";
 import {
   useAdminPromoTournaments,
   useCreatePromo,
@@ -10,78 +26,48 @@ import {
   useSetPromoStatus,
   useSponsors,
   type PromoTournament,
-  type PromoType,
   type Visibility,
 } from "../../../lib/hooks/useSponsors";
-import { ConfirmDialog } from "../../../components/dune/ConfirmDialog";
+import { soundManager } from "../../../lib/soundManager";
 
-// Distinct team colours — mirrors the backend palette (blue, red, green, gold, purple, teal).
-const TEAM_COLORS = ["#5aa8ff", "#ff6b7f", "#5be348", "#f4b942", "#b48cff", "#38e0d0"];
-const MAX_GROUPS = TEAM_COLORS.length;
-const QUICK_SLOTS = ["12:00", "15:00", "18:00", "20:00", "22:00"];
-
-interface TeamForm {
-  name: string;
-  captainName: string;
-}
 interface FormState {
   title: string;
   description: string;
   visibility: Visibility;
-  startDate: string; // GMT calendar date "YYYY-MM-DD"
-  timeOptions: string[]; // GMT "HH:MM" slots users vote among
+  startAt: string;
+  endAt: string;
   prizePool: string;
   winnerCount: string;
   minPlayers: string;
   maxPlayers: string;
-  sponsorMode: "WITH" | "WITHOUT"; // with a sponsor, or a house (no-sponsor) tournament
-  sponsorId: string; // when WITH: a chosen sponsor, or "" = assign later (needs a sponsor)
-  // Whether named influencer-captains are featured. Available in both types (like the sponsor toggle).
-  hasInfluencers: boolean;
-  // Group setup (and influencer setup for Regular+influencers)
-  groupCount: number;
-  teams: TeamForm[];
-  minGroupPlayers: string;
-  maxGroupPlayers: string;
+  seekingSponsor: boolean;
+  sponsorId: string;
 }
+
 const EMPTY: FormState = {
   title: "",
   description: "",
   visibility: "PUBLIC",
-  startDate: "",
-  timeOptions: [],
+  startAt: "",
+  endAt: "",
   prizePool: "",
   winnerCount: "1",
   minPlayers: "",
   maxPlayers: "",
-  sponsorMode: "WITHOUT",
+  seekingSponsor: false,
   sponsorId: "",
-  hasInfluencers: false,
-  groupCount: 2,
-  teams: [
-    { name: "", captainName: "" },
-    { name: "", captainName: "" },
-  ],
-  minGroupPlayers: "",
-  maxGroupPlayers: "",
 };
 
-// ISO -> value for <input type="date"> (GMT calendar date stored as midnight UTC).
-function toDateInput(iso: string | null): string {
-  return iso ? iso.slice(0, 10) : "";
+function toLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
 }
+
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
-}
-function fmtGmtDate(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString([], { dateStyle: "medium", timeZone: "UTC" }) + " (GMT)";
-}
-function resizeTeams(teams: TeamForm[], n: number): TeamForm[] {
-  const out = teams.slice(0, n);
-  while (out.length < n) out.push({ name: "", captainName: "" });
-  return out;
 }
 
 export default function TournamentAdminPage() {
@@ -92,607 +78,432 @@ export default function TournamentAdminPage() {
   const del = useDeletePromo();
   const setStatus = useSetPromoStatus();
 
-  // The active section IS the tournament type being created/edited.
-  const [section, setSection] = useState<PromoType>("REGULAR");
   const [form, setForm] = useState<FormState>(EMPTY);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState("");
-  const [slotDraft, setSlotDraft] = useState("");
-  const [slotHint, setSlotHint] = useState("");
-  const [confirmDel, setConfirmDel] = useState<PromoTournament | null>(null);
-  const [createdCodes, setCreatedCodes] = useState<{ title: string; hasInfluencers: boolean; teams: { name: string; captainName: string; captainCode: string; memberCode: string }[] } | null>(null);
-
-  // The INFLUENCER type is now surfaced as the "Group" tournament. `hasInfluencers` is an
-  // independent toggle (available in both types) for whether named influencer-captains are featured.
-  const isGroup = section === "INFLUENCER";
-  const showCaptains = form.hasInfluencers; // captain/influencer name fields + captain codes
-  const wantsTeams = isGroup || form.hasInfluencers; // group setup, or featured influencers on a Regular
 
   function set<K extends keyof FormState>(k: K, v: FormState[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
-  function setTeam(i: number, patch: Partial<TeamForm>) {
-    setForm((f) => {
-      const teams = f.teams.map((t, idx) => (idx === i ? { ...t, ...patch } : t));
-      return { ...f, teams };
-    });
-  }
-  function setGroupCount(n: number) {
-    // A Group tournament needs at least 2 groups; a Regular tournament that merely features
-    // influencers can have as few as 1 (it stays a plain, group-less knockout).
-    const minTeams = section === "INFLUENCER" ? 2 : 1;
-    const clamped = Math.max(minTeams, Math.min(MAX_GROUPS, n));
-    setForm((f) => ({ ...f, groupCount: clamped, teams: resizeTeams(f.teams, clamped) }));
-  }
-  function setHasInfluencers(v: boolean) {
-    // Turning influencers ON for a Regular tournament defaults to a single influencer (no groups).
-    setForm((f) => (v && section === "REGULAR" ? { ...f, hasInfluencers: true, groupCount: 1, teams: resizeTeams(f.teams, 1) } : { ...f, hasInfluencers: v }));
-  }
-  function addSlot(value?: string) {
-    const v = (value ?? slotDraft).trim();
-    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(v)) {
-      setSlotHint("Pick a valid time (HH:MM) first.");
-      return;
-    }
-    setForm((f) => (f.timeOptions.includes(v) ? f : { ...f, timeOptions: [...f.timeOptions, v].sort() }));
-    setSlotDraft("");
-    setSlotHint("");
-  }
-  function removeSlot(s: string) {
-    set("timeOptions", form.timeOptions.filter((x) => x !== s));
-  }
-
-  // Switching sections while creating resets the form to that section's defaults.
-  function switchSection(next: PromoType) {
-    if (next === section) return;
-    setSection(next);
-    if (!editingId) {
-      setForm(EMPTY);
-      setSlotDraft("");
-      setSlotHint("");
-    }
-  }
 
   function startEdit(t: PromoTournament) {
-    setSection(t.type);
+    soundManager.playClick();
     setEditingId(t.id);
-    const gc = Math.max(2, Math.min(MAX_GROUPS, t.groupCount || 2));
     setForm({
       title: t.title,
       description: t.description,
       visibility: t.visibility,
-      startDate: toDateInput(t.startDate),
-      timeOptions: [...(t.timeOptions ?? [])],
+      startAt: toLocalInput(t.startAt),
+      endAt: toLocalInput(t.endAt),
       prizePool: t.prizePool,
       winnerCount: String(t.winnerCount),
       minPlayers: t.minPlayers != null ? String(t.minPlayers) : "",
       maxPlayers: t.maxPlayers != null ? String(t.maxPlayers) : "",
-      sponsorMode: t.sponsor || t.seekingSponsor ? "WITH" : "WITHOUT",
+      seekingSponsor: t.seekingSponsor,
       sponsorId: t.sponsor?.id ?? "",
-      hasInfluencers: t.hasInfluencers,
-      groupCount: gc,
-      teams: resizeTeams(
-        (t.teams ?? []).map((tm) => ({ name: tm.name, captainName: tm.captainName })),
-        gc,
-      ),
-      minGroupPlayers: t.minGroupPlayers != null ? String(t.minGroupPlayers) : "",
-      maxGroupPlayers: t.maxGroupPlayers != null ? String(t.maxGroupPlayers) : "",
     });
     setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
   function cancelEdit() {
+    soundManager.playClick();
     setEditingId(null);
     setForm(EMPTY);
-    setSlotDraft("");
-    setSlotHint("");
     setError("");
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    soundManager.playClick();
     setError("");
     if (!form.title.trim()) return;
-    // When influencers are featured, every entry needs a captain/influencer name. Group names are
-    // required for a Group tournament; for a Regular+influencers tournament the "team name" is optional.
-    if (showCaptains && form.teams.some((t) => !t.captainName.trim())) {
-      setError("Every influencer needs a name.");
-      return;
-    }
-    if (isGroup && form.teams.some((t) => !t.name.trim())) {
-      setError("Every group needs a name.");
-      return;
-    }
+
     const body = {
       title: form.title.trim(),
       description: form.description.trim(),
       visibility: form.visibility,
-      type: section,
-      hasInfluencers: form.hasInfluencers,
-      startDate: form.startDate || null,
-      timeOptions: form.timeOptions,
+      startAt: form.startAt || null,
+      endAt: form.endAt || null,
       prizePool: form.prizePool.trim(),
-      winnerCount: isGroup ? 1 : Number(form.winnerCount) || 1,
+      winnerCount: Number(form.winnerCount) || 1,
       minPlayers: form.minPlayers === "" ? null : Number(form.minPlayers),
       maxPlayers: form.maxPlayers === "" ? null : Number(form.maxPlayers),
-      // With sponsor + a chosen sponsor → attach it. With sponsor + none chosen → seeking (needs a
-      // sponsor, shown with an indicator). Without sponsor → house.
-      sponsorId: form.sponsorMode === "WITH" ? form.sponsorId || null : null,
-      seekingSponsor: form.sponsorMode === "WITH" && !form.sponsorId,
-      // Teams exist for any Group tournament, and for a Regular one that features influencers.
-      ...(wantsTeams
-        ? {
-            groupCount: form.groupCount,
-            teams: form.teams.map((t) => ({ name: t.name.trim(), captainName: t.captainName.trim() })),
-            ...(isGroup
-              ? {
-                  minGroupPlayers: form.minGroupPlayers === "" ? null : Number(form.minGroupPlayers),
-                  maxGroupPlayers: form.maxGroupPlayers === "" ? null : Number(form.maxGroupPlayers),
-                }
-              : {}),
-          }
-        : {}),
+      seekingSponsor: form.visibility === "PRIVATE" ? form.seekingSponsor : false,
+      sponsorId: form.visibility === "PRIVATE" ? null : form.sponsorId || null,
     };
+
     try {
       if (editingId) await update.mutateAsync({ id: editingId, ...body });
-      else {
-        const createdTitle = form.title.trim();
-        const created = await create.mutateAsync(body);
-        if (wantsTeams && created.teams?.length) {
-          setCreatedCodes({
-            title: createdTitle,
-            hasInfluencers: form.hasInfluencers,
-            teams: created.teams.map((t) => ({ name: t.name, captainName: t.captainName, captainCode: t.captainCode ?? "", memberCode: t.memberCode ?? "" })),
-          });
-        }
-      }
+      else await create.mutateAsync(body);
+      soundManager.playVictory();
       cancelEdit();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     }
   }
 
-  async function copy(text: string, label: string) {
+  async function copyCode(text: string, label: string) {
     try {
+      soundManager.playClick();
       await navigator.clipboard.writeText(text);
       setCopied(label);
       setTimeout(() => setCopied(""), 1500);
-    } catch {
-      /* clipboard blocked — ignore */
-    }
+    } catch {}
   }
 
   const busy = create.isPending || update.isPending;
-  // Each section lists only its own tournaments.
-  const sectionList = useMemo(() => (promos ?? []).filter((t) => t.type === section), [promos, section]);
 
   return (
-    <main className="admin-main">
-      <div className="admin-heading">
+    <div className="flex flex-col gap-6 select-none font-sans">
+      {/* Page Heading Marquee */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#18281e]/90 via-[#0e1a13]/95 to-[#060c08] border-2 border-amber-400/60 rounded-3xl p-5 sm:p-6 shadow-xl">
         <div>
-          <p className="eyebrow">ADMIN</p>
-          <h1>Tournaments</h1>
-          <p>Pick a section below. Each has its own creator and its own list.</p>
-        </div>
-      </div>
-
-      {/* Section switcher: Regular vs Influencer */}
-      <div className="tourn-sections">
-        <button className={`tourn-section-tab ${section === "REGULAR" ? "on" : ""}`} onClick={() => switchSection("REGULAR")}>
-          <span className="tst-ico"><Trophy size={20} /></span>
-          <span className="tst-body">
-            <b>Regular tournament</b>
-            <small>A standard knockout — last player standing wins.</small>
-          </span>
-        </button>
-        <button className={`tourn-section-tab ${section === "INFLUENCER" ? "on" : ""}`} onClick={() => switchSection("INFLUENCER")}>
-          <span className="tst-ico"><Users size={20} /></span>
-          <span className="tst-body">
-            <b>Group tournament</b>
-            <small>Players split into groups; the last one standing wins for their group. Optionally led by influencer-captains.</small>
-          </span>
-        </button>
-      </div>
-
-      {/* Invite-code reveal after creating a tournament that has teams/influencers */}
-      {createdCodes && (
-        <div className="admin-card glass wide code-reveal" style={{ marginBottom: 18 }}>
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">SHARE THESE</p>
-              <h2>{createdCodes.hasInfluencers ? "Invite codes" : "Group codes"} — {createdCodes.title}</h2>
-            </div>
-            <button className="text-button" onClick={() => setCreatedCodes(null)}>
-              <X size={15} /> Done
-            </button>
+          <div className="flex items-center gap-2 text-[10px] font-title font-black text-amber-400 tracking-widest uppercase">
+            <Trophy size={13} />
+            <span>EVENT OPERATIONS</span>
           </div>
-          <p className="pf-note">
-            {createdCodes.hasInfluencers ? (
-              <>Give the <b>influencer code</b> to each influencer — they enter with it and play with a special card. They share the <b>player code</b> with their followers to join.</>
-            ) : (
-              <>Share each group&apos;s <b>player code</b> with the players who should join that group.</>
-            )}
+          <h1 className="font-title font-black text-2xl sm:text-3xl text-white tracking-wide mt-0.5">
+            Tournaments Manager
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">
+            Create public & private tournaments, configure prizes, timing, and approval status.
           </p>
-          <div className="reveal-teams">
-            {createdCodes.teams.map((t, i) => (
-              <div key={i} className="reveal-team-block">
-                <div className="reveal-team-head">
-                  <span className="team-dot sm" style={{ background: TEAM_COLORS[i % TEAM_COLORS.length] }} />
-                  <b>{t.name}</b> {createdCodes.hasInfluencers && t.captainName && <span>· influencer {t.captainName}</span>}
-                </div>
-                {createdCodes.hasInfluencers && (
-                  <button className="reveal-team code-chip" onClick={() => copy(t.captainCode, `cc-${i}`)} title="Copy influencer code">
-                    <Crown size={12} /> Influencer: <code>{t.captainCode}</code> <Copy size={12} /> {copied === `cc-${i}` && <em>copied</em>}
-                  </button>
-                )}
-                <button className="reveal-team code-chip" onClick={() => copy(t.memberCode, `mc-${i}`)} title="Copy player code">
-                  <Users size={12} /> Player: <code>{t.memberCode}</code> <Copy size={12} /> {copied === `mc-${i}` && <em>copied</em>}
-                </button>
-              </div>
-            ))}
-          </div>
         </div>
-      )}
 
-      {/* Create / edit form */}
-      <div className="admin-card glass wide">
-        <div className="section-heading">
+        <span className="px-3.5 py-1.5 rounded-xl bg-black/60 border border-amber-400/40 text-amber-300 font-title font-bold text-xs">
+          {(promos ?? []).length} Total Tournament(s)
+        </span>
+      </div>
+
+      {/* Create / Edit Form Console */}
+      <div className="rounded-3xl bg-gradient-to-b from-[#18281e]/98 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/70 p-6 sm:p-8 shadow-2xl flex flex-col gap-5">
+        <div className="flex items-center justify-between pb-3 border-b border-amber-500/30">
           <div>
-            <p className="eyebrow">{editingId ? "EDIT" : "CREATE"}</p>
-            <h2>{editingId ? "Edit" : "New"} {isGroup ? "group tournament" : "regular tournament"}</h2>
+            <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest">
+              {editingId ? "MODIFYING TOURNAMENT" : "NEW TOURNAMENT CREATOR"}
+            </span>
+            <h2 className="font-title font-black text-xl text-white">
+              {editingId ? "Edit Tournament Details" : "Create New Tournament"}
+            </h2>
           </div>
           {editingId && (
-            <button className="text-button" onClick={cancelEdit}>
-              <X size={15} /> Cancel edit
+            <button
+              onClick={cancelEdit}
+              className="px-3 py-1.5 rounded-xl bg-black/60 border border-slate-700 hover:border-amber-400 text-slate-300 text-xs font-title font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <X size={14} />
+              <span>Cancel Edit</span>
             </button>
           )}
         </div>
 
-        <form onSubmit={onSubmit} className="promo-form-grid">
-          <label className="pf-full">
-            <span>Tournament name</span>
-            <input value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Summer Grand Slam" />
+        <form onSubmit={onSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <label className="sm:col-span-2 lg:col-span-3 flex flex-col gap-1">
+            <span className="text-[11px] font-title font-bold text-slate-300">Tournament Title</span>
+            <input
+              required
+              value={form.title}
+              onChange={(e) => set("title", e.target.value)}
+              placeholder="e.g. Pasture Grand Prix 2026"
+              className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2.5 px-3.5 text-sm text-white outline-none transition-colors"
+            />
           </label>
 
-          <label className="pf-full">
-            <span>Description</span>
-            <input value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Short description (optional)" />
+          <label className="sm:col-span-2 lg:col-span-3 flex flex-col gap-1">
+            <span className="text-[11px] font-title font-bold text-slate-300">Description (optional)</span>
+            <input
+              value={form.description}
+              onChange={(e) => set("description", e.target.value)}
+              placeholder="Rules summary or brand welcome message"
+              className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2 px-3.5 text-sm text-white outline-none transition-colors"
+            />
           </label>
 
-          <div className="pf-field">
-            <span>Visibility</span>
-            <div className="seg">
-              <button type="button" className={form.visibility === "PUBLIC" ? "on" : ""} onClick={() => set("visibility", "PUBLIC")}>
-                <Unlock size={14} /> Public
+          {/* Visibility Switcher */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] font-title font-bold text-slate-300">Visibility & Access</span>
+            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-black/80 border border-slate-700">
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playClick();
+                  set("visibility", "PUBLIC");
+                }}
+                className={`py-1.5 rounded-lg font-title font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  form.visibility === "PUBLIC"
+                    ? "bg-gradient-to-r from-emerald-400 to-green-600 text-slate-950 font-black shadow"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Unlock size={13} />
+                <span>PUBLIC</span>
               </button>
-              <button type="button" className={form.visibility === "PRIVATE" ? "on" : ""} onClick={() => set("visibility", "PRIVATE")}>
-                <Lock size={14} /> Private
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playClick();
+                  set("visibility", "PRIVATE");
+                }}
+                className={`py-1.5 rounded-lg font-title font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  form.visibility === "PRIVATE"
+                    ? "bg-gradient-to-r from-amber-400 to-amber-600 text-slate-950 font-black shadow"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Lock size={13} />
+                <span>PRIVATE</span>
               </button>
             </div>
           </div>
 
-          {/* Sponsorship: with a sponsor, or a house (no-sponsor) tournament — for both formats. */}
-          <div className="pf-field">
-            <span>Sponsorship</span>
-            <div className="seg">
-              <button type="button" className={form.sponsorMode === "WITH" ? "on" : ""} onClick={() => set("sponsorMode", "WITH")}>
-                <Building2 size={14} /> With sponsor
-              </button>
-              <button type="button" className={form.sponsorMode === "WITHOUT" ? "on" : ""} onClick={() => set("sponsorMode", "WITHOUT")}>
-                <Trophy size={14} /> Without sponsor
-              </button>
-            </div>
-          </div>
-          {form.sponsorMode === "WITH" ? (
-            <label className="pf-field">
-              <span>Sponsor</span>
-              <select value={form.sponsorId} onChange={(e) => set("sponsorId", e.target.value)}>
-                <option value="">Assign later — needs a sponsor</option>
+          {/* Sponsor Select */}
+          {form.visibility === "PUBLIC" ? (
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] font-title font-bold text-slate-300">Assigned Sponsor (optional)</span>
+              <select
+                value={form.sponsorId}
+                onChange={(e) => set("sponsorId", e.target.value)}
+                className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2 px-3 text-xs text-white outline-none"
+              >
+                <option value="">House Tournament (No Sponsor)</option>
                 {(sponsors ?? []).map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
+                  <option key={s.id} value={s.id}>
+                    {s.name} (@{s.username})
+                  </option>
                 ))}
               </select>
             </label>
           ) : (
-            <div className="pf-field">
-              <span>Sponsor</span>
-              <p className="pf-note">House tournament — run by the platform with no sponsor.</p>
-            </div>
-          )}
-
-          {/* Influencers: featured influencer-captains or not — available in BOTH types. */}
-          <div className="pf-field">
-            <span>Influencers</span>
-            <div className="seg">
-              <button type="button" className={form.hasInfluencers ? "on" : ""} onClick={() => setHasInfluencers(true)}>
-                <Crown size={14} /> Included
-              </button>
-              <button type="button" className={!form.hasInfluencers ? "on" : ""} onClick={() => setHasInfluencers(false)}>
-                <X size={14} /> Not included
-              </button>
-            </div>
-          </div>
-          <div className="pf-field">
-            <span>&nbsp;</span>
-            <p className="pf-note">
-              {isGroup
-                ? form.hasInfluencers
-                  ? "Each group is led by a named influencer-captain (special card + captain code)."
-                  : "Groups have no named captains — players join a group with its code."
-                : form.hasInfluencers
-                  ? "A solo knockout that also features named influencers (each gets an invite code to share)."
-                  : "A plain solo knockout — no influencers."}
-            </p>
-          </div>
-
-          {/* Group setup (number of groups + per-group sizes) — for Group tournaments. */}
-          {isGroup && (
-            <>
-              <label className="pf-field">
-                <span>Number of groups</span>
-                <select value={form.groupCount} onChange={(e) => setGroupCount(Number(e.target.value))}>
-                  {Array.from({ length: MAX_GROUPS - 1 }, (_, i) => i + 2).map((n) => (
-                    <option key={n} value={n}>{n} groups</option>
-                  ))}
-                </select>
-              </label>
-              <div className="pf-field" />
-
-              <label className="pf-field">
-                <span>Min players per group</span>
-                <input type="number" min={0} value={form.minGroupPlayers} onChange={(e) => set("minGroupPlayers", e.target.value)} placeholder="e.g. 5" />
-              </label>
-              <label className="pf-field">
-                <span>Max players per group</span>
-                <input type="number" min={0} value={form.maxGroupPlayers} onChange={(e) => set("maxGroupPlayers", e.target.value)} placeholder="e.g. 20" />
-              </label>
-            </>
-          )}
-
-          {/* For a Regular tournament WITH influencers: pick how many featured influencers (1..6).
-              It stays a plain knockout — there are no groups. */}
-          {!isGroup && form.hasInfluencers && (
-            <>
-              <label className="pf-field">
-                <span>Number of influencers</span>
-                <select value={form.groupCount} onChange={(e) => setGroupCount(Number(e.target.value))}>
-                  {Array.from({ length: MAX_GROUPS }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>{n} influencer{n > 1 ? "s" : ""}</option>
-                  ))}
-                </select>
-              </label>
-              <div className="pf-field" />
-            </>
-          )}
-
-          {/* Team/influencer name inputs — shown whenever the tournament has teams. */}
-          {wantsTeams && (
-            <div className="pf-full team-inputs">
-              <p className="pf-note">
-                {isGroup
-                  ? showCaptains
-                    ? `${form.groupCount} groups, each led by a captain (the influencer). On save you'll get a unique captain code + player code per group to hand out.`
-                    : `${form.groupCount} groups. On save you'll get a code per group that players use to join it.`
-                  : `${form.groupCount} featured influencer${form.groupCount > 1 ? "s" : ""} — this stays a plain knockout with no groups. On save each influencer gets a unique invite code to share with their followers.`}
+            <div className="flex flex-col gap-1 justify-center">
+              <span className="text-[11px] font-title font-bold text-slate-400">Sponsor Code</span>
+              <p className="text-[11px] text-amber-300/80 bg-black/50 p-2 rounded-xl border border-amber-500/20">
+                A unique sponsor code is generated on save for the sponsor to claim.
               </p>
-              <div className="team-input-grid">
-                {form.teams.map((tm, i) => (
-                  <div className="team-block" key={i}>
-                    <div className="team-dot" style={{ background: TEAM_COLORS[i % TEAM_COLORS.length] }} />
-                    {isGroup && (
-                      <label>
-                        <span>Group {i + 1} name</span>
-                        <input value={tm.name} onChange={(e) => setTeam(i, { name: e.target.value })} placeholder={`e.g. Group ${i + 1}`} />
-                      </label>
-                    )}
-                    {showCaptains && (
-                      <label>
-                        <span>{isGroup ? "Captain / influencer" : `Influencer ${i + 1}`}</span>
-                        <input value={tm.captainName} onChange={(e) => setTeam(i, { captainName: e.target.value })} placeholder="Influencer name" />
-                      </label>
-                    )}
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 
-          <label className="pf-field">
-            <span>Start date (GMT — entry closes at start)</span>
-            <input type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} />
-          </label>
-          <label className="pf-field">
-            <span>Prize {form.visibility === "PRIVATE" ? "(optional — set later)" : ""}</span>
-            <input value={form.prizePool} onChange={(e) => set("prizePool", e.target.value)} placeholder="e.g. 5,000 USDT" />
+          {/* Prize Pool */}
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-title font-bold text-slate-300">Prize Pool (USDT)</span>
+            <input
+              value={form.prizePool}
+              onChange={(e) => set("prizePool", e.target.value)}
+              placeholder="e.g. 5,000 USDT"
+              className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2 px-3.5 text-sm text-white outline-none"
+            />
           </label>
 
-          {/* Votable GMT time slots */}
-          <div className="pf-full">
-            <span className="pf-label">Start-time options (GMT — players vote the time)</span>
-            <div className="slot-editor">
-              <input
-                type="time"
-                value={slotDraft}
-                onChange={(e) => { setSlotDraft(e.target.value); setSlotHint(""); }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addSlot();
-                  }
-                }}
-              />
-              <button type="button" className="mini secondary" onClick={() => addSlot()}>
-                <Plus size={13} /> Add slot
-              </button>
-              <div className="slot-quick">
-                {QUICK_SLOTS.map((s) => (
-                  <button type="button" key={s} className="slot-quick-btn" onClick={() => addSlot(s)} disabled={form.timeOptions.includes(s)}>
-                    +{s}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {slotHint && <p className="pf-note" style={{ color: "var(--danger)" }}>{slotHint}</p>}
-            <div className="slot-chips">
-              {form.timeOptions.length === 0 && <em className="pf-note">No slots yet — players can&apos;t vote a time until you add at least one.</em>}
-              {form.timeOptions.map((s) => (
-                <span className="slot-chip" key={s}>
-                  <Clock size={11} /> {s}
-                  <button type="button" onClick={() => removeSlot(s)} aria-label={`Remove ${s}`}>
-                    <X size={11} />
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
+          {/* Starts At */}
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-title font-bold text-slate-300">Starts At</span>
+            <input
+              type="datetime-local"
+              value={form.startAt}
+              onChange={(e) => set("startAt", e.target.value)}
+              className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2 px-3 text-xs text-white outline-none"
+            />
+          </label>
 
-          {/* Regular: winners + whole-field player range */}
-          {!isGroup && (
-            <>
-              <label className="pf-field">
-                <span>Number of winners</span>
-                <input type="number" min={1} value={form.winnerCount} onChange={(e) => set("winnerCount", e.target.value)} />
-              </label>
-              <div className="pf-field" />
-              <label className="pf-field">
-                <span>Min players</span>
-                <input type="number" min={0} value={form.minPlayers} onChange={(e) => set("minPlayers", e.target.value)} placeholder="e.g. 50" />
-              </label>
-              <label className="pf-field">
-                <span>Max players</span>
-                <input type="number" min={0} value={form.maxPlayers} onChange={(e) => set("maxPlayers", e.target.value)} placeholder="e.g. 200" />
-              </label>
-            </>
-          )}
+          {/* Ends At */}
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-title font-bold text-slate-300">Ends At (optional)</span>
+            <input
+              type="datetime-local"
+              value={form.endAt}
+              onChange={(e) => set("endAt", e.target.value)}
+              className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2 px-3 text-xs text-white outline-none"
+            />
+          </label>
 
-          {form.sponsorMode === "WITH" && !form.sponsorId && (
-            <p className="pf-full pf-note">
-              No sponsor selected — this tournament will be listed as <b>needing a sponsor</b> until one is assigned.
-            </p>
-          )}
+          {/* Winner Count */}
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-title font-bold text-slate-300">Winner Count</span>
+            <input
+              type="number"
+              min={1}
+              value={form.winnerCount}
+              onChange={(e) => set("winnerCount", e.target.value)}
+              className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2 px-3.5 text-sm text-white outline-none"
+            />
+          </label>
 
-          {error && <div className="pf-full sponsor-auth-err">{error}</div>}
+          {/* Min / Max Players */}
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-title font-bold text-slate-300">Min Players</span>
+            <input
+              type="number"
+              min={0}
+              value={form.minPlayers}
+              onChange={(e) => set("minPlayers", e.target.value)}
+              placeholder="e.g. 10"
+              className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2 px-3.5 text-sm text-white outline-none"
+            />
+          </label>
 
-          <div className="pf-full pf-actions">
-            <button className="primary" type="submit" disabled={busy || !form.title.trim()}>
-              {editingId ? <><Pencil size={15} /> Save changes</> : <><Plus size={16} /> Create {isGroup ? "group" : "regular"} tournament</>}
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-title font-bold text-slate-300">Max Players</span>
+            <input
+              type="number"
+              min={0}
+              value={form.maxPlayers}
+              onChange={(e) => set("maxPlayers", e.target.value)}
+              placeholder="e.g. 500"
+              className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2 px-3.5 text-sm text-white outline-none"
+            />
+          </label>
+
+          {/* Error display */}
+          {error && <div className="sm:col-span-2 lg:col-span-3 text-xs text-rose-400 font-bold">{error}</div>}
+
+          {/* Actions */}
+          <div className="sm:col-span-2 lg:col-span-3 pt-2">
+            <button
+              type="submit"
+              disabled={busy || !form.title.trim()}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-title font-black text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.6)] hover:brightness-110 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              {editingId ? (
+                <>
+                  <Pencil size={16} />
+                  <span>SAVE CHANGES</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={16} />
+                  <span>CREATE TOURNAMENT</span>
+                </>
+              )}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Existing tournaments (this section only) */}
-      <div className="admin-card glass wide" style={{ marginTop: 18 }}>
-        <div className="section-heading">
+      {/* Existing Tournaments Showcase */}
+      <div className="rounded-3xl bg-gradient-to-b from-[#18281e]/98 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/70 p-6 sm:p-8 shadow-xl flex flex-col gap-4">
+        <div className="flex items-center justify-between pb-3 border-b border-amber-500/30">
           <div>
-            <p className="eyebrow">{isGroup ? "GROUP" : "REGULAR"} TOURNAMENTS</p>
-            <h2>{sectionList.length} total</h2>
+            <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest">
+              ACTIVE ROSTER
+            </span>
+            <h2 className="font-title font-black text-xl text-white">
+              All Platform Tournaments
+            </h2>
           </div>
-          {isGroup ? <Users size={18} /> : <Trophy size={18} />}
+          <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-300">
+            <Trophy size={16} />
+          </div>
         </div>
 
-        {sectionList.length === 0 && <div className="empty-line">No {isGroup ? "group" : "regular"} tournaments yet — create one above.</div>}
-
-        {sectionList.map((t) => (
-          <div className="tourn-row" key={t.id}>
-            <div className="tourn-main">
-              <div className="tourn-title">
-                <b>{t.title}</b>
-                <span className={`vis-pill ${t.visibility.toLowerCase()}`}>
-                  {t.visibility === "PRIVATE" ? <Lock size={11} /> : <Unlock size={11} />} {t.visibility}
-                </span>
-                {t.seekingSponsor && !t.sponsor && <span className="vis-pill seeking"><Building2 size={11} /> NEEDS SPONSOR</span>}
-                <span className={`promo-status ${t.status.toLowerCase()}`}>{t.status}</span>
-              </div>
-              <div className="tourn-meta">
-                <span>{t.sponsor ? `Sponsor: ${t.sponsor.name}` : t.seekingSponsor ? "Needs sponsor" : "House"}</span>
-                <span>Prize: {t.prizePool || "—"}</span>
-                {t.type === "INFLUENCER" ? (
-                  <>
-                    <span>{t.groupCount} groups</span>
-                    <span>{t.hasInfluencers ? "With influencers" : "No influencers"}</span>
-                    {(t.minGroupPlayers != null || t.maxGroupPlayers != null) && (
-                      <span>Per group: {t.minGroupPlayers ?? "?"}–{t.maxGroupPlayers ?? "?"}</span>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <span>Winners: {t.winnerCount}</span>
-                    {t.hasInfluencers && <span>{t.groupCount} influencers</span>}
-                    {(t.minPlayers != null || t.maxPlayers != null) && (
-                      <span>Players: {t.minPlayers ?? "?"}–{t.maxPlayers ?? "?"}</span>
-                    )}
-                  </>
-                )}
-                <span>Date: {fmtGmtDate(t.startDate)}</span>
-                <span>Resolved start: {fmtDate(t.startAt)}</span>
-                {t.timeOptions?.length > 0 && <span>Time votes: {t.timeOptions.join(", ")} GMT</span>}
-                <span>{t.entryCount} joined</span>
-              </div>
-              {t.teams?.length > 0 && (
-                <div className="code-chips">
-                  {t.teams.map((tm) => (
-                    <span key={tm.id} className="team-code-group">
-                      <span className="team-code-label"><span className="team-dot sm" style={{ background: tm.color }} /> {tm.name} ({tm.memberCount})</span>
-                      {t.hasInfluencers && (
-                        <button className="code-chip" onClick={() => copy(tm.captainCode ?? "", `cc-${tm.id}`)} title="Copy influencer/captain code">
-                          <Crown size={11} /> <code>{tm.captainCode ?? "—"}</code> <Copy size={11} /> {copied === `cc-${tm.id}` && <em>copied</em>}
-                        </button>
-                      )}
-                      <button className="code-chip" onClick={() => copy(tm.memberCode ?? "", `mc-${tm.id}`)} title="Copy player code">
-                        <Users size={11} /> <code>{tm.memberCode ?? "—"}</code> <Copy size={11} /> {copied === `mc-${tm.id}` && <em>copied</em>}
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-              {t.visibility === "PRIVATE" && (
-                <div className="code-chips">
-                  <button className="code-chip" onClick={() => copy(t.sponsorCode ?? "", `s-${t.id}`)} title="Copy sponsor code">
-                    Sponsor: <code>{t.sponsorCode}</code> <Copy size={12} /> {copied === `s-${t.id}` && <em>copied</em>}
-                  </button>
-                  <button className="code-chip" onClick={() => copy(t.joinCode ?? "", `j-${t.id}`)} title="Copy user join code">
-                    Join: <code>{t.joinCode}</code> <Copy size={12} /> {copied === `j-${t.id}` && <em>copied</em>}
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="tourn-actions">
-              {t.status === "PENDING" && (
-                <>
-                  <button className="mini primary" onClick={() => setStatus.mutate({ id: t.id, action: "approve" })}>
-                    <CheckCircle2 size={13} /> Approve
-                  </button>
-                  <button className="mini secondary" onClick={() => setStatus.mutate({ id: t.id, action: "reject" })}>
-                    <XCircle size={13} /> Reject
-                  </button>
-                </>
-              )}
-              <button className="mini secondary" onClick={() => startEdit(t)}>
-                <Pencil size={13} /> Edit
-              </button>
-              <button className="mini danger" onClick={() => setConfirmDel(t)}>
-                <Trash2 size={13} /> Delete
-              </button>
-            </div>
+        {(promos ?? []).length === 0 ? (
+          <div className="py-12 text-center text-slate-500 font-title font-bold text-xs">
+            Zero tournaments configured. Create your first tournament above!
           </div>
-        ))}
-      </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {(promos ?? []).map((t) => (
+              <div
+                key={t.id}
+                className="p-4 sm:p-5 rounded-2xl bg-black/60 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:border-amber-400/50 transition-colors"
+              >
+                <div className="flex flex-col gap-1.5 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-title font-black text-base text-white">
+                      {t.title}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-title font-black uppercase flex items-center gap-1 ${
+                      t.visibility === "PRIVATE" ? "bg-amber-500/20 text-amber-300 border border-amber-500/40" : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                    }`}>
+                      {t.visibility === "PRIVATE" ? <Lock size={10} /> : <Unlock size={10} />}
+                      <span>{t.visibility}</span>
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-title font-black uppercase ${
+                      t.status === "APPROVED" ? "bg-emerald-500 text-slate-950" : t.status === "PENDING" ? "bg-amber-500 text-slate-950" : "bg-slate-700 text-white"
+                    }`}>
+                      {t.status}
+                    </span>
+                  </div>
 
-      <ConfirmDialog
-        open={!!confirmDel}
-        title="Delete tournament?"
-        message={confirmDel ? `“${confirmDel.title}” will be permanently deleted, along with its entries. This cannot be undone.` : ""}
-        confirmLabel="Delete tournament"
-        busy={del.isPending}
-        onConfirm={async () => {
-          if (!confirmDel) return;
-          await del.mutateAsync(confirmDel.id);
-          setConfirmDel(null);
-        }}
-        onClose={() => setConfirmDel(null)}
-      />
-    </main>
+                  <div className="flex items-center gap-3 flex-wrap text-xs text-slate-400">
+                    <span>{t.sponsor ? `Sponsor: ${t.sponsor.name}` : "House"}</span>
+                    <span>·</span>
+                    <span className="text-emerald-400 font-bold">Prize: ${t.prizePool || "0"} USDT</span>
+                    <span>·</span>
+                    <span>{t.winnerCount} Winner(s)</span>
+                    <span>·</span>
+                    <span>Starts: {fmtDate(t.startAt)}</span>
+                    <span>·</span>
+                    <span className="text-amber-300">{t.entryCount} Joined</span>
+                  </div>
+
+                  {t.visibility === "PRIVATE" && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <button
+                        onClick={() => copyCode(t.sponsorCode ?? "", `s-${t.id}`)}
+                        className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-amber-400 text-[10px] font-mono text-amber-300 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>Sponsor Code: {t.sponsorCode}</span>
+                        {copied === `s-${t.id}` ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                      </button>
+
+                      <button
+                        onClick={() => copyCode(t.joinCode ?? "", `j-${t.id}`)}
+                        className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-amber-400 text-[10px] font-mono text-cyan-300 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>Join Code: {t.joinCode}</span>
+                        {copied === `j-${t.id}` ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {t.status === "PENDING" && (
+                    <>
+                      <button
+                        onClick={() => {
+                          soundManager.playClick();
+                          setStatus.mutate({ id: t.id, action: "approve" });
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-green-600 text-slate-950 font-title font-bold text-xs uppercase shadow hover:brightness-110"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => {
+                          soundManager.playClick();
+                          setStatus.mutate({ id: t.id, action: "reject" });
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/50 text-rose-300 font-title font-bold text-xs"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => startEdit(t)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-title font-bold text-xs flex items-center gap-1 cursor-pointer"
+                  >
+                    <Pencil size={13} />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      soundManager.playClick();
+                      if (confirm(`Delete "${t.title}"? This cannot be undone.`)) del.mutate(t.id);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-300 font-title font-bold text-xs flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

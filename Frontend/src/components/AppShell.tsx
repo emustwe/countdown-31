@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useWallet } from "../lib/hooks/useWallet";
 import { useLogout, useProfile } from "../lib/hooks/useAuth";
 import { useBalanceSocket } from "../lib/hooks/useBalanceSocket";
@@ -26,6 +27,7 @@ export function AppShell({
   fullWidth?: boolean;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: wallet } = useWallet();
   const { data: profile } = useProfile();
   const logout = useLogout();
@@ -35,7 +37,10 @@ export function AppShell({
     <div className="min-h-screen">
       <header className="surface sticky top-0 z-10 flex items-center justify-between gap-4 px-6 py-3">
         <div className="flex items-center gap-6">
-          <Link href="/home" className="font-wordmark text-lg font-black tracking-tight text-[var(--color-accent)]">
+          <Link
+            href="/home"
+            className="font-wordmark text-lg font-black tracking-tight text-[var(--color-accent)]"
+          >
             DESERT DUNE
           </Link>
           <nav className="hidden gap-4 sm:flex">
@@ -64,7 +69,10 @@ export function AppShell({
             {wallet ? formatUsdt(wallet.balance) : "—"}
           </div>
           <button
-            onClick={() => logout.mutate()}
+            onClick={async () => {
+              await logout.mutateAsync();
+              router.replace("/login");
+            }}
             className="text-sm text-[var(--color-text-dim)] hover:text-[var(--color-danger)]"
           >
             Log out
@@ -84,7 +92,9 @@ export function AppShell({
           </Link>
         ))}
       </nav>
-      <main className={`mx-auto px-6 py-8 ${fullWidth ? "max-w-[1700px]" : "max-w-5xl"}`}>{children}</main>
+      <main className={`mx-auto px-6 py-8 ${fullWidth ? "max-w-[1700px]" : "max-w-5xl"}`}>
+        {children}
+      </main>
     </div>
   );
 }

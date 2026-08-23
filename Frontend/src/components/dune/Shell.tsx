@@ -196,6 +196,7 @@ function TopNav({ activeKey, authed, initials, avatarUrl, name, email, brandVa =
               onClick={() => !disabled && router.push(path)}
             >
               <Icon size={23} strokeWidth={2} />
+              <span>{label}</span>
             </button>
           ))}
         </nav>
@@ -210,7 +211,8 @@ function TopNav({ activeKey, authed, initials, avatarUrl, name, email, brandVa =
 /** Ported page shell — top nav + footer, wired to the real profile. */
 export function PageShell({ children, className = "", brandVa = false }: { children: ReactNode; className?: string; brandVa?: boolean }) {
   const pathname = usePathname();
-  const authed = !!useAuthStore((s) => s.user); // memory-only token (#4) → gate on persisted user
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const authed = !!accessToken;
   const { data: profile } = useProfile();
   useBalanceSocket();
 
@@ -225,10 +227,7 @@ export function PageShell({ children, className = "", brandVa = false }: { child
     <div className={`app-shell ${className} ${brandVa ? "va-shell" : ""}`}>
       <TopNav activeKey={activeKey} authed={authed} initials={initials} avatarUrl={profile?.avatarUrl} name={name} email={email} brandVa={brandVa} />
       {children}
-      <footer>
-        <span>18+</span> Play responsibly. WM Tournaments is for entertainment only.{" "}
-        <b>Set your limits.</b>
-      </footer>
+      <footer><span>18+</span> Play responsibly. <b>Set your limits.</b></footer>
     </div>
   );
 }

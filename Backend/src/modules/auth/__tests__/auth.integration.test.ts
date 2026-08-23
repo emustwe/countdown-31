@@ -62,7 +62,7 @@ describe("Auth (integration)", () => {
   it("rejects a short password", async () => {
     const res = await request(server())
       .post("/auth/register")
-      .send({ email: `${testEmailPrefix}-shortpw@example.com`, password: "short" });
+      .send({ email: `${testEmailPrefix}-shortpw@example.com`, password: "Str0ng!Pw" });
 
     expect(res.status).toBe(400);
   });
