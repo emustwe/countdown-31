@@ -1,8 +1,22 @@
 import type { Metadata } from "next";
-import { Orbitron, Cinzel_Decorative } from "next/font/google";
+import { Lilita_One, Fredoka, Orbitron, Cinzel_Decorative } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
 import "./dune.css";
+
+const lilitaOne = Lilita_One({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-lilita",
+  display: "swap",
+});
+
+const fredoka = Fredoka({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-fredoka",
+  display: "swap",
+});
 
 const orbitron = Orbitron({
   subsets: ["latin"],
@@ -20,8 +34,8 @@ const cinzelDecorative = Cinzel_Decorative({
 });
 
 export const metadata: Metadata = {
-  title: "WM Tournaments",
-  description: "WM Tournaments — a play-money slot tournament platform featuring the Desert Dune game",
+  title: "Count Down 31 — Arcade Cow Counting Game",
+  description: "Count Down 31 — A juicy, high-energy arcade cow counting game. Don't be the one to hit 31!",
 };
 
 // Runs before paint so the persisted light/dark choice and cached theme family are applied
@@ -35,12 +49,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       data-theme="dark"
       data-theme-family="monster"
       suppressHydrationWarning
-      className={`${orbitron.variable} ${cinzelDecorative.variable}`}
+      className={`${lilitaOne.variable} ${fredoka.variable} ${orbitron.variable} ${cinzelDecorative.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body>
+      <body className="font-ui">
         <Providers>{children}</Providers>
       </body>
     </html>

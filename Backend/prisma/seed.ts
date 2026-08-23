@@ -73,12 +73,7 @@ async function main(): Promise<void> {
     if (has === 0) await setBalance(w.userId, PLAYER_BALANCE);
   }
 
-  // 4. Game config (unchanged): points-tournament math model is the active default.
-  await prisma.gameConfig.upsert({
-    where: { id: "singleton" },
-    update: { activeModelId: "aurora-ways-tournament", themeFamily: "monster" },
-    create: { id: "singleton", activeModelId: "aurora-ways-tournament", themeFamily: "monster", updatedBy: admin.id },
-  });
+
 
   console.log(`Treasury (${TREASURY_EMAIL}) funded with ${TREASURY_FLOAT / USDT} USDT.`);
   console.log(`Admin + ${PLAYER_EMAILS.length} demo players + ${otherWallets.length} other wallets set to USDT balances.`);

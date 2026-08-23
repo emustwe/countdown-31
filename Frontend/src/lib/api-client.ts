@@ -21,9 +21,9 @@ interface RequestOptions {
 
 let refreshInFlight: Promise<string | null> | null = null;
 
-export async function refreshAccessToken(): Promise<string | null> {
-  // The refresh token is the httpOnly `rt` cookie — sent automatically with credentials:"include".
+async function refreshAccessToken(): Promise<string | null> {
   if (!refreshInFlight) {
+    const accessTokenAtStart = getAuthState().accessToken;
     refreshInFlight = (async () => {
       try {
         const res = await fetch(`${apiBaseUrl()}/auth/refresh`, {
@@ -36,7 +36,9 @@ export async function refreshAccessToken(): Promise<string | null> {
           return null;
         }
         const data = (await res.json()) as RefreshResponse;
-        useAuthStore.getState().setTokens({ accessToken: data.accessToken });
+        // A logout (or a newer session) happened while refresh was in flight.
+        if (getAuthState().accessToken !== accessTokenAtStart) return null;
+        useAuthStore.getState().setAccessToken(data.accessToken);
         return data.accessToken;
       } catch {
         return null;
@@ -58,7 +60,11 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
   return url.toString();
 }
 
-async function rawRequest<T>(path: string, options: RequestOptions, accessToken: string | null): Promise<T> {
+async function rawRequest<T>(
+  path: string,
+  options: RequestOptions,
+  accessToken: string | null,
+): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (options.auth !== false && accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
@@ -68,16 +74,16 @@ async function rawRequest<T>(path: string, options: RequestOptions, accessToken:
     method: options.method ?? "GET",
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-    credentials: "include", // send/receive the httpOnly refresh cookie on /auth/*
+    credentials: "include",
   });
 
-  // Some endpoints (notably DELETE) reply with an empty body — 204, or 200 with 0 bytes. Read as
-  // text and parse only when there's content, so an empty success doesn't throw a JSON-parse error
-  // (which would skip the caller's onSuccess, e.g. a cache invalidation after a delete).
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : undefined;
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
+  const data = await res.json();
   if (!res.ok) {
-    throw new ApiError(res.status, (data ?? { message: res.statusText }) as ApiErrorEnvelope);
+    throw new ApiError(res.status, data as ApiErrorEnvelope);
   }
   return data as T;
 }

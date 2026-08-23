@@ -122,9 +122,6 @@ export default function SponsorDashboardPage() {
               </div>
               <Unlock size={16} />
             </div>
-            <p className="pf-note" style={{ marginTop: 0 }}>
-              <Building2 size={13} /> Sponsored by <b>{sponsor?.name}</b> — your name appears on the tournament.
-            </p>
             <form onSubmit={onCreate} className="promo-form-grid">
               <label className="pf-full">
                 <span>Tournament name</span>
@@ -206,7 +203,6 @@ export default function SponsorDashboardPage() {
                   <span className={`promo-status ${t.status.toLowerCase()}`}>{t.status}</span>
                 </div>
                 <div className="tourn-meta">
-                  <span>Sponsored by {sponsor?.name ?? "you"}</span>
                   <span>Prize: {t.prizePool || "—"}</span>
                   <span>Winners: {t.winnerCount}</span>
                   <span>Starts: {fmtDate(t.startAt)}</span>
