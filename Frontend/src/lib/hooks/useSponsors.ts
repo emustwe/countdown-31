@@ -35,6 +35,15 @@ export interface PromoTournament {
   entryCount: number;
   sponsorCode?: string | null;
   joinCode?: string | null;
+  // Admin-chosen GMT calendar date + the GMT "HH:MM" slots players vote among for the start time.
+  startDate: string | null;
+  timeOptions: string[];
+}
+
+// One GMT start-time slot with its running vote tally.
+export interface TimeVoteTally {
+  slot: string; // "HH:MM" GMT
+  votes: number;
 }
 
 export interface PromoOverview {
@@ -157,6 +166,23 @@ export function useRedeemJoinCode() {
 }
 export interface PromoDetail extends PromoTournament {
   joined?: boolean;
+  myTimeVote?: string | null; // the slot this user voted for
+  timeVotes?: TimeVoteTally[]; // running tally across all voters
+}
+
+/** A joined player votes for the tournament's GMT start time; the most-voted slot resolves startAt. */
+export function useVoteStartTime() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, slot }: { id: string; slot: string }) =>
+      apiRequest<{ myTimeVote: string; startAt: string | null; timeVotes: TimeVoteTally[] }>(
+        `/promo-tournaments/${id}/vote-time`,
+        { method: "POST", body: { slot } },
+      ),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: ["promo-detail", v.id] });
+    },
+  });
 }
 export function usePromoDetail(id: string, opts: { code?: string; authed: boolean }) {
   return useQuery({
