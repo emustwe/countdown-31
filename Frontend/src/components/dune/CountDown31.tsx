@@ -43,8 +43,9 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const [nameInput, setNameInput] = useState("");
   const [isShaking, setIsShaking] = useState(false);
 
-  // Game Mode: Classic 31 (pure counting) vs. Tactical Skill Mode (loadout cards)
-  const [gameMode, setGameMode] = useState<GameMode>(gameConfig.gameplay.defaultMode);
+  // Game Mode: Classic 31 (pure counting) vs. Tactical Skill Mode (loadout cards).
+  // Real tournaments are SKILLS-ONLY; practice honours the configured default.
+  const [gameMode, setGameMode] = useState<GameMode>(isTournament ? "skills" : gameConfig.gameplay.defaultMode);
   // Direct Card Selection State on the 3D Reel
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
 
@@ -63,8 +64,8 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   useEffect(() => {
     if (chosenName) return;
     setBotCount(gameConfig.gameplay.defaultBotCount);
-    setGameMode(gameConfig.gameplay.defaultMode);
-  }, [chosenName, gameConfig]);
+    setGameMode(isTournament ? "skills" : gameConfig.gameplay.defaultMode);
+  }, [chosenName, gameConfig, isTournament]);
 
   const count = state?.count ?? 0;
   const players = state?.players ?? [];
@@ -308,7 +309,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         onOpenRules={() => setShowRules(true)}
         gameMode={gameMode}
         onToggleMode={handleModeChange}
-        showModeToggle={gameConfig.gameplay.allowClassic && gameConfig.gameplay.allowSkills}
+        showModeToggle={!isTournament && gameConfig.gameplay.allowClassic && gameConfig.gameplay.allowSkills}
       />
 
       {/* Main Arcade Arena Battlefield (3 Columns on Desktop with Expanded Center) */}

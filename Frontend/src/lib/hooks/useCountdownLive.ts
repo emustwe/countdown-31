@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { wsBaseUrl } from "../runtime-host";
+import { getAuthState } from "../../stores/auth-store";
 import { soundManager } from "../soundManager";
 import { useGameConfig } from "./useGameConfig";
 import { DEFAULT_GAME_CONFIG } from "../game-config";
@@ -429,10 +430,15 @@ export function useCountdownLive(roomId = "practice") {
 
     let socket: Socket | null = null;
     try {
+      // Send the access token in the handshake so the server can authenticate the player and let
+      // them JOIN this tournament room (registered players only). Without it the join is refused and
+      // the arena would fall back to the local practice bots.
+      const token = getAuthState().accessToken ?? undefined;
       socket = io(`${wsBaseUrl()}/countdown`, {
         transports: ["websocket"],
         timeout: 3000,
         reconnectionAttempts: 2,
+        auth: { token },
       });
       socketRef.current = socket;
 

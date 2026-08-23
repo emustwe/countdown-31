@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, ChevronLeft, Gift, Lock, Trophy, Unlock, Users } from "lucide-react";
 import { PageShell } from "../../../components/dune/Shell";
+import { PastureAmbiance } from "../../../components/dune/PastureAmbiance";
 import { CountDown31 } from "../../../components/dune/CountDown31";
 import { usePromoDetail, useJoinPromo } from "../../../lib/hooks/useSponsors";
 import { useAuthStore } from "../../../stores/auth-store";
@@ -41,14 +42,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  // When a joined player enters the game, show the knockout Count Down 31 for this tournament's room.
+  // When a joined player enters the game, show the knockout Count Down 31 for this tournament's room
+  // full-screen with the new arcade theme (the old top nav is hidden by .practice-page, same as the
+  // home practice arena). Navigation happens through the in-arena drawer/header.
   if (t && playing) {
     return (
-      <PageShell className="events-page">
-        <main className="page-main cd31-page">
-          <button className="text-button" onClick={() => setPlaying(false)} style={{ marginBottom: 4 }}>
-            <ChevronLeft size={16} /> {t.title} — details
-          </button>
+      <PageShell className="practice-page relative">
+        <PastureAmbiance />
+        <main className="page-main cd31-page relative z-10">
           <CountDown31 roomId={`tour:${id}`} />
         </main>
       </PageShell>
