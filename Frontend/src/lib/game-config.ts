@@ -105,7 +105,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   features: {
     showPing: true,
     showBotSelector: true,
-    showDefeatTester: true,
+    showDefeatTester: false,
     showSkillDescriptions: true,
     enableParticles: true,
   },

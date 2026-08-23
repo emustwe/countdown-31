@@ -132,7 +132,7 @@ export function ArcadeHeader({
     .sort((a, b) => a.order - b.order);
 
   return (
-    <header className="relative w-full flex items-start justify-between px-3 sm:px-8 pt-3 pb-2 z-30 select-none h-24 sm:h-28">
+    <header className="arcade-arena-header relative z-30 flex h-28 w-full shrink-0 select-none items-start justify-between px-3 pb-2 pt-3 sm:h-32 sm:px-8">
       {/* Left Mode Selector Pill (Only in Arena) */}
       <div className="flex items-center gap-2.5 z-20 pt-1">
         {/* Mode Selector Toggle Pill - ONLY rendered on Game Arena page */}

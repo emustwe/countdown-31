@@ -95,7 +95,10 @@ h3 {
   background:
     linear-gradient(180deg, rgba(8, 18, 12, 0.72) 0%, rgba(10, 24, 16, 0.82) 40%, rgba(6, 12, 8, 0.94) 100%),
     url("/assets/barnaby/barnaby-pasture-arena.jpg") center center / cover fixed no-repeat !important;
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  max-height: 100dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -112,6 +115,111 @@ h3 {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0 !important;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* The live arena is a fixed stage, not a document. Keep gameplay, controls and
+   the match dock visible together, even on shorter laptop displays. */
+.arena-main {
+  align-content: start;
+}
+
+@media (max-width: 1023px) {
+  .arena-player-panel,
+  .arena-opponent-panel {
+    display: none;
+  }
+
+  .arena-main {
+    display: flex;
+    justify-content: center;
+  }
+}
+
+@media (max-height: 820px) and (min-width: 768px) {
+  .arcade-arena-header {
+    height: 128px !important;
+    padding-top: 4px;
+  }
+
+  .arena-main > div {
+    zoom: 0.84;
+  }
+
+  .arena-bottom {
+    zoom: 0.9;
+  }
+
+  .arcade-action-console {
+    padding: 0.5rem !important;
+  }
+
+  .arcade-action-header {
+    margin-bottom: 0.3rem !important;
+    padding-block: 0.25rem !important;
+  }
+
+  .arcade-action-subtitle {
+    margin-bottom: 0.25rem !important;
+  }
+
+  .arcade-skill-grid {
+    gap: 0.5rem !important;
+  }
+
+  .arcade-skill-card {
+    min-height: 150px !important;
+    padding: 0.55rem !important;
+  }
+
+  .arcade-skill-art {
+    height: 42px !important;
+  }
+
+  .arcade-skill-description {
+    display: none;
+  }
+}
+
+@media (max-height: 680px) and (min-width: 768px) {
+  .arcade-arena-header {
+    height: 108px !important;
+  }
+
+  .arena-main > div {
+    zoom: 0.72;
+  }
+
+  .arena-bottom {
+    zoom: 0.82;
+  }
+}
+
+@media (max-width: 767px) {
+  .arcade-arena-header {
+    height: 140px !important;
+    padding: 4px;
+  }
+
+  .arcade-arena-header > div:nth-child(2) {
+    top: 56px;
+    transform: scale(0.58);
+    transform-origin: top center;
+  }
+
+  .arena-main > div {
+    zoom: 0.76;
+  }
+
+  .arena-bottom {
+    zoom: 0.82;
+  }
+
+  .arena-bot-label {
+    display: none;
+  }
 }
 .content {
   width: min(1240px, calc(100% - 48px));

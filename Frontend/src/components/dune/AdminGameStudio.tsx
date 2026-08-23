@@ -871,12 +871,6 @@ function GameplayPanel({
           value={draft.features.showBotSelector}
           onChange={(showBotSelector) => patch("features", { showBotSelector })}
         />
-        <SwitchRow
-          label="Defeat tester"
-          hint="Animation preview control"
-          value={draft.features.showDefeatTester}
-          onChange={(showDefeatTester) => patch("features", { showDefeatTester })}
-        />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Default mode">

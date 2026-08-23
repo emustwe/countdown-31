@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Crown, LogIn, Clock, Dices, Square } from "lucide-react";
+import { Crown, LogIn, Clock, Dices } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useGuestStore } from "../../stores/guest-store";
 import { useAuthStore } from "../../stores/auth-store";
@@ -39,7 +39,6 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const [showRules, setShowRules] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [isShaking, setIsShaking] = useState(false);
-  const [testDefeatActive, setTestDefeatActive] = useState(false);
 
   // Game Mode: Classic 31 (pure counting) vs. Tactical Skill Mode (loadout cards)
   const [gameMode, setGameMode] = useState<GameMode>(gameConfig.gameplay.defaultMode);
@@ -255,7 +254,6 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
 
   function confirmJoin() {
     soundManager.playClick();
-    setTestDefeatActive(false);
     const name =
       nameInput.trim().slice(0, 20) || `Player ${Math.floor(1000 + Math.random() * 9000)}`;
     setChosenName(name);
@@ -290,7 +288,6 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
 
   function rejoin() {
     soundManager.playClick();
-    setTestDefeatActive(false);
     if (chosenName) {
       if (gameMode === "skills") {
         setShowSkillModal(true);
@@ -313,7 +310,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
 
   return (
     <div
-      className={`relative w-full min-h-screen flex flex-col justify-between px-2 sm:px-6 py-2 overflow-x-hidden ${isShaking ? "animate-screen-shake" : ""}`}
+      className={`arena-viewport relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${isShaking ? "animate-screen-shake" : ""}`}
     >
       {/* Top Arcade Header Marquee with Game Mode Switcher */}
       <ArcadeHeader
@@ -324,9 +321,9 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
       />
 
       {/* Main Arcade Arena Battlefield (3 Columns on Desktop with Expanded Center) */}
-      <main className="w-full max-w-[1580px] mx-auto flex-1 grid grid-cols-1 lg:grid-cols-[270px_minmax(0,1fr)_270px] gap-3 sm:gap-4 items-start mt-10 sm:mt-14 md:mt-16 mb-4">
+      <main className="arena-main mx-auto grid min-h-0 w-full max-w-[1580px] flex-1 grid-cols-1 items-start gap-2 overflow-hidden lg:grid-cols-[270px_minmax(0,1fr)_270px] lg:gap-4">
         {/* Left Column: Local Player Big Battle Card Showcase */}
-        <div className="flex items-start justify-center order-2 lg:order-1 w-full max-w-[270px] mx-auto">
+        <div className="arena-player-panel order-2 mx-auto flex w-full max-w-[270px] items-start justify-center lg:order-1">
           <div className="w-full">
             <ArcadePlayerCard
               myPlayer={myPlayer}
@@ -339,7 +336,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         </div>
 
         {/* Center Column: 3D Horizontal Number Cylinder Drum & Action/Skill Hand */}
-        <div className="flex flex-col items-center justify-start gap-3 order-1 lg:order-2 w-full max-w-[850px] mx-auto">
+        <div className="arena-center order-1 mx-auto flex w-full max-w-[850px] flex-col items-center justify-start gap-2 lg:order-2">
           {/* The Hero 3D Horizontal Arcade Cylinder with Direct Card Selection */}
           <Arcade3DCylinder
             currentCount={count}
@@ -355,27 +352,19 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           />
 
           {/* Action Area: Tactical Skill Cards in Skill Mode OR Classic Turn Bar OR In-Place Game Over Mascot Stage */}
-          {status === "over" || testDefeatActive ? (
+          {status === "over" ? (
             /* In-Place Defeat/Victory 3D Video & Outcome Console */
             <BarnabyMascot
               count={count}
               status="over"
               myTurn={myTurn}
-              winner={
-                testDefeatActive ? { name: "Champion", color: "#34d399" } : (state?.winner ?? null)
-              }
-              lastEliminated={
-                testDefeatActive
-                  ? { name: "Test Cow", reason: "31" }
-                  : (state?.lastEliminated ?? null)
-              }
+              winner={state?.winner ?? null}
+              lastEliminated={state?.lastEliminated ?? null}
               isMyWin={
-                testDefeatActive
-                  ? false
-                  : !!(
-                      state?.winner &&
-                      players.find((p) => p.id === myId)?.name === state.winner.name
-                    )
+                !!(
+                  state?.winner &&
+                  players.find((p) => p.id === myId)?.name === state.winner.name
+                )
               }
               onPlayAgain={rejoin}
             />
@@ -424,7 +413,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         </div>
 
         {/* Right Column: Opponent Panel & Match Roster */}
-        <div className="flex flex-row lg:flex-col items-start justify-center order-3 w-full max-w-[270px] mx-auto">
+        <div className="arena-opponent-panel order-3 mx-auto flex w-full max-w-[270px] flex-row items-start justify-center lg:flex-col">
           <div className="w-full">
             <ArcadeOpponentCard
               opponentPlayer={opponentPlayer}
@@ -438,8 +427,8 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         </div>
       </main>
 
-      {/* Bottom Arcade Match HUD with Bot Count Config & Instant Test Button */}
-      <div className="w-full max-w-5xl mx-auto mt-4 mb-3 pb-2 flex flex-col gap-2.5">
+      {/* Compact match dock stays inside the arena viewport. */}
+      <div className="arena-bottom mx-auto flex w-full max-w-5xl shrink-0 flex-col gap-1 pb-1">
         <ArcadeHUD
           playerCount={players.length}
           maxPlayers={botCount + 1}
@@ -450,13 +439,12 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           showPing={gameConfig.features.showPing}
         />
 
-        {/* Quick Testing Bar: Bot Count & Instant Defeat Trigger */}
-        {(gameConfig.features.showBotSelector || gameConfig.features.showDefeatTester) && (
-          <div className="flex items-center justify-between flex-wrap gap-2 px-3 py-1.5 rounded-2xl bg-black/60 border border-amber-400/40 backdrop-blur-md">
+        {gameConfig.features.showBotSelector && (
+          <div className="flex items-center justify-center gap-2 rounded-2xl border border-amber-400/40 bg-black/60 px-3 py-1 backdrop-blur-md">
             {/* Bot Count Selector */}
             {gameConfig.features.showBotSelector && (
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-title font-bold text-slate-300">
+                <span className="arena-bot-label text-[11px] font-title font-bold text-slate-300">
                   OPPONENT BOTS:
                 </span>
                 <div className="flex items-center gap-1 bg-black/80 p-0.5 rounded-xl border border-slate-700">
@@ -494,26 +482,6 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
               </div>
             )}
 
-            {/* Defeat animation preview toggle. This is local UI state, so testing
-              never changes the real match or player state. */}
-            {gameConfig.features.showDefeatTester && (
-              <button
-                type="button"
-                onClick={() => {
-                  soundManager.playClick();
-                  setTestDefeatActive((active) => !active);
-                }}
-                aria-pressed={testDefeatActive}
-                className={`px-3.5 py-1 rounded-xl text-white font-title font-black text-[10px] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1 ${
-                  testDefeatActive
-                    ? "bg-gradient-to-r from-red-600 to-rose-500 shadow-[0_0_14px_rgba(239,68,68,0.72)]"
-                    : "bg-gradient-to-r from-rose-500 to-amber-500 shadow-[0_0_12px_rgba(244,63,94,0.6)]"
-                }`}
-              >
-                {testDefeatActive ? <Square size={11} fill="currentColor" /> : <span>⚡</span>}
-                <span>{testDefeatActive ? "STOP COW ANIMATION" : "TEST DEFEAT COW ANIMATION"}</span>
-              </button>
-            )}
           </div>
         )}
       </div>

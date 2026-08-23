@@ -23,7 +23,7 @@ export function ArcadeHUD({
   showPing = true,
 }: ArcadeHUDProps) {
   return (
-    <div className="w-full max-w-4xl mx-auto flex items-center justify-around bg-gradient-to-r from-[#0d1712]/95 via-[#060c09]/98 to-[#0d1712]/95 backdrop-blur-md border-2 border-amber-500/40 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-title font-bold text-amber-200/90 shadow-[0_10px_25px_rgba(0,0,0,0.8)] select-none my-2">
+    <div className="arcade-hud mx-auto flex w-full max-w-4xl select-none items-center justify-around rounded-2xl border-2 border-amber-500/40 bg-gradient-to-r from-[#0d1712]/95 via-[#060c09]/98 to-[#0d1712]/95 px-4 py-2 text-xs font-bold text-amber-200/90 shadow-[0_10px_25px_rgba(0,0,0,0.8)] backdrop-blur-md sm:text-sm">
       {/* Players */}
       <div className="flex items-center gap-2">
         <Users size={18} className="text-amber-400 shrink-0" />
