@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Settings, Volume2, Sparkles, User, Check, Save, LogOut, Camera } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
-import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { AuthGuard } from "../../components/AuthGuard";
 import { useSettingsStore } from "../../stores/settings-store";
@@ -21,7 +20,6 @@ export default function SettingsPage() {
 }
 
 function SettingsLayout() {
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
 
   return (
@@ -35,7 +33,7 @@ function SettingsLayout() {
 
       {/* Header */}
       <div className="relative z-20">
-        <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+        <ArcadeHeader onOpenRules={() => setShowRules(true)} />
       </div>
 
       {/* Main Settings Arena - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
@@ -43,12 +41,6 @@ function SettingsLayout() {
         <SettingsContent />
       </main>
 
-      {/* Drawer & Modal */}
-      <ArcadeDrawerMenu
-        isOpen={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        onOpenRules={() => setShowRules(true)}
-      />
       <OfficialRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
     </div>
   );

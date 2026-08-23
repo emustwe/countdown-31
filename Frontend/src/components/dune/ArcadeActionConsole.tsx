@@ -120,9 +120,9 @@ export function ArcadeActionConsole({
   }
 
   return (
-    <div className="relative w-full max-w-5xl mx-auto flex flex-col items-center bg-gradient-to-b from-[#132019]/90 via-[#0a1410]/95 to-[#050b08]/98 backdrop-blur-xl border-2 border-amber-500/40 rounded-3xl p-3 sm:p-4 shadow-[0_15px_35px_rgba(0,0,0,0.8)] select-none">
+    <div className="arcade-action-console relative mx-auto flex w-full max-w-5xl select-none flex-col items-center rounded-3xl border-2 border-amber-500/40 bg-gradient-to-b from-[#132019]/90 via-[#0a1410]/95 to-[#050b08]/98 p-3 shadow-[0_15px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl sm:p-4">
       {/* Universal Turn Header Bar */}
-      <div className="w-full flex items-center justify-between bg-black/60 border border-amber-500/30 rounded-2xl px-4 py-2 mb-3 shadow-inner flex-wrap gap-2">
+      <div className="arcade-action-header mb-3 flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-500/30 bg-black/60 px-4 py-2 shadow-inner">
         <div className="flex items-center gap-3">
           {myTurn ? (
             <div className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/60 px-3 py-1 rounded-full">
@@ -162,7 +162,7 @@ export function ArcadeActionConsole({
       </div>
 
       {/* Section Sub-Title */}
-      <div className="w-full flex items-center justify-between px-2 mb-2">
+      <div className="arcade-action-subtitle mb-2 flex w-full items-center justify-between px-2">
         <div className="flex items-center gap-1.5">
           <Sparkles size={16} className="text-yellow-400 fill-yellow-400 animate-pulse" />
           <span className="text-xs sm:text-sm font-title font-black text-amber-300 uppercase tracking-widest">
@@ -175,7 +175,7 @@ export function ArcadeActionConsole({
       </div>
 
       {/* 2 Big Collectible Tactical Skill Cards Hand */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-2xl">
+      <div className="arcade-skill-grid grid w-full max-w-2xl grid-cols-2 gap-3 sm:gap-4">
         {activeDeck.map((card) => {
           const available = (skills[card.type] ?? 0) > 0;
           const canPlay = myTurn && !isSkillsLocked && available;
@@ -193,7 +193,7 @@ export function ArcadeActionConsole({
               whileHover={canPlay ? { y: -6, scale: 1.02 } : {}}
               onClick={() => canPlay && handlePlayCard(card.type)}
               data-sound="none"
-              className={`relative rounded-3xl p-3.5 sm:p-4 flex flex-col justify-between border-2 transition-all select-none min-h-[190px] sm:min-h-[210px] ${
+              className={`arcade-skill-card relative flex min-h-[190px] select-none flex-col justify-between rounded-3xl border-2 p-3.5 transition-all sm:min-h-[210px] sm:p-4 ${
                 card.cardGradient
               } ${
                 canPlay
@@ -216,7 +216,7 @@ export function ArcadeActionConsole({
               </div>
 
               {/* Center Art Box */}
-              <div className="w-full h-16 sm:h-20 rounded-2xl bg-black/50 border border-white/10 flex flex-col items-center justify-center relative overflow-hidden my-1 shadow-inner">
+              <div className="arcade-skill-art relative my-1 flex h-16 w-full flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/50 shadow-inner sm:h-20">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.1)_0%,transparent_70%)]" />
                 <div className="relative z-10">{card.icon}</div>
               </div>
@@ -235,7 +235,7 @@ export function ArcadeActionConsole({
               </div>
 
               {/* Description */}
-              <p className="text-[10px] text-slate-300/90 leading-snug line-clamp-2 text-center my-1">
+              <p className="arcade-skill-description my-1 line-clamp-2 text-center text-[10px] leading-snug text-slate-300/90">
                 {card.description}
               </p>
 

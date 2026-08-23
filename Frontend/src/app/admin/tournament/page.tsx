@@ -491,7 +491,7 @@ export default function TournamentAdminPage() {
                   <button
                     onClick={() => {
                       soundManager.playClick();
-                      if (confirm(`Delete "${t.title}"? This cannot be undone.`)) del.mutate(t.id);
+                      del.mutate(t.id);
                     }}
                     className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-300 font-title font-bold text-xs flex items-center gap-1 cursor-pointer"
                   >

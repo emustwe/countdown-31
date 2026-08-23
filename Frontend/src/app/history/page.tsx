@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { History as HistoryIcon, Trophy, Flame, Swords, Calendar, Award, RotateCcw, ArrowRight } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
-import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { soundManager } from "../../lib/soundManager";
 import { useRouter } from "next/navigation";
@@ -18,7 +17,6 @@ const PAST_BATTLES = [
 
 export default function HistoryPage() {
   const router = useRouter();
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
 
   return (
@@ -32,7 +30,7 @@ export default function HistoryPage() {
 
       {/* Header */}
       <div className="relative z-20">
-        <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+        <ArcadeHeader onOpenRules={() => setShowRules(true)} />
       </div>
 
       {/* Main History Arena - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
@@ -116,12 +114,6 @@ export default function HistoryPage() {
         </div>
       </main>
 
-      {/* Drawer & Modal */}
-      <ArcadeDrawerMenu
-        isOpen={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        onOpenRules={() => setShowRules(true)}
-      />
       <OfficialRulesModal
         isOpen={showRules}
         onClose={() => setShowRules(false)}

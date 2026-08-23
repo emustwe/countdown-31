@@ -15,7 +15,9 @@ export function webOrigins(): string[] {
     .filter(Boolean);
 }
 
-const PRIVATE_LAN = /^https?:\/\/(localhost|127\.0\.0\.1|(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)[0-9.]+)(?::\d+)?$/;
+const PRIVATE_LAN =
+  /^https?:\/\/(localhost|127\.0\.0\.1|(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)[0-9.]+)(?::\d+)?$/;
+const TAILSCALE_FUNNEL = /^https:\/\/[a-z0-9-]+\.[a-z0-9-]+\.ts\.net(?::\d+)?$/i;
 
 /** Whether a browser Origin should be allowed. Non-browser callers (no Origin) are allowed.
  * In production ONLY the explicit WEB_ORIGIN allowlist is honored; the private-LAN convenience
@@ -25,7 +27,7 @@ export function isAllowedOrigin(origin?: string): boolean {
   if (!origin) return true;
   if (webOrigins().includes(origin)) return true;
   if (process.env.NODE_ENV === "production") return false;
-  return PRIVATE_LAN.test(origin);
+  return PRIVATE_LAN.test(origin) || TAILSCALE_FUNNEL.test(origin);
 }
 
 /** CORS `origin` option (function form) usable by both `app.enableCors` and socket.io. */

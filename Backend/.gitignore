@@ -1,6 +1,1 @@
 secrets/
-
-# Local env files (hold secrets — never commit)
-.env
-.env.*
-!.env.example

@@ -19,6 +19,7 @@ import { useAuthStore } from "../../stores/auth-store";
 import { useBalanceSocket } from "../../lib/hooks/useBalanceSocket";
 import { useNotifications, useMarkNotificationsRead } from "../../lib/hooks/useNotifications";
 import { FlipText } from "./FlipText";
+import { MobileBottomNav } from "./MobileBottomNav";
 
 // [key, EN label, KO label, Icon, path, disabled?]
 // Tournaments (/events) lists the public tournaments. Sponsorship is a coming-soon hub for people
@@ -227,6 +228,7 @@ export function PageShell({ children, className = "", brandVa = false }: { child
     <div className={`app-shell ${className} ${brandVa ? "va-shell" : ""}`}>
       <TopNav activeKey={activeKey} authed={authed} initials={initials} avatarUrl={profile?.avatarUrl} name={name} email={email} brandVa={brandVa} />
       {children}
+      {pathname !== "/home" && <MobileBottomNav />}
       <footer><span>18+</span> Play responsibly. <b>Set your limits.</b></footer>
     </div>
   );

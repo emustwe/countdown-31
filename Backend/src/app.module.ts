@@ -16,6 +16,7 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
 import { CountdownModule } from "./modules/countdown/countdown.module";
 import { SponsorsModule } from "./modules/sponsors/sponsors.module";
 import { ShopModule } from "./modules/shop/shop.module";
+import { PlatformConfigModule } from "./modules/platform-config/platform-config.module";
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { ShopModule } from "./modules/shop/shop.module";
     AuthModule,
     WalletModule,
     NotificationsModule,
+    PlatformConfigModule,
     CountdownModule,
     SponsorsModule,
     ShopModule,

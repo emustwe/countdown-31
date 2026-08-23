@@ -81,7 +81,27 @@ async function rawRequest<T>(
     return undefined as T;
   }
 
-  const data = await res.json();
+  const text = await res.text();
+  if (!text || text.trim() === "") {
+    if (!res.ok) {
+      throw new ApiError(res.status, {
+        statusCode: res.status,
+        error: res.statusText || "Error",
+        message: res.statusText || "Request failed",
+        path,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    return undefined as T;
+  }
+
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = { message: text };
+  }
+
   if (!res.ok) {
     throw new ApiError(res.status, data as ApiErrorEnvelope);
   }

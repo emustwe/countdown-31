@@ -6,6 +6,7 @@ import { useSettingsStore } from "../stores/settings-store";
 import { usePlatformTheme } from "../lib/hooks/useTheme";
 import { InteractionSounds } from "../components/InteractionSounds";
 import { ProtectedRouteBoundary } from "../components/ProtectedRouteBoundary";
+import { useGameConfig } from "../lib/hooks/useGameConfig";
 
 /** Applies the per-viewer light/dark choice (data-theme) and the admin-set platform theme
  * family (data-theme-family). The family is cached in localStorage so the pre-paint script
@@ -32,6 +33,15 @@ function ThemeApplier() {
   return null;
 }
 
+function GameConfigApplier() {
+  const { data } = useGameConfig();
+  useEffect(() => {
+    document.documentElement.style.setProperty("--game-primary", data.arena.primaryColor);
+    document.documentElement.style.setProperty("--game-secondary", data.arena.secondaryColor);
+  }, [data.arena.primaryColor, data.arena.secondaryColor]);
+  return null;
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
@@ -48,6 +58,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeApplier />
+      <GameConfigApplier />
       <InteractionSounds />
       <ProtectedRouteBoundary>{children}</ProtectedRouteBoundary>
     </QueryClientProvider>

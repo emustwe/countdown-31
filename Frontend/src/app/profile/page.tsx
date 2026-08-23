@@ -16,7 +16,6 @@ import {
   Clock,
 } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
-import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { MasterAvatar } from "../../components/dune/MasterAvatar";
 import { useAvatarStore } from "../../stores/avatar-customization-store";
@@ -63,7 +62,6 @@ const MATCH_HISTORY = [
 ];
 
 export default function ProfilePage() {
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const avatar = useAvatarStore();
   const { data: profile } = useProfile();
@@ -85,7 +83,7 @@ export default function ProfilePage() {
 
       {/* Header */}
       <div className="relative z-20">
-        <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+        <ArcadeHeader onOpenRules={() => setShowRules(true)} />
       </div>
 
       {/* Main Profile Showcase - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
@@ -288,12 +286,6 @@ export default function ProfilePage() {
         </div>
       </main>
 
-      {/* Drawer & Modal */}
-      <ArcadeDrawerMenu
-        isOpen={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        onOpenRules={() => setShowRules(true)}
-      />
       <OfficialRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
     </div>
   );

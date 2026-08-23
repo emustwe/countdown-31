@@ -555,3 +555,13 @@ button { min-height: 42px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Admin Game Studio controls */
+.studio-input { width: 100%; border: 1px solid rgb(51 65 85 / .9); border-radius: .85rem; background: rgb(2 6 23 / .72); padding: .7rem .85rem; color: white; font-size: .8rem; outline: none; transition: border-color .16s, box-shadow .16s; }
+.studio-input:focus { border-color: var(--game-primary, #fbbf24); box-shadow: 0 0 0 3px rgb(251 191 36 / .12); }
+.studio-add, .studio-secondary, .studio-publish { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: .8rem; font-family: var(--font-lilita); font-size: .75rem; transition: .16s; padding: .65rem .85rem; }
+.studio-add { border: 1px solid rgb(52 211 153 / .5); background: rgb(6 78 59 / .45); color: #6ee7b7; }
+.studio-secondary { border: 1px solid rgb(71 85 105); background: rgb(15 23 42 / .8); color: #cbd5e1; }
+.studio-publish { background: linear-gradient(90deg, var(--game-secondary, #34d399), #22c55e); color: #03130b; box-shadow: 0 0 18px rgb(52 211 153 / .35); padding-inline: 1.1rem; }
+.studio-add:hover, .studio-secondary:hover, .studio-publish:hover { filter: brightness(1.14); transform: translateY(-1px); }
+.studio-add:disabled, .studio-secondary:disabled, .studio-publish:disabled { opacity: .4; cursor: not-allowed; transform: none; }

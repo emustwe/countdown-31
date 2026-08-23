@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Zap, RotateCcw, Shield, Moon, Check, X, ArrowRight } from "lucide-react";
 import { type SkillType } from "../../lib/hooks/useCountdownLive";
 import { soundManager } from "../../lib/soundManager";
+import { useGameConfig } from "../../lib/hooks/useGameConfig";
 
 interface SkillOption {
   type: SkillType;
@@ -77,7 +78,33 @@ interface SkillLoadoutModalProps {
 }
 
 export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutModalProps) {
+  const { data: config } = useGameConfig();
+  const visibleSkills = useMemo(
+    () =>
+      config.skills
+        .filter((skill) => skill.enabled)
+        .sort((a, b) => a.order - b.order)
+        .map((skill) => {
+          const base = ALL_SKILLS.find((item) => item.type === skill.id) ?? ALL_SKILLS[0]!;
+          return {
+            ...base,
+            title: skill.name,
+            badge: skill.shortLabel,
+            description: skill.description,
+            rarityColor: skill.color,
+          };
+        }),
+    [config.skills],
+  );
   const [selected, setSelected] = useState<SkillType[]>(["rewind", "turbo"]);
+
+  useEffect(() => {
+    const available = visibleSkills.map((skill) => skill.type);
+    setSelected((current) => {
+      const valid = current.filter((skill) => available.includes(skill));
+      return [...valid, ...available.filter((skill) => !valid.includes(skill))].slice(0, 2);
+    });
+  }, [visibleSkills]);
 
   if (!isOpen) return null;
 
@@ -125,9 +152,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
                 <h2 className="font-title font-black text-lg sm:text-xl text-amber-300 tracking-wide">
                   PICK 2 SKILLS
                 </h2>
-                <p className="text-xs text-slate-400">
-                  Tap two cards, then start the game.
-                </p>
+                <p className="text-xs text-slate-400">Tap two cards, then start the game.</p>
               </div>
             </div>
 
@@ -141,9 +166,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
 
           {/* Selection Counter Pill */}
           <div className="flex items-center justify-between px-2">
-            <span className="text-xs font-title font-bold text-slate-300">
-              Your picks
-            </span>
+            <span className="text-xs font-title font-bold text-slate-300">Your picks</span>
             <span
               className={`text-xs font-title font-black px-3 py-1 rounded-full border shadow ${
                 selected.length === 2
@@ -157,7 +180,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
 
           {/* 4 Skill Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {ALL_SKILLS.map((skill) => {
+            {visibleSkills.map((skill) => {
               const isChosen = selected.includes(skill.type);
               return (
                 <div
@@ -178,9 +201,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
                         {skill.icon}
                       </div>
                       <div>
-                        <h3 className="font-title font-black text-sm text-white">
-                          {skill.title}
-                        </h3>
+                        <h3 className="font-title font-black text-sm text-white">{skill.title}</h3>
                         <span
                           className="text-[9px] font-title font-bold uppercase tracking-wider"
                           style={{ color: skill.rarityColor }}
@@ -199,9 +220,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
                     )}
                   </div>
 
-                  <p className="text-[11px] text-slate-300/90 leading-snug">
-                    {skill.description}
-                  </p>
+                  <p className="text-[11px] text-slate-300/90 leading-snug">{skill.description}</p>
                 </div>
               );
             })}

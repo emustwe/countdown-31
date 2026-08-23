@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { ShoppingBag, Check, Coins, Gem, Palette } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
-import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { AuthGateModal } from "../../components/dune/AuthGateModal";
 import { useAuthStore } from "../../stores/auth-store";
@@ -49,7 +48,6 @@ const SHOP_ITEMS: ShopItem[] = [
 
 export default function ShopPage() {
   const [tab, setTab] = useState<ShopTab>("skins");
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -109,7 +107,7 @@ export default function ShopPage() {
 
       {/* Header */}
       <div className="relative z-20">
-        <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+        <ArcadeHeader onOpenRules={() => setShowRules(true)} />
       </div>
 
       {/* Main Shop Arena - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
@@ -260,12 +258,6 @@ export default function ShopPage() {
         </div>
       </main>
 
-      {/* Drawer & Modals */}
-      <ArcadeDrawerMenu
-        isOpen={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        onOpenRules={() => setShowRules(true)}
-      />
       <OfficialRulesModal
         isOpen={showRules}
         onClose={() => setShowRules(false)}

@@ -4,7 +4,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Menu,
+  BookOpen,
+  Crown,
+  Handshake,
+  History as HistoryIcon,
+  Home,
   Volume2,
   VolumeX,
   Sparkles,
@@ -12,7 +16,6 @@ import {
   User,
   Wallet,
   ShoppingBag,
-  Palette,
   Settings,
   LogIn,
   LogOut,
@@ -29,19 +32,27 @@ import { soundManager } from "../../lib/soundManager";
 import { type GameMode } from "../../lib/hooks/useCountdownLive";
 import { useAvatarStore } from "../../stores/avatar-customization-store";
 import { MasterAvatar } from "./MasterAvatar";
+import { useGameConfig } from "../../lib/hooks/useGameConfig";
+import type { MenuIconId } from "../../lib/game-config";
+import { MobileBottomNav } from "./MobileBottomNav";
+import { DEFAULT_GAME_CONFIG, type GameConfig } from "../../lib/game-config";
 
 interface ArcadeHeaderProps {
-  onMenuClick?: () => void;
+  onOpenRules?: () => void;
   gameMode?: GameMode;
   onToggleMode?: (mode: GameMode) => void;
   showModeToggle?: boolean;
+  isTournament?: boolean;
+  config?: GameConfig;
 }
 
 export function ArcadeHeader({
-  onMenuClick,
+  onOpenRules,
   gameMode = "skills",
   onToggleMode,
   showModeToggle = false,
+  isTournament = false,
+  config: passedConfig,
 }: ArcadeHeaderProps) {
   const router = useRouter();
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
@@ -51,6 +62,8 @@ export function ArcadeHeader({
   const accessToken = useAuthStore((s) => s.accessToken);
   const isAuthenticated = !!accessToken && !!user;
   const avatar = useAvatarStore();
+  const { data: serverConfig } = useGameConfig();
+  const config = passedConfig ?? (isTournament ? (serverConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG);
   const logoutMutation = useLogout();
 
   const { data: profile } = useProfile();
@@ -94,6 +107,12 @@ export function ArcadeHeader({
     router.push(path);
   }
 
+  function handleMenuNavigate(path: string, requiresAuth: boolean) {
+    handleNavigate(
+      requiresAuth && !isAuthenticated ? `/login?next=${encodeURIComponent(path)}` : path,
+    );
+  }
+
   async function handleLogout() {
     soundManager.playClick();
     setShowProfileMenu(false);
@@ -104,23 +123,26 @@ export function ArcadeHeader({
   const displayName = profile?.fullName || user?.fullName || "Player";
   const userInitials = displayName.slice(0, 2).toUpperCase();
   const balanceDisplay = wallet ? formatUsdt(wallet.balance) : "0.00 USDT";
+  const menuIcons: Record<MenuIconId, typeof Home> = {
+    home: Home,
+    cow: Crown,
+    trophy: Trophy,
+    sponsor: Handshake,
+    shop: ShoppingBag,
+    profile: User,
+    wallet: Wallet,
+    history: HistoryIcon,
+    settings: Settings,
+  };
+  const menuItems = config.menuItems
+    .filter((item) => item.enabled)
+    .sort((a, b) => a.order - b.order);
 
   return (
-    <header className="relative w-full flex items-start justify-between px-3 sm:px-8 pt-3 pb-2 z-30 select-none h-24 sm:h-28">
-      {/* Left Menu Button & Optional Mode Selector Pill (Only in Arena) */}
-      <div className="flex items-center gap-2.5 z-20 pt-1">
-        <button
-          onClick={() => {
-            soundManager.playClick();
-            onMenuClick?.();
-          }}
-          className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-[#1f2b23] to-[#0a140e] border-2 border-amber-400 shadow-[0_4px_12px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.4)] flex items-center justify-center text-amber-300 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-          title="Menu"
-          aria-label="Menu"
-        >
-          <Menu size={20} />
-        </button>
-
+    <>
+    <header className={`arcade-arena-header ${canToggle ? "is-game-header" : "is-page-header"} relative z-30 flex h-32 w-full shrink-0 select-none items-start justify-between px-3 pb-2 pt-3 sm:h-36 sm:px-8`}>
+      {/* Left Mode Selector Pill (Only in Arena) */}
+      <div className="arcade-mode-selector flex items-center gap-2.5 z-20 pt-1">
         {/* Mode Selector Toggle Pill - ONLY rendered on Game Arena page */}
         {canToggle && (
           <div className="flex items-center bg-black/75 border border-amber-400/50 rounded-2xl p-1 shadow-lg backdrop-blur-md">
@@ -158,7 +180,7 @@ export function ArcadeHeader({
       </div>
 
       {/* Center 3D Marquee Banner: COUNT DOWN 31 (Absolute Dead Center on Screen) */}
-      <div className="absolute left-1/2 -translate-x-1/2 top-2 flex flex-col items-center pointer-events-none z-10">
+      <div className="arcade-brand absolute left-1/2 -translate-x-1/2 top-2 flex flex-col items-center pointer-events-none z-10">
         <div
           onClick={() => router.push("/home")}
           className="pointer-events-auto cursor-pointer relative flex items-center gap-2 bg-gradient-to-r from-amber-950 via-yellow-900 to-amber-950 px-6 sm:px-10 py-2 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all"
@@ -170,7 +192,7 @@ export function ArcadeHeader({
           <span className="absolute bottom-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
 
           <h1 className="font-title font-black text-xl sm:text-3xl md:text-4xl tracking-wider text-white drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)]">
-            COUNT DOWN
+            {config.branding.gameTitle}
           </h1>
 
           {/* 3D Golden "31" Shield Badge */}
@@ -184,57 +206,64 @@ export function ArcadeHeader({
         {/* Subtitle Warning Pill - ONLY shown in Game Arena */}
         {canToggle && (
           <span className="mt-1.5 text-[10px] sm:text-xs font-title font-black tracking-widest text-amber-300 uppercase bg-black/80 px-3.5 py-0.5 rounded-full border border-amber-400/40 shadow pointer-events-auto">
-            {gameMode === "skills" ? "⚡ Tactical Skills Activated!" : "🎲 Classic Pure Counting!"}
+            {gameMode === "skills"
+              ? `⚡ ${config.branding.announcement}`
+              : "🎲 Classic Pure Counting!"}
           </span>
         )}
       </div>
 
       {/* Right Action Icons: Sound Toggle + Round Profile Avatar Button */}
-      <div className="flex items-center gap-2.5 z-20 pt-1 relative" ref={profileMenuRef}>
+      <div className="arcade-header-actions flex items-center gap-2.5 z-20 pt-1 relative" ref={profileMenuRef}>
         {/* Sound Toggle Button */}
         <button
           onClick={toggleSound}
-          className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-[#1f2b23] to-[#0a140e] border-2 border-amber-400 shadow-[0_4px_12px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.4)] flex items-center justify-center text-amber-300 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+          className="arcade-sound-trigger w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-[#1f2b23] to-[#0a140e] border-2 border-amber-400 shadow-[0_4px_12px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.4)] flex items-center justify-center text-amber-300 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
           title={soundEnabled ? "Mute sound" : "Enable sound"}
           aria-label="Sound Toggle"
         >
           {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} className="text-slate-400" />}
         </button>
 
-        {/* Circular Profile Avatar Button */}
-        {isAuthenticated && (
-          <button
-            onClick={() => {
-              soundManager.playClick();
-              setShowProfileMenu(!showProfileMenu);
-            }}
-            className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.6)] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-            title="Profile & Account Menu"
-            aria-label="Profile Menu"
-          >
+        {/* One menu entry point for account and player navigation. */}
+        <button
+          onClick={() => {
+            soundManager.playClick();
+            setShowProfileMenu(!showProfileMenu);
+          }}
+          className="arcade-profile-trigger relative w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.6)] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+          title={isAuthenticated ? "Profile & Menu" : "Menu & Sign In"}
+          aria-label={isAuthenticated ? "Profile Menu" : "Player Menu"}
+        >
+          {isAuthenticated ? (
             <div className="w-full h-full rounded-full bg-[#0d1a12] flex items-center justify-center overflow-hidden border border-amber-200">
               <MasterAvatar
                 config={{ ...avatar, backgroundId: "none", frameId: "none" }}
                 className="h-full w-full rounded-full"
               />
             </div>
+          ) : (
+            <div className="grid h-full w-full place-items-center rounded-full border border-amber-200 bg-[#0d1a12] text-amber-300">
+              <User size={20} />
+            </div>
+          )}
 
-            {/* Level / Status Mini Badge */}
+          {isAuthenticated && (
             <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-full text-[8px] font-title font-black bg-gradient-to-r from-emerald-400 to-green-600 text-slate-950 border border-black shadow">
               Lv.12
             </span>
-          </button>
-        )}
+          )}
+        </button>
 
         {/* Profile Dropdown Menu Card */}
         <AnimatePresence>
-          {isAuthenticated && showProfileMenu && (
+          {showProfileMenu && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 10 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 top-14 w-72 rounded-3xl bg-gradient-to-b from-[#18281e]/98 via-[#0e1a13]/98 to-[#050a07] border-2 border-amber-400 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(245,158,11,0.3)] p-4 flex flex-col gap-3 backdrop-blur-xl z-50"
+              className="absolute right-0 top-14 flex max-h-[calc(100vh-5rem)] w-80 max-w-[calc(100vw-1rem)] flex-col gap-3 overflow-y-auto rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-[#18281e]/98 via-[#0e1a13]/98 to-[#050a07] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(245,158,11,0.3)] backdrop-blur-xl z-50"
             >
               {/* Header Info */}
               <div className="flex items-center gap-3 pb-3 border-b border-amber-500/30">
@@ -264,73 +293,41 @@ export function ArcadeHeader({
                 </div>
               )}
 
-              {/* Navigation Items */}
+              {/* Admin-configured navigation items */}
               <div className="flex flex-col gap-1 text-xs font-title font-bold">
-                <button
-                  onClick={() => handleNavigate("/profile")}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-amber-400/10 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <User size={15} className="text-amber-400" />
-                    <span>My Profile</span>
-                  </div>
-                  <ChevronRight size={14} className="text-slate-500" />
-                </button>
+                {menuItems.map((item) => {
+                  const Icon = menuIcons[item.icon];
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleMenuNavigate(item.path, item.requiresAuth)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-amber-400/10 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon size={15} className="text-amber-400" />
+                        <span>{item.label}</span>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-500" />
+                    </button>
+                  );
+                })}
 
-                <button
-                  onClick={() => handleNavigate("/avatar")}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-amber-400/10 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Palette size={15} className="text-amber-400" />
-                    <span>My Cow</span>
-                  </div>
-                  <ChevronRight size={14} className="text-slate-500" />
-                </button>
-
-                <button
-                  onClick={() => handleNavigate("/shop")}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-amber-400/10 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <ShoppingBag size={15} className="text-amber-400" />
-                    <span>Marketplace</span>
-                  </div>
-                  <ChevronRight size={14} className="text-slate-500" />
-                </button>
-
-                <button
-                  onClick={() => handleNavigate("/wallet")}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-amber-400/10 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Wallet size={15} className="text-emerald-400" />
-                    <span>Wallet & Crypto</span>
-                  </div>
-                  <ChevronRight size={14} className="text-slate-500" />
-                </button>
-
-                <button
-                  onClick={() => handleNavigate("/events")}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-amber-400/10 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Trophy size={15} className="text-amber-400" />
-                    <span>Tournaments</span>
-                  </div>
-                  <ChevronRight size={14} className="text-slate-500" />
-                </button>
-
-                <button
-                  onClick={() => handleNavigate("/settings")}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-amber-400/10 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Settings size={15} className="text-slate-400" />
-                    <span>Settings</span>
-                  </div>
-                  <ChevronRight size={14} className="text-slate-500" />
-                </button>
+                {onOpenRules && (
+                  <button
+                    onClick={() => {
+                      soundManager.playClick();
+                      setShowProfileMenu(false);
+                      onOpenRules();
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-amber-400/10 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <BookOpen size={15} className="text-amber-400" />
+                      <span>How to play</span>
+                    </div>
+                    <ChevronRight size={14} className="text-slate-500" />
+                  </button>
+                )}
 
                 {user?.role === "ADMIN" && (
                   <button
@@ -371,5 +368,7 @@ export function ArcadeHeader({
         </AnimatePresence>
       </div>
     </header>
+    <MobileBottomNav />
+    </>
   );
 }

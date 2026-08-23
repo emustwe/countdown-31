@@ -95,7 +95,10 @@ h3 {
   background:
     linear-gradient(180deg, rgba(8, 18, 12, 0.72) 0%, rgba(10, 24, 16, 0.82) 40%, rgba(6, 12, 8, 0.94) 100%),
     url("/assets/barnaby/barnaby-pasture-arena.jpg") center center / cover fixed no-repeat !important;
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  max-height: 100dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -112,6 +115,225 @@ h3 {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0 !important;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* The live arena is a fixed stage, not a document. Keep gameplay, controls and
+   the match dock visible together, even on shorter laptop displays. */
+.arena-main {
+  align-content: start;
+  padding-top: clamp(10px, 1.8vh, 18px);
+}
+
+.arena-bottom {
+  position: relative;
+  z-index: 24;
+}
+
+/* The defeat cow quietly loops in its corner. If this client is eliminated,
+   the same stage travels beneath the reel and grows into the result moment. */
+.defeat-cow-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 23;
+  pointer-events: none;
+}
+
+.defeat-cow-stage {
+  position: absolute;
+  left: clamp(18px, 4vw, 72px);
+  bottom: 62px;
+  width: 104px;
+  height: 185px;
+  opacity: 0.86;
+  transform: translateX(0);
+  transform-origin: bottom center;
+  transition:
+    left 900ms cubic-bezier(.2, .8, .2, 1),
+    bottom 900ms cubic-bezier(.2, .8, .2, 1),
+    width 900ms cubic-bezier(.2, .8, .2, 1),
+    height 900ms cubic-bezier(.2, .8, .2, 1),
+    opacity 350ms ease,
+    transform 900ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.defeat-cow-stage.is-local-defeat {
+  left: 50%;
+  bottom: 155px;
+  width: 158px;
+  height: 281px;
+  opacity: 1;
+  transform: translateX(-50%);
+  z-index: 4;
+}
+
+.defeat-cow-stars {
+  position: absolute;
+  z-index: 3;
+  top: -19px;
+  left: 50%;
+  display: flex;
+  gap: 2px;
+  transform: translateX(-50%);
+  font-size: 17px;
+  filter: drop-shadow(0 0 8px rgb(250 204 21 / .85));
+}
+
+.defeat-cow-message {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: calc(50% - 110px);
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 10px;
+  border: 1px solid rgb(251 191 36 / .65);
+  border-radius: 14px;
+  background: rgb(3 10 7 / .86);
+  color: white;
+  text-align: center;
+  box-shadow: 0 8px 24px rgb(0 0 0 / .65);
+  backdrop-filter: blur(10px);
+}
+
+.defeat-cow-message strong,
+.arena-result-panel strong {
+  color: #fcd34d;
+  font: 900 13px var(--font-lilita);
+  letter-spacing: .08em;
+}
+
+.defeat-cow-message span,
+.arena-result-panel span {
+  color: #d1d5db;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.defeat-cow-message button,
+.arena-result-panel button {
+  pointer-events: auto;
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 5px 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fcd34d, #f59e0b);
+  color: #281405;
+  font: 900 11px var(--font-lilita);
+  box-shadow: 0 4px 14px rgb(245 158 11 / .35);
+}
+
+.arena-result-panel {
+  position: fixed;
+  left: calc(50% - 145px);
+  top: min(61vh, 520px);
+  width: min(290px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 14px;
+  border: 1px solid rgb(251 191 36 / .55);
+  border-radius: 16px;
+  background: rgb(3 10 7 / .9);
+  box-shadow: 0 12px 32px rgb(0 0 0 / .7);
+  backdrop-filter: blur(12px);
+}
+
+.arena-result-panel.is-win {
+  border-color: rgb(52 211 153 / .7);
+}
+
+@media (max-width: 1023px) {
+  .arena-player-panel,
+  .arena-opponent-panel {
+    display: none;
+  }
+
+  .arena-main {
+    display: flex;
+    justify-content: center;
+  }
+}
+
+@media (max-height: 820px) and (min-width: 768px) {
+  .arcade-arena-header {
+    height: 148px !important;
+    padding-top: 4px;
+  }
+
+  .arena-main > div {
+    zoom: 0.84;
+  }
+
+  .arena-bottom {
+    zoom: 0.9;
+  }
+
+  .defeat-cow-stage.is-local-defeat {
+    bottom: 145px;
+    width: 110px;
+    height: 196px;
+  }
+
+}
+
+@media (max-height: 680px) and (min-width: 768px) {
+  .arcade-arena-header {
+    height: 124px !important;
+  }
+
+  .arena-main > div {
+    zoom: 0.72;
+  }
+
+  .arena-bottom {
+    zoom: 0.82;
+  }
+}
+
+@media (max-width: 767px) {
+  .arcade-arena-header {
+    height: 140px !important;
+    padding: 4px;
+  }
+
+  .arcade-arena-header > div:nth-child(2) {
+    top: 56px;
+    transform: scale(0.58);
+    transform-origin: top center;
+  }
+
+  .arena-main > div {
+    zoom: 0.76;
+  }
+
+  .arena-bottom {
+    zoom: 0.82;
+  }
+
+  .defeat-cow-stage {
+    left: 10px;
+    bottom: 56px;
+    width: 76px;
+    height: 135px;
+  }
+
+  .defeat-cow-stage.is-local-defeat {
+    left: 50%;
+    bottom: 145px;
+    width: 120px;
+    height: 213px;
+  }
 }
 .content {
   width: min(1240px, calc(100% - 48px));
@@ -1913,6 +2135,12 @@ h3 {
   .rules-actions .primary {
     flex: 1;
     justify-content: center;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 900px) {
+  .arcade-arena-header.is-game-header .arcade-mode-selector {
+    transform: scale(.55);
   }
 }
 
@@ -7648,3 +7876,204 @@ button.mini:hover { filter: brightness(1.06); }
   border-radius: 14px; background: rgba(244,185,66,0.16); color: var(--gold2);
 }
 .cd31-proll { height: 132px; }
+
+/* Mobile app navigation -------------------------------------------------- */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .arcade-arena-header.is-game-header .arcade-mode-selector {
+    transform: scale(.82);
+    transform-origin: top left;
+  }
+
+  .mobile-bottom-nav {
+    position: fixed;
+    z-index: 180;
+    left: 50%;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: end;
+    width: min(540px, calc(100vw - 18px));
+    height: 72px;
+    padding: 6px 7px;
+    translate: -50% 0;
+    border: 1px solid rgb(251 191 36 / .55);
+    border-radius: 23px;
+    background:
+      radial-gradient(circle at 50% 0%, rgb(52 211 153 / .13), transparent 37%),
+      linear-gradient(180deg, rgb(17 31 23 / .97), rgb(3 10 7 / .98));
+    box-shadow: 0 14px 40px rgb(0 0 0 / .7), inset 0 1px rgb(255 255 255 / .08);
+    backdrop-filter: blur(20px) saturate(1.25);
+  }
+
+  .mobile-nav-item {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 58px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 5px 2px 3px;
+    border: 0;
+    border-radius: 15px;
+    background: transparent;
+    color: #8ca298;
+    font: 800 9px/1 var(--font-fredoka);
+    transition: color .18s ease, background .18s ease, transform .18s ease;
+  }
+
+  .mobile-nav-item::after {
+    content: "";
+    position: absolute;
+    right: 23%;
+    bottom: 1px;
+    left: 23%;
+    height: 2px;
+    border-radius: 99px;
+    background: transparent;
+  }
+
+  .mobile-nav-item.active {
+    color: #fcd34d;
+    background: rgb(251 191 36 / .08);
+  }
+
+  .mobile-nav-item.active::after {
+    background: #fbbf24;
+    box-shadow: 0 0 9px rgb(251 191 36 / .8);
+  }
+
+  .mobile-nav-icon {
+    display: grid;
+    width: 31px;
+    height: 27px;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+
+  .mobile-nav-profile {
+    align-self: start;
+    min-height: 76px;
+    margin-top: -18px;
+    color: #fcd34d;
+    background: transparent !important;
+  }
+
+  .mobile-nav-profile .mobile-nav-icon {
+    width: 55px;
+    height: 55px;
+    margin-bottom: 1px;
+    border: 3px solid #fbbf24;
+    border-radius: 50%;
+    background: #0b1710;
+    box-shadow: 0 0 0 4px rgb(4 12 8 / .96), 0 0 22px rgb(251 191 36 / .42);
+  }
+
+  .mobile-nav-profile.active .mobile-nav-icon {
+    border-color: #34d399;
+    box-shadow: 0 0 0 4px rgb(4 12 8 / .96), 0 0 24px rgb(52 211 153 / .55);
+  }
+
+  .topnav {
+    display: none !important;
+  }
+
+  .app-shell:not(.practice-page),
+  .friendly-page {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .friendly-page .arcade-arena-header.is-page-header {
+    height: 82px !important;
+    padding: 4px 6px;
+  }
+
+  .arcade-arena-header.is-page-header .arcade-brand {
+    top: 3px;
+    transform: scale(.62);
+    transform-origin: top center;
+  }
+
+  .arcade-arena-header .arcade-profile-trigger {
+    display: none;
+  }
+
+  .arcade-arena-header.is-page-header .arcade-header-actions {
+    margin-left: auto;
+  }
+
+  .friendly-page main {
+    margin-top: .5rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .practice-page .arena-player-panel,
+  .practice-page .arena-opponent-panel {
+    display: none;
+  }
+
+  .practice-page .arena-main {
+    display: flex;
+    justify-content: center;
+  }
+
+  .practice-page .arena-bottom {
+    margin-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  /* Keep the optional game-flavour tester clear of the app navigation dock. */
+  .practice-page .va-flavor-float {
+    bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .practice-page .defeat-cow-stage.is-idle {
+    bottom: calc(142px + env(safe-area-inset-bottom));
+  }
+
+  .practice-page .defeat-cow-stage.is-local-defeat {
+    bottom: calc(218px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 560px) {
+  .arcade-arena-header.is-game-header .arcade-mode-selector {
+    transform: none;
+  }
+
+  .mobile-bottom-nav {
+    width: calc(100vw - 12px);
+    height: 68px;
+    padding-inline: 4px;
+    border-radius: 20px;
+  }
+
+  .mobile-nav-item {
+    min-height: 54px;
+    font-size: 8px;
+  }
+
+  .mobile-nav-profile {
+    min-height: 72px;
+  }
+
+  .mobile-nav-profile .mobile-nav-icon {
+    width: 51px;
+    height: 51px;
+  }
+
+  .arcade-arena-header.is-page-header .arcade-brand {
+    transform: scale(.52);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 900px) {
+  .arcade-arena-header.is-game-header .arcade-mode-selector {
+    transform: scale(.55);
+  }
+}
