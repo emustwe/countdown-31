@@ -254,7 +254,7 @@ export default function SponsorAdminPage() {
                   <button
                     onClick={() => {
                       soundManager.playClick();
-                      if (confirm(`Delete sponsor "${s.name}"?`)) del.mutate(s.id);
+                      del.mutate(s.id);
                     }}
                     className="p-2 rounded-xl bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-300 transition-colors cursor-pointer"
                     title="Delete sponsor"

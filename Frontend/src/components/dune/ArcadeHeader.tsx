@@ -34,6 +34,7 @@ import { useAvatarStore } from "../../stores/avatar-customization-store";
 import { MasterAvatar } from "./MasterAvatar";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
 import type { MenuIconId } from "../../lib/game-config";
+import { MobileBottomNav } from "./MobileBottomNav";
 
 interface ArcadeHeaderProps {
   onOpenRules?: () => void;
@@ -132,9 +133,10 @@ export function ArcadeHeader({
     .sort((a, b) => a.order - b.order);
 
   return (
-    <header className="arcade-arena-header relative z-30 flex h-32 w-full shrink-0 select-none items-start justify-between px-3 pb-2 pt-3 sm:h-36 sm:px-8">
+    <>
+    <header className={`arcade-arena-header ${canToggle ? "is-game-header" : "is-page-header"} relative z-30 flex h-32 w-full shrink-0 select-none items-start justify-between px-3 pb-2 pt-3 sm:h-36 sm:px-8`}>
       {/* Left Mode Selector Pill (Only in Arena) */}
-      <div className="flex items-center gap-2.5 z-20 pt-1">
+      <div className="arcade-mode-selector flex items-center gap-2.5 z-20 pt-1">
         {/* Mode Selector Toggle Pill - ONLY rendered on Game Arena page */}
         {canToggle && (
           <div className="flex items-center bg-black/75 border border-amber-400/50 rounded-2xl p-1 shadow-lg backdrop-blur-md">
@@ -172,7 +174,7 @@ export function ArcadeHeader({
       </div>
 
       {/* Center 3D Marquee Banner: COUNT DOWN 31 (Absolute Dead Center on Screen) */}
-      <div className="absolute left-1/2 -translate-x-1/2 top-2 flex flex-col items-center pointer-events-none z-10">
+      <div className="arcade-brand absolute left-1/2 -translate-x-1/2 top-2 flex flex-col items-center pointer-events-none z-10">
         <div
           onClick={() => router.push("/home")}
           className="pointer-events-auto cursor-pointer relative flex items-center gap-2 bg-gradient-to-r from-amber-950 via-yellow-900 to-amber-950 px-6 sm:px-10 py-2 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all"
@@ -206,11 +208,11 @@ export function ArcadeHeader({
       </div>
 
       {/* Right Action Icons: Sound Toggle + Round Profile Avatar Button */}
-      <div className="flex items-center gap-2.5 z-20 pt-1 relative" ref={profileMenuRef}>
+      <div className="arcade-header-actions flex items-center gap-2.5 z-20 pt-1 relative" ref={profileMenuRef}>
         {/* Sound Toggle Button */}
         <button
           onClick={toggleSound}
-          className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-[#1f2b23] to-[#0a140e] border-2 border-amber-400 shadow-[0_4px_12px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.4)] flex items-center justify-center text-amber-300 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+          className="arcade-sound-trigger w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-[#1f2b23] to-[#0a140e] border-2 border-amber-400 shadow-[0_4px_12px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.4)] flex items-center justify-center text-amber-300 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
           title={soundEnabled ? "Mute sound" : "Enable sound"}
           aria-label="Sound Toggle"
         >
@@ -223,7 +225,7 @@ export function ArcadeHeader({
             soundManager.playClick();
             setShowProfileMenu(!showProfileMenu);
           }}
-          className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.6)] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+          className="arcade-profile-trigger relative w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.6)] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
           title={isAuthenticated ? "Profile & Menu" : "Menu & Sign In"}
           aria-label={isAuthenticated ? "Profile Menu" : "Player Menu"}
         >
@@ -360,5 +362,7 @@ export function ArcadeHeader({
         </AnimatePresence>
       </div>
     </header>
+    <MobileBottomNav />
+    </>
   );
 }

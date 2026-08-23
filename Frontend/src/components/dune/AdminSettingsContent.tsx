@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera } from "lucide-react";
-import { Pill } from "./Shell";
+import { Camera, Sparkles, User, Settings2, ShieldCheck, Check } from "lucide-react";
 import { usePlatformTheme, useSetThemeFamily } from "../../lib/hooks/useTheme";
 import { useProfile, useUpdateProfile } from "../../lib/hooks/useAuth";
 import { fileToAvatarDataUrl } from "../../lib/avatar";
+import { soundManager } from "../../lib/soundManager";
 
-// Shared admin settings UI — used by both the classic dashboard and the new dashboard so they stay
-// identical. Manages the admin profile + the platform-wide theme family.
 export function AdminSettingsContent() {
   const router = useRouter();
   const { data } = usePlatformTheme();
@@ -17,67 +15,101 @@ export function AdminSettingsContent() {
   const family = data?.themeFamily ?? "monster";
 
   return (
-    <main className="admin-main">
-      <div className="admin-heading">
+    <div className="flex flex-col gap-6 select-none font-sans">
+      {/* Heading Marquee */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#18281e]/90 via-[#0e1a13]/95 to-[#060c08] border-2 border-amber-400/60 rounded-3xl p-5 sm:p-6 shadow-xl">
         <div>
-          <p className="eyebrow">ADMIN SETTINGS</p>
-          <h1>Settings</h1>
-          <p>Manage your admin profile and the platform-wide theme world.</p>
+          <div className="flex items-center gap-2 text-[10px] font-title font-black text-amber-400 tracking-widest uppercase">
+            <Settings2 size={13} />
+            <span>GLOBAL CONFIGURATION</span>
+          </div>
+          <h1 className="font-title font-black text-2xl sm:text-3xl text-white tracking-wide mt-0.5">
+            Admin Settings
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">
+            Manage your admin profile identity and global platform visual theme worlds.
+          </p>
         </div>
-        <button className="secondary" onClick={() => router.push("/admin")}>
-          <ArrowLeft size={17} />
-          Back to dashboards
-        </button>
+
+        <span className="px-3.5 py-1.5 rounded-xl bg-black/60 border border-emerald-400/40 text-emerald-400 font-title font-bold text-xs">
+          MASTER ADMIN ACTIVE
+        </span>
       </div>
 
+      {/* Admin Profile Card */}
       <AdminProfileCard />
 
-      <p className="eyebrow" style={{ marginTop: 28 }}>PLATFORM THEME</p>
-      <h2 style={{ margin: "4px 0 6px" }}>Theme family</h2>
-      <p className="muted" style={{ marginBottom: 8 }}>Switch the visual world for every player. Their light or dark preference stays intact.</p>
-      <div className="family-grid">
-        <button className={`family-option monster ${family === "monster" ? "active" : ""}`} onClick={() => setFamily.mutate("monster")}>
-          <div className="family-art">
-            <span className="monster-face">☠</span>
-            <i />
-            <i />
-          </div>
-          <span>
-            <Pill tone="live">DEFAULT FAMILY</Pill>
-            <h2>Monster Mayhem</h2>
-            <p>Toxic slime, playful fangs, cracked stone and creatures hiding in the dark.</p>
-            <div className="swatches">
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-            </div>
+      {/* Theme Family Switcher Console */}
+      <div className="rounded-3xl bg-gradient-to-b from-[#18281e]/98 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/70 p-6 sm:p-8 shadow-xl flex flex-col gap-4">
+        <div>
+          <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest">
+            WORLD THEMES
           </span>
-          <b>✓</b>
-        </button>
-        <button className={`family-option desert ${family === "desert" ? "active" : ""}`} onClick={() => setFamily.mutate("desert")}>
-          <div className="family-art">
-            <span>✦</span>
-            <i />
-            <i />
-          </div>
-          <span>
-            <Pill tone="soon">DESERT FAMILY</Pill>
-            <h2>Moonlit Bazaar</h2>
-            <p>Enchanted brass, jewel tones, velvet canopies and a crystalline oasis.</p>
-            <div className="swatches">
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
+          <h2 className="font-title font-black text-xl text-white">
+            Visual Theme Family
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Switch the visual atmosphere and environment for all connected players.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+          {/* Monster Mayhem */}
+          <button
+            type="button"
+            onClick={() => {
+              soundManager.playClick();
+              setFamily.mutate("monster");
+            }}
+            className={`p-5 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+              family === "monster"
+                ? "border-emerald-400 bg-emerald-950/40 shadow-[0_0_20px_rgba(52,211,153,0.3)]"
+                : "border-slate-800 bg-black/60 hover:border-slate-600"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-title font-black uppercase bg-emerald-500 text-slate-950">
+                DEFAULT WORLD
+              </span>
+              {family === "monster" && <Check size={18} className="text-emerald-400" />}
             </div>
-          </span>
-          <b>✓</b>
-        </button>
+            <div>
+              <h3 className="font-title font-black text-lg text-white">Barnaby Pasture (Monster Mayhem)</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Lush green pastures, barn brawls, cheerful cows, and joyful gold finishes.
+              </p>
+            </div>
+          </button>
+
+          {/* Moonlit Bazaar */}
+          <button
+            type="button"
+            onClick={() => {
+              soundManager.playClick();
+              setFamily.mutate("desert");
+            }}
+            className={`p-5 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+              family === "desert"
+                ? "border-amber-400 bg-amber-950/40 shadow-[0_0_20px_rgba(245,158,11,0.3)]"
+                : "border-slate-800 bg-black/60 hover:border-slate-600"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-title font-black uppercase bg-amber-500 text-slate-950">
+                DESERT WORLD
+              </span>
+              {family === "desert" && <Check size={18} className="text-amber-400" />}
+            </div>
+            <div>
+              <h3 className="font-title font-black text-lg text-white">Moonlit Bazaar</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Enchanted desert brass, jewel tones, velvet canopies, and crystalline sands.
+              </p>
+            </div>
+          </button>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -113,62 +145,101 @@ function AdminProfileCard() {
   }
 
   function save() {
+    soundManager.playClick();
     setSaved(false);
-    updateProfile.mutate({ fullName: fullName.trim() || undefined, avatarUrl }, { onSuccess: () => setSaved(true) });
+    updateProfile.mutate(
+      { fullName: fullName.trim() || undefined, avatarUrl },
+      {
+        onSuccess: () => {
+          soundManager.playVictory();
+          setSaved(true);
+        },
+      }
+    );
   }
 
   return (
-    <div className="admin-card glass" style={{ marginBottom: 8 }}>
-      <p className="eyebrow">MY PROFILE</p>
-      <h2 style={{ marginTop: 4, marginBottom: 16 }}>Admin identity</h2>
-      <div style={{ display: "grid", gap: 16, maxWidth: 460 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <div
-            style={{
-              width: 84,
-              height: 84,
-              borderRadius: "50%",
-              overflow: "hidden",
-              display: "grid",
-              placeItems: "center",
-              background: "rgba(255,255,255,0.06)",
-              border: "2px solid var(--gold)",
-              fontFamily: "var(--serif)",
-              fontSize: 26,
-              color: "var(--gold)",
-              flexShrink: 0,
-            }}
+    <div className="rounded-3xl bg-gradient-to-b from-[#18281e]/98 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/70 p-6 sm:p-8 shadow-xl flex flex-col gap-4">
+      <div>
+        <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest">
+          ADMIN PROFILE
+        </span>
+        <h2 className="font-title font-black text-xl text-white">
+          Administrator Identity
+        </h2>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 pt-2">
+        <div className="w-20 h-20 rounded-2xl border-2 border-amber-400 bg-black/80 flex items-center justify-center text-amber-300 font-title font-black text-2xl overflow-hidden shadow-lg shrink-0">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onPickImage}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-title font-bold flex items-center gap-2 cursor-pointer transition-colors shadow"
           >
-            {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials}
-          </div>
-          <div style={{ display: "grid", gap: 8 }}>
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={onPickImage} style={{ display: "none" }} />
-            <button className="secondary" onClick={() => fileInputRef.current?.click()} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <Camera size={16} />
-              {avatarUrl ? "Change photo" : "Upload photo"}
-            </button>
-            {avatarUrl && (
-              <button className="link-btn" onClick={() => { setAvatarUrl(null); setSaved(false); }} style={{ color: "var(--muted)", fontSize: 13, textAlign: "left" }}>
-                Remove photo
-              </button>
-            )}
-            {avatarError && <small style={{ color: "var(--danger)" }}>{avatarError}</small>}
-          </div>
-        </div>
-        <label style={{ display: "block", fontSize: 13 }}>
-          Display Name
-          <input value={fullName} onChange={(e) => { setFullName(e.target.value); setSaved(false); }} className="admin-input" style={{ marginTop: 6 }} />
-        </label>
-        <label style={{ display: "block", fontSize: 13 }}>
-          Email Address
-          <input value={profile?.email ?? ""} readOnly className="admin-input" style={{ marginTop: 6 }} />
-        </label>
-        {updateProfile.isError && <small style={{ color: "var(--danger)" }}>Could not save. Please try again.</small>}
-        <div>
-          <button className="primary" onClick={save} disabled={updateProfile.isPending}>
-            {updateProfile.isPending ? "Saving…" : saved ? "Saved ✓" : "Save Changes"}
+            <Camera size={15} />
+            <span>{avatarUrl ? "Change Photo" : "Upload Photo"}</span>
           </button>
+          {avatarUrl && (
+            <button
+              onClick={() => {
+                setAvatarUrl(null);
+                setSaved(false);
+              }}
+              className="text-xs text-rose-400 hover:underline text-left cursor-pointer"
+            >
+              Remove photo
+            </button>
+          )}
+          {avatarError && <p className="text-xs text-rose-400 font-bold">{avatarError}</p>}
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] font-title font-bold text-slate-300">Display Name</span>
+          <input
+            value={fullName}
+            onChange={(e) => {
+              setFullName(e.target.value);
+              setSaved(false);
+            }}
+            className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2 px-3.5 text-sm text-white outline-none"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] font-title font-bold text-slate-300">Email Address</span>
+          <input
+            value={profile?.email ?? ""}
+            readOnly
+            className="w-full bg-black/50 border-2 border-slate-800 rounded-xl py-2 px-3.5 text-sm text-slate-400 outline-none cursor-not-allowed"
+          />
+        </label>
+      </div>
+
+      <div className="pt-2">
+        <button
+          onClick={save}
+          disabled={updateProfile.isPending}
+          className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-600 text-slate-950 font-title font-black text-xs uppercase tracking-wider shadow hover:brightness-110 active:scale-98 transition-all cursor-pointer flex items-center gap-2"
+        >
+          <ShieldCheck size={16} />
+          <span>{updateProfile.isPending ? "SAVING..." : saved ? "SAVED ✓" : "SAVE CHANGES"}</span>
+        </button>
       </div>
     </div>
   );
