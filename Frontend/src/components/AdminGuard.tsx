@@ -2,7 +2,16 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldAlert, Lock, Mail, Eye, EyeOff, AlertTriangle, ArrowLeft, KeyRound, Sparkles } from "lucide-react";
+import {
+  ShieldAlert,
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  ArrowLeft,
+  Sparkles,
+} from "lucide-react";
 import { useAuthStore } from "../stores/auth-store";
 import { useProfile, useLogin, useLogout } from "../lib/hooks/useAuth";
 import { ApiError } from "../lib/api-client";
@@ -16,8 +25,8 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
   const loginMutation = useLogin();
   const logoutMutation = useLogout();
 
-  const [email, setEmail] = useState("admin@auroraways.demo");
-  const [password, setPassword] = useState("Admin123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,15 +48,19 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
       }
       soundManager.playVictory();
     } catch (err) {
-      setError(err instanceof ApiError ? String(err.envelope?.message || err.message) : "Invalid administrator credentials.");
+      setError(
+        err instanceof ApiError
+          ? String(err.envelope?.message || err.message)
+          : "Invalid administrator credentials.",
+      );
     }
   }
 
   async function handleSwitchAccount() {
     soundManager.playClick();
     await logoutMutation.mutateAsync();
-    setEmail("admin@auroraways.demo");
-    setPassword("Admin123!");
+    setEmail("");
+    setPassword("");
     setError(null);
   }
 
@@ -65,7 +78,10 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
         {/* Top Rivet Accents */}
         <div className="absolute top-0 inset-x-0 h-4 bg-gradient-to-r from-amber-700 via-amber-400 to-amber-700 border-b border-amber-300/60 shadow flex items-center justify-around px-4 pointer-events-none rounded-t-2xl">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="w-1.5 h-1.5 rounded-full bg-amber-950 border border-amber-300 shadow-inner" />
+            <div
+              key={i}
+              className="w-1.5 h-1.5 rounded-full bg-amber-950 border border-amber-300 shadow-inner"
+            />
           ))}
         </div>
 
@@ -83,7 +99,8 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
           Admin Console
         </h2>
         <p className="text-xs text-slate-300 mt-1 max-w-xs leading-relaxed">
-          Sign in with your Administrator credentials to access platform controls, tournament approvals, and sponsor management.
+          Sign in with your Administrator credentials to access platform controls, tournament
+          approvals, and sponsor management.
         </p>
 
         {/* Error Alert */}
@@ -99,8 +116,12 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
           <div className="w-full my-4 flex flex-col gap-3">
             <div className="p-3.5 rounded-2xl bg-black/60 border border-amber-500/30 text-xs text-slate-300 text-left">
               <span className="text-slate-400">Currently signed in as:</span>
-              <p className="font-title font-black text-amber-300 truncate">{user.email} (Role: {user.role})</p>
-              <p className="text-[11px] text-slate-400 mt-1">This account does not have administrator privileges.</p>
+              <p className="font-title font-black text-amber-300 truncate">
+                {user.email} (Role: {user.role})
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                This account does not have administrator privileges.
+              </p>
             </div>
 
             <button
@@ -124,7 +145,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@auroraways.demo"
+                  placeholder="Administrator email"
                   className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2.5 pl-10 pr-3.5 text-sm text-white outline-none transition-colors"
                 />
               </div>
@@ -141,7 +162,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Admin123!"
+                  placeholder="Administrator password"
                   className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2.5 pl-10 pr-10 text-sm text-white outline-none transition-colors"
                 />
                 <button
@@ -154,20 +175,6 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            {/* Quick Fill Dev Preset */}
-            <button
-              type="button"
-              onClick={() => {
-                soundManager.playClick();
-                setEmail("admin@auroraways.demo");
-                setPassword("Admin123!");
-              }}
-              className="text-[11px] text-amber-400 hover:underline font-title font-bold flex items-center gap-1 cursor-pointer self-start"
-            >
-              <KeyRound size={12} />
-              <span>Fill Seed Admin Credentials (Dev)</span>
-            </button>
-
             {/* Submit Button */}
             <button
               type="submit"
@@ -175,7 +182,9 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
               className="w-full mt-2 py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-title font-black text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.6)] hover:brightness-110 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               <Lock size={15} />
-              <span>{loginMutation.isPending ? "AUTHENTICATING..." : "SIGN IN TO ADMIN CONSOLE"}</span>
+              <span>
+                {loginMutation.isPending ? "AUTHENTICATING..." : "SIGN IN TO ADMIN CONSOLE"}
+              </span>
             </button>
           </form>
         )}
