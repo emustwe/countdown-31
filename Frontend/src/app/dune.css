@@ -124,6 +124,135 @@ h3 {
    the match dock visible together, even on shorter laptop displays. */
 .arena-main {
   align-content: start;
+  padding-top: clamp(10px, 1.8vh, 18px);
+}
+
+.arena-bottom {
+  position: relative;
+  z-index: 24;
+}
+
+/* The defeat cow quietly loops in its corner. If this client is eliminated,
+   the same stage travels beneath the reel and grows into the result moment. */
+.defeat-cow-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 23;
+  pointer-events: none;
+}
+
+.defeat-cow-stage {
+  position: absolute;
+  left: clamp(18px, 4vw, 72px);
+  bottom: 62px;
+  width: 104px;
+  height: 185px;
+  opacity: 0.86;
+  transform: translateX(0);
+  transform-origin: bottom center;
+  transition:
+    left 900ms cubic-bezier(.2, .8, .2, 1),
+    bottom 900ms cubic-bezier(.2, .8, .2, 1),
+    width 900ms cubic-bezier(.2, .8, .2, 1),
+    height 900ms cubic-bezier(.2, .8, .2, 1),
+    opacity 350ms ease,
+    transform 900ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.defeat-cow-stage.is-local-defeat {
+  left: 50%;
+  bottom: 64px;
+  width: 158px;
+  height: 281px;
+  opacity: 1;
+  transform: translateX(-50%);
+  z-index: 4;
+}
+
+.defeat-cow-stars {
+  position: absolute;
+  z-index: 3;
+  top: -19px;
+  left: 50%;
+  display: flex;
+  gap: 2px;
+  transform: translateX(-50%);
+  font-size: 17px;
+  filter: drop-shadow(0 0 8px rgb(250 204 21 / .85));
+}
+
+.defeat-cow-message {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 5px;
+  width: 220px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 10px;
+  border: 1px solid rgb(251 191 36 / .65);
+  border-radius: 14px;
+  background: rgb(3 10 7 / .86);
+  color: white;
+  text-align: center;
+  box-shadow: 0 8px 24px rgb(0 0 0 / .65);
+  backdrop-filter: blur(10px);
+}
+
+.defeat-cow-message strong,
+.arena-result-panel strong {
+  color: #fcd34d;
+  font: 900 13px var(--font-lilita);
+  letter-spacing: .08em;
+}
+
+.defeat-cow-message span,
+.arena-result-panel span {
+  color: #d1d5db;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.defeat-cow-message button,
+.arena-result-panel button {
+  pointer-events: auto;
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 5px 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fcd34d, #f59e0b);
+  color: #281405;
+  font: 900 11px var(--font-lilita);
+  box-shadow: 0 4px 14px rgb(245 158 11 / .35);
+}
+
+.arena-result-panel {
+  position: fixed;
+  left: 50%;
+  top: min(61vh, 520px);
+  width: min(290px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 14px;
+  border: 1px solid rgb(251 191 36 / .55);
+  border-radius: 16px;
+  background: rgb(3 10 7 / .9);
+  box-shadow: 0 12px 32px rgb(0 0 0 / .7);
+  backdrop-filter: blur(12px);
+}
+
+.arena-result-panel.is-win {
+  border-color: rgb(52 211 153 / .7);
 }
 
 @media (max-width: 1023px) {
@@ -152,35 +281,6 @@ h3 {
     zoom: 0.9;
   }
 
-  .arcade-action-console {
-    padding: 0.5rem !important;
-  }
-
-  .arcade-action-header {
-    margin-bottom: 0.3rem !important;
-    padding-block: 0.25rem !important;
-  }
-
-  .arcade-action-subtitle {
-    margin-bottom: 0.25rem !important;
-  }
-
-  .arcade-skill-grid {
-    gap: 0.5rem !important;
-  }
-
-  .arcade-skill-card {
-    min-height: 150px !important;
-    padding: 0.55rem !important;
-  }
-
-  .arcade-skill-art {
-    height: 42px !important;
-  }
-
-  .arcade-skill-description {
-    display: none;
-  }
 }
 
 @media (max-height: 680px) and (min-width: 768px) {
@@ -217,8 +317,18 @@ h3 {
     zoom: 0.82;
   }
 
-  .arena-bot-label {
-    display: none;
+  .defeat-cow-stage {
+    left: 10px;
+    bottom: 56px;
+    width: 76px;
+    height: 135px;
+  }
+
+  .defeat-cow-stage.is-local-defeat {
+    left: 50%;
+    bottom: 62px;
+    width: 132px;
+    height: 235px;
   }
 }
 .content {

@@ -11,7 +11,6 @@ import { soundManager } from "../../lib/soundManager";
 import { BarnabyMascot } from "./BarnabyMascot";
 import { ArcadeHeader } from "./ArcadeHeader";
 import { Arcade3DCylinder } from "./Arcade3DCylinder";
-import { ArcadeActionConsole } from "./ArcadeActionConsole";
 import { ArcadePlayerCard, ArcadeOpponentCard } from "./ArcadePlayerCards";
 import { ArcadeHUD } from "./ArcadeHUD";
 import { OfficialRulesModal } from "./OfficialRulesModal";
@@ -42,13 +41,6 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
 
   // Game Mode: Classic 31 (pure counting) vs. Tactical Skill Mode (loadout cards)
   const [gameMode, setGameMode] = useState<GameMode>(gameConfig.gameplay.defaultMode);
-  const [equippedSkills, setEquippedSkills] = useState<SkillType[]>(() =>
-    gameConfig.skills
-      .filter((skill) => skill.enabled)
-      .slice(0, 2)
-      .map((skill) => skill.id),
-  );
-
   // Direct Card Selection State on the 3D Reel
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
 
@@ -68,12 +60,6 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     if (chosenName) return;
     setBotCount(gameConfig.gameplay.defaultBotCount);
     setGameMode(gameConfig.gameplay.defaultMode);
-    setEquippedSkills(
-      gameConfig.skills
-        .filter((skill) => skill.enabled)
-        .slice(0, 2)
-        .map((skill) => skill.id),
-    );
   }, [chosenName, gameConfig]);
 
   const count = state?.count ?? 0;
@@ -85,19 +71,19 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const myPlayer = players.find((p) => p.id === myId) ?? null;
   const opponentPlayer = players.find((p) => p.id !== myId) ?? players[1] ?? null;
   const isOpponentTurn = status === "playing" && currentId !== myId && currentId !== null;
+  const isMyWin = !!(
+    state?.winner &&
+    players.find((player) => player.id === myId)?.name === state.winner.name
+  );
+  const isLocalDefeat = !!(
+    myPlayer?.eliminated &&
+    state?.lastEliminated?.name === myPlayer.name
+  );
 
   const remaining = state?.turnEndsAt ? Math.max(0, state.turnEndsAt - now) : 0;
   const remainingSeconds = Math.ceil(remaining / 1000);
   const timerRunning = status === "playing" && !!state?.turnEndsAt;
   const isLowTime = remainingSeconds <= 2 && timerRunning;
-
-  const mySkills = myPlayer?.skills ?? {
-    rewind: 1,
-    turbo: 1,
-    shield: 1,
-    nudge: 1,
-    double: 1,
-  };
 
   // Reset card selection whenever turn or count changes
   useEffect(() => {
@@ -274,7 +260,6 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   }
 
   function confirmSkillLoadout(skills: SkillType[]) {
-    setEquippedSkills(skills);
     setShowSkillModal(false);
     const name = chosenName || defaultName || "Player 1";
     join(
@@ -331,6 +316,8 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
               onJoinClick={openNameGate}
               amIn={amIn}
               gameMode={gameMode}
+              onSkill={handleSkill}
+              skillsLocked={count >= 22}
             />
           </div>
         </div>
@@ -351,64 +338,37 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
             forbiddenK={state?.lastK ?? null}
           />
 
-          {/* Action Area: Tactical Skill Cards in Skill Mode OR Classic Turn Bar OR In-Place Game Over Mascot Stage */}
-          {status === "over" ? (
-            /* In-Place Defeat/Victory 3D Video & Outcome Console */
-            <BarnabyMascot
-              count={count}
-              status="over"
-              myTurn={myTurn}
-              winner={state?.winner ?? null}
-              lastEliminated={state?.lastEliminated ?? null}
-              isMyWin={
-                !!(
-                  state?.winner &&
-                  players.find((p) => p.id === myId)?.name === state.winner.name
-                )
-              }
-              onPlayAgain={rejoin}
-            />
-          ) : amIn && status === "playing" ? (
-            gameMode === "skills" ? (
-              <ArcadeActionConsole
-                myTurn={myTurn}
-                remainingSeconds={remainingSeconds}
-                timerRunning={timerRunning}
-                onSkill={handleSkill}
-                skills={mySkills}
-                equippedSkills={equippedSkills}
-                count={count}
-              />
-            ) : (
-              /* Sleek Classic Mode Turn Console */
-              <div className="w-full max-w-xl mx-auto flex items-center justify-between bg-gradient-to-r from-amber-950/80 via-black/90 to-amber-950/80 border-2 border-amber-400/50 rounded-2xl px-5 py-3 shadow-xl">
-                <div className="flex items-center gap-2">
-                  <Dices size={18} className="text-amber-400" />
-                  <span className="font-title font-black text-sm text-white uppercase tracking-wider">
-                    {myTurn ? "🎯 YOUR TURN · SELECT CARDS ON DRUM" : "⌛ OPPONENT IS COUNTING..."}
-                  </span>
-                </div>
-
-                <div
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-title font-black text-xs border ${
-                    isLowTime
-                      ? "bg-rose-950/90 text-rose-300 border-rose-500 animate-bounce"
-                      : "bg-amber-950/70 text-amber-300 border-amber-400/50"
-                  }`}
-                >
-                  <Clock size={13} className={isLowTime ? "text-rose-400" : "text-amber-400"} />
-                  <span>{timerRunning ? `${remainingSeconds}s` : "7s"}</span>
-                </div>
+          {/* A compact turn prompt leaves the arena open; tactical skills live beside the avatar. */}
+          {status !== "over" && amIn && status === "playing" ? (
+            <div className="arena-turn-strip mx-auto flex w-full max-w-xl items-center justify-between rounded-2xl border-2 border-amber-400/50 bg-gradient-to-r from-amber-950/80 via-black/90 to-amber-950/80 px-5 py-2 shadow-xl">
+              <div className="flex items-center gap-2">
+                <Dices size={18} className="text-amber-400" />
+                <span className="font-title text-sm font-black uppercase tracking-wider text-white">
+                  {myTurn ? "YOUR TURN · PICK 1, 2, OR 3" : "OPPONENT IS COUNTING..."}
+                </span>
               </div>
-            )
+
+              <div
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1 font-title text-xs font-black ${
+                  isLowTime
+                    ? "border-rose-500 bg-rose-950/90 text-rose-300 animate-bounce"
+                    : "border-amber-400/50 bg-amber-950/70 text-amber-300"
+                }`}
+              >
+                <Clock size={13} className={isLowTime ? "text-rose-400" : "text-amber-400"} />
+                <span>{timerRunning ? `${remainingSeconds}s` : "7s"}</span>
+              </div>
+            </div>
           ) : (
-            <button
-              onClick={chosenName ? rejoin : openNameGate}
-              className="btn-arcade-3d btn-arcade-amber text-lg sm:text-xl py-4 px-10 rounded-2xl flex items-center justify-center gap-2 shadow-2xl my-2 cursor-pointer hover:scale-105 transition-transform"
-            >
-              <LogIn size={22} />
-              <span>{chosenName ? "REJOIN GAME" : "JOIN THE GAME"}</span>
-            </button>
+            status !== "over" && (
+              <button
+                onClick={chosenName ? rejoin : openNameGate}
+                className="btn-arcade-3d btn-arcade-amber my-2 flex cursor-pointer items-center justify-center gap-2 rounded-2xl px-10 py-4 text-lg shadow-2xl transition-transform hover:scale-105 sm:text-xl"
+              >
+                <LogIn size={22} />
+                <span>{chosenName ? "REJOIN GAME" : "JOIN THE GAME"}</span>
+              </button>
+            )
           )}
         </div>
 
@@ -427,8 +387,8 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         </div>
       </main>
 
-      {/* Compact match dock stays inside the arena viewport. */}
-      <div className="arena-bottom mx-auto flex w-full max-w-5xl shrink-0 flex-col gap-1 pb-1">
+      {/* Stats are the only bottom dock. */}
+      <div className="arena-bottom mx-auto w-full max-w-5xl shrink-0 pb-1">
         <ArcadeHUD
           playerCount={players.length}
           maxPlayers={botCount + 1}
@@ -439,52 +399,16 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           showPing={gameConfig.features.showPing}
         />
 
-        {gameConfig.features.showBotSelector && (
-          <div className="flex items-center justify-center gap-2 rounded-2xl border border-amber-400/40 bg-black/60 px-3 py-1 backdrop-blur-md">
-            {/* Bot Count Selector */}
-            {gameConfig.features.showBotSelector && (
-              <div className="flex items-center gap-2">
-                <span className="arena-bot-label text-[11px] font-title font-bold text-slate-300">
-                  OPPONENT BOTS:
-                </span>
-                <div className="flex items-center gap-1 bg-black/80 p-0.5 rounded-xl border border-slate-700">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      soundManager.playClick();
-                      setBotCount(1);
-                      if (chosenName) rejoin();
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-title font-black transition-all cursor-pointer ${
-                      botCount === 1
-                        ? "bg-emerald-400 text-slate-950 shadow"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    1v1 DUEL (1 Bot)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      soundManager.playClick();
-                      setBotCount(Math.min(3, gameConfig.bots.filter((bot) => bot.enabled).length));
-                      if (chosenName) rejoin();
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-title font-black transition-all cursor-pointer ${
-                      botCount > 1
-                        ? "bg-amber-400 text-slate-950 shadow"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    GROUP ({Math.min(3, gameConfig.bots.filter((bot) => bot.enabled).length)} Bots)
-                  </button>
-                </div>
-              </div>
-            )}
-
-          </div>
-        )}
       </div>
+
+      <BarnabyMascot
+        status={status}
+        winner={state?.winner ?? null}
+        lastEliminated={state?.lastEliminated ?? null}
+        isMyWin={isMyWin}
+        isLocalDefeat={isLocalDefeat}
+        onPlayAgain={rejoin}
+      />
 
       {/* Pre-Match 2-Skill Loadout Selector Modal */}
       <SkillLoadoutModal

@@ -128,12 +128,16 @@ export function ArcadePlayerCard({
   onJoinClick,
   amIn,
   gameMode = "skills",
+  onSkill,
+  skillsLocked = false,
 }: {
   myPlayer: LivePlayer | null;
   myTurn: boolean;
   onJoinClick?: () => void;
   amIn: boolean;
   gameMode?: GameMode;
+  onSkill?: (skill: SkillType) => void;
+  skillsLocked?: boolean;
 }) {
   const avatar = useAvatarStore();
   const { data: gameConfig } = useGameConfig();
@@ -206,12 +210,19 @@ export function ArcadePlayerCard({
                 ? { ...baseMeta, name: configured.name, badge: configured.shortLabel }
                 : baseMeta;
               const available = (myPlayer.skills?.[skType] ?? 0) > 0;
+              const canUse = available && myTurn && !skillsLocked;
               return (
-                <div
+                <button
+                  type="button"
                   key={skType}
+                  disabled={!canUse}
+                  onClick={() => onSkill?.(skType)}
+                  aria-label={`Use ${meta.name}`}
                   className={`flex flex-col items-center justify-center p-2 rounded-2xl border-2 transition-all select-none w-14 sm:w-16 h-20 sm:h-24 ${
-                    available
-                      ? `${meta.color} hover:scale-105 cursor-pointer`
+                    canUse
+                      ? `${meta.color} hover:scale-105 cursor-pointer active:scale-95`
+                      : available
+                        ? `${meta.color} opacity-65 cursor-not-allowed`
                       : "border-slate-800 bg-slate-950/60 opacity-40 grayscale"
                   }`}
                   title={`${meta.name} (${available ? "Ready" : "Used"})`}
@@ -221,9 +232,9 @@ export function ArcadePlayerCard({
                     {meta.badge}
                   </span>
                   <span className="text-[8px] font-title font-bold text-slate-400 mt-0.5">
-                    {available ? "1x" : "0x"}
+                    {skillsLocked ? "LOCKED" : canUse ? "USE" : available ? "READY" : "USED"}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>

@@ -865,12 +865,6 @@ function GameplayPanel({
           value={draft.features.enableParticles}
           onChange={(enableParticles) => patch("features", { enableParticles })}
         />
-        <SwitchRow
-          label="Bot selector"
-          hint="Quick match sizes"
-          value={draft.features.showBotSelector}
-          onChange={(showBotSelector) => patch("features", { showBotSelector })}
-        />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Default mode">
