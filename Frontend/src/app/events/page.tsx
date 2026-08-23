@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trophy, KeyRound, Swords, Users, Clock, Award, Sparkles, Flame, ShieldAlert, ArrowRight } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
-import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { AuthGate } from "../../components/AuthGate";
 import { usePublicPromoTournaments, useRedeemJoinCode } from "../../lib/hooks/useSponsors";
@@ -23,7 +22,6 @@ export default function TournamentsHubPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const redeem = useRedeemJoinCode();
 
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [gate, setGate] = useState(false);
   const [code, setCode] = useState("");
@@ -64,7 +62,7 @@ export default function TournamentsHubPage() {
 
       {/* Header */}
       <div className="relative z-20">
-        <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+        <ArcadeHeader onOpenRules={() => setShowRules(true)} />
       </div>
 
       {/* Main Tournaments Hub - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
@@ -203,12 +201,6 @@ export default function TournamentsHubPage() {
         message="Please sign in or create an account to enter competitive tournaments."
       />
 
-      {/* Drawer & Modal */}
-      <ArcadeDrawerMenu
-        isOpen={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        onOpenRules={() => setShowRules(true)}
-      />
       <OfficialRulesModal
         isOpen={showRules}
         onClose={() => setShowRules(false)}

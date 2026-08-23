@@ -1,4 +1,20 @@
-import { Body, Controller, Get, Patch, Post, UseGuards } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import type { Request } from "express";
+import { mkdir, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { RolesGuard } from "../../common/guards/roles.guard";
@@ -46,6 +62,35 @@ export class AdminGameConfigController {
   @Post("game/reset")
   reset(@CurrentUser() user: AccessTokenPayload) {
     return this.config.resetGameConfig(user.sub);
+  }
+
+  @Post("assets/background")
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024 } }))
+  async uploadBackground(
+    @CurrentUser() user: AccessTokenPayload,
+    @UploadedFile()
+    file: { originalname: string; mimetype: string; size: number; buffer: Buffer } | undefined,
+    @Req() request: Request,
+  ) {
+    if (!file) throw new BadRequestException("Choose an image to upload");
+    const extensions: Record<string, string> = {
+      "image/jpeg": ".jpg",
+      "image/png": ".png",
+      "image/webp": ".webp",
+      "image/gif": ".gif",
+    };
+    const extension = extensions[file.mimetype];
+    if (!extension) throw new BadRequestException("Use a JPG, PNG, WebP, or GIF image");
+
+    const directory = resolve(process.cwd(), "uploads", "game-config");
+    await mkdir(directory, { recursive: true });
+    const fileName = `${randomUUID()}${extension}`;
+    await writeFile(resolve(directory, fileName), file.buffer);
+    this.config.recordAssetUpload(user.sub, fileName, file.size);
+
+    return {
+      url: `${request.protocol}://${request.get("host")}/uploads/game-config/${fileName}`,
+    };
   }
 
   @Patch("theme")

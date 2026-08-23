@@ -18,6 +18,7 @@ import {
   Sparkles,
   Trash2,
   Type,
+  Upload,
   WandSparkles,
   Zap,
 } from "lucide-react";
@@ -32,6 +33,7 @@ import {
   useGameConfig,
   useResetGameConfig,
   useSaveGameConfig,
+  useUploadGameBackground,
 } from "../../lib/hooks/useGameConfig";
 import { AVATAR_VARIANTS } from "../../lib/avatar-catalog";
 import { soundManager } from "../../lib/soundManager";
@@ -47,6 +49,13 @@ const TABS: { id: StudioTab; label: string; hint: string; icon: IconType }[] = [
   { id: "skills", label: "Skill deck", hint: "Drag to reorder", icon: Zap },
   { id: "bots", label: "Bot roster", hint: "Opponents and looks", icon: Bot },
   { id: "menu", label: "Player menu", hint: "Navigation builder", icon: Menu },
+];
+
+const ARENA_BACKGROUNDS = [
+  { name: "Sunny Pasture", path: "/assets/barnaby/barnaby-field.jpg" },
+  { name: "Champion Arena", path: "/assets/barnaby/barnaby-pasture-arena.jpg" },
+  { name: "Moonlit Bazaar", path: "/assets/moonlit-bazaar.png" },
+  { name: "Monster Carnival", path: "/assets/monster-carnival-home.png" },
 ];
 
 function Toggle({
@@ -273,6 +282,7 @@ export function AdminGameStudio() {
   const { data: stored } = useGameConfig();
   const save = useSaveGameConfig();
   const reset = useResetGameConfig();
+  const uploadBackground = useUploadGameBackground();
   const [draft, setDraft] = useState(() => cloneGameConfig(stored));
   const [tab, setTab] = useState<StudioTab>("overview");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -303,6 +313,12 @@ export function AdminGameStudio() {
   async function resetAll() {
     if (!window.confirm("Reset every Game Studio setting to the safe defaults?")) return;
     setDraft(cloneGameConfig(await reset.mutateAsync()));
+  }
+  async function handleBackgroundUpload(file: File | undefined) {
+    if (!file) return;
+    soundManager.playClick();
+    const url = await uploadBackground.mutateAsync(file);
+    patch("arena", { backgroundImage: url });
   }
 
   return (
@@ -449,16 +465,69 @@ export function AdminGameStudio() {
                       onChange={(e) => patch("arena", { name: e.target.value })}
                     />
                   </Field>
-                  <Field label="Background image">
-                    <div className="relative">
-                      <ImageIcon className="absolute left-3 top-3 text-slate-500" size={16} />
-                      <input
-                        className="studio-input pl-10"
-                        value={draft.arena.backgroundImage}
-                        onChange={(e) => patch("arena", { backgroundImage: e.target.value })}
-                      />
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs font-title font-black text-slate-200">
+                      Background image
+                    </span>
+                    <div className="grid gap-3">
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {ARENA_BACKGROUNDS.map((background) => {
+                          const active = draft.arena.backgroundImage === background.path;
+                          return (
+                            <button
+                              type="button"
+                              key={background.path}
+                              onClick={() => patch("arena", { backgroundImage: background.path })}
+                              className={`group overflow-hidden rounded-2xl border-2 text-left transition ${active ? "border-amber-300 shadow-[0_0_16px_rgba(251,191,36,.35)]" : "border-white/10 hover:border-amber-400/50"}`}
+                            >
+                              <span
+                                className="block h-20 bg-cover bg-center transition group-hover:scale-105"
+                                style={{ backgroundImage: `url('${background.path}')` }}
+                              />
+                              <span className="block bg-black/80 px-2 py-1.5 text-[10px] font-black text-slate-200">
+                                {background.name}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <label className="studio-secondary flex cursor-pointer items-center justify-center gap-2 border-dashed py-3">
+                        <Upload size={16} />
+                        <span>
+                          {uploadBackground.isPending
+                            ? "Uploading image…"
+                            : "Upload your own background"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          className="sr-only"
+                          disabled={uploadBackground.isPending}
+                          onChange={(event) => {
+                            void handleBackgroundUpload(event.target.files?.[0]);
+                            event.target.value = "";
+                          }}
+                        />
+                      </label>
+                      {uploadBackground.isError && (
+                        <p className="rounded-xl border border-rose-500/30 bg-rose-950/40 px-3 py-2 text-xs text-rose-300">
+                          {uploadBackground.error.message}
+                        </p>
+                      )}
+
+                      <div className="relative">
+                        <ImageIcon className="absolute left-3 top-3 text-slate-500" size={16} />
+                        <input
+                          className="studio-input pl-10"
+                          aria-label="Background image URL"
+                          placeholder="Or paste an image URL"
+                          value={draft.arena.backgroundImage}
+                          onChange={(e) => patch("arena", { backgroundImage: e.target.value })}
+                        />
+                      </div>
                     </div>
-                  </Field>
+                  </div>
                   <Field label="Darkness" hint={`${Math.round(draft.arena.overlayOpacity * 100)}%`}>
                     <input
                       type="range"

@@ -29,6 +29,10 @@ export class PlatformConfigService implements OnModuleInit {
     return () => this.listeners.delete(listener);
   }
 
+  recordAssetUpload(actor: string, fileName: string, bytes: number): void {
+    this.audit.record("ADMIN_GAME_ASSET_UPLOADED", { actor, detail: { fileName, bytes } });
+  }
+
   async setGameConfig(config: GameConfig, actor: string): Promise<GameConfig> {
     const parsed = GameConfigSchema.parse(config);
     await this.prisma.platformConfig.upsert({

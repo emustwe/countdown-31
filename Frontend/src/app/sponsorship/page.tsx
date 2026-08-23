@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { Handshake, Ticket, Trophy, Sparkles, Building2, CheckCircle2, Send, Mail, ShieldCheck, Users, X } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
-import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { AuthGate } from "../../components/AuthGate";
 import { useAuthStore } from "../../stores/auth-store";
@@ -23,7 +22,6 @@ export default function SponsorshipPage() {
 
   const [contact, setContact] = useState<ContactState>(null);
   const [gate, setGate] = useState(false);
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
 
   // Form state for modal
@@ -88,7 +86,7 @@ export default function SponsorshipPage() {
 
       {/* Header */}
       <div className="relative z-20">
-        <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+        <ArcadeHeader onOpenRules={() => setShowRules(true)} />
       </div>
 
       {/* Main Sponsorship Hub - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
@@ -291,12 +289,6 @@ export default function SponsorshipPage() {
         message="Please sign in or register to request entry to private tournaments."
       />
 
-      {/* Drawer & Modal */}
-      <ArcadeDrawerMenu
-        isOpen={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        onOpenRules={() => setShowRules(true)}
-      />
       <OfficialRulesModal
         isOpen={showRules}
         onClose={() => setShowRules(false)}

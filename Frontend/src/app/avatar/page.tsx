@@ -3,11 +3,9 @@
 import React, { useState } from "react";
 import { AvatarCatalogStudio } from "../../components/dune/AvatarCatalogStudio";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
-import { ArcadeDrawerMenu } from "../../components/dune/ArcadeDrawerMenu";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 
 export default function AvatarPage() {
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
 
   return (
@@ -21,20 +19,13 @@ export default function AvatarPage() {
 
       {/* Header */}
       <div className="relative z-20">
-        <ArcadeHeader onMenuClick={() => setShowDrawer(true)} />
+        <ArcadeHeader onOpenRules={() => setShowRules(true)} />
       </div>
 
       {/* Main Studio Area - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
       <main className="relative z-10 w-full flex-1 mt-8 sm:mt-12 md:mt-14 mb-6">
         <AvatarCatalogStudio />
       </main>
-
-      {/* Slide-in Menu Drawer */}
-      <ArcadeDrawerMenu
-        isOpen={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        onOpenRules={() => setShowRules(true)}
-      />
 
       {/* Official 31 Rules Modal */}
       <OfficialRulesModal

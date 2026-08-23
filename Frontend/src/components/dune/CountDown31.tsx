@@ -14,7 +14,6 @@ import { Arcade3DCylinder } from "./Arcade3DCylinder";
 import { ArcadeActionConsole } from "./ArcadeActionConsole";
 import { ArcadePlayerCard, ArcadeOpponentCard } from "./ArcadePlayerCards";
 import { ArcadeHUD } from "./ArcadeHUD";
-import { ArcadeDrawerMenu } from "./ArcadeDrawerMenu";
 import { OfficialRulesModal } from "./OfficialRulesModal";
 import { SkillLoadoutModal } from "./SkillLoadoutModal";
 import confetti from "canvas-confetti";
@@ -37,7 +36,6 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const [chosenName, setChosenName] = useState("");
   const [showNameGate, setShowNameGate] = useState(false);
   const [showSkillModal, setShowSkillModal] = useState(false);
-  const [showDrawer, setShowDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [isShaking, setIsShaking] = useState(false);
@@ -319,7 +317,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     >
       {/* Top Arcade Header Marquee with Game Mode Switcher */}
       <ArcadeHeader
-        onMenuClick={() => setShowDrawer(true)}
+        onOpenRules={() => setShowRules(true)}
         gameMode={gameMode}
         onToggleMode={handleModeChange}
         showModeToggle={gameConfig.gameplay.allowClassic && gameConfig.gameplay.allowSkills}
@@ -525,13 +523,6 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         isOpen={showSkillModal}
         onClose={() => setShowSkillModal(false)}
         onConfirm={confirmSkillLoadout}
-      />
-
-      {/* Hamburger Drawer Menu */}
-      <ArcadeDrawerMenu
-        isOpen={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        onOpenRules={() => setShowRules(true)}
       />
 
       {/* Official 31 Game Rules Modal */}
