@@ -18,6 +18,7 @@ import {
   LogOut,
   ChevronRight,
   Trophy,
+  ShieldAlert,
 } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useAuthStore } from "../../stores/auth-store";
@@ -330,6 +331,19 @@ export function ArcadeHeader({
                   </div>
                   <ChevronRight size={14} className="text-slate-500" />
                 </button>
+
+                {user?.role === "ADMIN" && (
+                  <button
+                    onClick={() => handleNavigate("/admin")}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <ShieldAlert size={15} className="text-amber-400" />
+                      <span className="font-title font-black">Admin Console</span>
+                    </div>
+                    <ChevronRight size={14} className="text-amber-400" />
+                  </button>
+                )}
               </div>
 
               {/* Bottom Auth CTA */}

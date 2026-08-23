@@ -18,6 +18,7 @@ import {
   Crown,
   ChevronRight,
   History as HistoryIcon,
+  ShieldAlert,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/auth-store";
 import { useSettingsStore } from "../../stores/settings-store";
@@ -62,6 +63,7 @@ export function ArcadeDrawerMenu({ isOpen, onClose, onOpenRules }: ArcadeDrawerM
     { label: "Wallet", icon: Wallet, path: "/wallet" },
     { label: "Past Games", icon: HistoryIcon, path: "/history" },
     { label: "Settings", icon: Settings, path: "/settings" },
+    ...(user?.role === "ADMIN" ? [{ label: "Admin Console", icon: ShieldAlert, path: "/admin", badge: "Admin" }] : []),
   ];
 
   return (
