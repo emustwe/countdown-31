@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Skull, Star, Zap, Send } from "lucide-react";
+import React, { useMemo, useRef, useState, useLayoutEffect } from "react";
+import { motion } from "framer-motion";
+import { Flame, Skull, Star, Zap } from "lucide-react";
 import { type LastMoveInfo, type SkillType } from "../../lib/hooks/useCountdownLive";
 import { soundManager } from "../../lib/soundManager";
 
@@ -21,6 +21,7 @@ interface Arcade3DCylinderProps {
   } | null;
   taken?: Record<number, string>;
   forbiddenK?: number | null;
+  compact?: boolean;
 }
 
 const TARGET = 31;
@@ -42,32 +43,30 @@ export function Arcade3DCylinder({
   myTurn,
   selectedCards,
   onToggleCard,
-  onConfirmMove,
+  onConfirmMove: _onConfirmMove,
   status,
   lastMove,
   lastSkillUsed,
   taken = {},
   forbiddenK: _forbiddenK,
+  compact = false,
 }: Arcade3DCylinderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
   // Dynamically compute scale factor so all 7 cards fit perfectly on any viewport (mobile to 4K)
-  useEffect(() => {
+  useLayoutEffect(() => {
     function updateScale() {
       if (containerRef.current) {
         const width = containerRef.current.offsetWidth;
-        if (width < 840) {
-          setScale(Math.min(1, Math.max(0.40, width / 840)));
-        } else {
-          setScale(1);
-        }
+        const availableScale = Math.max(0.4, width / 840);
+        setScale(Math.min(compact ? 0.85 : 1, availableScale));
       }
     }
     updateScale();
     window.addEventListener("resize", updateScale);
     return () => window.removeEventListener("resize", updateScale);
-  }, []);
+  }, [compact]);
 
   // Visible slot offsets around next playable number: -3, -2, -1, 0, 1, 2, 3 (Always 7 Cards)
   const visibleOffsets = useMemo(() => {

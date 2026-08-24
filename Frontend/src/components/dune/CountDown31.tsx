@@ -20,6 +20,7 @@ import { useGameConfig } from "../../lib/hooks/useGameConfig";
 import { useRouter } from "next/navigation";
 
 import { DEFAULT_GAME_CONFIG } from "../../lib/game-config";
+import { MobileArenaShell } from "./MobileArenaShell";
 
 export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const router = useRouter();
@@ -326,7 +327,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
       />
 
       {/* Main Arcade Arena Battlefield (3 Columns on Desktop with Expanded Center) */}
-      <main className="arena-main mx-auto grid min-h-0 w-full max-w-[1580px] flex-1 grid-cols-1 items-start gap-4 overflow-hidden lg:grid-cols-[270px_minmax(0,1fr)_270px] lg:gap-6 mt-2 sm:mt-4">
+      <main className="desktop-arena-layout arena-main mx-auto grid min-h-0 w-full max-w-[1580px] flex-1 grid-cols-[270px_minmax(0,1fr)_270px] items-start gap-6 overflow-hidden mt-4">
         {/* Left Column: Local Player Big Battle Card Showcase (Desktop) */}
         <div className="arena-player-panel hidden lg:flex order-2 mx-auto w-full max-w-[270px] items-start justify-center lg:order-1">
           <div className="w-full">
@@ -505,6 +506,105 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           </div>
         </div>
       </main>
+
+      <MobileArenaShell
+        board={(
+          <Arcade3DCylinder
+            currentCount={count}
+            myTurn={myTurn}
+            selectedCards={selectedCards}
+            onToggleCard={handleToggleCard}
+            onConfirmMove={handleConfirmMove}
+            status={status}
+            lastMove={state?.lastMove ?? null}
+            lastSkillUsed={state?.lastSkillUsed ?? null}
+            taken={state?.taken ?? {}}
+            forbiddenK={state?.lastK ?? null}
+            compact
+          />
+        )}
+        action={(
+          <div className="mobile-turn-action">
+            {status !== "over" && amIn && status === "playing" ? (
+              myTurn && selectedCards.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundManager.playConfirm();
+                    handleConfirmMove();
+                  }}
+                  data-sound="none"
+                  className="mobile-confirm-move"
+                >
+                  <Send size={16} />
+                  <span>PLAY {selectedCards.length}</span>
+                  <b>{timerRunning ? `${remainingSeconds}s` : "7s"}</b>
+                </button>
+              ) : (
+                <div className={`mobile-turn-status ${isLowTime ? "is-low" : ""}`}>
+                  <Dices size={16} />
+                  <span>{myTurn ? "YOUR TURN · PICK 1–3" : "RIVAL'S TURN"}</span>
+                  <b>{timerRunning ? `${remainingSeconds}s` : "7s"}</b>
+                </div>
+              )
+            ) : (
+              status !== "over" && (
+                <button
+                  type="button"
+                  onClick={chosenName ? rejoin : openNameGate}
+                  className="mobile-join-game"
+                >
+                  <LogIn size={18} />
+                  <span>{chosenName ? "REJOIN" : "JOIN GAME"}</span>
+                </button>
+              )
+            )}
+          </div>
+        )}
+        player={(
+          <ArcadePlayerCard
+            myPlayer={myPlayer}
+            myTurn={myTurn}
+            onJoinClick={openNameGate}
+            amIn={amIn}
+            gameMode={gameMode}
+            onSkill={handleSkill}
+            skillsLocked={count >= 22}
+            compact
+          />
+        )}
+        opponent={(
+          <ArcadeOpponentCard
+            opponentPlayer={opponentPlayer}
+            status={status}
+            isOpponentTurn={isOpponentTurn}
+            allPlayers={players}
+            currentId={currentId}
+            gameMode={gameMode}
+            compact
+          />
+        )}
+        modeSwitch={
+          gameConfig.gameplay.allowClassic && gameConfig.gameplay.allowSkills ? (
+            <div className="mobile-mode-switch" role="group" aria-label="Game mode">
+              <button
+                type="button"
+                onClick={() => handleModeChange("classic")}
+                className={gameMode === "classic" ? "active" : ""}
+              >
+                <Dices size={15} /> Classic
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange("skills")}
+                className={gameMode === "skills" ? "active skills" : ""}
+              >
+                <Sparkles size={15} /> Skills
+              </button>
+            </div>
+          ) : null
+        }
+      />
 
       {/* Stats are the only bottom dock. */}
       <div className="arena-bottom mx-auto w-full max-w-5xl shrink-0 pb-1">

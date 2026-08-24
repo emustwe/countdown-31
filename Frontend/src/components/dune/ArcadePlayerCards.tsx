@@ -128,7 +128,7 @@ export function ArcadePlayerCard({
   myPlayer,
   myTurn,
   onJoinClick,
-  amIn = true,
+  amIn: _amIn = true,
   gameMode = "skills",
   onSkill,
   skillsLocked = false,
@@ -204,7 +204,7 @@ export function ArcadePlayerCard({
 
         {/* 3D MasterAvatar Display */}
         <div
-          className={`relative w-22 h-22 sm:w-26 sm:h-26 md:w-28 md:h-28 mx-auto rounded-2xl overflow-hidden border-2 transition-all shadow-lg ${
+          className={`relative aspect-square shrink-0 w-22 h-22 sm:w-26 sm:h-26 md:w-28 md:h-28 mx-auto rounded-2xl overflow-hidden border-2 transition-all shadow-lg ${
             myTurn ? "border-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.8)] scale-102" : "border-amber-400/70"
           }`}
         >
@@ -504,7 +504,7 @@ export function ArcadeOpponentCard({
 
         {/* 3D Rival Avatar Display */}
         <div
-          className={`relative w-22 h-22 sm:w-26 sm:h-26 md:w-28 md:h-28 mx-auto rounded-2xl overflow-hidden border-2 transition-all shadow-lg ${
+          className={`relative aspect-square shrink-0 w-22 h-22 sm:w-26 sm:h-26 md:w-28 md:h-28 mx-auto rounded-2xl overflow-hidden border-2 transition-all shadow-lg ${
             isOpponentTurn ? "border-cyan-400 shadow-[0_0_18px_rgba(6,182,212,0.8)] scale-102" : "border-purple-400/60"
           }`}
         >

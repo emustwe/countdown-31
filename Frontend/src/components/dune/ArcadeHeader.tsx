@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  BookOpen,
   Crown,
   Handshake,
   History as HistoryIcon,
@@ -17,11 +16,9 @@ import {
   Wallet,
   ShoppingBag,
   Settings,
-  LogIn,
   LogOut,
   ChevronRight,
   Trophy,
-  ShieldAlert,
 } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useAuthStore } from "../../stores/auth-store";
@@ -35,6 +32,7 @@ import { MasterAvatar } from "./MasterAvatar";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
 import type { MenuIconId } from "../../lib/game-config";
 import { MobileBottomNav } from "./MobileBottomNav";
+import { MobileAppHeader } from "./MobileAppHeader";
 import { DEFAULT_GAME_CONFIG, type GameConfig } from "../../lib/game-config";
 
 interface ArcadeHeaderProps {
@@ -120,7 +118,6 @@ export function ArcadeHeader({
   }
 
   const displayName = profile?.fullName || user?.fullName || "Player";
-  const userInitials = displayName.slice(0, 2).toUpperCase();
   const balanceDisplay = wallet ? formatUsdt(wallet.balance) : "0.00 USDT";
   const menuIcons: Record<MenuIconId, typeof Home> = {
     home: Home,
@@ -139,9 +136,10 @@ export function ArcadeHeader({
 
   return (
     <>
-    <header className="arcade-arena-header relative z-30 flex h-20 sm:h-24 md:h-28 w-full shrink-0 select-none items-start justify-between px-3 pt-2 pb-1 sm:px-6 mb-4 sm:mb-6">
+    <MobileAppHeader showRules={canToggle} onOpenRules={onOpenRules} />
+    <header className="desktop-app-header arcade-arena-header relative z-30 flex h-36 w-full shrink-0 select-none items-start justify-between px-8 pb-2 pt-3">
       {/* Left Mode Selector Pill (Rendered on Desktop lg+) */}
-      <div className="arcade-mode-selector hidden lg:flex items-center gap-2.5 z-20 pt-1">
+      <div className="arcade-mode-selector flex items-center gap-2.5 z-20 pt-1">
         {canToggle && (
           <div className="flex items-center bg-black/75 border border-amber-400/50 rounded-2xl p-1 shadow-lg backdrop-blur-md">
             <button
@@ -178,10 +176,10 @@ export function ArcadeHeader({
       </div>
 
       {/* Center Wide Single-Line 3D Marquee Logo Banner */}
-      <div className="arcade-brand absolute left-1/2 -translate-x-1/2 top-2 flex flex-col items-center pointer-events-none z-10 w-full max-w-[320px] sm:max-w-[440px] md:max-w-[540px]">
+      <div className="arcade-brand absolute left-1/2 -translate-x-1/2 top-2 flex flex-col items-center pointer-events-none z-10">
         <div
           onClick={() => router.push("/home")}
-          className="pointer-events-auto cursor-pointer relative w-full flex items-center justify-center gap-2 sm:gap-3 bg-gradient-to-r from-amber-950/95 via-yellow-900/95 to-amber-950/95 px-4 sm:px-8 py-1.5 sm:py-2 rounded-2xl border-2 sm:border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all"
+          className="pointer-events-auto cursor-pointer relative flex items-center gap-2 bg-gradient-to-r from-amber-950 via-yellow-900 to-amber-950 px-10 py-2.5 rounded-2xl border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all"
         >
           {/* Decorative Corner Rivets */}
           <span className="absolute top-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
@@ -190,13 +188,13 @@ export function ArcadeHeader({
           <span className="absolute bottom-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
 
           {/* Wide Single-Line Title */}
-          <h1 className="font-title font-black text-lg sm:text-2xl md:text-3xl tracking-wide text-white drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)] whitespace-nowrap">
+          <h1 className="font-title font-black text-4xl tracking-wider text-white drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)] whitespace-nowrap">
             {config.branding.gameTitle}
           </h1>
 
           {/* 3D Golden "31" Coin Badge on the Same Line */}
-          <div className="flex items-center justify-center w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 border-2 border-white shadow-[0_4px_12px_rgba(245,158,11,0.9)] shrink-0">
-            <span className="font-title font-black text-sm sm:text-lg text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
+          <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 border-2 border-white shadow-[0_4px_12px_rgba(245,158,11,0.9)] shrink-0">
+            <span className="font-title font-black text-2xl text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
               31
             </span>
           </div>
