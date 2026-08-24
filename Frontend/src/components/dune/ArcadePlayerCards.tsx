@@ -12,11 +12,13 @@ import {
   Shield,
   Moon,
   Award,
+  Plus,
 } from "lucide-react";
 import { MasterAvatar } from "./MasterAvatar";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
 import { type LivePlayer, type SkillType, type GameMode } from "../../lib/hooks/useCountdownLive";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
+import { soundManager } from "../../lib/soundManager";
 
 interface BotProfile {
   title: string;
@@ -98,27 +100,27 @@ const BOT_PROFILES: Record<string, BotProfile> = {
       frameId: "candy_pop",
       hasGlasses: false,
       hasMustache: false,
-      hasCrown: true,
+      hasCrown: false,
     },
-    trophies: 1190,
-    level: 11,
-    skills: [ALL_SKILL_META.shield, ALL_SKILL_META.nudge],
+    trophies: 1120,
+    level: 10,
+    skills: [ALL_SKILL_META.rewind, ALL_SKILL_META.nudge],
   },
-  cpu_barnaby: {
-    title: "Grand Champion 👑",
-    streak: 7,
+  cpu_rusty: {
+    title: "Clockwork Bull ⚙️",
+    streak: 3,
     config: {
-      variantId: "moss_v1_cowboy_glasses",
+      variantId: "rusty_v1_sunglasses",
       skinId: "base_bull",
-      backgroundId: "meadow",
-      frameId: "forest_vine",
+      backgroundId: "neon",
+      frameId: "neon_cyber",
       hasGlasses: true,
       hasMustache: true,
-      hasCrown: true,
+      hasCrown: false,
     },
-    trophies: 1850,
-    level: 25,
-    skills: [ALL_SKILL_META.turbo, ALL_SKILL_META.shield],
+    trophies: 1240,
+    level: 12,
+    skills: [ALL_SKILL_META.shield, ALL_SKILL_META.turbo],
   },
 };
 
@@ -126,24 +128,151 @@ export function ArcadePlayerCard({
   myPlayer,
   myTurn,
   onJoinClick,
-  amIn,
+  amIn = true,
   gameMode = "skills",
   onSkill,
   skillsLocked = false,
+  compact = false,
 }: {
   myPlayer: LivePlayer | null;
   myTurn: boolean;
   onJoinClick?: () => void;
-  amIn: boolean;
+  amIn?: boolean;
   gameMode?: GameMode;
-  onSkill?: (skill: SkillType) => void;
+  onSkill?: (type: SkillType) => void;
   skillsLocked?: boolean;
+  compact?: boolean;
 }) {
   const avatar = useAvatarStore();
   const { data: gameConfig } = useGameConfig();
   const isSkillMode = gameMode === "skills";
 
-  if (!amIn || !myPlayer) {
+  const equipped =
+    myPlayer?.equippedSkills && myPlayer.equippedSkills.length > 0
+      ? myPlayer.equippedSkills
+      : ["rewind" as SkillType, "turbo" as SkillType];
+
+  // COMPACT MOBILE / TABLET VIEW (Shown directly below the 3D cylinder)
+  if (compact) {
+    if (!myPlayer) {
+      return (
+        <div
+          onClick={() => {
+            soundManager.playClick();
+            onJoinClick?.();
+          }}
+          className="w-full h-full min-h-[108px] flex items-center justify-between p-2.5 sm:p-3 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/80 rounded-2xl shadow-xl cursor-pointer hover:border-amber-300 transition-all select-none"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-amber-500/20 border-2 border-dashed border-amber-400 flex items-center justify-center text-amber-300">
+              <Plus size={22} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-title font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1">
+                <Crown size={11} className="text-yellow-400 fill-yellow-400" />
+                <span>YOU</span>
+              </span>
+              <span className="font-title font-black text-xs sm:text-sm text-white">
+                TAP TO JOIN ⚔️
+              </span>
+            </div>
+          </div>
+          <span className="text-[10px] font-title font-bold text-slate-400 bg-black/50 px-2 py-1 rounded-lg border border-slate-800">
+            GUEST
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={`w-full flex flex-col justify-between p-2 sm:p-2.5 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 rounded-2xl shadow-xl transition-all select-none ${
+          myTurn
+            ? "border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.6)]"
+            : "border-amber-400/60"
+        }`}
+      >
+        {/* Top Row: Avatar & Nameplate */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div
+              className={`relative w-11 h-11 sm:w-13 sm:h-13 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
+                myTurn ? "border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" : "border-amber-400/70"
+              }`}
+            >
+              <MasterAvatar
+                config={avatar}
+                showLevel={true}
+                level={12}
+                showRarity={false}
+              />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1">
+                <Crown size={10} className="text-yellow-400 fill-yellow-400" />
+                <span className="text-[9px] font-title font-black text-amber-300 uppercase tracking-wider">
+                  YOU {myTurn && "· ⚡ TURN"}
+                </span>
+              </div>
+              <span className="font-title font-black text-xs text-white truncate drop-shadow">
+                {myPlayer.name}
+              </span>
+              <span className="text-[9px] font-title font-bold text-emerald-400/90 truncate">
+                🏆 {avatar.title}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end shrink-0">
+            <span className="text-[9px] font-title font-bold text-amber-400 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/50">
+              🔥 5 STREAK
+            </span>
+          </div>
+        </div>
+
+        {/* Attached Tactical Skills (Rendered right on mobile player card) */}
+        {isSkillMode && (
+          <div className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-white/10">
+            {equipped.map((skType) => {
+              const baseMeta = ALL_SKILL_META[skType] ?? ALL_SKILL_META.rewind;
+              const configured = gameConfig.skills.find((skill) => skill.id === skType);
+              const meta = configured
+                ? { ...baseMeta, name: configured.name, badge: configured.shortLabel }
+                : baseMeta;
+              const available = (myPlayer.skills?.[skType] ?? 0) > 0;
+              const canUse = available && myTurn && !skillsLocked;
+              return (
+                <button
+                  type="button"
+                  key={skType}
+                  disabled={!canUse}
+                  onClick={() => {
+                    soundManager.playClick();
+                    onSkill?.(skType);
+                  }}
+                  aria-label={`Use ${meta.name}`}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1 px-1 rounded-xl border text-[9px] font-title font-black transition-all ${
+                    canUse
+                      ? `${meta.color} hover:scale-105 active:scale-95 cursor-pointer animate-pulse`
+                      : available
+                        ? `${meta.color} opacity-60 cursor-not-allowed`
+                        : "border-slate-800 bg-slate-950/60 opacity-40 grayscale"
+                  }`}
+                  title={`${meta.name} (${available ? "Ready" : "Used"})`}
+                >
+                  <div className="p-0.5 rounded bg-black/50">{meta.icon}</div>
+                  <span className="truncate">{meta.badge}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // FULL DESKTOP VIEW
+  if (!myPlayer) {
     return (
       <div
         onClick={onJoinClick}
@@ -160,11 +289,6 @@ export function ArcadePlayerCard({
       </div>
     );
   }
-
-  const equipped =
-    myPlayer.equippedSkills && myPlayer.equippedSkills.length > 0
-      ? myPlayer.equippedSkills
-      : ["rewind" as SkillType, "turbo" as SkillType];
 
   return (
     <div className="w-full flex flex-col gap-3">
@@ -223,7 +347,7 @@ export function ArcadePlayerCard({
                       ? `${meta.color} hover:scale-105 cursor-pointer active:scale-95`
                       : available
                         ? `${meta.color} opacity-65 cursor-not-allowed`
-                      : "border-slate-800 bg-slate-950/60 opacity-40 grayscale"
+                        : "border-slate-800 bg-slate-950/60 opacity-40 grayscale"
                   }`}
                   title={`${meta.name} (${available ? "Ready" : "Used"})`}
                 >
@@ -285,7 +409,7 @@ export function ArcadePlayerCard({
         </div>
       </div>
 
-      {/* Bottom Equalizer Box: Player Match Stats Dock (Matches Right Column Roster Height perfectly) */}
+      {/* Bottom Equalizer Box: Player Match Stats Dock */}
       <div className="w-full p-2.5 rounded-2xl bg-black/60 border border-emerald-500/30 flex flex-col gap-1.5 shadow-md">
         <div className="flex items-center justify-between px-1">
           <span className="text-[9px] font-title font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1">
@@ -319,6 +443,7 @@ export function ArcadeOpponentCard({
   allPlayers = [],
   currentId,
   gameMode = "skills",
+  compact = false,
 }: {
   opponentPlayer: LivePlayer | null;
   status: "waiting" | "playing" | "over";
@@ -326,6 +451,7 @@ export function ArcadeOpponentCard({
   allPlayers?: LivePlayer[];
   currentId?: string | null;
   gameMode?: GameMode;
+  compact?: boolean;
 }) {
   const { data: gameConfig } = useGameConfig();
   const activeP =
@@ -348,6 +474,74 @@ export function ArcadeOpponentCard({
     : fallbackProfile;
   const isSkillMode = gameMode === "skills";
 
+  // COMPACT MOBILE / TABLET VIEW
+  if (compact) {
+    return (
+      <div
+        className={`w-full flex flex-col justify-between p-2 sm:p-2.5 bg-gradient-to-b from-[#1d1628]/95 via-[#110d1c]/98 to-[#07050b] border-2 rounded-2xl shadow-xl transition-all select-none ${
+          isOpponentTurn
+            ? "border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.6)]"
+            : "border-purple-400/50"
+        }`}
+      >
+        {/* Top Row: Opponent Avatar & Nameplate */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div
+              className={`relative w-11 h-11 sm:w-13 sm:h-13 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
+                isOpponentTurn ? "border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.8)]" : "border-purple-400/60"
+              }`}
+            >
+              <MasterAvatar
+                config={profile.config}
+                showLevel={true}
+                level={profile.level}
+                showRarity={false}
+              />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1">
+                <Swords size={10} className={isOpponentTurn ? "text-cyan-300 animate-spin" : "text-purple-300"} />
+                <span className="text-[9px] font-title font-black text-cyan-300 uppercase tracking-wider">
+                  {isOpponentTurn ? "⚡ TURN" : "OPPONENT"}
+                </span>
+              </div>
+              <span className="font-title font-black text-xs text-white truncate drop-shadow">
+                {oppName}
+              </span>
+              <span className="text-[9px] font-title font-bold text-cyan-300/90 truncate">
+                ✨ {profile.title}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end shrink-0">
+            <span className="text-[9px] font-title font-bold text-rose-400 bg-rose-950/80 px-1.5 py-0.5 rounded border border-rose-500/50">
+              🔥 {profile.streak}
+            </span>
+          </div>
+        </div>
+
+        {/* Attached Tactical Skills for Opponent */}
+        {isSkillMode && (
+          <div className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-white/10">
+            {profile.skills.map((s) => (
+              <div
+                key={s.badge}
+                className={`flex-1 flex items-center justify-center gap-1 py-1 px-1 rounded-xl border text-[9px] font-title font-black ${s.color}`}
+                title={s.name}
+              >
+                <div className="p-0.5 rounded bg-black/50">{s.icon}</div>
+                <span className="truncate">{s.badge}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // FULL DESKTOP VIEW
   return (
     <div className="w-full flex flex-col gap-3">
       {/* Top Section: Opponent Big 3D Avatar Frame + Attached Side Skills (if Skill Mode) */}

@@ -8013,32 +8013,27 @@ button.mini:hover { filter: brightness(1.06); }
     margin-bottom: 1rem !important;
   }
 
-  .practice-page .arena-player-panel,
-  .practice-page .arena-opponent-panel {
-    display: none;
-  }
-
   .practice-page .arena-main {
     display: flex;
     justify-content: center;
+    width: 100%;
   }
 
   .practice-page .arena-bottom {
-    margin-bottom: calc(92px + env(safe-area-inset-bottom));
+    margin-bottom: calc(88px + env(safe-area-inset-bottom));
   }
 
   /* Keep the optional game-flavour tester clear of the app navigation dock. */
   .practice-page .va-flavor-float {
-    bottom: calc(92px + env(safe-area-inset-bottom));
+    bottom: calc(88px + env(safe-area-inset-bottom));
   }
+}
 
-  .practice-page .defeat-cow-stage.is-idle {
-    bottom: calc(142px + env(safe-area-inset-bottom));
-  }
-
-  .practice-page .defeat-cow-stage.is-local-defeat {
-    bottom: calc(218px + env(safe-area-inset-bottom));
-  }
+/* Hide Next.js dev toast and portal overlay from obscuring bottom navigation */
+nextjs-portal,
+#__next-build-watcher,
+[data-nextjs-toast] {
+  display: none !important;
 }
 
 @media (max-width: 560px) {

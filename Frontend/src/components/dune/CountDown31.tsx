@@ -311,8 +311,8 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
 
       {/* Main Arcade Arena Battlefield (3 Columns on Desktop with Expanded Center) */}
       <main className="arena-main mx-auto grid min-h-0 w-full max-w-[1580px] flex-1 grid-cols-1 items-start gap-2 overflow-hidden lg:grid-cols-[270px_minmax(0,1fr)_270px] lg:gap-4">
-        {/* Left Column: Local Player Big Battle Card Showcase */}
-        <div className="arena-player-panel order-2 mx-auto flex w-full max-w-[270px] items-start justify-center lg:order-1">
+        {/* Left Column: Local Player Big Battle Card Showcase (Desktop) */}
+        <div className="arena-player-panel hidden lg:flex order-2 mx-auto w-full max-w-[270px] items-start justify-center lg:order-1">
           <div className="w-full">
             <ArcadePlayerCard
               myPlayer={myPlayer}
@@ -326,7 +326,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           </div>
         </div>
 
-        {/* Center Column: 3D Horizontal Number Cylinder Drum & Action/Skill Hand */}
+        {/* Center Column: 3D Horizontal Number Cylinder Drum, Mobile Battle Cards, & Actions */}
         <div className="arena-center order-1 mx-auto flex w-full max-w-[850px] flex-col items-center justify-start gap-2 lg:order-2">
           {/* The Hero 3D Horizontal Arcade Cylinder with Direct Card Selection */}
           <Arcade3DCylinder
@@ -342,18 +342,18 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
             forbiddenK={state?.lastK ?? null}
           />
 
-          {/* A compact turn prompt leaves the arena open; tactical skills live beside the avatar. */}
+          {/* A compact turn prompt leaves the arena open */}
           {status !== "over" && amIn && status === "playing" ? (
-            <div className="arena-turn-strip mx-auto flex w-full max-w-xl items-center justify-between rounded-2xl border-2 border-amber-400/50 bg-gradient-to-r from-amber-950/80 via-black/90 to-amber-950/80 px-5 py-2 shadow-xl">
+            <div className="arena-turn-strip mx-auto flex w-full max-w-xl items-center justify-between rounded-2xl border-2 border-amber-400/50 bg-gradient-to-r from-amber-950/80 via-black/90 to-amber-950/80 px-4 py-1.5 sm:px-5 sm:py-2 shadow-xl">
               <div className="flex items-center gap-2">
                 <Dices size={18} className="text-amber-400" />
-                <span className="font-title text-sm font-black uppercase tracking-wider text-white">
+                <span className="font-title text-xs sm:text-sm font-black uppercase tracking-wider text-white">
                   {myTurn ? "YOUR TURN · PICK 1, 2, OR 3" : "OPPONENT IS COUNTING..."}
                 </span>
               </div>
 
               <div
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1 font-title text-xs font-black ${
+                className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 sm:px-3 sm:py-1 font-title text-xs font-black ${
                   isLowTime
                     ? "border-rose-500 bg-rose-950/90 text-rose-300 animate-bounce"
                     : "border-amber-400/50 bg-amber-950/70 text-amber-300"
@@ -367,17 +367,49 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
             status !== "over" && (
               <button
                 onClick={chosenName ? rejoin : openNameGate}
-                className="btn-arcade-3d btn-arcade-amber my-2 flex cursor-pointer items-center justify-center gap-2 rounded-2xl px-10 py-4 text-lg shadow-2xl transition-transform hover:scale-105 sm:text-xl"
+                className="btn-arcade-3d btn-arcade-amber my-1 sm:my-2 flex cursor-pointer items-center justify-center gap-2 rounded-2xl px-8 py-3 text-base shadow-2xl transition-transform hover:scale-105 sm:text-xl"
               >
-                <LogIn size={22} />
+                <LogIn size={20} />
                 <span>{chosenName ? "REJOIN GAME" : "JOIN THE GAME"}</span>
               </button>
             )
           )}
+
+          {/* Dedicated Mobile & Tablet Battle Dock (Rendered below Cylinder) */}
+          <div className="w-full flex lg:hidden flex-col items-center gap-2">
+            <div className="w-full grid grid-cols-2 gap-2 sm:gap-3 max-w-xl mx-auto">
+              {/* Local Player Side with Avatar & Attached Tactical Skills */}
+              <div className="w-full">
+                <ArcadePlayerCard
+                  myPlayer={myPlayer}
+                  myTurn={myTurn}
+                  onJoinClick={openNameGate}
+                  amIn={amIn}
+                  gameMode={gameMode}
+                  onSkill={handleSkill}
+                  skillsLocked={count >= 22}
+                  compact={true}
+                />
+              </div>
+
+              {/* Rival Opponent Side with Avatar & Skills */}
+              <div className="w-full">
+                <ArcadeOpponentCard
+                  opponentPlayer={opponentPlayer}
+                  status={status}
+                  isOpponentTurn={isOpponentTurn}
+                  allPlayers={players}
+                  currentId={currentId}
+                  gameMode={gameMode}
+                  compact={true}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Right Column: Opponent Panel & Match Roster */}
-        <div className="arena-opponent-panel order-3 mx-auto flex w-full max-w-[270px] flex-row items-start justify-center lg:flex-col">
+        {/* Right Column: Opponent Panel & Match Roster (Desktop) */}
+        <div className="arena-opponent-panel hidden lg:flex order-3 mx-auto w-full max-w-[270px] flex-col items-start justify-center">
           <div className="w-full">
             <ArcadeOpponentCard
               opponentPlayer={opponentPlayer}

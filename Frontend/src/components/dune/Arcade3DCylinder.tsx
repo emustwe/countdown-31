@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Skull, Star, Zap, CheckCircle2, Send } from "lucide-react";
+import { Flame, Skull, Star, Zap, Send } from "lucide-react";
 import { type LastMoveInfo, type SkillType } from "../../lib/hooks/useCountdownLive";
 import { soundManager } from "../../lib/soundManager";
 
@@ -49,7 +49,27 @@ export function Arcade3DCylinder({
   taken = {},
   forbiddenK: _forbiddenK,
 }: Arcade3DCylinderProps) {
-  // Visible slot offsets around next playable number: -3, -2, -1, 0, 1, 2, 3
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  // Dynamically compute scale factor so all 7 cards fit perfectly on any viewport (mobile to 4K)
+  useEffect(() => {
+    function updateScale() {
+      if (containerRef.current) {
+        const width = containerRef.current.offsetWidth;
+        if (width < 840) {
+          setScale(Math.min(1, Math.max(0.40, width / 840)));
+        } else {
+          setScale(1);
+        }
+      }
+    }
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
+  }, []);
+
+  // Visible slot offsets around next playable number: -3, -2, -1, 0, 1, 2, 3 (Always 7 Cards)
   const visibleOffsets = useMemo(() => {
     const offsets: number[] = [];
     for (let i = -SLOTS_LEFT; i <= SLOTS_RIGHT; i++) {
@@ -64,23 +84,39 @@ export function Arcade3DCylinder({
   const lastPicks = lastMove?.picks ?? [];
   const lastCount = lastMove?.count ?? 1;
 
-  const baseCenterX = "50%"; // Exact 50% Dead Center of the drum machine container!
+  const baseCenterX = "50%";
+  const nativeWidth = 840;
+  const nativeHeight = 245;
 
   return (
-    <div className="relative w-full max-w-[840px] mx-auto my-1 select-none flex flex-col items-center gap-2">
+    <div
+      ref={containerRef}
+      className="relative w-full max-w-[840px] mx-auto select-none flex flex-col items-center"
+      style={{
+        height: `${Math.round(nativeHeight * scale + (lastSkillUsed ? 36 : 0))}px`,
+      }}
+    >
       {/* Tactical Skill Event Combat Banner */}
       {lastSkillUsed && (
-        <div className="flex items-center justify-center animate-fadeIn">
-          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-950/90 via-black/90 to-amber-950/90 border-2 border-amber-400/70 shadow-[0_0_20px_rgba(245,158,11,0.5)] text-xs sm:text-sm font-title font-black text-amber-200">
-            <Zap size={15} className="text-yellow-400 fill-yellow-400 animate-pulse" />
+        <div className="flex items-center justify-center mb-1 animate-fadeIn">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-950/90 via-black/90 to-amber-950/90 border border-amber-400/70 shadow-[0_0_15px_rgba(245,158,11,0.5)] text-xs font-title font-black text-amber-200">
+            <Zap size={14} className="text-yellow-400 fill-yellow-400 animate-pulse" />
             <span className="text-white font-bold">{lastSkillUsed.userName}</span>
             <span className="text-amber-300 font-semibold">{lastSkillUsed.description}</span>
           </div>
         </div>
       )}
 
-      {/* Physical 3D Machine Housing */}
-      <div className="relative w-full h-[225px] sm:h-[255px] md:h-[275px] rounded-3xl overflow-hidden bg-gradient-to-b from-[#0e1612] via-[#09100c] to-[#040806] border-2 border-amber-500/40 shadow-[0_20px_50px_rgba(0,0,0,0.9),inset_0_0_40px_rgba(0,0,0,0.8)] flex items-center justify-center">
+      {/* Proportional Scaling Wrapper: Ensures all 7 cards shrink into the game box on mobile */}
+      <div
+        style={{
+          width: `${nativeWidth}px`,
+          height: `${nativeHeight}px`,
+          transform: `scale(${scale})`,
+          transformOrigin: "top center",
+        }}
+        className="relative shrink-0 rounded-3xl overflow-hidden bg-gradient-to-b from-[#0e1612] via-[#09100c] to-[#040806] border-2 sm:border-3 border-amber-500/40 shadow-[0_20px_50px_rgba(0,0,0,0.9),inset_0_0_40px_rgba(0,0,0,0.8)] flex items-center justify-center"
+      >
         {/* Background Radial Glow */}
         <div
           className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${
@@ -93,33 +129,33 @@ export function Arcade3DCylinder({
         />
 
         {/* Top Heavy Brass Rim with Rivets */}
-        <div className="absolute top-0 inset-x-0 h-6 sm:h-7 bg-gradient-to-r from-amber-700 via-amber-400 to-amber-700 border-b border-amber-300/60 shadow-md flex items-center justify-around px-4 z-30 pointer-events-none">
+        <div className="absolute top-0 inset-x-0 h-6 bg-gradient-to-r from-amber-700 via-amber-400 to-amber-700 border-b border-amber-300/60 shadow-md flex items-center justify-around px-4 z-30 pointer-events-none">
           {[...Array(20)].map((_, i) => (
             <div
               key={i}
-              className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-gradient-to-br from-amber-200 to-amber-900 border border-amber-950/60 shadow-[inset_0_1px_2px_rgba(255,255,255,0.6)]"
+              className="w-1.5 h-1.5 rounded-full bg-gradient-to-br from-amber-200 to-amber-900 border border-amber-950/60 shadow-[inset_0_1px_2px_rgba(255,255,255,0.6)]"
             />
           ))}
         </div>
 
         {/* Bottom Heavy Brass Rim with Rivets */}
-        <div className="absolute bottom-0 inset-x-0 h-6 sm:h-7 bg-gradient-to-r from-amber-700 via-amber-400 to-amber-700 border-t border-amber-300/60 shadow-md flex items-center justify-around px-4 z-30 pointer-events-none">
+        <div className="absolute bottom-0 inset-x-0 h-6 bg-gradient-to-r from-amber-700 via-amber-400 to-amber-700 border-t border-amber-300/60 shadow-md flex items-center justify-around px-4 z-30 pointer-events-none">
           {[...Array(20)].map((_, i) => (
             <div
               key={i}
-              className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-gradient-to-br from-amber-200 to-amber-900 border border-amber-950/60 shadow-[inset_0_1px_2px_rgba(255,255,255,0.6)]"
+              className="w-1.5 h-1.5 rounded-full bg-gradient-to-br from-amber-200 to-amber-900 border border-amber-950/60 shadow-[inset_0_1px_2px_rgba(255,255,255,0.6)]"
             />
           ))}
         </div>
 
         {/* Top Fixed Golden Pointer Arrow (Locked in Exact 50% Dead Center over Next Playable Card) */}
-        <div className="absolute top-4 sm:top-5 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center pointer-events-none">
-          <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-b from-amber-300 via-amber-500 to-amber-600 rotate-45 border-2 border-amber-200 shadow-[0_4px_12px_rgba(245,158,11,0.8)] -mb-2.5 sm:-mb-3" />
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center pointer-events-none">
+          <div className="w-5 h-5 bg-gradient-to-b from-amber-300 via-amber-500 to-amber-600 rotate-45 border-2 border-amber-200 shadow-[0_4px_12px_rgba(245,158,11,0.8)] -mb-2.5" />
         </div>
 
-        {/* Center Illuminated "NEXT" Bracket Frame (Hugs Center Card Cleanly with Zero Neighbor Overlap) */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90px] sm:w-[104px] md:w-[114px] h-[148px] sm:h-[168px] md:h-[188px] rounded-2xl border-2 sm:border-3 border-amber-400/90 bg-gradient-to-b from-amber-400/15 via-transparent to-amber-400/10 shadow-[0_0_30px_rgba(245,158,11,0.45),inset_0_0_20px_rgba(245,158,11,0.25)] z-25 pointer-events-none flex flex-col justify-between items-center py-2 sm:py-3">
-          <span className="text-[9px] sm:text-[11px] font-title font-black tracking-widest text-amber-300 uppercase bg-amber-950/90 px-2 py-0.5 rounded-md border border-amber-400/50 shadow flex items-center gap-1">
+        {/* Center Illuminated "NEXT" Bracket Frame (Hugs Center Card Cleanly) */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[108px] h-[178px] rounded-2xl border-3 border-amber-400/90 bg-gradient-to-b from-amber-400/15 via-transparent to-amber-400/10 shadow-[0_0_30px_rgba(245,158,11,0.45),inset_0_0_20px_rgba(245,158,11,0.25)] z-25 pointer-events-none flex flex-col justify-between items-center py-2">
+          <span className="text-[10px] font-title font-black tracking-widest text-amber-300 uppercase bg-amber-950/90 px-2 py-0.5 rounded-md border border-amber-400/50 shadow flex items-center gap-1">
             <Star size={10} className="text-yellow-400 fill-yellow-400" />
             <span>{myTurn ? "PICK 1ST" : "NEXT"}</span>
           </span>
@@ -140,16 +176,16 @@ export function Arcade3DCylinder({
         >
           {visibleOffsets.map((offset) => {
             const tileNum = calculateSlotNumber(currentCount, offset);
-            const isTargetCenter = offset === 0; // The next playable card in 50% dead center
-            const isPlayable1 = offset === 0;   // 1st selectable card (currentCount + 1)
-            const isPlayable2 = offset === 1;   // 2nd selectable card (currentCount + 2)
-            const isPlayable3 = offset === 2;   // 3rd selectable card (currentCount + 3)
+            const isTargetCenter = offset === 0;
+            const isPlayable1 = offset === 0;
+            const isPlayable2 = offset === 1;
+            const isPlayable3 = offset === 2;
 
-            const isTargetBomb = tileNum === TARGET;
-            const isTileDanger = tileNum >= 28 && tileNum < TARGET;
+            const isTileDanger = tileNum >= 28 && tileNum <= 30;
+            const isTargetBomb = tileNum === 31;
             const isSelected = selectedCards.includes(tileNum);
 
-            // Wide, Chunky, 100% Fully Visible 7-Card Spacing Math:
+            // Spacing Math for all 7 Cards:
             let posX = 0;
             let posZ = 0;
             let rotY = 0;
@@ -157,10 +193,9 @@ export function Arcade3DCylinder({
             let cardOpacity = 1.0;
             let cardZIndex = 20;
 
-            const STEP = 118; // 118px step with 110px card width = 8px clean separation gap, and fits fully inside drum with 65px side clearance!
+            const STEP = 118;
 
             if (isTargetCenter) {
-              // 0 (Center Next Playable Card under Arrow)
               posX = 0;
               posZ = 0;
               rotY = 0;
@@ -168,7 +203,6 @@ export function Arcade3DCylinder({
               cardOpacity = 1.0;
               cardZIndex = 30;
             } else if (isPlayable2) {
-              // +1 (Next Card Right)
               posX = STEP;
               posZ = 0;
               rotY = 0;
@@ -176,23 +210,20 @@ export function Arcade3DCylinder({
               cardOpacity = 1.0;
               cardZIndex = 28;
             } else if (isPlayable3) {
-              // +2 (Next Card Right)
               posX = STEP * 2;
               posZ = 0;
               rotY = 0;
-              cardScale = 0.98;
+              cardScale = 1.0;
               cardOpacity = 1.0;
               cardZIndex = 26;
             } else if (offset === 3) {
-              // +3 (Right Peek Card)
               posX = STEP * 3;
-              posZ = 0;
-              rotY = 0;
-              cardScale = 0.96;
-              cardOpacity = 1.0;
-              cardZIndex = 24;
+              posZ = -20;
+              rotY = -8;
+              cardScale = 0.94;
+              cardOpacity = 0.75;
+              cardZIndex = 20;
             } else if (offset === -1) {
-              // -1 (Previous Player's Last Card, e.g. 14)
               posX = -STEP;
               posZ = 0;
               rotY = 0;
@@ -200,24 +231,21 @@ export function Arcade3DCylinder({
               cardOpacity = 1.0;
               cardZIndex = 28;
             } else if (offset === -2) {
-              // -2 (Previous Player's 2nd Card, e.g. 13)
               posX = -STEP * 2;
               posZ = 0;
               rotY = 0;
-              cardScale = 0.98;
+              cardScale = 1.0;
               cardOpacity = 1.0;
               cardZIndex = 26;
             } else if (offset === -3) {
-              // -3 (Previous Player's 1st Card, e.g. 12)
               posX = -STEP * 3;
-              posZ = 0;
-              rotY = 0;
-              cardScale = 0.96;
-              cardOpacity = 1.0;
-              cardZIndex = 24;
+              posZ = -20;
+              rotY = 8;
+              cardScale = 0.94;
+              cardOpacity = 0.75;
+              cardZIndex = 20;
             }
 
-            // Identify whether this card was part of the previous move (1, 2, or 3 cards)
             const isLastTurnPick =
               lastPicks.includes(tileNum) ||
               (offset < 0 && offset >= -lastCount && currentCount > 0);
@@ -245,7 +273,7 @@ export function Arcade3DCylinder({
                   damping: 25,
                   mass: 0.9,
                 }}
-                className={`absolute top-1/2 w-[86px] sm:w-[100px] md:w-[110px] h-[140px] sm:h-[160px] md:h-[175px] rounded-2xl flex flex-col items-center justify-center border-2 transition-all select-none ${
+                className={`absolute top-1/2 w-[104px] h-[168px] rounded-2xl flex flex-col items-center justify-center border-2 transition-all select-none ${
                   isSelected
                     ? "bg-gradient-to-b from-emerald-900 via-emerald-800 to-black border-emerald-300 shadow-[0_0_35px_rgba(52,211,153,0.9),inset_0_0_15px_rgba(52,211,153,0.5)] cursor-pointer z-35"
                     : isLastTurnPick
@@ -271,36 +299,15 @@ export function Arcade3DCylinder({
                 }}
                 onClick={() => {
                   if (myTurn && status === "playing" && (isPlayable1 || isPlayable2 || isPlayable3)) {
-                    onToggleCard(tileNum);
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (
-                    (event.key === "Enter" || event.key === " ") &&
-                    myTurn &&
-                    status === "playing" &&
-                    (isPlayable1 || isPlayable2 || isPlayable3)
-                  ) {
-                    event.preventDefault();
+                    soundManager.playTileSelect();
                     onToggleCard(tileNum);
                   }
                 }}
               >
-                {/* Vertical Metallic Ribs */}
-                <div className="absolute inset-y-0 left-0 w-[1px] bg-gradient-to-b from-amber-500/20 via-amber-400/40 to-transparent" />
-                <div className="absolute inset-y-0 right-0 w-[1px] bg-gradient-to-b from-amber-500/20 via-amber-400/40 to-transparent" />
-
-                {/* Selected Checkmark Badge */}
-                {isSelected && (
-                  <span className="absolute top-1.5 left-1.5 text-emerald-300 bg-emerald-950 p-0.5 rounded-full border border-emerald-400 shadow animate-bounce z-20">
-                    <CheckCircle2 size={14} className="fill-emerald-400 text-slate-950" />
-                  </span>
-                )}
-
-                {/* Previous Turn Pick Pill Badge (Subtle & High-Contrast for ALL Previous Cards including the last one) */}
+                {/* Previous Turn Pick Pill Badge */}
                 {isLastTurnPick && (
                   <span
-                    className="absolute top-1.5 px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-title font-black uppercase tracking-wider border shadow-md flex items-center gap-1 z-20"
+                    className="absolute top-1.5 px-2 py-0.5 rounded-full text-[8px] font-title font-black uppercase tracking-wider border shadow-md flex items-center gap-1 z-20"
                     style={{
                       color: highlightColor,
                       borderColor: `${highlightColor}90`,
@@ -315,7 +322,7 @@ export function Arcade3DCylinder({
 
                 {/* Lethal 31 Spiked Skull Bomb Badge */}
                 {isTargetBomb && (
-                  <span className="absolute top-1 text-[8px] sm:text-[9px] font-title font-black text-rose-300 bg-rose-950 px-1.5 py-0.5 rounded border border-rose-500/60 shadow flex items-center gap-1">
+                  <span className="absolute top-1 text-[8px] font-title font-black text-rose-300 bg-rose-950 px-1.5 py-0.5 rounded border border-rose-500/60 shadow flex items-center gap-1">
                     <span className="text-xs">💣</span>
                     <Skull size={11} className="text-rose-400 animate-pulse" />
                     <span>31</span>
@@ -324,7 +331,7 @@ export function Arcade3DCylinder({
 
                 {/* Progressive Flame Badges (28 = 🔥, 29 = 🔥🔥, 30 = 🔥🔥🔥) */}
                 {isTileDanger && !isTargetBomb && (
-                  <span className="absolute top-1 text-[8px] sm:text-[9px] font-title font-black text-amber-300 bg-amber-950 px-1.5 py-0.5 rounded border border-amber-500/60 shadow flex items-center gap-0.5">
+                  <span className="absolute top-1 text-[8px] font-title font-black text-amber-300 bg-amber-950 px-1.5 py-0.5 rounded border border-amber-500/60 shadow flex items-center gap-0.5">
                     {tileNum === 28 && <Flame size={11} className="text-amber-400" />}
                     {tileNum === 29 && (
                       <>
@@ -346,52 +353,37 @@ export function Arcade3DCylinder({
                 <span
                   className={`font-title font-black leading-none transition-all ${
                     isSelected
-                      ? "text-4xl sm:text-5xl md:text-6xl text-emerald-200 drop-shadow-[0_4px_16px_rgba(52,211,153,1)] scale-110"
+                      ? "text-5xl text-emerald-200 drop-shadow-[0_4px_16px_rgba(52,211,153,1)] scale-110"
                       : isLastTurnPick
-                        ? "text-3xl sm:text-4xl md:text-5xl text-cyan-300 drop-shadow-[0_2px_14px_rgba(33,230,215,0.9)]"
-                        : isTargetCenter
-                          ? "text-4xl sm:text-5xl md:text-6xl text-amber-300 drop-shadow-[0_4px_12px_rgba(245,158,11,0.9)]"
-                          : myTurn && (isPlayable2 || isPlayable3)
-                            ? "text-3xl sm:text-4xl md:text-5xl text-emerald-300 drop-shadow-[0_2px_8px_rgba(34,197,94,0.8)]"
-                            : isTargetBomb
-                              ? "text-3xl sm:text-4xl md:text-5xl text-rose-500 drop-shadow-[0_2px_8px_rgba(239,68,68,0.8)]"
-                              : "text-2xl sm:text-3xl md:text-4xl text-amber-100/70"
+                        ? "text-5xl font-black text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
+                        : isTargetBomb
+                          ? "text-5xl font-black text-rose-400 animate-pulse drop-shadow-[0_0_12px_rgba(244,63,94,0.8)]"
+                          : isTileDanger
+                            ? "text-5xl font-black text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.6)]"
+                            : myTurn && (isPlayable1 || isPlayable2 || isPlayable3)
+                              ? "text-5xl font-black text-emerald-400 drop-shadow-[0_2px_8px_rgba(52,211,153,0.5)]"
+                              : "text-5xl font-black text-slate-400/80"
                   }`}
                 >
                   {tileNum}
                 </span>
 
-                {/* Bottom Accents / Indicator Dot */}
-                <div className="absolute bottom-1.5 flex gap-1.5 items-center">
-                  {isLastTurnPick ? (
-                    <span className="text-[9px] font-title font-black" style={{ color: highlightColor }}>
-                      ✓ Played
-                    </span>
+                {/* Bottom Card Indicators */}
+                <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-1 pointer-events-none">
+                  {isSelected ? (
+                    <div className="px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 font-title font-black text-[9px] uppercase tracking-wider shadow">
+                      SELECTED
+                    </div>
+                  ) : myTurn && (isPlayable1 || isPlayable2 || isPlayable3) ? (
+                    <div className="flex gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    </div>
                   ) : (
-                    <>
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          isSelected
-                            ? "bg-emerald-400"
-                            : isTargetCenter
-                              ? "bg-amber-400"
-                              : isTargetBomb
-                                ? "bg-rose-500"
-                                : "bg-amber-500/40"
-                        }`}
-                      />
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          isSelected
-                            ? "bg-emerald-400"
-                            : isTargetCenter
-                              ? "bg-amber-400"
-                              : isTargetBomb
-                                ? "bg-rose-500"
-                                : "bg-amber-500/40"
-                        }`}
-                      />
-                    </>
+                    <div className="flex gap-1 opacity-30">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                    </div>
                   )}
                 </div>
               </motion.div>
@@ -400,14 +392,14 @@ export function Arcade3DCylinder({
         </div>
       </div>
 
-      {/* 3D Glowing Green Confirm Move Button (Solid, 100% Stable) */}
+      {/* 3D Glowing Green Confirm Move Button (Appears when cards are selected) */}
       <AnimatePresence>
         {myTurn && selectedCards.length > 0 && status === "playing" && (
           <motion.div
-            initial={{ opacity: 0, y: 15, scale: 0.95 }}
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="z-30 mt-1"
+            className="z-30 mt-2"
           >
             <button
               onClick={() => {
@@ -415,10 +407,10 @@ export function Arcade3DCylinder({
                 onConfirmMove();
               }}
               data-sound="none"
-              className="px-8 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-base shadow-[0_0_25px_rgba(52,211,153,0.9),0_4px_12px_rgba(0,0,0,0.5)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2.5"
+              className="px-6 py-2.5 sm:px-8 sm:py-3 rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-sm sm:text-base shadow-[0_0_25px_rgba(52,211,153,0.9),0_4px_12px_rgba(0,0,0,0.5)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
             >
               <span>CONFIRM MOVE ({selectedCards.length} {selectedCards.length === 1 ? "CARD" : "CARDS"})</span>
-              <Send size={18} />
+              <Send size={16} />
             </button>
           </motion.div>
         )}
