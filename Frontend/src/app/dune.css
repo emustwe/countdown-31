@@ -7890,7 +7890,7 @@ button.mini:hover { filter: brightness(1.06); }
 
   .mobile-bottom-nav {
     position: fixed;
-    z-index: 180;
+    z-index: 200;
     left: 50%;
     bottom: max(8px, env(safe-area-inset-bottom));
     display: grid;
