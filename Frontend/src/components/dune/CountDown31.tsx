@@ -72,6 +72,8 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const currentId = state?.currentId ?? null;
   const amIn = !!myId && players.some((p) => p.id === myId);
   const myTurn = status === "playing" && currentId === myId;
+  const [dismissedDefeat, setDismissedDefeat] = useState(false);
+
   const myPlayer = players.find((p) => p.id === myId) ?? null;
   const opponentPlayer = players.find((p) => p.id !== myId) ?? players[1] ?? null;
   const isOpponentTurn = status === "playing" && currentId !== myId && currentId !== null;
@@ -79,10 +81,17 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     state?.winner &&
     players.find((player) => player.id === myId)?.name === state.winner.name
   );
-  const isLocalDefeat = !!(
+  const isLocalDefeat = !dismissedDefeat && !!(
     myPlayer?.eliminated &&
     state?.lastEliminated?.name === myPlayer.name
   );
+
+  // Reset dismissed defeat whenever a new active round starts
+  useEffect(() => {
+    if (status === "playing" && !myPlayer?.eliminated) {
+      setDismissedDefeat(false);
+    }
+  }, [status, myPlayer?.eliminated]);
 
   const remaining = state?.turnEndsAt ? Math.max(0, state.turnEndsAt - now) : 0;
   const remainingSeconds = Math.ceil(remaining / 1000);
@@ -275,8 +284,15 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
     );
   }
 
+  function handlePlayAgain() {
+    soundManager.playClick();
+    setDismissedDefeat(true);
+    rejoin();
+  }
+
   function rejoin() {
     soundManager.playClick();
+    setDismissedDefeat(true);
     if (chosenName) {
       if (gameMode === "skills") {
         setShowSkillModal(true);
@@ -346,17 +362,30 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           <div className="w-full max-w-xl mx-auto flex items-center justify-center min-h-[48px] my-2 sm:my-3 z-30">
             {status !== "over" && amIn && status === "playing" ? (
               myTurn && selectedCards.length > 0 ? (
-                <button
-                  onClick={() => {
-                    soundManager.playConfirm();
-                    handleConfirmMove();
-                  }}
-                  data-sound="none"
-                  className="w-full sm:w-auto px-8 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-sm sm:text-base shadow-[0_0_25px_rgba(52,211,153,0.95),0_4px_12px_rgba(0,0,0,0.6)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 animate-pulse"
-                >
-                  <span>CONFIRM MOVE ({selectedCards.length} {selectedCards.length === 1 ? "CARD" : "CARDS"})</span>
-                  <Send size={16} />
-                </button>
+                <div className="w-full flex items-center justify-between gap-2.5 rounded-2xl border-2 border-emerald-400/80 bg-gradient-to-r from-emerald-950/90 via-black/90 to-emerald-950/90 p-1.5 shadow-[0_0_25px_rgba(52,211,153,0.35)]">
+                  <button
+                    onClick={() => {
+                      soundManager.playConfirm();
+                      handleConfirmMove();
+                    }}
+                    data-sound="none"
+                    className="flex-1 py-2 sm:py-2.5 px-4 sm:px-6 rounded-xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-sm sm:text-base shadow-[0_0_20px_rgba(52,211,153,0.8)] hover:brightness-110 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>CONFIRM MOVE ({selectedCards.length} {selectedCards.length === 1 ? "CARD" : "CARDS"})</span>
+                    <Send size={16} />
+                  </button>
+
+                  <div
+                    className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 font-title text-xs font-black shrink-0 ${
+                      isLowTime
+                        ? "border-rose-500 bg-rose-950/90 text-rose-300 animate-bounce"
+                        : "border-emerald-400/50 bg-emerald-950/70 text-emerald-300"
+                    }`}
+                  >
+                    <Clock size={13} className={isLowTime ? "text-rose-400" : "text-emerald-400"} />
+                    <span>{timerRunning ? `${remainingSeconds}s` : "7s"}</span>
+                  </div>
+                </div>
               ) : (
                 <div className="arena-turn-strip w-full flex items-center justify-between rounded-2xl border-2 border-amber-400/50 bg-gradient-to-r from-amber-950/80 via-black/90 to-amber-950/80 px-4 py-1.5 sm:px-5 sm:py-2 shadow-xl">
                   <div className="flex items-center gap-2">
@@ -497,7 +526,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         lastEliminated={state?.lastEliminated ?? null}
         isMyWin={isMyWin}
         isLocalDefeat={isLocalDefeat}
-        onPlayAgain={rejoin}
+        onPlayAgain={handlePlayAgain}
       />
 
       {/* Pre-Match 2-Skill Loadout Selector Modal */}
