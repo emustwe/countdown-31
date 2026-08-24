@@ -21,6 +21,8 @@ import { useRouter } from "next/navigation";
 
 import { DEFAULT_GAME_CONFIG } from "../../lib/game-config";
 import { MobileArenaShell } from "./MobileArenaShell";
+import { MobileNumberDeck } from "./MobileNumberDeck";
+import { MobileBattleStrip } from "./MobileBattleStrip";
 
 export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const router = useRouter();
@@ -509,18 +511,13 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
 
       <MobileArenaShell
         board={(
-          <Arcade3DCylinder
+          <MobileNumberDeck
             currentCount={count}
             myTurn={myTurn}
             selectedCards={selectedCards}
             onToggleCard={handleToggleCard}
-            onConfirmMove={handleConfirmMove}
             status={status}
             lastMove={state?.lastMove ?? null}
-            lastSkillUsed={state?.lastSkillUsed ?? null}
-            taken={state?.taken ?? {}}
-            forbiddenK={state?.lastK ?? null}
-            compact
           />
         )}
         action={(
@@ -561,27 +558,17 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
             )}
           </div>
         )}
-        player={(
-          <ArcadePlayerCard
+        battle={(
+          <MobileBattleStrip
             myPlayer={myPlayer}
-            myTurn={myTurn}
-            onJoinClick={openNameGate}
-            amIn={amIn}
-            gameMode={gameMode}
-            onSkill={handleSkill}
-            skillsLocked={count >= 22}
-            compact
-          />
-        )}
-        opponent={(
-          <ArcadeOpponentCard
             opponentPlayer={opponentPlayer}
-            status={status}
-            isOpponentTurn={isOpponentTurn}
             allPlayers={players}
             currentId={currentId}
+            myTurn={myTurn}
             gameMode={gameMode}
-            compact
+            onJoin={openNameGate}
+            onSkill={handleSkill}
+            skillsLocked={count >= 22}
           />
         )}
         modeSwitch={

@@ -2235,7 +2235,7 @@ h3 {
     display: grid;
     min-height: 0;
     flex: 1 1 auto;
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto auto;
     align-content: start;
     gap: 6px;
     width: 100%;
@@ -2253,6 +2253,91 @@ h3 {
 
   .mobile-arena-board {
     min-height: 0;
+  }
+
+  .mobile-number-deck {
+    position: relative;
+    width: min(100%, 680px);
+    margin: 0 auto;
+    overflow: hidden;
+    border: 1px solid rgb(245 158 11 / .65);
+    border-radius: 18px;
+    background: rgb(3 10 7 / .96);
+    box-shadow: 0 12px 25px rgb(0 0 0 / .55), 0 0 18px rgb(245 158 11 / .14);
+  }
+
+  .mobile-deck-rim {
+    height: 9px;
+    background:
+      radial-gradient(circle, #fde68a 0 1px, #78350f 1.5px 2.5px, transparent 3px) 3px 50% / 26px 8px repeat-x,
+      linear-gradient(90deg, #b45309, #fbbf24 50%, #b45309);
+  }
+
+  .mobile-deck-rim.is-bottom {
+    transform: rotate(180deg);
+  }
+
+  .mobile-deck-cards {
+    display: grid;
+    grid-template-columns: .78fr 1fr 1fr 1fr .78fr;
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .mobile-number-card {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    height: 86px;
+    place-items: center;
+    border: 1px solid rgb(120 53 15 / .7);
+    border-radius: 13px;
+    background: linear-gradient(180deg, #101811, #030604);
+    color: #647067;
+    box-shadow: inset 0 0 14px rgb(0 0 0 / .7);
+  }
+
+  .mobile-number-card strong {
+    font: 950 27px/1 var(--font-fredoka);
+  }
+
+  .mobile-number-card.is-playable {
+    border-color: rgb(16 185 129 / .6);
+    color: #34d399;
+    box-shadow: inset 0 0 14px rgb(16 185 129 / .08), 0 0 9px rgb(16 185 129 / .16);
+  }
+
+  .mobile-number-card.is-previous {
+    color: #fbbf24;
+  }
+
+  .mobile-number-card.is-bomb {
+    border-color: rgb(244 63 94 / .65);
+    color: #fb7185;
+  }
+
+  .mobile-number-card.is-selected {
+    border-color: #6ee7b7;
+    background: linear-gradient(180deg, #065f46, #022c22);
+    color: #d1fae5;
+    transform: translateY(-2px);
+    box-shadow: 0 0 16px rgb(52 211 153 / .65), inset 0 0 16px rgb(52 211 153 / .18);
+  }
+
+  .mobile-number-badge {
+    position: absolute;
+    top: 5px;
+    display: grid;
+    min-height: 13px;
+    place-items: center;
+  }
+
+  .mobile-number-card small {
+    position: absolute;
+    bottom: 4px;
+    color: #a7f3d0;
+    font: 900 7px/1 var(--font-fredoka);
+    text-transform: uppercase;
   }
 
   .mobile-arena-action {
@@ -2318,19 +2403,155 @@ h3 {
   }
 
   .mobile-arena-players {
-    display: grid;
+    display: block;
     min-height: 0;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 7px;
-    overflow: hidden;
-    contain: inline-size;
+    overflow: visible;
   }
 
   .mobile-arena-players > * {
     min-width: 0;
-    min-height: 190px !important;
-    max-height: 100%;
+    min-height: 0 !important;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .mobile-battle-strip {
+    position: relative;
+    display: grid;
+    width: min(100%, 620px);
+    grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+    grid-template-rows: 112px 39px;
+    gap: 5px 7px;
+    margin: 0 auto;
+  }
+
+  .mobile-player-pod {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    grid-template-columns: 76px minmax(0, 1fr);
+    grid-template-rows: 25px 1fr;
+    align-items: center;
+    gap: 3px 8px;
+    padding: 7px;
+    border: 1px solid rgb(251 191 36 / .48);
+    border-radius: 18px;
+    background: linear-gradient(145deg, rgb(15 38 26 / .96), rgb(3 11 7 / .98));
+    color: white;
+    box-shadow: 0 8px 18px rgb(0 0 0 / .48);
+  }
+
+  .mobile-player-pod.is-rival {
+    grid-column: 3;
+    border-color: rgb(192 132 252 / .55);
+    background: linear-gradient(145deg, rgb(35 20 48 / .96), rgb(10 6 17 / .98));
+  }
+
+  .mobile-player-pod.is-turn {
+    border-color: #34d399;
+    box-shadow: 0 0 17px rgb(52 211 153 / .35), 0 8px 18px rgb(0 0 0 / .5);
+  }
+
+  .mobile-pod-label {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 4px;
+    color: #fcd34d;
+    font: 900 9px/1 var(--font-fredoka);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .mobile-player-pod.is-rival .mobile-pod-label {
+    color: #d8b4fe;
+  }
+
+  .mobile-pod-avatar {
+    grid-row: 1 / 3;
+    display: grid;
+    width: 76px;
+    height: 76px;
+    place-items: center;
     overflow: hidden;
+    border: 2px solid #fbbf24;
+    border-radius: 17px;
+    background: rgb(6 20 13 / .95);
+    color: #fbbf24;
+  }
+
+  .mobile-player-pod.is-rival .mobile-pod-avatar {
+    border-color: #c084fc;
+  }
+
+  .mobile-player-pod strong {
+    min-width: 0;
+    overflow: hidden;
+    align-self: start;
+    color: white;
+    font: 900 13px/1.05 var(--font-fredoka);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-versus {
+    z-index: 2;
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border: 2px solid #fbbf24;
+    border-radius: 50%;
+    background: #160a02;
+    color: #fde68a;
+    font: 950 12px/1 var(--font-fredoka);
+    box-shadow: 0 0 15px rgb(251 191 36 / .45);
+  }
+
+  .mobile-skill-rail {
+    display: grid;
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .mobile-skill-rail.is-rival {
+    grid-column: 3;
+  }
+
+  .mobile-skill-rail button,
+  .mobile-skill-rail > div {
+    display: flex;
+    min-width: 0;
+    min-height: 37px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 5px;
+    border: 1px solid rgb(34 211 238 / .55);
+    border-radius: 11px;
+    background: rgb(6 35 48 / .94);
+    color: #67e8f9;
+    font: 900 8px/1 var(--font-fredoka);
+  }
+
+  .mobile-skill-rail.is-rival > div {
+    border-color: rgb(52 211 153 / .45);
+    background: rgb(4 47 34 / .86);
+    color: #6ee7b7;
+  }
+
+  .mobile-skill-rail button:disabled {
+    opacity: .43;
+  }
+
+  .mobile-skill-rail small {
+    color: #fcd34d;
+    font-size: 7px;
   }
 
   .mobile-arena-modes {
@@ -2406,7 +2627,37 @@ h3 {
   }
 
   .mobile-arena-players > * {
-    min-height: 175px !important;
+    min-height: 0 !important;
+  }
+
+  .mobile-battle-strip {
+    grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+    column-gap: 4px;
+  }
+
+  .mobile-player-pod {
+    grid-template-columns: 62px minmax(0, 1fr);
+    padding: 6px;
+  }
+
+  .mobile-pod-avatar {
+    width: 62px;
+    height: 62px;
+    border-radius: 14px;
+  }
+
+  .mobile-versus {
+    width: 32px;
+    height: 32px;
+    font-size: 9px;
+  }
+
+  .mobile-number-card {
+    height: 82px;
+  }
+
+  .mobile-player-pod strong {
+    font-size: 11px;
   }
 }
 
@@ -2421,15 +2672,17 @@ h3 {
     font-size: 16px;
   }
 
-  .mobile-arena-players > * {
-    min-height: 150px !important;
-    gap: 3px !important;
-    padding: 6px !important;
+  .mobile-number-card {
+    height: 70px;
   }
 
-  .mobile-arena-players .aspect-square {
-    width: 64px !important;
-    height: 64px !important;
+  .mobile-battle-strip {
+    grid-template-rows: 96px 35px;
+  }
+
+  .mobile-skill-rail button,
+  .mobile-skill-rail > div {
+    min-height: 33px;
   }
 }
 
