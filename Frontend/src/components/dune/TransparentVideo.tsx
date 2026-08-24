@@ -125,8 +125,24 @@ export function TransparentVideo({
     video.volume = 0.85;
   }, [audioEnabled, soundEnabled, src]);
 
-  /* One-shot playback control. When `playing` is controlled: true → replay from frame 0;
-     false → pause and hold frame 0 (a calm idle pose so the cow is always on stage). */
+  /* Playback control keyed on `loop`:
+     - loop=true  → the clip plays continuously (the cow is always animating, e.g. on the side).
+     - loop=false → the clip restarts from frame 0 and plays through exactly ONCE (`onEnded` fires),
+       e.g. the full centre-stage performance on the local player's defeat.
+     Restart from 0 on every mode change so a centre performance always plays the FULL clip. */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || playing !== undefined) return; // `playing` path (legacy) handled below
+    video.loop = loop;
+    try {
+      video.currentTime = 0;
+    } catch {
+      /* seeking before metadata is loaded — ignored */
+    }
+    video.play().catch(() => undefined);
+  }, [loop, playing]);
+
+  /* Legacy one-shot control via `playing` (kept for any other callers). */
   useEffect(() => {
     const video = videoRef.current;
     if (!video || playing === undefined) return;
@@ -138,7 +154,7 @@ export function TransparentVideo({
       try {
         video.currentTime = 0;
       } catch {
-        /* seeking before metadata is loaded — ignored */
+        /* ignored */
       }
     }
   }, [playing]);

@@ -15,8 +15,8 @@ interface BarnabyMascotProps {
   onPlayAgain?: () => void;
 }
 
-// The lose clip is ~3s; this is a safety fallback in case the video's `ended` event is missed.
-const DANCE_MAX_MS = 4200;
+// Safety fallback in case the video's `ended` event is missed while playing the one-shot.
+const DANCE_MAX_MS = 6000;
 
 export function BarnabyMascot({
   status,
@@ -26,22 +26,23 @@ export function BarnabyMascot({
   isLocalDefeat,
   onPlayAgain,
 }: BarnabyMascotProps) {
-  // The cow is ALWAYS on stage (idle at the side, holding frame 0). On each new elimination it
-  // plays its clip exactly ONCE; when it's the local player's defeat it slides to centre-stage for
-  // the clip and then slides back to the side. `dancing` drives one-shot playback + the position.
+  // The cow is ALWAYS on stage and ALWAYS animating (looping) on the side. When the LOCAL player is
+  // eliminated it slides to centre-stage, plays the FULL clip exactly ONCE, then slides back to the
+  // side and resumes its idle loop. `dancing` = the centre one-shot performance.
   const [dancing, setDancing] = useState(false);
   const prevElimRef = useRef<typeof lastEliminated>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (lastEliminated && lastEliminated !== prevElimRef.current) {
+    // Trigger the centre one-shot only on a NEW local defeat (fresh lastEliminated reference).
+    if (isLocalDefeat && lastEliminated && lastEliminated !== prevElimRef.current) {
       prevElimRef.current = lastEliminated;
       setDancing(true);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setDancing(false), DANCE_MAX_MS);
     }
     if (!lastEliminated) prevElimRef.current = null; // reset on a fresh game
-  }, [lastEliminated]);
+  }, [isLocalDefeat, lastEliminated]);
 
   useEffect(() => {
     return () => {
@@ -57,13 +58,10 @@ export function BarnabyMascot({
         : `${lastEliminated.name} hit 31`
     : "Round complete";
 
-  // Slide to centre only while the LOCAL player's defeat clip is playing; otherwise idle at the side.
-  const centreStage = dancing && isLocalDefeat;
-
   return (
     <div className="defeat-cow-layer" aria-live="polite">
-      <div className={`defeat-cow-stage ${centreStage ? "is-local-defeat" : "is-idle"}`}>
-        {centreStage && (
+      <div className={`defeat-cow-stage ${dancing ? "is-local-defeat" : "is-idle"}`}>
+        {dancing && (
           <div className="defeat-cow-stars" aria-hidden="true">
             {[0, 1, 2, 3, 4].map((star) => (
               <motion.span
@@ -79,13 +77,13 @@ export function BarnabyMascot({
 
         <TransparentVideo
           src="/assets/lose-animation-60fps.mp4"
-          audioEnabled={centreStage}
-          playing={dancing}
+          audioEnabled={dancing}
+          loop={!dancing} // side = loop forever; centre defeat = play through once
           onEnded={() => setDancing(false)}
           className="h-full w-full aspect-[9/16]"
         />
 
-        {centreStage && (
+        {dancing && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

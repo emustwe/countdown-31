@@ -313,7 +313,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
       />
 
       {/* Main Arcade Arena Battlefield (3 Columns on Desktop with Expanded Center) */}
-      <main className="arena-main mx-auto grid min-h-0 w-full max-w-[1580px] flex-1 grid-cols-1 items-start gap-2 overflow-hidden lg:grid-cols-[270px_minmax(0,1fr)_270px] lg:gap-4">
+      <main className="arena-main relative z-0 mx-auto grid min-h-0 w-full max-w-[1580px] flex-1 grid-cols-1 items-start gap-2 overflow-hidden lg:grid-cols-[270px_minmax(0,1fr)_270px] lg:gap-4">
         {/* Left Column: Local Player Big Battle Card Showcase */}
         <div className="arena-player-panel order-2 mx-auto flex w-full max-w-[270px] items-start justify-center lg:order-1">
           <div className="w-full">
