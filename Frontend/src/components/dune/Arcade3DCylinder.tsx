@@ -391,30 +391,6 @@ export function Arcade3DCylinder({
           })}
         </div>
       </div>
-
-      {/* 3D Glowing Green Confirm Move Button (Appears when cards are selected) */}
-      <AnimatePresence>
-        {myTurn && selectedCards.length > 0 && status === "playing" && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="z-30 mt-2"
-          >
-            <button
-              onClick={() => {
-                soundManager.playConfirm();
-                onConfirmMove();
-              }}
-              data-sound="none"
-              className="px-6 py-2.5 sm:px-8 sm:py-3 rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-sm sm:text-base shadow-[0_0_25px_rgba(52,211,153,0.9),0_4px_12px_rgba(0,0,0,0.5)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
-            >
-              <span>CONFIRM MOVE ({selectedCards.length} {selectedCards.length === 1 ? "CARD" : "CARDS"})</span>
-              <Send size={16} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

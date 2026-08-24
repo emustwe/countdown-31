@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Crown, LogIn, Clock, Dices, Sparkles } from "lucide-react";
+import { Crown, LogIn, Clock, Dices, Sparkles, Send } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useGuestStore } from "../../stores/guest-store";
 import { useAuthStore } from "../../stores/auth-store";
@@ -342,41 +342,57 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
             forbiddenK={state?.lastK ?? null}
           />
 
-          {/* A compact turn prompt leaves the arena open */}
-          {status !== "over" && amIn && status === "playing" ? (
-            <div className="arena-turn-strip mx-auto flex w-full max-w-xl items-center justify-between rounded-2xl border-2 border-amber-400/50 bg-gradient-to-r from-amber-950/80 via-black/90 to-amber-950/80 px-4 py-1.5 sm:px-5 sm:py-2 shadow-xl">
-              <div className="flex items-center gap-2">
-                <Dices size={18} className="text-amber-400" />
-                <span className="font-title text-xs sm:text-sm font-black uppercase tracking-wider text-white">
-                  {myTurn ? "YOUR TURN · PICK 1, 2, OR 3" : "OPPONENT IS COUNTING..."}
-                </span>
-              </div>
+          {/* Action Zone: Confirm Move Button (when cards selected) OR Turn Strip OR Join Button */}
+          <div className="w-full max-w-xl mx-auto flex items-center justify-center min-h-[46px] my-1 z-30">
+            {status !== "over" && amIn && status === "playing" ? (
+              myTurn && selectedCards.length > 0 ? (
+                <button
+                  onClick={() => {
+                    soundManager.playConfirm();
+                    handleConfirmMove();
+                  }}
+                  data-sound="none"
+                  className="w-full sm:w-auto px-8 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-sm sm:text-base shadow-[0_0_25px_rgba(52,211,153,0.95),0_4px_12px_rgba(0,0,0,0.6)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 animate-pulse"
+                >
+                  <span>CONFIRM MOVE ({selectedCards.length} {selectedCards.length === 1 ? "CARD" : "CARDS"})</span>
+                  <Send size={16} />
+                </button>
+              ) : (
+                <div className="arena-turn-strip w-full flex items-center justify-between rounded-2xl border-2 border-amber-400/50 bg-gradient-to-r from-amber-950/80 via-black/90 to-amber-950/80 px-4 py-1.5 sm:px-5 sm:py-2 shadow-xl">
+                  <div className="flex items-center gap-2">
+                    <Dices size={18} className="text-amber-400" />
+                    <span className="font-title text-xs sm:text-sm font-black uppercase tracking-wider text-white">
+                      {myTurn ? "YOUR TURN · PICK 1, 2, OR 3" : "OPPONENT IS COUNTING..."}
+                    </span>
+                  </div>
 
-              <div
-                className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 sm:px-3 sm:py-1 font-title text-xs font-black ${
-                  isLowTime
-                    ? "border-rose-500 bg-rose-950/90 text-rose-300 animate-bounce"
-                    : "border-amber-400/50 bg-amber-950/70 text-amber-300"
-                }`}
-              >
-                <Clock size={13} className={isLowTime ? "text-rose-400" : "text-amber-400"} />
-                <span>{timerRunning ? `${remainingSeconds}s` : "7s"}</span>
-              </div>
-            </div>
-          ) : (
-            status !== "over" && (
-              <button
-                onClick={chosenName ? rejoin : openNameGate}
-                className="btn-arcade-3d btn-arcade-amber my-1 sm:my-2 flex cursor-pointer items-center justify-center gap-2 rounded-2xl px-8 py-3 text-base shadow-2xl transition-transform hover:scale-105 sm:text-xl"
-              >
-                <LogIn size={20} />
-                <span>{chosenName ? "REJOIN GAME" : "JOIN THE GAME"}</span>
-              </button>
-            )
-          )}
+                  <div
+                    className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 sm:px-3 sm:py-1 font-title text-xs font-black ${
+                      isLowTime
+                        ? "border-rose-500 bg-rose-950/90 text-rose-300 animate-bounce"
+                        : "border-amber-400/50 bg-amber-950/70 text-amber-300"
+                    }`}
+                  >
+                    <Clock size={13} className={isLowTime ? "text-rose-400" : "text-amber-400"} />
+                    <span>{timerRunning ? `${remainingSeconds}s` : "7s"}</span>
+                  </div>
+                </div>
+              )
+            ) : (
+              status !== "over" && (
+                <button
+                  onClick={chosenName ? rejoin : openNameGate}
+                  className="btn-arcade-3d btn-arcade-amber flex cursor-pointer items-center justify-center gap-2 rounded-2xl px-8 py-2.5 text-base shadow-2xl transition-transform hover:scale-105 sm:text-lg"
+                >
+                  <LogIn size={20} />
+                  <span>{chosenName ? "REJOIN GAME" : "JOIN THE GAME"}</span>
+                </button>
+              )
+            )}
+          </div>
 
-          {/* Dedicated Mobile & Tablet Battle Dock (Rendered below Cylinder) */}
-          <div className="w-full flex lg:hidden flex-col items-center gap-2 mt-0.5">
+          {/* Dedicated Mobile & Tablet Battle Dock (Rendered with Generous Space Below Cylinder) */}
+          <div className="w-full flex lg:hidden flex-col items-center gap-2 mt-3 sm:mt-5">
             {/* The Two Yellow Boxes: User on Left, Active Opponent on Right */}
             <div className="w-full grid grid-cols-2 gap-2 sm:gap-3 max-w-xl mx-auto items-stretch">
               {/* Local Player Side with Avatar & Attached Tactical Skills */}
@@ -409,7 +425,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
 
             {/* The Red Box Area: Classic vs Skill Mode Toggle (Mobile & Tablet) */}
             {gameConfig.gameplay.allowClassic && gameConfig.gameplay.allowSkills && (
-              <div className="w-full flex items-center justify-center my-0.5 sm:my-1 z-20">
+              <div className="w-full flex items-center justify-center my-0.5 sm:my-1.5 z-20">
                 <div className="flex items-center bg-black/85 border-2 border-amber-400/70 rounded-2xl p-1 shadow-xl backdrop-blur-md max-w-xs sm:max-w-sm w-full justify-between">
                   <button
                     onClick={() => {

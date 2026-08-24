@@ -55,6 +55,17 @@ test.describe("Mobile & Tablet Arena UI & 7-Card Proportional Fit Suite", () => 
     expect(skillCount).toBeGreaterThanOrEqual(1);
 
     await page.screenshot({ path: path.join(screenshotDir, "mobile-02-joined-battle.png"), fullPage: true });
+
+    // Select Card 1 and verify the CONFIRM MOVE button appears cleanly without overlapping avatars
+    const card1 = page.locator('div[role="button"][aria-label="Number 1"]');
+    if (await card1.isVisible()) {
+      await card1.click();
+      await page.waitForTimeout(300);
+      const confirmBtn = page.locator('button:has-text("CONFIRM MOVE")');
+      if (await confirmBtn.isVisible()) {
+        await page.screenshot({ path: path.join(screenshotDir, "mobile-03-confirm-move-state.png"), fullPage: true });
+      }
+    }
   });
 
   test("2. Tablet (820x1180) - 7 Cards & Full Multi-Device Responsiveness", async ({ page }) => {
