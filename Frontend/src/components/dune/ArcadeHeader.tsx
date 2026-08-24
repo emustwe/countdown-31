@@ -139,9 +139,9 @@ export function ArcadeHeader({
 
   return (
     <>
-    <header className="arcade-arena-header relative z-30 flex h-20 sm:h-24 md:h-28 w-full shrink-0 select-none items-center justify-between px-3 py-1.5 sm:px-6">
+    <header className="arcade-arena-header relative z-30 flex h-20 sm:h-24 md:h-28 w-full shrink-0 select-none items-start justify-between px-3 pt-2 pb-1 sm:px-6 mb-4 sm:mb-6">
       {/* Left Mode Selector Pill (Rendered on Desktop lg+) */}
-      <div className="arcade-mode-selector hidden lg:flex items-center gap-2.5 z-20">
+      <div className="arcade-mode-selector hidden lg:flex items-center gap-2.5 z-20 pt-1">
         {canToggle && (
           <div className="flex items-center bg-black/75 border border-amber-400/50 rounded-2xl p-1 shadow-lg backdrop-blur-md">
             <button
@@ -178,7 +178,7 @@ export function ArcadeHeader({
       </div>
 
       {/* Center Wide Single-Line 3D Marquee Logo Banner */}
-      <div className="arcade-brand absolute left-1/2 -translate-x-1/2 top-1.5 flex flex-col items-center pointer-events-none z-10 w-full max-w-[320px] sm:max-w-[440px] md:max-w-[540px]">
+      <div className="arcade-brand absolute left-1/2 -translate-x-1/2 top-2 flex flex-col items-center pointer-events-none z-10 w-full max-w-[320px] sm:max-w-[440px] md:max-w-[540px]">
         <div
           onClick={() => router.push("/home")}
           className="pointer-events-auto cursor-pointer relative w-full flex items-center justify-center gap-2 sm:gap-3 bg-gradient-to-r from-amber-950/95 via-yellow-900/95 to-amber-950/95 px-4 sm:px-8 py-1.5 sm:py-2 rounded-2xl border-2 sm:border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all"
@@ -213,7 +213,7 @@ export function ArcadeHeader({
       </div>
 
       {/* Right Action Icons: Sound Toggle + Round Profile Avatar Button */}
-      <div className="arcade-header-actions flex items-center gap-2.5 z-20 relative ml-auto" ref={profileMenuRef}>
+      <div className="arcade-header-actions flex items-center gap-2.5 z-20 relative ml-auto pt-1" ref={profileMenuRef}>
         {/* Sound Toggle Button */}
         <button
           onClick={toggleSound}

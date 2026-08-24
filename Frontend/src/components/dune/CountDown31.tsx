@@ -310,7 +310,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
       />
 
       {/* Main Arcade Arena Battlefield (3 Columns on Desktop with Expanded Center) */}
-      <main className="arena-main mx-auto grid min-h-0 w-full max-w-[1580px] flex-1 grid-cols-1 items-start gap-2 overflow-hidden lg:grid-cols-[270px_minmax(0,1fr)_270px] lg:gap-4">
+      <main className="arena-main mx-auto grid min-h-0 w-full max-w-[1580px] flex-1 grid-cols-1 items-start gap-4 overflow-hidden lg:grid-cols-[270px_minmax(0,1fr)_270px] lg:gap-6 mt-2 sm:mt-4">
         {/* Left Column: Local Player Big Battle Card Showcase (Desktop) */}
         <div className="arena-player-panel hidden lg:flex order-2 mx-auto w-full max-w-[270px] items-start justify-center lg:order-1">
           <div className="w-full">
@@ -327,7 +327,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         </div>
 
         {/* Center Column: 3D Horizontal Number Cylinder Drum, Mobile Battle Cards, & Actions */}
-        <div className="arena-center order-1 mx-auto flex w-full max-w-[850px] flex-col items-center justify-start gap-2 lg:order-2">
+        <div className="arena-center order-1 mx-auto flex w-full max-w-[850px] flex-col items-center justify-start gap-2 lg:order-2 pt-1 sm:pt-2">
           {/* The Hero 3D Horizontal Arcade Cylinder with Direct Card Selection */}
           <Arcade3DCylinder
             currentCount={count}
@@ -343,7 +343,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           />
 
           {/* Action Zone: Confirm Move Button (when cards selected) OR Turn Strip OR Join Button */}
-          <div className="w-full max-w-xl mx-auto flex items-center justify-center min-h-[46px] my-1 z-30">
+          <div className="w-full max-w-xl mx-auto flex items-center justify-center min-h-[48px] my-2 sm:my-3 z-30">
             {status !== "over" && amIn && status === "playing" ? (
               myTurn && selectedCards.length > 0 ? (
                 <button
@@ -392,7 +392,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           </div>
 
           {/* Dedicated Mobile & Tablet Battle Dock (Rendered with Generous Space Below Cylinder) */}
-          <div className="w-full flex lg:hidden flex-col items-center gap-2 mt-3 sm:mt-5">
+          <div className="w-full flex lg:hidden flex-col items-center gap-2 mt-8 sm:mt-14 mb-1">
             {/* The Two Yellow Boxes: User on Left, Active Opponent on Right */}
             <div className="w-full grid grid-cols-2 gap-2 sm:gap-3 max-w-xl mx-auto items-stretch">
               {/* Local Player Side with Avatar & Attached Tactical Skills */}

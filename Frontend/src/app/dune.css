@@ -7991,9 +7991,10 @@ button.mini:hover { filter: brightness(1.06); }
 
   .friendly-page .arcade-arena-header.is-page-header,
   .practice-page .arcade-arena-header {
-    height: auto !important;
-    min-height: 56px;
-    padding: 6px 12px;
+    height: 88px !important;
+    min-height: 88px !important;
+    padding: 8px 12px;
+    margin-bottom: 16px !important;
   }
 
   .arcade-arena-header .arcade-profile-trigger {
@@ -8013,6 +8014,7 @@ button.mini:hover { filter: brightness(1.06); }
     display: flex;
     justify-content: center;
     width: 100%;
+    margin-top: 16px !important;
   }
 
   .practice-page .arena-bottom {
