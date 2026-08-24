@@ -26,6 +26,15 @@ test.describe("Dedicated mobile and tablet arena shell", () => {
     const opponentCard = page.locator('.mobile-player-pod.is-rival').getByText(/Daisy Cow|The Pasture Slayer|Clockwork Bull/);
     await expect(opponentCard.first()).toBeVisible();
 
+    // The whole arena cluster should sit around the vertical center of its playable area.
+    const shellBox = await page.locator('.mobile-arena-shell').boundingBox();
+    const deckBox = await page.locator('.mobile-number-deck').boundingBox();
+    const modesBox = await page.locator('.mobile-arena-modes').boundingBox();
+    expect(shellBox && deckBox && modesBox).toBeTruthy();
+    const shellMiddle = shellBox!.y + shellBox!.height / 2;
+    const arenaMiddle = (deckBox!.y + modesBox!.y + modesBox!.height) / 2;
+    expect(Math.abs(shellMiddle - arenaMiddle)).toBeLessThan(35);
+
     await page.screenshot({ path: path.join(screenshotDir, "mobile-01-waiting-arena.png"), fullPage: true });
 
     // Join Game
