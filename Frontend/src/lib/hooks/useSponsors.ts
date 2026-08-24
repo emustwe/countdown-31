@@ -15,6 +15,20 @@ export interface SponsorRow {
 
 export type Visibility = "PUBLIC" | "PRIVATE";
 export type PromoStatus = "PENDING" | "APPROVED" | "REJECTED";
+// REGULAR = individual knockout. INFLUENCER = the "Group" format (players split into groups/teams).
+export type PromoType = "REGULAR" | "INFLUENCER";
+
+// A team/group in a GROUP tournament (or a featured influencer in a REGULAR one). captainCode/
+// memberCode are only returned to the admin/sponsor who owns the tournament.
+export interface PromoTeam {
+  id: string;
+  name: string;
+  captainName: string;
+  color: string;
+  memberCount: number;
+  captainCode?: string;
+  memberCode?: string;
+}
 
 export interface PromoTournament {
   id: string;
@@ -22,6 +36,12 @@ export interface PromoTournament {
   description: string;
   visibility: Visibility;
   status: PromoStatus;
+  type: PromoType;
+  hasInfluencers: boolean; // named influencer-captains featured (both types)
+  groupCount: number; // GROUP: number of groups; REGULAR+influencers: number of influencers
+  minGroupPlayers: number | null;
+  maxGroupPlayers: number | null;
+  teams: PromoTeam[];
   startAt: string | null;
   endAt: string | null;
   prizePool: string;
@@ -60,6 +80,14 @@ export interface PromoInput {
   title: string;
   description?: string;
   visibility?: Visibility;
+  type?: PromoType;
+  hasInfluencers?: boolean;
+  groupCount?: number;
+  teams?: { name?: string; captainName?: string }[];
+  minGroupPlayers?: number | null;
+  maxGroupPlayers?: number | null;
+  startDate?: string | null; // GMT calendar date
+  timeOptions?: string[]; // GMT "HH:MM" slots to vote on
   startAt?: string | null;
   endAt?: string | null;
   prizePool?: string;

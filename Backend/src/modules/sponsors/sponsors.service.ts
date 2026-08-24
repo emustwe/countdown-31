@@ -550,6 +550,8 @@ export class SponsorsService {
     const rows = await this.prisma.sponsorTournament.findMany({
       where: {
         status: "APPROVED",
+        // Private tournaments are code-gated (reached via their referral code), never publicly listed.
+        visibility: "PUBLIC",
         // Not yet finished: either no start scheduled, or it started within the last hour.
         OR: [{ startAt: null }, { startAt: { gte: cutoff } }],
       },

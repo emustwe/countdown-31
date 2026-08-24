@@ -21,7 +21,7 @@ import { useRouter } from "next/navigation";
 
 import { DEFAULT_GAME_CONFIG } from "../../lib/game-config";
 
-export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
+export function CountDown31({ roomId = "practice", testArena = false }: { roomId?: string; testArena?: boolean }) {
   const router = useRouter();
   const { data: serverConfig } = useGameConfig();
   const isTournament = roomId !== "practice";
@@ -33,7 +33,12 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const defaultName = user?.fullName || user?.email?.split("@")[0] || guestName || "";
   const soundOn = useSettingsStore((s) => s.soundEnabled);
   const { data: cosmetics } = useCosmetics(!!accessToken);
-  const { state, myId, join, submit, useSkill } = useCountdownLive(roomId);
+  // The always-open TEST tournament runs the local engine with 100 CPU cows (auto-restarting), and is
+  // playable only by an admin (everyone else watches). A real tournament uses the server socket.
+  const { state, myId, join, submit, useSkill } = useCountdownLive(roomId, testArena ? { local: true, botCount: 100 } : undefined);
+  const isAdmin = user?.role === "ADMIN";
+  // In the test arena, only an admin gets the join/rejoin controls + their own player card.
+  const canPlay = !testArena || isAdmin;
   const [botCount, setBotCount] = useState<number>(gameConfig.gameplay.defaultBotCount);
 
   const [chosenName, setChosenName] = useState("");
@@ -316,17 +321,20 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
       <main className="arena-main relative z-0 mx-auto grid min-h-0 w-full max-w-[1580px] flex-1 grid-cols-1 items-start gap-2 overflow-hidden lg:grid-cols-[270px_minmax(0,1fr)_270px] lg:gap-4">
         {/* Left Column: Local Player Big Battle Card Showcase */}
         <div className="arena-player-panel order-2 mx-auto flex w-full max-w-[270px] items-start justify-center lg:order-1">
-          <div className="w-full">
-            <ArcadePlayerCard
-              myPlayer={myPlayer}
-              myTurn={myTurn}
-              onJoinClick={openNameGate}
-              amIn={amIn}
-              gameMode={gameMode}
-              onSkill={handleSkill}
-              skillsLocked={count >= 22}
-            />
-          </div>
+          {/* In the test arena the local-player card only shows for an admin (others just watch). */}
+          {canPlay && (
+            <div className="w-full">
+              <ArcadePlayerCard
+                myPlayer={myPlayer}
+                myTurn={myTurn}
+                onJoinClick={openNameGate}
+                amIn={amIn}
+                gameMode={gameMode}
+                onSkill={handleSkill}
+                skillsLocked={count >= 22}
+              />
+            </div>
+          )}
         </div>
 
         {/* Center Column: 3D Horizontal Number Cylinder Drum & Action/Skill Hand */}
@@ -367,15 +375,22 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
               </div>
             </div>
           ) : (
-            status !== "over" && (
+            // The test arena is already running: no generic JOIN button. Only an admin gets a
+            // REJOIN control (everyone else spectates the 100-cow arena).
+            status !== "over" && canPlay && (
               <button
                 onClick={chosenName ? rejoin : openNameGate}
                 className="btn-arcade-3d btn-arcade-amber my-2 flex cursor-pointer items-center justify-center gap-2 rounded-2xl px-10 py-4 text-lg shadow-2xl transition-transform hover:scale-105 sm:text-xl"
               >
                 <LogIn size={22} />
-                <span>{chosenName ? "REJOIN GAME" : "JOIN THE GAME"}</span>
+                <span>{chosenName ? "REJOIN GAME" : testArena ? "PLAY (ADMIN TEST)" : "JOIN THE GAME"}</span>
               </button>
             )
+          )}
+          {testArena && !canPlay && status !== "over" && (
+            <div className="arena-turn-strip mx-auto my-2 flex w-full max-w-xl items-center justify-center rounded-2xl border-2 border-amber-400/40 bg-black/70 px-5 py-2 font-title text-sm font-black uppercase tracking-wider text-amber-300 shadow-xl">
+              Live test arena — spectating
+            </div>
           )}
         </div>
 
@@ -398,7 +413,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
       <div className="arena-bottom mx-auto w-full max-w-5xl shrink-0 pb-1">
         <ArcadeHUD
           playerCount={players.length}
-          maxPlayers={botCount + 1}
+          maxPlayers={testArena ? Math.max(players.length, 100) : botCount + 1}
           round={state?.round ?? 1}
           arenaName={gameConfig.arena.name}
           turnTime={gameConfig.gameplay.turnSeconds}

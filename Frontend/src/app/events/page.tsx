@@ -51,11 +51,7 @@ export default function TournamentsHubPage() {
     }
   }
 
-  // TEMPORARY (testing): while we build the real live tournament, only the always-open
-  // "[TEST] …" tournament is shown/accessible. Remove this filter to restore the full list.
-  const TEST_ONLY = true;
-  const all = tournaments ?? [];
-  const list = TEST_ONLY ? all.filter((t) => t.title?.startsWith("[TEST]")) : all;
+  const list = tournaments ?? [];
 
   return (
     <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">

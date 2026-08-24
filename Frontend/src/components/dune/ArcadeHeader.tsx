@@ -91,8 +91,9 @@ export function ArcadeHeader({
     if (!isAuthenticated) setShowProfileMenu(false);
   }, [isAuthenticated]);
 
-  // Only show the game mode selector if explicitly enabled or if onToggleMode is supplied
-  const canToggle = showModeToggle || !!onToggleMode;
+  // Show the game-mode selector ONLY when explicitly enabled. (Tournaments pass showModeToggle=false
+  // because they are skills-only; they still pass onToggleMode, so we must not OR it in here.)
+  const canToggle = showModeToggle;
 
   function toggleSound() {
     toggleSoundStore();

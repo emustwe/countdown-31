@@ -9,9 +9,7 @@ import {
   Gamepad2,
   LayoutDashboard,
   LogOut,
-  Settings as SettingsIcon,
   Trophy,
-  Users,
   ShieldAlert,
 } from "lucide-react";
 import { useLogout, useProfile } from "../../lib/hooks/useAuth";
@@ -29,8 +27,6 @@ export function NewAdminNav() {
     { label: "Game Studio", icon: Gamepad2, path: "/admin/game" },
     { label: "Tournaments", icon: Trophy, path: "/admin/tournament" },
     { label: "Sponsors", icon: Building2, path: "/admin/sponsor" },
-    { label: "Users", icon: Users, path: "/admin/users" },
-    { label: "Settings", icon: SettingsIcon, path: "/admin/settings" },
   ];
 
   function handleNavigate(path: string) {

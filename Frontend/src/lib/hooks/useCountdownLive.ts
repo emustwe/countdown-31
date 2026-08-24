@@ -59,7 +59,7 @@ export interface JoinCosmetics {
   chosenSkills?: SkillType[];
 }
 
-export function useCountdownLive(roomId = "practice") {
+export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; botCount?: number }) {
   const { data: gameConfig } = useGameConfig();
   const isTournament = roomId !== "practice";
   const activeConfig = isTournament ? (gameConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG;
@@ -72,14 +72,22 @@ export function useCountdownLive(roomId = "practice") {
   const stateRef = useRef<LiveState | null>(null);
   stateRef.current = state;
 
-  // Practice arena runs 24/7: 5 CPU cows always play, and each finished game auto-restarts. Once a
+  // A "local arena" (opts.local) runs the same in-browser engine as practice but for a themed room
+  // (e.g. the always-open test tournament) with a configurable bot count.
+  const forceLocalRef = useRef(!!opts?.local);
+  forceLocalRef.current = !!opts?.local;
+
+  // Practice/local arena runs 24/7: CPU cows always play and each finished game auto-restarts. Once a
   // human joins they stay "seated" so they're auto-re-added to every new game (they can also rejoin
   // instantly). humanSeatRef holds their join params, or null while it's a CPU-only ambient game.
-  const PRACTICE_BOT_COUNT = 5;
+  const DEFAULT_PRACTICE_BOTS = 5;
+  const PRACTICE_BOT_COUNT = Math.max(1, Math.min(100, opts?.botCount ?? DEFAULT_PRACTICE_BOTS));
   const humanSeatRef = useRef<{ name: string; cos?: JoinCosmetics; mode: GameMode; chosenSkills: SkillType[] } | null>(null);
   const ambientModeRef = useRef<GameMode>(DEFAULT_GAME_CONFIG.gameplay.defaultMode);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const overHandledRef = useRef(false);
+  const botCountRef = useRef(PRACTICE_BOT_COUNT);
+  botCountRef.current = PRACTICE_BOT_COUNT;
 
   // Multi-player Local Simulation Engine (4 Players: You + Bessie + Daisy + Barnaby)
   const processNextTurn = useCallback((currentState: LiveState) => {
@@ -318,26 +326,29 @@ export function useCountdownLive(roomId = "practice") {
       const mode: GameMode = seat?.mode ?? ambientModeRef.current;
       ambientModeRef.current = mode;
 
-      const botColors = ["#ff43c4", "#21e6d7", "#f4b942", "#a78bfa", "#38bdf8"];
+      const botColors = ["#ff43c4", "#21e6d7", "#f4b942", "#a78bfa", "#38bdf8", "#5be348", "#ffd23f", "#ff8c42"];
       const enabledSkills = runtimeConfigRef.current.skills.filter((skill) => skill.enabled);
-      const bots: LivePlayer[] = runtimeConfigRef.current.bots
-        .filter((bot) => bot.enabled)
-        .sort((a, b) => a.order - b.order)
-        .slice(0, PRACTICE_BOT_COUNT)
-        .map((bot, index) => {
-          const equipped = enabledSkills
-            .slice(index % Math.max(1, enabledSkills.length), (index % Math.max(1, enabledSkills.length)) + 2)
-            .map((skill) => skill.id);
-          const chosen = equipped.length === 2 ? equipped : enabledSkills.slice(0, 2).map((skill) => skill.id);
-          const skills = { rewind: 0, turbo: 0, shield: 0, nudge: 0, double: 0 } as Record<SkillType, number>;
-          if (mode === "skills") chosen.forEach((skill) => { skills[skill] = 1; });
-          return {
-            id: `cpu_${bot.id}`,
-            name: bot.name,
+      const templates = runtimeConfigRef.current.bots.filter((bot) => bot.enabled).sort((a, b) => a.order - b.order);
+      const total = botCountRef.current; // up to 100 for the test arena; 5 for practice
+      // Generate `total` CPU cows, cycling the configured bot templates (numbered past the first pass).
+      const bots: LivePlayer[] = Array.from({ length: total }, (_, index) => {
+        const tpl = templates[index % Math.max(1, templates.length)] ?? { id: "cow", name: "Cow", title: "Rookie", avatarVariantId: "daisy_v1_cowboy", difficulty: "normal" };
+        const pass = Math.floor(index / Math.max(1, templates.length));
+        const baseName = String(tpl.name).replace(/\s*[\u{1F000}-\u{1FAFF}☀-➿]\s*$/u, "").trim() || "Cow";
+        const name = pass === 0 ? tpl.name : `${baseName} ${pass + 1}`;
+        const equipped = enabledSkills
+          .slice(index % Math.max(1, enabledSkills.length), (index % Math.max(1, enabledSkills.length)) + 2)
+          .map((skill) => skill.id);
+        const chosen = equipped.length === 2 ? equipped : enabledSkills.slice(0, 2).map((skill) => skill.id);
+        const skills = { rewind: 0, turbo: 0, shield: 0, nudge: 0, double: 0 } as Record<SkillType, number>;
+        if (mode === "skills") chosen.forEach((skill) => { skills[skill] = 1; });
+        return {
+            id: `cpu_${tpl.id}_${index}`,
+            name,
             cpu: true,
             color: botColors[index % botColors.length]!,
-            card: { difficulty: bot.difficulty, title: bot.title },
-            avatar: { variantId: bot.avatarVariantId },
+            card: { difficulty: tpl.difficulty, title: tpl.title },
+            avatar: { variantId: tpl.avatarVariantId },
             skills,
             equippedSkills: mode === "skills" ? chosen : [],
             eliminated: false,
@@ -419,9 +430,9 @@ export function useCountdownLive(roomId = "practice") {
   }, [state?.status, state?.currentId, state?.turnEndsAt, myId, eliminatePlayer]);
 
   useEffect(() => {
-    // Pure local mode for practice room — never connects to background headless tournament bot sockets.
-    // Start the 24/7 ambient arena: 5 CPU cows already playing that a human can drop into any time.
-    if (roomId === "practice") {
+    // Local engine for the practice room and for a forced local arena (the test tournament).
+    // Starts the 24/7 ambient arena: CPU cows already playing that a human can drop into any time.
+    if (roomId === "practice" || forceLocalRef.current) {
       isLocalPracticeRef.current = true;
       setMyId("player_local");
       startLocalGame(humanSeatRef.current);

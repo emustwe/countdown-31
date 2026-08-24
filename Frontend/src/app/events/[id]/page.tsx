@@ -98,7 +98,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       <PageShell className="practice-page relative">
         <PastureAmbiance />
         <main className="page-main cd31-page relative z-10">
-          <CountDown31 roomId={`tour:${id}`} />
+          <CountDown31 roomId={`tour:${id}`} testArena={isTest} />
         </main>
       </PageShell>
     );
@@ -198,7 +198,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             )}
 
             {/* Join / lobby / enter */}
-            {t.joined ? (
+            {isTest ? (
+              <>
+                <div className="flex items-center gap-2 text-amber-300 font-title font-bold text-sm"><CheckCircle2 size={18} /> Always-open TEST arena — 100 CPU cows are already playing.</div>
+                <button onClick={() => { soundManager.playClick(); setPlaying(true); }} className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 text-slate-950 font-title font-black text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.6)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2">
+                  <Trophy size={18} /> Enter the game
+                </button>
+              </>
+            ) : t.joined ? (
               <>
                 <div className="flex items-center gap-2 text-emerald-300 font-title font-bold text-sm"><CheckCircle2 size={18} /> You&apos;re in — knockout: last one standing wins.</div>
                 {canEnter ? (
