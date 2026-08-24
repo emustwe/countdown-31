@@ -7989,22 +7989,18 @@ button.mini:hover { filter: brightness(1.06); }
     padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
   }
 
-  .friendly-page .arcade-arena-header.is-page-header {
-    height: 82px !important;
-    padding: 4px 6px;
-  }
-
-  .arcade-arena-header.is-page-header .arcade-brand {
-    top: 3px;
-    transform: scale(.62);
-    transform-origin: top center;
+  .friendly-page .arcade-arena-header.is-page-header,
+  .practice-page .arcade-arena-header {
+    height: auto !important;
+    min-height: 56px;
+    padding: 6px 12px;
   }
 
   .arcade-arena-header .arcade-profile-trigger {
     display: none;
   }
 
-  .arcade-arena-header.is-page-header .arcade-header-actions {
+  .arcade-arena-header .arcade-header-actions {
     margin-left: auto;
   }
 
@@ -8060,15 +8056,5 @@ nextjs-portal,
   .mobile-nav-profile .mobile-nav-icon {
     width: 51px;
     height: 51px;
-  }
-
-  .arcade-arena-header.is-page-header .arcade-brand {
-    transform: scale(.52);
-  }
-}
-
-@media (min-width: 768px) and (max-width: 900px) {
-  .arcade-arena-header.is-game-header .arcade-mode-selector {
-    transform: scale(.55);
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Crown, LogIn, Clock, Dices } from "lucide-react";
+import { Crown, LogIn, Clock, Dices, Sparkles } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useGuestStore } from "../../stores/guest-store";
 import { useAuthStore } from "../../stores/auth-store";
@@ -376,10 +376,11 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
           )}
 
           {/* Dedicated Mobile & Tablet Battle Dock (Rendered below Cylinder) */}
-          <div className="w-full flex lg:hidden flex-col items-center gap-2">
-            <div className="w-full grid grid-cols-2 gap-2 sm:gap-3 max-w-xl mx-auto">
+          <div className="w-full flex lg:hidden flex-col items-center gap-2 mt-0.5">
+            {/* The Two Yellow Boxes: User on Left, Active Opponent on Right */}
+            <div className="w-full grid grid-cols-2 gap-2 sm:gap-3 max-w-xl mx-auto items-stretch">
               {/* Local Player Side with Avatar & Attached Tactical Skills */}
-              <div className="w-full">
+              <div className="w-full h-full">
                 <ArcadePlayerCard
                   myPlayer={myPlayer}
                   myTurn={myTurn}
@@ -393,7 +394,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
               </div>
 
               {/* Rival Opponent Side with Avatar & Skills */}
-              <div className="w-full">
+              <div className="w-full h-full">
                 <ArcadeOpponentCard
                   opponentPlayer={opponentPlayer}
                   status={status}
@@ -405,6 +406,43 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
                 />
               </div>
             </div>
+
+            {/* The Red Box Area: Classic vs Skill Mode Toggle (Mobile & Tablet) */}
+            {gameConfig.gameplay.allowClassic && gameConfig.gameplay.allowSkills && (
+              <div className="w-full flex items-center justify-center my-0.5 sm:my-1 z-20">
+                <div className="flex items-center bg-black/85 border-2 border-amber-400/70 rounded-2xl p-1 shadow-xl backdrop-blur-md max-w-xs sm:max-w-sm w-full justify-between">
+                  <button
+                    onClick={() => {
+                      soundManager.playClick();
+                      handleModeChange("classic");
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 sm:py-2 px-3 rounded-xl text-xs font-title font-black transition-all cursor-pointer ${
+                      gameMode === "classic"
+                        ? "bg-amber-400 text-slate-950 shadow-[0_0_12px_rgba(245,158,11,0.8)] scale-102"
+                        : "text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    <Dices size={15} />
+                    <span>CLASSIC</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      soundManager.playClick();
+                      handleModeChange("skills");
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 sm:py-2 px-3 rounded-xl text-xs font-title font-black transition-all cursor-pointer ${
+                      gameMode === "skills"
+                        ? "bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-[0_0_14px_rgba(168,85,247,0.8)] scale-102"
+                        : "text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    <Sparkles size={15} className="text-yellow-300 fill-yellow-300 animate-pulse" />
+                    <span>SKILL MODE</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

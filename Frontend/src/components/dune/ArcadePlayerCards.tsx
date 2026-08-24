@@ -110,10 +110,10 @@ const BOT_PROFILES: Record<string, BotProfile> = {
     title: "Clockwork Bull ⚙️",
     streak: 3,
     config: {
-      variantId: "rusty_v1_sunglasses",
+      variantId: "rusty_v1_glasses",
       skinId: "base_bull",
-      backgroundId: "neon",
-      frameId: "neon_cyber",
+      backgroundId: "cyber",
+      frameId: "royal_amethyst",
       hasGlasses: true,
       hasMustache: true,
       hasCrown: false,
@@ -152,7 +152,7 @@ export function ArcadePlayerCard({
       ? myPlayer.equippedSkills
       : ["rewind" as SkillType, "turbo" as SkillType];
 
-  // COMPACT MOBILE / TABLET VIEW (Shown directly below the 3D cylinder)
+  // COMPACT MOBILE / TABLET VIEW (The Left Yellow Box)
   if (compact) {
     if (!myPlayer) {
       return (
@@ -161,78 +161,74 @@ export function ArcadePlayerCard({
             soundManager.playClick();
             onJoinClick?.();
           }}
-          className="w-full h-full min-h-[108px] flex items-center justify-between p-2.5 sm:p-3 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/80 rounded-2xl shadow-xl cursor-pointer hover:border-amber-300 transition-all select-none"
+          className="w-full h-full min-h-[220px] sm:min-h-[260px] flex flex-col items-center justify-center p-3 sm:p-4 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/80 rounded-3xl shadow-xl cursor-pointer hover:border-amber-300 transition-all select-none text-center gap-2"
         >
-          <div className="flex items-center gap-2">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-amber-500/20 border-2 border-dashed border-amber-400 flex items-center justify-center text-amber-300">
-              <Plus size={22} />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-title font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1">
-                <Crown size={11} className="text-yellow-400 fill-yellow-400" />
-                <span>YOU</span>
-              </span>
-              <span className="font-title font-black text-xs sm:text-sm text-white">
-                TAP TO JOIN ⚔️
-              </span>
-            </div>
+          <div className="w-18 h-18 sm:w-22 sm:h-22 rounded-2xl bg-amber-500/20 border-2 border-dashed border-amber-400 flex items-center justify-center text-amber-300 shadow-lg">
+            <Plus size={30} />
           </div>
-          <span className="text-[10px] font-title font-bold text-slate-400 bg-black/50 px-2 py-1 rounded-lg border border-slate-800">
-            GUEST
-          </span>
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] font-title font-bold text-amber-300 uppercase tracking-widest flex items-center gap-1">
+              <Crown size={12} className="text-yellow-400 fill-yellow-400" />
+              <span>YOUR SEAT</span>
+            </span>
+            <span className="font-title font-black text-sm sm:text-base text-white mt-0.5">
+              TAP TO JOIN ⚔️
+            </span>
+          </div>
         </div>
       );
     }
 
     return (
       <div
-        className={`w-full flex flex-col justify-between p-2 sm:p-2.5 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 rounded-2xl shadow-xl transition-all select-none ${
+        className={`w-full h-full flex flex-col justify-between p-2.5 sm:p-3.5 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 rounded-3xl shadow-xl transition-all select-none gap-2 ${
           myTurn
-            ? "border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.6)]"
+            ? "border-emerald-400 shadow-[0_0_25px_rgba(52,211,153,0.7)]"
             : "border-amber-400/60"
         }`}
       >
-        {/* Top Row: Avatar & Nameplate */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div
-              className={`relative w-11 h-11 sm:w-13 sm:h-13 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
-                myTurn ? "border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" : "border-amber-400/70"
-              }`}
-            >
-              <MasterAvatar
-                config={avatar}
-                showLevel={true}
-                level={12}
-                showRarity={false}
-              />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1">
-                <Crown size={10} className="text-yellow-400 fill-yellow-400" />
-                <span className="text-[9px] font-title font-black text-amber-300 uppercase tracking-wider">
-                  YOU {myTurn && "· ⚡ TURN"}
-                </span>
-              </div>
-              <span className="font-title font-black text-xs text-white truncate drop-shadow">
-                {myPlayer.name}
-              </span>
-              <span className="text-[9px] font-title font-bold text-emerald-400/90 truncate">
-                🏆 {avatar.title}
-              </span>
-            </div>
+        {/* Top Header Pill: Crown YOU & Streak */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/50">
+            <Crown size={11} className="text-yellow-400 fill-yellow-400" />
+            <span className="text-[9px] sm:text-[10px] font-title font-black text-amber-300 uppercase tracking-wider">
+              YOU {myTurn && "· ⚡ TURN"}
+            </span>
           </div>
 
-          <div className="flex flex-col items-end shrink-0">
-            <span className="text-[9px] font-title font-bold text-amber-400 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/50">
-              🔥 5 STREAK
-            </span>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-950/80 border border-rose-500/50 text-rose-300 text-[9px] sm:text-[10px] font-title font-black shadow">
+            <Flame size={10} className="text-rose-400 fill-rose-400 animate-pulse" />
+            <span>5 STREAK</span>
           </div>
         </div>
 
-        {/* Attached Tactical Skills (Rendered right on mobile player card) */}
+        {/* 3D MasterAvatar Display */}
+        <div
+          className={`relative w-22 h-22 sm:w-26 sm:h-26 md:w-28 md:h-28 mx-auto rounded-2xl overflow-hidden border-2 transition-all shadow-lg ${
+            myTurn ? "border-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.8)] scale-102" : "border-amber-400/70"
+          }`}
+        >
+          <MasterAvatar
+            config={avatar}
+            showLevel={true}
+            level={12}
+            showRarity={false}
+          />
+        </div>
+
+        {/* Nameplate & Title */}
+        <div className="flex flex-col items-center text-center -mt-1">
+          <span className="font-title font-black text-xs sm:text-sm text-white truncate max-w-[130px] drop-shadow">
+            {myPlayer.name}
+          </span>
+          <span className="text-[10px] font-title font-bold text-emerald-400/90 truncate max-w-[130px]">
+            🏆 {avatar.title}
+          </span>
+        </div>
+
+        {/* Attached Tactical Skills Buttons */}
         {isSkillMode && (
-          <div className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-white/10">
+          <div className="flex items-center gap-1.5 pt-1 border-t border-white/10 w-full">
             {equipped.map((skType) => {
               const baseMeta = ALL_SKILL_META[skType] ?? ALL_SKILL_META.rewind;
               const configured = gameConfig.skills.find((skill) => skill.id === skType);
@@ -251,17 +247,17 @@ export function ArcadePlayerCard({
                     onSkill?.(skType);
                   }}
                   aria-label={`Use ${meta.name}`}
-                  className={`flex-1 flex items-center justify-center gap-1 py-1 px-1 rounded-xl border text-[9px] font-title font-black transition-all ${
+                  className={`flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl border text-[9px] font-title font-black transition-all ${
                     canUse
-                      ? `${meta.color} hover:scale-105 active:scale-95 cursor-pointer animate-pulse`
+                      ? `${meta.color} hover:scale-105 active:scale-95 cursor-pointer animate-pulse shadow-md`
                       : available
                         ? `${meta.color} opacity-60 cursor-not-allowed`
                         : "border-slate-800 bg-slate-950/60 opacity-40 grayscale"
                   }`}
                   title={`${meta.name} (${available ? "Ready" : "Used"})`}
                 >
-                  <div className="p-0.5 rounded bg-black/50">{meta.icon}</div>
-                  <span className="truncate">{meta.badge}</span>
+                  <div className="p-0.5 rounded bg-black/50 mb-0.5">{meta.icon}</div>
+                  <span className="truncate leading-none">{meta.badge}</span>
                 </button>
               );
             })}
@@ -474,65 +470,73 @@ export function ArcadeOpponentCard({
     : fallbackProfile;
   const isSkillMode = gameMode === "skills";
 
-  // COMPACT MOBILE / TABLET VIEW
+  // COMPACT MOBILE / TABLET VIEW (The Right Yellow Box)
   if (compact) {
     return (
       <div
-        className={`w-full flex flex-col justify-between p-2 sm:p-2.5 bg-gradient-to-b from-[#1d1628]/95 via-[#110d1c]/98 to-[#07050b] border-2 rounded-2xl shadow-xl transition-all select-none ${
+        className={`w-full h-full flex flex-col justify-between p-2.5 sm:p-3.5 bg-gradient-to-b from-[#1d1628]/95 via-[#110d1c]/98 to-[#07050b] border-2 rounded-3xl shadow-xl transition-all select-none gap-2 ${
           isOpponentTurn
-            ? "border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.6)]"
+            ? "border-cyan-400 shadow-[0_0_25px_rgba(6,182,212,0.7)]"
             : "border-purple-400/50"
         }`}
       >
-        {/* Top Row: Opponent Avatar & Nameplate */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div
-              className={`relative w-11 h-11 sm:w-13 sm:h-13 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
-                isOpponentTurn ? "border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.8)]" : "border-purple-400/60"
-              }`}
-            >
-              <MasterAvatar
-                config={profile.config}
-                showLevel={true}
-                level={profile.level}
-                showRarity={false}
-              />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1">
-                <Swords size={10} className={isOpponentTurn ? "text-cyan-300 animate-spin" : "text-purple-300"} />
-                <span className="text-[9px] font-title font-black text-cyan-300 uppercase tracking-wider">
-                  {isOpponentTurn ? "⚡ TURN" : "OPPONENT"}
-                </span>
-              </div>
-              <span className="font-title font-black text-xs text-white truncate drop-shadow">
-                {oppName}
-              </span>
-              <span className="text-[9px] font-title font-bold text-cyan-300/90 truncate">
-                ✨ {profile.title}
-              </span>
-            </div>
+        {/* Top Header Pill: Turn & Streak */}
+        <div className="flex items-center justify-between">
+          <div
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] sm:text-[10px] font-title font-black uppercase tracking-wider ${
+              isOpponentTurn
+                ? "bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                : "bg-purple-500/20 border-purple-400/50 text-purple-300"
+            }`}
+          >
+            <Swords
+              size={11}
+              className={isOpponentTurn ? "text-cyan-300 animate-spin" : "text-purple-300"}
+            />
+            <span>{isOpponentTurn ? "⚡ TURN" : "OPPONENT"}</span>
           </div>
 
-          <div className="flex flex-col items-end shrink-0">
-            <span className="text-[9px] font-title font-bold text-rose-400 bg-rose-950/80 px-1.5 py-0.5 rounded border border-rose-500/50">
-              🔥 {profile.streak}
-            </span>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-950/80 border border-rose-500/50 text-rose-300 text-[9px] sm:text-[10px] font-title font-black shadow">
+            <Flame size={10} className="text-rose-400 fill-rose-400 animate-pulse" />
+            <span>{profile.streak} STREAK</span>
           </div>
         </div>
 
-        {/* Attached Tactical Skills for Opponent */}
+        {/* 3D Rival Avatar Display */}
+        <div
+          className={`relative w-22 h-22 sm:w-26 sm:h-26 md:w-28 md:h-28 mx-auto rounded-2xl overflow-hidden border-2 transition-all shadow-lg ${
+            isOpponentTurn ? "border-cyan-400 shadow-[0_0_18px_rgba(6,182,212,0.8)] scale-102" : "border-purple-400/60"
+          }`}
+        >
+          <MasterAvatar
+            config={profile.config}
+            showLevel={true}
+            level={profile.level}
+            showRarity={false}
+          />
+        </div>
+
+        {/* Nameplate & Title */}
+        <div className="flex flex-col items-center text-center -mt-1">
+          <span className="font-title font-black text-xs sm:text-sm text-white truncate max-w-[130px] drop-shadow">
+            {oppName}
+          </span>
+          <span className="text-[10px] font-title font-bold text-cyan-300/90 truncate max-w-[130px]">
+            ✨ {profile.title}
+          </span>
+        </div>
+
+        {/* Attached Opponent Tactical Skills */}
         {isSkillMode && (
-          <div className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-white/10">
+          <div className="flex items-center gap-1.5 pt-1 border-t border-white/10 w-full">
             {profile.skills.map((s) => (
               <div
                 key={s.badge}
-                className={`flex-1 flex items-center justify-center gap-1 py-1 px-1 rounded-xl border text-[9px] font-title font-black ${s.color}`}
+                className={`flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl border text-[9px] font-title font-black ${s.color}`}
                 title={s.name}
               >
-                <div className="p-0.5 rounded bg-black/50">{s.icon}</div>
-                <span className="truncate">{s.badge}</span>
+                <div className="p-0.5 rounded bg-black/50 mb-0.5">{s.icon}</div>
+                <span className="truncate leading-none">{s.badge}</span>
               </div>
             ))}
           </div>

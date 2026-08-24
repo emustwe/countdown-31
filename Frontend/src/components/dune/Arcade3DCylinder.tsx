@@ -299,7 +299,7 @@ export function Arcade3DCylinder({
                 }}
                 onClick={() => {
                   if (myTurn && status === "playing" && (isPlayable1 || isPlayable2 || isPlayable3)) {
-                    soundManager.playTileSelect();
+                    soundManager.playClick();
                     onToggleCard(tileNum);
                   }
                 }}
