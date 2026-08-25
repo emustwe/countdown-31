@@ -21,11 +21,11 @@ This roadmap turns the sponsor-platform design into small vertical slices. Every
 
 **Human test:** build a campaign entirely from uploaded sponsor files and verify desktop/mobile fallbacks.
 
-## Chunk 3 — Cause and fundraising module
+## Chunk 3 — Cause and fundraising module ✅ Implemented
 
-- Add optional cause messaging, beneficiary details, targets, progress, and approved calls to action.
-- Keep fundraising UI outside turn-critical controls and allow instant admin disable.
-- Add disclosure and copy validation.
+- Add optional cause messaging, beneficiary details, manually managed targets/progress, and HTTPS calls to action.
+- Keep cause UI outside turn-critical controls with a compact mobile treatment and instant admin disable/restore.
+- Add clear external-site disclosure, bounded copy, currency controls, and safe link validation.
 
 **Human test:** enable and disable a cause card during a staged tournament without affecting gameplay.
 

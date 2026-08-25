@@ -330,7 +330,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
         "--campaign-bg-mobile": `url("${resolveCampaignAssetUrl(campaign.theme.mobileBackgroundImage || campaign.theme.backgroundImage)}")`,
       } as React.CSSProperties : undefined}
     >
-      {campaign && <TournamentSponsorLayer manifest={campaign} />}
+      {campaign && <TournamentSponsorLayer manifest={campaign} causePaused={campaignData?.campaign?.isCausePaused} />}
       {/* Top Arcade Header Marquee with Game Mode Switcher */}
       <ArcadeHeader
         onOpenRules={() => setShowRules(true)}

@@ -26,4 +26,42 @@ describe("TournamentCampaignManifestSchema", () => {
       theme: { ...validManifest.theme, overlayOpacity: 0.1 },
     }).success).toBe(false);
   });
+
+  it("accepts bounded cause progress with an HTTPS destination", () => {
+    expect(TournamentCampaignManifestSchema.safeParse({
+      ...validManifest,
+      cause: {
+        enabled: true,
+        label: "Playing for good",
+        title: "Help build safe classrooms",
+        message: "This tournament supports a hypothetical education campaign.",
+        beneficiaryName: "Demo Education Fund",
+        targetAmount: 25000,
+        raisedAmount: 9400,
+        currency: "USD",
+        showProgress: true,
+        ctaLabel: "Learn more",
+        ctaUrl: "https://example.org/cause",
+      },
+    }).success).toBe(true);
+  });
+
+  it("rejects unsafe fundraising links and negative progress", () => {
+    expect(TournamentCampaignManifestSchema.safeParse({
+      ...validManifest,
+      cause: {
+        enabled: true,
+        label: "Cause",
+        title: "Unsafe cause",
+        message: "",
+        beneficiaryName: "Unknown",
+        targetAmount: 100,
+        raisedAmount: -1,
+        currency: "USD",
+        showProgress: true,
+        ctaLabel: "Donate",
+        ctaUrl: "http://example.org/not-secure",
+      },
+    }).success).toBe(false);
+  });
 });

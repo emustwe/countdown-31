@@ -35,6 +35,26 @@ export interface TournamentCampaignManifest {
     headline: string;
     body: string;
   };
+  cause?: {
+    enabled: boolean;
+    label: string;
+    title: string;
+    message: string;
+    beneficiaryName: string;
+    targetAmount: number;
+    raisedAmount: number;
+    currency: "USD" | "USDT" | "EUR" | "GBP";
+    showProgress: boolean;
+    ctaLabel: string;
+    ctaUrl: string;
+  };
+}
+
+export type CampaignCause = NonNullable<TournamentCampaignManifest["cause"]>;
+
+export function campaignCauseProgress(cause: CampaignCause): number {
+  if (!Number.isFinite(cause.targetAmount) || cause.targetAmount <= 0) return 0;
+  return Math.min(100, Math.max(0, (cause.raisedAmount / cause.targetAmount) * 100));
 }
 
 export type CampaignAssetKind = "LOGO" | "BACKGROUND_DESKTOP" | "BACKGROUND_MOBILE";
@@ -67,7 +87,7 @@ interface CampaignVersion {
 
 export interface AdminCampaignResponse {
   tournament: { id: string; title: string; sponsor: { id: string; name: string } | null };
-  campaign: { id: string; isPaused: boolean; draft: CampaignVersion | null; published: CampaignVersion | null } | null;
+  campaign: { id: string; isPaused: boolean; isCausePaused: boolean; draft: CampaignVersion | null; published: CampaignVersion | null } | null;
 }
 
 export interface ActiveCampaignResponse {
@@ -76,6 +96,7 @@ export interface ActiveCampaignResponse {
     tournamentTitle: string;
     revision: number;
     manifest: TournamentCampaignManifest;
+    isCausePaused: boolean;
   };
 }
 
@@ -146,6 +167,10 @@ export function useCampaignActions(tournamentId: string) {
     }),
     pause: useMutation({
       mutationFn: (paused: boolean) => apiRequest(`/admin/promo-tournaments/${tournamentId}/campaign/${paused ? "pause" : "resume"}`, { method: "POST" }),
+      onSuccess: refresh,
+    }),
+    pauseCause: useMutation({
+      mutationFn: (paused: boolean) => apiRequest(`/admin/promo-tournaments/${tournamentId}/campaign/cause/${paused ? "pause" : "resume"}`, { method: "POST" }),
       onSuccess: refresh,
     }),
   };

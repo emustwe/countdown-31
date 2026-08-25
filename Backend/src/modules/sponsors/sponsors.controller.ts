@@ -123,6 +123,14 @@ export class AdminPromoController {
   resumeCampaign(@Param("id") id: string) {
     return this.sponsors.setCampaignPaused(id, false);
   }
+  @Post(":id/campaign/cause/pause")
+  pauseCampaignCause(@Param("id") id: string) {
+    return this.sponsors.setCampaignCausePaused(id, true);
+  }
+  @Post(":id/campaign/cause/resume")
+  resumeCampaignCause(@Param("id") id: string) {
+    return this.sponsors.setCampaignCausePaused(id, false);
+  }
   @Get(":id/campaign/assets")
   campaignAssets(@Param("id") id: string) {
     return this.sponsors.listCampaignAssets(id);

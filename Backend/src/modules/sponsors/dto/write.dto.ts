@@ -41,6 +41,10 @@ const safeAssetUrl = z.string().max(500).refine(
   (value) => value === "" || value.startsWith("/") || /^https:\/\//i.test(value),
   "Use a local asset path or an HTTPS URL",
 );
+const safeExternalUrl = z.string().max(500).refine(
+  (value) => value === "" || /^https:\/\//i.test(value),
+  "External links must use HTTPS",
+);
 const hexColor = z.string().regex(/^#[0-9a-f]{6}$/i, "Use a six-digit hex color");
 export const TournamentCampaignManifestSchema = z.object({
   identity: z.object({
@@ -70,6 +74,19 @@ export const TournamentCampaignManifestSchema = z.object({
     headline: z.string().min(1).max(80),
     body: z.string().max(180),
   }).strict(),
+  cause: z.object({
+    enabled: z.boolean(),
+    label: z.string().min(1).max(32),
+    title: z.string().min(1).max(80),
+    message: z.string().max(220),
+    beneficiaryName: z.string().min(1).max(100),
+    targetAmount: z.number().min(1).max(1_000_000_000),
+    raisedAmount: z.number().min(0).max(1_000_000_000),
+    currency: z.enum(["USD", "USDT", "EUR", "GBP"]),
+    showProgress: z.boolean(),
+    ctaLabel: z.string().min(1).max(32),
+    ctaUrl: safeExternalUrl,
+  }).strict().optional(),
 }).strict();
 export type TournamentCampaignManifestInput = z.infer<typeof TournamentCampaignManifestSchema>;
 

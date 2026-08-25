@@ -549,6 +549,7 @@ export class SponsorsService {
       campaign: campaign ? {
         id: campaign.id,
         isPaused: campaign.isPaused,
+        isCausePaused: campaign.isCausePaused,
         draft: draft ? this.serializeCampaignVersion(draft) : null,
         published: published ? this.serializeCampaignVersion(published) : null,
       } : null,
@@ -602,7 +603,7 @@ export class SponsorsService {
         where: { id: draft.id },
         data: { status: "PUBLISHED", publishedAt: new Date(), createdBy: actorId },
       });
-      await tx.tournamentCampaign.update({ where: { id: campaign.id }, data: { isPaused: false } });
+      await tx.tournamentCampaign.update({ where: { id: campaign.id }, data: { isPaused: false, isCausePaused: false } });
     });
     this.audit.record("TOURNAMENT_CAMPAIGN_PUBLISH", { actor: actorId, detail: { tournamentId } });
     return this.getCampaignForAdmin(tournamentId);
@@ -614,6 +615,14 @@ export class SponsorsService {
     const updated = await this.prisma.tournamentCampaign.update({ where: { id: campaign.id }, data: { isPaused } });
     this.audit.record(isPaused ? "TOURNAMENT_CAMPAIGN_PAUSE" : "TOURNAMENT_CAMPAIGN_RESUME", { detail: { tournamentId } });
     return { tournamentId, isPaused: updated.isPaused };
+  }
+
+  async setCampaignCausePaused(tournamentId: string, isCausePaused: boolean) {
+    const campaign = await this.prisma.tournamentCampaign.findUnique({ where: { tournamentId } });
+    if (!campaign) throw new NotFoundException("Campaign not found");
+    const updated = await this.prisma.tournamentCampaign.update({ where: { id: campaign.id }, data: { isCausePaused } });
+    this.audit.record(isCausePaused ? "TOURNAMENT_CAUSE_PAUSE" : "TOURNAMENT_CAUSE_RESUME", { detail: { tournamentId } });
+    return { tournamentId, isCausePaused: updated.isCausePaused };
   }
 
   async listCampaignAssets(tournamentId: string) {
@@ -690,6 +699,7 @@ export class SponsorsService {
         tournamentTitle: campaign.tournament.title,
         revision: version.revision,
         manifest: version.manifest,
+        isCausePaused: campaign.isCausePaused,
       },
     };
   }

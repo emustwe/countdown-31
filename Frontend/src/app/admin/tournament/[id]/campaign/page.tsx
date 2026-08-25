@@ -3,13 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Check, Eye, Film, History, Image as ImageIcon, Monitor, Pause, Play, RotateCcw, Save, ShieldCheck, Smartphone, Sparkles, Upload } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Eye, Film, HeartHandshake, History, Image as ImageIcon, Monitor, Pause, Play, RotateCcw, Save, ShieldCheck, Smartphone, Sparkles, Upload } from "lucide-react";
 import {
   useAdminTournamentCampaign,
   useCampaignActions,
   useTournamentCampaignAssets,
   useUploadTournamentCampaignAsset,
   resolveCampaignAssetUrl,
+  campaignCauseProgress,
+  type CampaignCause,
   type CampaignAsset,
   type CampaignAssetKind,
   type TournamentCampaignManifest,
@@ -31,6 +33,20 @@ const DEMO: TournamentCampaignManifest = {
   },
   logoTile: { enabled: true, logoText: "NIKE DEMO", animationPreset: "turntable", desktopEnabled: true, mobileEnabled: true },
   featurePanel: { enabled: true, headline: "FUTURE CHAMPIONS", body: "Every move builds the future. Play boldly and keep the countdown alive." },
+};
+
+const DEFAULT_CAUSE: CampaignCause = {
+  enabled: false,
+  label: "Playing for good",
+  title: "Open the field for every kid",
+  message: "This hypothetical tournament spotlights access to safe community sports.",
+  beneficiaryName: "Demo Community Sports Fund",
+  targetAmount: 25000,
+  raisedAmount: 9400,
+  currency: "USD",
+  showProgress: true,
+  ctaLabel: "Learn more",
+  ctaUrl: "https://example.org",
 };
 
 function Field({ label, value, onChange, maxLength = 80 }: { label: string; value: string; onChange: (value: string) => void; maxLength?: number }) {
@@ -60,7 +76,7 @@ export default function TournamentCampaignStudioPage() {
   const [manifest, setManifest] = useState<TournamentCampaignManifest>(DEMO);
   const [saved, setSaved] = useState(false);
   const source = query.data?.campaign?.draft?.manifest ?? query.data?.campaign?.published?.manifest;
-  useEffect(() => { if (source) setManifest(source); }, [source]);
+  useEffect(() => { if (source) setManifest({ ...source, cause: source.cause ?? DEFAULT_CAUSE }); }, [source]);
 
   const status = useMemo(() => {
     if (!query.data?.campaign?.published) return "Draft only";
@@ -70,6 +86,8 @@ export default function TournamentCampaignStudioPage() {
   const setTheme = (key: keyof TournamentCampaignManifest["theme"], value: string | number) => setManifest((old) => ({ ...old, theme: { ...old.theme, [key]: value } }));
   const setLogo = <K extends keyof TournamentCampaignManifest["logoTile"]>(key: K, value: TournamentCampaignManifest["logoTile"][K]) => setManifest((old) => ({ ...old, logoTile: { ...old.logoTile, [key]: value } }));
   const setFeature = <K extends keyof TournamentCampaignManifest["featurePanel"]>(key: K, value: TournamentCampaignManifest["featurePanel"][K]) => setManifest((old) => ({ ...old, featurePanel: { ...old.featurePanel, [key]: value } }));
+  const cause = manifest.cause ?? DEFAULT_CAUSE;
+  const setCause = <K extends keyof CampaignCause>(key: K, value: CampaignCause[K]) => setManifest((old) => ({ ...old, cause: { ...(old.cause ?? DEFAULT_CAUSE), [key]: value } }));
 
   async function upload(kind: CampaignAssetKind, file: File) {
     soundManager.playClick();
@@ -85,7 +103,8 @@ export default function TournamentCampaignStudioPage() {
 
   async function saveDraft() { soundManager.playClick(); await actions.save.mutateAsync(manifest); setSaved(true); setTimeout(() => setSaved(false), 1500); }
   async function publish() { soundManager.playConfirm(); await actions.save.mutateAsync(manifest); await actions.publish.mutateAsync(); }
-  const busy = actions.save.isPending || actions.publish.isPending || actions.pause.isPending || uploadAsset.isPending;
+  const busy = actions.save.isPending || actions.publish.isPending || actions.pause.isPending || actions.pauseCause.isPending || uploadAsset.isPending;
+  const publishedCauseEnabled = !!query.data?.campaign?.published?.manifest.cause?.enabled;
 
   return <div className="flex flex-col gap-5 pb-12">
     <header className="rounded-3xl border-2 border-lime-300/60 bg-gradient-to-br from-[#18241c] to-[#050807] p-5 shadow-2xl sm:p-7">
@@ -117,6 +136,19 @@ export default function TournamentCampaignStudioPage() {
     <div className="grid gap-5 xl:grid-cols-[minmax(380px,.82fr)_minmax(520px,1.18fr)]">
       <section className="flex flex-col gap-5 rounded-3xl border border-amber-400/40 bg-[#09110d]/95 p-5 sm:p-6">
         <div className="rounded-2xl border border-amber-400/30 bg-amber-400/8 p-4 text-xs text-amber-100"><strong>Safe demo:</strong> this is a hypothetical visual concept. It uses no official Nike logo or supplied brand assets.</div>
+        <div className="rounded-2xl border border-rose-400/35 bg-gradient-to-br from-rose-950/35 to-black/30 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-rose-300"><HeartHandshake size={14}/> Cause campaign</div><p className="mb-0 mt-1 text-[10px] text-slate-400">Information and external links only. Countdown 31 does not process donations in this module.</p></div><button onClick={() => setCause("enabled", !cause.enabled)} className={`rounded-xl border px-4 py-2 text-[10px] font-black uppercase ${cause.enabled ? "border-rose-300 bg-rose-300 text-rose-950" : "border-slate-700 bg-black/50 text-slate-400"}`}>{cause.enabled ? <Check className="mr-1 inline" size={13}/> : null}{cause.enabled ? "Cause enabled" : "Enable cause"}</button></div>
+          <div className={`mt-4 grid gap-3 sm:grid-cols-2 ${cause.enabled ? "" : "opacity-55"}`}>
+            <Field label="Cause label" value={cause.label} onChange={(v) => setCause("label", v)} maxLength={32}/><Field label="Beneficiary" value={cause.beneficiaryName} onChange={(v) => setCause("beneficiaryName", v)} maxLength={100}/>
+            <div className="sm:col-span-2"><Field label="Cause title" value={cause.title} onChange={(v) => setCause("title", v)} maxLength={80}/></div>
+            <label className="sm:col-span-2 flex flex-col gap-1.5"><span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Cause message</span><textarea value={cause.message} maxLength={220} onChange={(e) => setCause("message",e.target.value)} className="min-h-20 rounded-xl border border-slate-700 bg-black/70 px-3 py-2.5 text-sm text-white outline-none focus:border-rose-300"/></label>
+            <label className="flex flex-col gap-1.5"><span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Target amount</span><input type="number" min={1} value={cause.targetAmount} onChange={(e)=>setCause("targetAmount",Math.max(1,Number(e.target.value)||1))} className="rounded-xl border border-slate-700 bg-black/70 px-3 py-2.5 text-sm text-white"/></label>
+            <label className="flex flex-col gap-1.5"><span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Raised so far</span><input type="number" min={0} value={cause.raisedAmount} onChange={(e)=>setCause("raisedAmount",Math.max(0,Number(e.target.value)||0))} className="rounded-xl border border-slate-700 bg-black/70 px-3 py-2.5 text-sm text-white"/></label>
+            <label className="flex flex-col gap-1.5"><span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Currency</span><select value={cause.currency} onChange={(e)=>setCause("currency",e.target.value as CampaignCause["currency"])} className="rounded-xl border border-slate-700 bg-black/70 px-3 py-2.5 text-sm text-white"><option>USD</option><option>USDT</option><option>EUR</option><option>GBP</option></select></label>
+            <button onClick={()=>setCause("showProgress",!cause.showProgress)} className={`self-end rounded-xl border px-3 py-2.5 text-[10px] font-black ${cause.showProgress?"border-rose-300/60 bg-rose-300/10 text-rose-200":"border-slate-700 text-slate-500"}`}>{cause.showProgress?<Check className="mr-1 inline" size={13}/>:null}Show progress</button>
+            <Field label="Button label" value={cause.ctaLabel} onChange={(v)=>setCause("ctaLabel",v)} maxLength={32}/><Field label="HTTPS destination" value={cause.ctaUrl} onChange={(v)=>setCause("ctaUrl",v)} maxLength={500}/>
+          </div>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2"><Field label="Campaign title" value={manifest.identity.campaignTitle} onChange={(v) => setIdentity("campaignTitle", v)}/><Field label="Sponsor name" value={manifest.identity.sponsorName} onChange={(v) => setIdentity("sponsorName", v)}/><Field label="Disclosure" value={manifest.identity.disclosureLabel} onChange={(v) => setIdentity("disclosureLabel", v)} maxLength={40}/><Field label="Logo tile text" value={manifest.logoTile.logoText} onChange={(v) => setLogo("logoText", v)} maxLength={30}/></div>
         <div className="grid grid-cols-2 gap-3"><label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Primary<input type="color" value={manifest.theme.primaryColor} onChange={(e) => setTheme("primaryColor", e.target.value)} className="mt-2 h-11 w-full rounded-xl bg-black p-1"/></label><label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Accent<input type="color" value={manifest.theme.secondaryColor} onChange={(e) => setTheme("secondaryColor", e.target.value)} className="mt-2 h-11 w-full rounded-xl bg-black p-1"/></label></div>
         <Field label="Desktop background fallback" value={manifest.theme.backgroundImage} onChange={(v) => setTheme("backgroundImage", v)} maxLength={500}/>
@@ -133,13 +165,13 @@ export default function TournamentCampaignStudioPage() {
           <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border border-white/20 bg-black/70 px-4 py-1.5 text-[10px] font-black uppercase text-white">{manifest.identity.disclosureLabel} <span style={{color:manifest.theme.secondaryColor}}>{manifest.identity.sponsorName}</span></div>
           <div className="absolute left-1/2 top-[28%] h-[32%] w-[52%] -translate-x-1/2 rounded-2xl border-4 bg-black/85 shadow-2xl" style={{borderColor:manifest.theme.secondaryColor}}><div className="grid h-full grid-cols-5 gap-2 p-3">{[29,30,31,1,2].map((n)=><div key={n} className="grid place-items-center rounded-lg border border-white/10 bg-black text-xl font-black" style={{color:n===1?manifest.theme.secondaryColor:"white"}}>{n}</div>)}</div></div>
           {manifest.logoTile.enabled && <div className="absolute bottom-5 left-5 grid h-20 w-20 place-items-center overflow-hidden rounded-2xl border-2 bg-black/85 p-2 text-center text-xs font-black" style={{borderColor:manifest.theme.secondaryColor,color:manifest.theme.primaryColor}}>{manifest.logoTile.mediaUrl ? (manifest.logoTile.mediaType === "video" ? <video src={resolveCampaignAssetUrl(manifest.logoTile.mediaUrl)} muted loop autoPlay playsInline className="h-full w-full object-contain"/> : <img src={resolveCampaignAssetUrl(manifest.logoTile.mediaUrl)} alt="" className="h-full w-full object-contain"/>) : manifest.logoTile.logoText}</div>}
-          {manifest.featurePanel.enabled && <div className="absolute bottom-5 right-5 w-[34%] rounded-2xl border border-white/20 bg-black/85 p-4"><div className="text-sm font-black" style={{color:manifest.theme.secondaryColor}}>{manifest.featurePanel.headline}</div><p className="mb-0 mt-1 text-[9px] leading-relaxed text-slate-300">{manifest.featurePanel.body}</p></div>}
+          {cause.enabled ? <div className="absolute bottom-5 right-5 w-[38%] rounded-2xl border border-rose-300/60 bg-black/90 p-3"><div className="text-[7px] font-black uppercase tracking-widest text-rose-300">{cause.label}</div><div className="mt-1 text-xs font-black text-white">{cause.title}</div><div className="mt-1 text-[7px] text-slate-400">For {cause.beneficiaryName}</div>{cause.showProgress&&<><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-rose-400 to-amber-300" style={{width:`${campaignCauseProgress(cause)}%`}}/></div><div className="mt-1 text-[7px] font-bold text-white">{cause.raisedAmount.toLocaleString()} / {cause.targetAmount.toLocaleString()} {cause.currency}</div></>}</div> : manifest.featurePanel.enabled && <div className="absolute bottom-5 right-5 w-[34%] rounded-2xl border border-white/20 bg-black/85 p-4"><div className="text-sm font-black" style={{color:manifest.theme.secondaryColor}}>{manifest.featurePanel.headline}</div><p className="mb-0 mt-1 text-[9px] leading-relaxed text-slate-300">{manifest.featurePanel.body}</p></div>}
         </div>
         <p className="mt-3 text-[10px] text-slate-500"><ShieldCheck className="mr-1 inline text-emerald-400" size={12}/>{manifest.identity.demoDisclaimer}</p>
       </section>
     </div>
 
-    <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/50 bg-black/90 p-3 shadow-2xl backdrop-blur-xl"><button onClick={()=>setManifest(DEMO)} className="flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-xs font-black text-slate-300"><RotateCcw size={15}/> Load demo</button><div className="flex flex-wrap gap-2"><button disabled={busy} onClick={saveDraft} className="flex items-center gap-2 rounded-xl border border-lime-300/50 bg-lime-300/10 px-4 py-2 text-xs font-black text-lime-200"><Save size={15}/>{saved ? "Saved" : "Save draft"}</button>{query.data?.campaign?.published && <button disabled={busy} onClick={()=>actions.pause.mutate(!query.data?.campaign?.isPaused)} className="flex items-center gap-2 rounded-xl border border-amber-400/50 bg-amber-400/10 px-4 py-2 text-xs font-black text-amber-200">{query.data.campaign.isPaused ? <Play size={15}/> : <Pause size={15}/>} {query.data.campaign.isPaused ? "Resume" : "Pause"}</button>}<button disabled={busy} onClick={publish} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-lime-300 to-emerald-400 px-5 py-2 text-xs font-black text-slate-950 shadow-[0_0_20px_rgba(190,242,100,.35)]"><Sparkles size={15}/> Publish to tournament</button></div></div>
-    {actions.save.error || actions.publish.error || actions.pause.error ? <div className="text-sm font-bold text-rose-400">{String((actions.save.error ?? actions.publish.error ?? actions.pause.error) instanceof Error ? (actions.save.error ?? actions.publish.error ?? actions.pause.error)?.message : "Campaign action failed")}</div> : null}
+    <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/50 bg-black/90 p-3 shadow-2xl backdrop-blur-xl"><button onClick={()=>setManifest({...DEMO,cause:DEFAULT_CAUSE})} className="flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-xs font-black text-slate-300"><RotateCcw size={15}/> Load demo</button><div className="flex flex-wrap gap-2">{publishedCauseEnabled&&<button disabled={busy} onClick={()=>actions.pauseCause.mutate(!query.data?.campaign?.isCausePaused)} className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-black ${query.data?.campaign?.isCausePaused?"border-emerald-400/60 bg-emerald-400/10 text-emerald-200":"border-rose-400/60 bg-rose-400/10 text-rose-200"}`}>{query.data?.campaign?.isCausePaused?<Play size={15}/>:<AlertTriangle size={15}/>} {query.data?.campaign?.isCausePaused?"Restore cause":"Hide cause now"}</button>}<button disabled={busy} onClick={saveDraft} className="flex items-center gap-2 rounded-xl border border-lime-300/50 bg-lime-300/10 px-4 py-2 text-xs font-black text-lime-200"><Save size={15}/>{saved ? "Saved" : "Save draft"}</button>{query.data?.campaign?.published && <button disabled={busy} onClick={()=>actions.pause.mutate(!query.data?.campaign?.isPaused)} className="flex items-center gap-2 rounded-xl border border-amber-400/50 bg-amber-400/10 px-4 py-2 text-xs font-black text-amber-200">{query.data.campaign.isPaused ? <Play size={15}/> : <Pause size={15}/>} {query.data.campaign.isPaused ? "Resume" : "Pause"}</button>}<button disabled={busy} onClick={publish} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-lime-300 to-emerald-400 px-5 py-2 text-xs font-black text-slate-950 shadow-[0_0_20px_rgba(190,242,100,.35)]"><Sparkles size={15}/> Publish to tournament</button></div></div>
+    {actions.save.error || actions.publish.error || actions.pause.error || actions.pauseCause.error ? <div className="text-sm font-bold text-rose-400">{String((actions.save.error ?? actions.publish.error ?? actions.pause.error ?? actions.pauseCause.error) instanceof Error ? (actions.save.error ?? actions.publish.error ?? actions.pause.error ?? actions.pauseCause.error)?.message : "Campaign action failed")}</div> : null}
   </div>;
 }

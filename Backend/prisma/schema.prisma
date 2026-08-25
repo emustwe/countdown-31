@@ -189,6 +189,7 @@ model TournamentCampaign {
   tournamentId String                    @unique
   tournament   SponsorTournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   isPaused     Boolean                   @default(false)
+  isCausePaused Boolean                  @default(false)
   createdAt    DateTime                  @default(now())
   updatedAt    DateTime                  @updatedAt
   versions     TournamentCampaignVersion[]

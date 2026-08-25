@@ -2,9 +2,11 @@
 
 **Last updated:** August 25, 2026  
 **Total chunks:** 6  
-**Completed:** 2  
-**Remaining:** 4  
-**Overall progress:** 33%
+**Completed:** 3
+
+**Remaining:** 3
+
+**Overall progress:** 50%
 
 ## Completed
 
@@ -31,14 +33,16 @@
 
 **Commit:** `e88172d`
 
+### ✅ Chunk 3 — Cause and fundraising module
+
+- Optional cause messaging and beneficiary information in versioned campaign revisions.
+- Manually managed target, raised amount, currency, and progress display.
+- HTTPS-only external calls to action with clear external-site disclosure.
+- Desktop cause card and compact mobile treatment outside turn-critical controls.
+- Instant admin hide/restore switch without republishing or disabling sponsor presentation.
+- No donation collection or custody inside Countdown 31.
+
 ## Remaining
-
-### ⏳ Chunk 3 — Cause and fundraising module
-
-- Optional campaign or charity message.
-- Beneficiary information, fundraising target, and progress display.
-- Admin-controlled calls to action and instant disable switch.
-- Clear disclosures and placement outside gameplay controls.
 
 ### ⏳ Chunk 4 — Review, approval, scheduling, and rollback
 
@@ -64,7 +68,7 @@
 
 ## Recommended next step
 
-Implement **Chunk 3 — Cause and fundraising module** as the next independently testable release.
+Implement **Chunk 4 — Review, approval, scheduling, and rollback** as the next independently testable release.
 
 ## Delivery sequence
 
