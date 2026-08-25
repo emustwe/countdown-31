@@ -123,7 +123,8 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
   }
 
   function handleStart() {
-    if (selected.length !== 2) return;
+    // You may enter with NO skills, one, or up to two (selection is capped at 2 above).
+    if (selected.length > 2) return;
     soundManager.playConfirm();
     onConfirm(selected);
   }
@@ -150,9 +151,9 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
               </div>
               <div>
                 <h2 className="font-title font-black text-lg sm:text-xl text-amber-300 tracking-wide">
-                  PICK 2 SKILLS
+                  PICK UP TO 2 SKILLS
                 </h2>
-                <p className="text-xs text-slate-400">Tap two cards, then start the game.</p>
+                <p className="text-xs text-slate-400">Tap up to two cards — or none — then start.</p>
               </div>
             </div>
 
@@ -230,7 +231,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
           <button
             onClick={handleStart}
             data-sound="none"
-            disabled={selected.length !== 2}
+            disabled={selected.length > 2}
             className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-base shadow-[0_0_25px_rgba(52,211,153,0.8)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed"
           >
             <span>START GAME</span>

@@ -8686,7 +8686,7 @@ button.mini:hover { filter: brightness(1.06); }
 
   .mobile-bottom-nav {
     position: fixed;
-    z-index: 200;
+    z-index: 180;
     left: 50%;
     bottom: max(8px, env(safe-area-inset-bottom));
     display: grid;
@@ -8785,19 +8785,22 @@ button.mini:hover { filter: brightness(1.06); }
     padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
   }
 
-  .friendly-page .arcade-arena-header.is-page-header,
-  .practice-page .arcade-arena-header {
-    height: 88px !important;
-    min-height: 88px !important;
-    padding: 8px 12px;
-    margin-bottom: 16px !important;
+  .friendly-page .arcade-arena-header.is-page-header {
+    height: 82px !important;
+    padding: 4px 6px;
+  }
+
+  .arcade-arena-header.is-page-header .arcade-brand {
+    top: 3px;
+    transform: scale(.62);
+    transform-origin: top center;
   }
 
   .arcade-arena-header .arcade-profile-trigger {
     display: none;
   }
 
-  .arcade-arena-header .arcade-header-actions {
+  .arcade-arena-header.is-page-header .arcade-header-actions {
     margin-left: auto;
   }
 
@@ -8806,28 +8809,32 @@ button.mini:hover { filter: brightness(1.06); }
     margin-bottom: 1rem !important;
   }
 
+  .practice-page .arena-player-panel,
+  .practice-page .arena-opponent-panel {
+    display: none;
+  }
+
   .practice-page .arena-main {
     display: flex;
     justify-content: center;
-    width: 100%;
-    margin-top: 16px !important;
   }
 
   .practice-page .arena-bottom {
-    margin-bottom: calc(88px + env(safe-area-inset-bottom));
+    margin-bottom: calc(92px + env(safe-area-inset-bottom));
   }
 
   /* Keep the optional game-flavour tester clear of the app navigation dock. */
   .practice-page .va-flavor-float {
-    bottom: calc(88px + env(safe-area-inset-bottom));
+    bottom: calc(92px + env(safe-area-inset-bottom));
   }
-}
 
-/* Hide Next.js dev toast and portal overlay from obscuring bottom navigation */
-nextjs-portal,
-#__next-build-watcher,
-[data-nextjs-toast] {
-  display: none !important;
+  .practice-page .defeat-cow-stage.is-idle {
+    bottom: calc(142px + env(safe-area-inset-bottom));
+  }
+
+  .practice-page .defeat-cow-stage.is-local-defeat {
+    bottom: calc(218px + env(safe-area-inset-bottom));
+  }
 }
 
 @media (max-width: 560px) {
@@ -8855,4 +8862,92 @@ nextjs-portal,
     width: 51px;
     height: 51px;
   }
+
+  .arcade-arena-header.is-page-header .arcade-brand {
+    transform: scale(.52);
+  }
 }
+
+@media (min-width: 768px) and (max-width: 900px) {
+  .arcade-arena-header.is-game-header .arcade-mode-selector {
+    transform: scale(.55);
+  }
+}
+
+/* ===== Tournament time-vote + lobby (restored) ===== */
+.edc-countdown {
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+  padding: 15px; border-radius: 12px; background: rgba(90,170,255,0.1); border: 1px solid rgba(90,170,255,0.28);
+  color: #9fd0ff; font-weight: 700; font-size: 14px;
+}
+.edc-countdown b { color: var(--text); font: 800 16px var(--numeric, monospace); }
+.edc-countdown span { color: var(--muted); font-weight: 600; font-size: 12px; }
+
+/* Tournament-type badge on event cards */
+.event-type-badge {
+  display: inline-flex; align-items: center; gap: 4px; width: fit-content;
+  font: 800 9px var(--numeric, monospace); letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 6px;
+}
+.event-type-badge.regular { background: rgba(244,185,66,0.16); color: var(--gold2); }
+.event-type-badge.influencer { background: rgba(255,107,127,0.16); color: #ff9db0; }
+.event-type-badge.private { background: rgba(200,120,255,0.16); color: #cf9bff; }
+.event-type-badge.seeking { background: rgba(244,185,66,0.18); color: var(--gold2); }
+.event-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.edc-sponsor.needs { color: var(--gold2); }
+
+/* Time-vote panel (event detail) */
+.edc-timevote {
+  border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px;
+  background: rgba(255,255,255,0.02); display: grid; gap: 12px;
+}
+.etv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.etv-head span { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; font-weight: 700; }
+.etv-head b { color: var(--gold2); font-size: 14px; }
+.etv-bars { display: grid; gap: 8px; }
+.etv-bar { display: grid; grid-template-columns: 90px 1fr 28px; align-items: center; gap: 10px; }
+.etv-slot { font: 700 12px var(--numeric, monospace); color: var(--text); }
+.etv-slot em { color: var(--gold2); font-style: normal; font-size: 10px; }
+.etv-track { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.etv-track i { display: block; height: 100%; background: linear-gradient(90deg, #5aa8ff, #7db8ff); border-radius: 999px; transition: width 0.3s ease; }
+.etv-bar.mine .etv-track i { background: linear-gradient(90deg, var(--gold1, #f6c25a), var(--gold2, #e0952e)); }
+.etv-count { text-align: right; font: 700 12px var(--numeric, monospace); color: var(--muted); }
+
+/* Teams panel (influencer battle) — 2..6 teams */
+.edc-teams-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--muted); font-size: 12.5px; font-weight: 700; }
+.edc-teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.edc-team {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--tc) 45%, var(--border));
+  background: color-mix(in srgb, var(--tc) 10%, transparent);
+}
+.edc-team.mine { border-color: var(--tc); box-shadow: 0 0 0 1px var(--tc) inset; }
+.edc-team-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--tc); box-shadow: 0 0 8px var(--tc); flex-shrink: 0; }
+.edc-team-body { display: grid; gap: 1px; flex: 1; min-width: 0; }
+.edc-team-body b { font-size: 14px; }
+.edc-team-body span { font-size: 11.5px; color: var(--muted); }
+.edc-team-count { display: inline-flex; align-items: center; gap: 4px; font: 700 13px var(--numeric, monospace); color: var(--tc); }
+.edc-team-you { position: absolute; top: 8px; right: 10px; font: 800 8px var(--numeric, monospace); letter-spacing: 0.08em; color: var(--tc); }
+
+/* Team invite-code input */
+.edc-teamcode { display: grid; gap: 6px; margin-bottom: 12px; }
+.edc-teamcode span { font-size: 12px; font-weight: 700; color: var(--muted); }
+.edc-teamcode input {
+  padding: 11px 13px; border-radius: 10px; border: 1px solid var(--border);
+  background: rgba(0,0,0,0.2); color: var(--text); font-size: 14px; letter-spacing: 0.04em;
+}
+.edc-teamcode input:focus { outline: none; border-color: var(--gold2); }
+
+/* Start-time survey popup */
+.vote-gate p b { color: var(--text); }
+.vote-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin: 6px 0 14px; width: 100%; }
+.vote-option {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 12px 10px; border-radius: 12px; border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03); color: var(--text); font: 700 15px var(--numeric, monospace); cursor: pointer;
+}
+.vote-option small { font-size: 9px; color: var(--muted); font-weight: 800; letter-spacing: 0.06em; }
+.vote-option:hover { border-color: var(--gold2); }
+.vote-option.on { background: rgba(244,185,66,0.18); color: var(--gold2); border-color: var(--gold2); }
+.vote-option.on small { color: var(--gold2); }

@@ -9,6 +9,13 @@ interface TransparentVideoProps {
   width?: number;
   height?: number;
   audioEnabled?: boolean;
+  /** When false (default) the clip plays through once and holds its last frame. */
+  loop?: boolean;
+  /** Drives one-shot playback: flip to true to play from frame 0; false pauses + resets to
+   * frame 0 (an idle pose). Undefined keeps the legacy autoplay behavior. */
+  playing?: boolean;
+  /** Fired once when a non-looping clip finishes. */
+  onEnded?: () => void;
 }
 
 const VERTEX_SHADER = `
@@ -99,10 +106,15 @@ export function TransparentVideo({
   width = 360,
   height = 640,
   audioEnabled = true,
+  loop = false,
+  playing,
+  onEnded,
 }: TransparentVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const soundEnabled = useSettingsStore((state) => state.soundEnabled);
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
 
   /* The video element stays visually hidden because WebGL draws its transparent
      picture, but its original audio is allowed through when game sound is on. */
@@ -111,11 +123,41 @@ export function TransparentVideo({
     if (!video) return;
     video.muted = !soundEnabled || !audioEnabled;
     video.volume = 0.85;
-    if (soundEnabled && audioEnabled) {
+  }, [audioEnabled, soundEnabled, src]);
+
+  /* Playback control keyed on `loop`:
+     - loop=true  → the clip plays continuously (the cow is always animating, e.g. on the side).
+     - loop=false → the clip restarts from frame 0 and plays through exactly ONCE (`onEnded` fires),
+       e.g. the full centre-stage performance on the local player's defeat.
+     Restart from 0 on every mode change so a centre performance always plays the FULL clip. */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || playing !== undefined) return; // `playing` path (legacy) handled below
+    video.loop = loop;
+    try {
+      video.currentTime = 0;
+    } catch {
+      /* seeking before metadata is loaded — ignored */
+    }
+    video.play().catch(() => undefined);
+  }, [loop, playing]);
+
+  /* Legacy one-shot control via `playing` (kept for any other callers). */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || playing === undefined) return;
+    if (playing) {
       video.currentTime = 0;
       video.play().catch(() => undefined);
+    } else {
+      video.pause();
+      try {
+        video.currentTime = 0;
+      } catch {
+        /* ignored */
+      }
     }
-  }, [audioEnabled, soundEnabled, src]);
+  }, [playing]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -179,7 +221,7 @@ export function TransparentVideo({
       frameId = requestAnimationFrame(draw);
     };
 
-    video.play().catch(() => undefined);
+    if (playing === undefined || playing) video.play().catch(() => undefined);
     draw();
 
     return () => {
@@ -197,8 +239,9 @@ export function TransparentVideo({
       <video
         ref={videoRef}
         src={src}
-        autoPlay
-        loop
+        autoPlay={playing === undefined}
+        loop={loop}
+        onEnded={() => onEndedRef.current?.()}
         muted={!soundEnabled || !audioEnabled}
         playsInline
         preload="auto"

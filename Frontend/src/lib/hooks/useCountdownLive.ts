@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { wsBaseUrl } from "../runtime-host";
+import { getAuthState } from "../../stores/auth-store";
 import { soundManager } from "../soundManager";
 import { useGameConfig } from "./useGameConfig";
 import { DEFAULT_GAME_CONFIG } from "../game-config";
@@ -58,7 +59,7 @@ export interface JoinCosmetics {
   chosenSkills?: SkillType[];
 }
 
-export function useCountdownLive(roomId = "practice") {
+export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; botCount?: number }) {
   const { data: gameConfig } = useGameConfig();
   const isTournament = roomId !== "practice";
   const activeConfig = isTournament ? (gameConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG;
@@ -70,6 +71,23 @@ export function useCountdownLive(roomId = "practice") {
   const isLocalPracticeRef = useRef(false);
   const stateRef = useRef<LiveState | null>(null);
   stateRef.current = state;
+
+  // A "local arena" (opts.local) runs the same in-browser engine as practice but for a themed room
+  // (e.g. the always-open test tournament) with a configurable bot count.
+  const forceLocalRef = useRef(!!opts?.local);
+  forceLocalRef.current = !!opts?.local;
+
+  // Practice/local arena runs 24/7: CPU cows always play and each finished game auto-restarts. Once a
+  // human joins they stay "seated" so they're auto-re-added to every new game (they can also rejoin
+  // instantly). humanSeatRef holds their join params, or null while it's a CPU-only ambient game.
+  const DEFAULT_PRACTICE_BOTS = 5;
+  const PRACTICE_BOT_COUNT = Math.max(1, Math.min(100, opts?.botCount ?? DEFAULT_PRACTICE_BOTS));
+  const humanSeatRef = useRef<{ name: string; cos?: JoinCosmetics; mode: GameMode; chosenSkills: SkillType[] } | null>(null);
+  const ambientModeRef = useRef<GameMode>(DEFAULT_GAME_CONFIG.gameplay.defaultMode);
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const overHandledRef = useRef(false);
+  const botCountRef = useRef(PRACTICE_BOT_COUNT);
+  botCountRef.current = PRACTICE_BOT_COUNT;
 
   // Multi-player Local Simulation Engine (4 Players: You + Bessie + Daisy + Barnaby)
   const processNextTurn = useCallback((currentState: LiveState) => {
@@ -258,8 +276,18 @@ export function useCountdownLive(roomId = "practice") {
         setState(overState);
       } else {
         const nextRound = baseState.round + 1;
-        const currentIdx = surviving.findIndex((p) => p.id === eliminatedId);
-        const nextPlayer = surviving[currentIdx >= 0 ? currentIdx % surviving.length : 0]!;
+        // Turn passes to the next SURVIVING player after the one just eliminated (seating order,
+        // wrapping) — not back to player #1. (The eliminated player isn't in `surviving`, so the old
+        // findIndex returned -1 and always fell back to surviving[0], i.e. player #1 every time.)
+        const elimIdx = updatedPlayers.findIndex((p) => p.id === eliminatedId);
+        let nextPlayer = surviving[0]!;
+        for (let i = 1; i <= updatedPlayers.length; i++) {
+          const cand = updatedPlayers[(elimIdx + i) % updatedPlayers.length];
+          if (cand && !cand.eliminated) {
+            nextPlayer = cand;
+            break;
+          }
+        }
 
         const nextRoundState: LiveState = {
           ...baseState,
@@ -279,6 +307,98 @@ export function useCountdownLive(roomId = "practice") {
         setState(nextRoundState);
         processNextTurn(nextRoundState);
       }
+    },
+    [processNextTurn],
+  );
+
+  // Build + start a local practice game: always 5 CPU cows, plus the human if `seat` is provided.
+  // With no seat it's a CPU-only ambient game (the 24/7 arena you drop into). If a CPU leads, the
+  // bot turn chain is kicked off immediately.
+  const startLocalGame = useCallback(
+    (seat: { name: string; cos?: JoinCosmetics; mode: GameMode; chosenSkills: SkillType[] } | null) => {
+      // A fresh game supersedes any pending auto-restart.
+      if (restartTimerRef.current) {
+        clearTimeout(restartTimerRef.current);
+        restartTimerRef.current = null;
+      }
+      overHandledRef.current = false;
+
+      const mode: GameMode = seat?.mode ?? ambientModeRef.current;
+      ambientModeRef.current = mode;
+
+      const botColors = ["#ff43c4", "#21e6d7", "#f4b942", "#a78bfa", "#38bdf8", "#5be348", "#ffd23f", "#ff8c42"];
+      const enabledSkills = runtimeConfigRef.current.skills.filter((skill) => skill.enabled);
+      const templates = runtimeConfigRef.current.bots.filter((bot) => bot.enabled).sort((a, b) => a.order - b.order);
+      const total = botCountRef.current; // up to 100 for the test arena; 5 for practice
+      // Generate `total` CPU cows, cycling the configured bot templates (numbered past the first pass).
+      const bots: LivePlayer[] = Array.from({ length: total }, (_, index) => {
+        const tpl = templates[index % Math.max(1, templates.length)] ?? { id: "cow", name: "Cow", title: "Rookie", avatarVariantId: "daisy_v1_cowboy", difficulty: "normal" };
+        const pass = Math.floor(index / Math.max(1, templates.length));
+        const baseName = String(tpl.name).replace(/\s*[\u{1F000}-\u{1FAFF}☀-➿]\s*$/u, "").trim() || "Cow";
+        const name = pass === 0 ? tpl.name : `${baseName} ${pass + 1}`;
+        const equipped = enabledSkills
+          .slice(index % Math.max(1, enabledSkills.length), (index % Math.max(1, enabledSkills.length)) + 2)
+          .map((skill) => skill.id);
+        const chosen = equipped.length === 2 ? equipped : enabledSkills.slice(0, 2).map((skill) => skill.id);
+        const skills = { rewind: 0, turbo: 0, shield: 0, nudge: 0, double: 0 } as Record<SkillType, number>;
+        if (mode === "skills") chosen.forEach((skill) => { skills[skill] = 1; });
+        return {
+            id: `cpu_${tpl.id}_${index}`,
+            name,
+            cpu: true,
+            color: botColors[index % botColors.length]!,
+            card: { difficulty: tpl.difficulty, title: tpl.title },
+            avatar: { variantId: tpl.avatarVariantId },
+            skills,
+            equippedSkills: mode === "skills" ? chosen : [],
+            eliminated: false,
+          };
+        });
+
+      let players: LivePlayer[];
+      let currentId: string;
+      if (seat) {
+        const playerSkills: Record<SkillType, number> = { rewind: 0, turbo: 0, shield: 0, nudge: 0, double: 0 };
+        if (mode === "skills") seat.chosenSkills.forEach((s) => { playerSkills[s] = 1; });
+        const human: LivePlayer = {
+          id: "player_local",
+          name: seat.name,
+          cpu: false,
+          color: "#5be348",
+          card: seat.cos?.card,
+          avatar: seat.cos?.avatar,
+          skills: playerSkills,
+          equippedSkills: mode === "skills" ? seat.chosenSkills : [],
+          eliminated: false,
+        };
+        players = [human, ...bots];
+        currentId = "player_local"; // the human moves first when they're in the game
+      } else {
+        players = bots;
+        currentId = bots[0]?.id ?? "cpu_daisy";
+      }
+
+      const newState: LiveState = {
+        mode: "practice",
+        gameMode: mode,
+        count: 0,
+        players,
+        currentId,
+        lastK: null,
+        lastMove: null,
+        turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
+        round: 1,
+        status: "playing",
+        winner: null,
+        lastEliminated: null,
+        taken: {},
+        lastSkillUsed: null,
+      };
+
+      setMyId("player_local");
+      setState(newState);
+      // If a CPU leads (ambient game), start the bot turn chain now.
+      if (players.find((p) => p.id === currentId)?.cpu) processNextTurn(newState);
     },
     [processNextTurn],
   );
@@ -310,34 +430,26 @@ export function useCountdownLive(roomId = "practice") {
   }, [state?.status, state?.currentId, state?.turnEndsAt, myId, eliminatePlayer]);
 
   useEffect(() => {
-    // Pure local mode for practice room — never connects to background headless tournament bot sockets
-    if (roomId === "practice") {
+    // Local engine for the practice room and for a forced local arena (the test tournament).
+    // Starts the 24/7 ambient arena: CPU cows already playing that a human can drop into any time.
+    if (roomId === "practice" || forceLocalRef.current) {
       isLocalPracticeRef.current = true;
       setMyId("player_local");
-      setState({
-        mode: "practice",
-        gameMode: "skills",
-        count: 0,
-        players: [],
-        currentId: null,
-        lastK: null,
-        lastMove: null,
-        turnEndsAt: null,
-        round: 1,
-        status: "waiting",
-        winner: null,
-        lastEliminated: null,
-        taken: {},
-      });
+      startLocalGame(humanSeatRef.current);
       return;
     }
 
     let socket: Socket | null = null;
     try {
+      // Send the access token in the handshake so the server can authenticate the player and let
+      // them JOIN this tournament room (registered players only). Without it the join is refused and
+      // the arena would fall back to the local practice bots.
+      const token = getAuthState().accessToken ?? undefined;
       socket = io(`${wsBaseUrl()}/countdown`, {
         transports: ["websocket"],
         timeout: 3000,
         reconnectionAttempts: 2,
+        auth: { token },
       });
       socketRef.current = socket;
 
@@ -397,7 +509,24 @@ export function useCountdownLive(roomId = "practice") {
       socket?.disconnect();
       socketRef.current = null;
     };
-  }, [roomId]);
+  }, [roomId, startLocalGame]);
+
+  // 24/7 auto-restart: when a local practice game ends, start the next one after a short beat (long
+  // enough for the win/elimination animation to play once). A seated human is auto-re-added.
+  useEffect(() => {
+    if (!isLocalPracticeRef.current || state?.status !== "over" || overHandledRef.current) return;
+    overHandledRef.current = true;
+    restartTimerRef.current = setTimeout(() => {
+      restartTimerRef.current = null;
+      startLocalGame(humanSeatRef.current);
+    }, 3800);
+    return () => {
+      if (restartTimerRef.current) {
+        clearTimeout(restartTimerRef.current);
+        restartTimerRef.current = null;
+      }
+    };
+  }, [state?.status, startLocalGame]);
 
   const join = useCallback(
     (
@@ -405,7 +534,8 @@ export function useCountdownLive(roomId = "practice") {
       cos?: JoinCosmetics,
       mode: GameMode = "skills",
       chosenSkills: SkillType[] = ["rewind", "turbo"],
-      botCount: number = 3,
+      // botCount is accepted for backward-compat but practice always fields 5 CPU cows.
+      _botCount: number = PRACTICE_BOT_COUNT,
     ) => {
       if (socketRef.current?.connected) {
         socketRef.current.emit("join", {
@@ -418,92 +548,11 @@ export function useCountdownLive(roomId = "practice") {
         return;
       }
 
-      const playerSkills: Record<SkillType, number> = {
-        rewind: 0,
-        turbo: 0,
-        shield: 0,
-        nudge: 0,
-        double: 0,
-      };
-
-      if (mode === "skills") {
-        chosenSkills.forEach((s) => {
-          playerSkills[s] = 1;
-        });
-      }
-
-      setMyId("player_local");
-
-      const botColors = ["#ff43c4", "#21e6d7", "#f4b942", "#a78bfa", "#38bdf8"];
-      const enabledSkills = runtimeConfigRef.current.skills.filter((skill) => skill.enabled);
-      const allBots: LivePlayer[] = runtimeConfigRef.current.bots
-        .filter((bot) => bot.enabled)
-        .sort((a, b) => a.order - b.order)
-        .map((bot, index) => {
-          const equipped = enabledSkills
-            .slice(
-              index % Math.max(1, enabledSkills.length),
-              (index % Math.max(1, enabledSkills.length)) + 2,
-            )
-            .map((skill) => skill.id);
-          const chosen =
-            equipped.length === 2 ? equipped : enabledSkills.slice(0, 2).map((skill) => skill.id);
-          const skills = { rewind: 0, turbo: 0, shield: 0, nudge: 0, double: 0 } as Record<
-            SkillType,
-            number
-          >;
-          if (mode === "skills")
-            chosen.forEach((skill) => {
-              skills[skill] = 1;
-            });
-          return {
-            id: `cpu_${bot.id}`,
-            name: bot.name,
-            cpu: true,
-            color: botColors[index % botColors.length]!,
-            card: { difficulty: bot.difficulty, title: bot.title },
-            avatar: { variantId: bot.avatarVariantId },
-            skills,
-            equippedSkills: mode === "skills" ? chosen : [],
-            eliminated: false,
-          };
-        });
-
-      const localPlayers: LivePlayer[] = [
-        {
-          id: "player_local",
-          name,
-          cpu: false,
-          color: "#5be348",
-          card: cos?.card,
-          avatar: cos?.avatar,
-          skills: playerSkills,
-          equippedSkills: mode === "skills" ? chosenSkills : [],
-          eliminated: false,
-        },
-        ...allBots.slice(0, Math.max(1, Math.min(5, botCount))),
-      ];
-
-      const newState: LiveState = {
-        mode: "practice",
-        gameMode: mode,
-        count: 0,
-        players: localPlayers,
-        currentId: "player_local",
-        lastK: null,
-        lastMove: null,
-        turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
-        round: 1,
-        status: "playing",
-        winner: null,
-        lastEliminated: null,
-        taken: {},
-        lastSkillUsed: null,
-      };
-
-      setState(newState);
+      // Seat the human so they're auto-re-added to every subsequent 24/7 game, then start now.
+      humanSeatRef.current = { name, cos, mode, chosenSkills };
+      startLocalGame(humanSeatRef.current);
     },
-    [roomId],
+    [roomId, startLocalGame],
   );
 
   const arm = useCallback(() => {

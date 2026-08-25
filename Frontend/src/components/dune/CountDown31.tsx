@@ -26,7 +26,7 @@ import { MobileBattleStrip } from "./MobileBattleStrip";
 import { TournamentSponsorLayer } from "./TournamentSponsorLayer";
 import { resolveCampaignAssetUrl, useActiveTournamentCampaign } from "../../lib/hooks/useTournamentCampaign";
 
-export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
+export function CountDown31({ roomId = "practice", testArena = false }: { roomId?: string; testArena?: boolean }) {
   const router = useRouter();
   const { data: serverConfig } = useGameConfig();
   const isTournament = roomId !== "practice";
@@ -41,7 +41,7 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const defaultName = user?.fullName || user?.email?.split("@")[0] || guestName || "";
   const soundOn = useSettingsStore((s) => s.soundEnabled);
   const { data: cosmetics } = useCosmetics(!!accessToken);
-  const { state, myId, join, submit, useSkill } = useCountdownLive(roomId);
+  const { state, myId, join, submit, useSkill } = useCountdownLive(roomId, testArena ? { local: true, botCount: 100 } : undefined);
   const [botCount, setBotCount] = useState<number>(gameConfig.gameplay.defaultBotCount);
 
   const [chosenName, setChosenName] = useState("");

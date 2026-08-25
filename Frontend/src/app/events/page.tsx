@@ -24,6 +24,7 @@ export default function TournamentsHubPage() {
 
   const [showRules, setShowRules] = useState(false);
   const [gate, setGate] = useState(false);
+  const [showCodeModal, setShowCodeModal] = useState(false);
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState("");
 
@@ -43,6 +44,7 @@ export default function TournamentsHubPage() {
     if (!code.trim()) return;
     try {
       const t = await redeem.mutateAsync(code.trim());
+      setShowCodeModal(false);
       router.push(`/events/${t.id}?code=${encodeURIComponent(code.trim().toUpperCase())}`);
     } catch (err) {
       setCodeError(err instanceof Error ? err.message : "Invalid tournament code");
@@ -87,31 +89,15 @@ export default function TournamentsHubPage() {
             </div>
           </div>
 
-          {/* Private Join Code Input Bar */}
-          <form
-            onSubmit={onRedeem}
-            className="w-full md:w-auto flex flex-col gap-1"
+          {/* Private tournaments are code-gated: open a popup that asks for the referral code. */}
+          <button
+            type="button"
+            onClick={() => { soundManager.playClick(); setCode(""); setCodeError(""); setShowCodeModal(true); }}
+            className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-black/70 border border-amber-400/60 text-amber-300 font-title font-black text-xs sm:text-sm hover:border-amber-400 hover:text-white active:scale-95 transition-all cursor-pointer shadow-lg"
           >
-            <div className="flex items-center bg-black/80 border border-amber-400/60 rounded-2xl p-1.5 shadow-lg">
-              <div className="flex items-center gap-2 px-3 text-amber-300">
-                <KeyRound size={18} />
-                <input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="Private code"
-                  className="bg-transparent border-none outline-none font-title font-black text-xs sm:text-sm text-white placeholder:text-slate-500 w-36 sm:w-44"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={redeem.isPending}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-title font-black text-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer shadow"
-              >
-                {redeem.isPending ? "..." : "JOIN"}
-              </button>
-            </div>
-            {codeError && <span className="text-[10px] text-rose-400 font-bold px-2">{codeError}</span>}
-          </form>
+            <KeyRound size={18} />
+            <span>HAVE A PRIVATE CODE?</span>
+          </button>
         </div>
 
         {/* Live Tournaments Grid */}
@@ -193,6 +179,54 @@ export default function TournamentsHubPage() {
         </div>
       </main>
 
+      {/* Private tournament referral-code popup */}
+      {showCodeModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md select-none"
+          onClick={() => setShowCodeModal(false)}
+        >
+          <form
+            onSubmit={onRedeem}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-sm bg-gradient-to-b from-[#132019] via-[#0a1410] to-[#050b08] p-6 rounded-3xl border-2 border-amber-400/80 shadow-[0_0_60px_rgba(0,0,0,0.9)] flex flex-col gap-4 text-white"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-300">
+                <KeyRound size={20} />
+              </div>
+              <div>
+                <h2 className="font-title font-black text-lg text-amber-300">PRIVATE TOURNAMENT</h2>
+                <p className="text-xs text-slate-400">Enter the referral code you were given.</p>
+              </div>
+            </div>
+            <input
+              autoFocus
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="e.g. JOIN-XXXXXXXX"
+              autoCapitalize="characters"
+              className="w-full px-4 py-3 rounded-2xl bg-black/70 border border-amber-400/50 outline-none focus:border-amber-400 font-title font-black text-sm text-white placeholder:text-slate-500 tracking-wider"
+            />
+            {codeError && <span className="text-xs text-rose-400 font-bold">{codeError}</span>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCodeModal(false)}
+                className="flex-1 py-3 rounded-2xl bg-slate-900 border border-slate-700 text-slate-300 font-title font-black text-xs hover:text-white transition-all cursor-pointer"
+              >
+                CANCEL
+              </button>
+              <button
+                type="submit"
+                disabled={redeem.isPending || !code.trim()}
+                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-title font-black text-xs uppercase tracking-wider shadow hover:brightness-110 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {redeem.isPending ? "…" : "FIND TOURNAMENT"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
       {/* AuthGate for Guests */}
       <AuthGate
         open={gate}

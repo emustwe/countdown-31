@@ -15,6 +15,20 @@ export interface SponsorRow {
 
 export type Visibility = "PUBLIC" | "PRIVATE";
 export type PromoStatus = "PENDING" | "APPROVED" | "REJECTED";
+// REGULAR = individual knockout. INFLUENCER = the "Group" format (players split into groups/teams).
+export type PromoType = "REGULAR" | "INFLUENCER";
+
+// A team/group in a GROUP tournament (or a featured influencer in a REGULAR one). captainCode/
+// memberCode are only returned to the admin/sponsor who owns the tournament.
+export interface PromoTeam {
+  id: string;
+  name: string;
+  captainName: string;
+  color: string;
+  memberCount: number;
+  captainCode?: string;
+  memberCode?: string;
+}
 
 export interface PromoTournament {
   id: string;
@@ -22,6 +36,12 @@ export interface PromoTournament {
   description: string;
   visibility: Visibility;
   status: PromoStatus;
+  type: PromoType;
+  hasInfluencers: boolean; // named influencer-captains featured (both types)
+  groupCount: number; // GROUP: number of groups; REGULAR+influencers: number of influencers
+  minGroupPlayers: number | null;
+  maxGroupPlayers: number | null;
+  teams: PromoTeam[];
   startAt: string | null;
   endAt: string | null;
   prizePool: string;
@@ -35,6 +55,15 @@ export interface PromoTournament {
   entryCount: number;
   sponsorCode?: string | null;
   joinCode?: string | null;
+  // Admin-chosen GMT calendar date + the GMT "HH:MM" slots players vote among for the start time.
+  startDate: string | null;
+  timeOptions: string[];
+}
+
+// One GMT start-time slot with its running vote tally.
+export interface TimeVoteTally {
+  slot: string; // "HH:MM" GMT
+  votes: number;
 }
 
 export interface PromoOverview {
@@ -51,6 +80,14 @@ export interface PromoInput {
   title: string;
   description?: string;
   visibility?: Visibility;
+  type?: PromoType;
+  hasInfluencers?: boolean;
+  groupCount?: number;
+  teams?: { name?: string; captainName?: string }[];
+  minGroupPlayers?: number | null;
+  maxGroupPlayers?: number | null;
+  startDate?: string | null; // GMT calendar date
+  timeOptions?: string[]; // GMT "HH:MM" slots to vote on
   startAt?: string | null;
   endAt?: string | null;
   prizePool?: string;
@@ -157,6 +194,23 @@ export function useRedeemJoinCode() {
 }
 export interface PromoDetail extends PromoTournament {
   joined?: boolean;
+  myTimeVote?: string | null; // the slot this user voted for
+  timeVotes?: TimeVoteTally[]; // running tally across all voters
+}
+
+/** A joined player votes for the tournament's GMT start time; the most-voted slot resolves startAt. */
+export function useVoteStartTime() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, slot }: { id: string; slot: string }) =>
+      apiRequest<{ myTimeVote: string; startAt: string | null; timeVotes: TimeVoteTally[] }>(
+        `/promo-tournaments/${id}/vote-time`,
+        { method: "POST", body: { slot } },
+      ),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: ["promo-detail", v.id] });
+    },
+  });
 }
 export function usePromoDetail(id: string, opts: { code?: string; authed: boolean }) {
   return useQuery({

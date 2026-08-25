@@ -122,6 +122,22 @@ const BOT_PROFILES: Record<string, BotProfile> = {
     level: 12,
     skills: [ALL_SKILL_META.shield, ALL_SKILL_META.turbo],
   },
+  cpu_barnaby: {
+    title: "Grand Champion 👑",
+    streak: 7,
+    config: {
+      variantId: "moss_v1_cowboy_glasses",
+      skinId: "base_bull",
+      backgroundId: "meadow",
+      frameId: "forest_vine",
+      hasGlasses: true,
+      hasMustache: true,
+      hasCrown: true,
+    },
+    trophies: 1850,
+    level: 25,
+    skills: [ALL_SKILL_META.turbo, ALL_SKILL_META.shield],
+  },
 };
 
 export function ArcadePlayerCard({

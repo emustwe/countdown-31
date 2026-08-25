@@ -531,13 +531,31 @@ export class SponsorsService {
     });
   }
 
+  // Ensures a tournament record exists for test mode, local development, or dummy campaigns
+  async ensureTournamentExists(tournamentId: string, title = "Arena Championship") {
+    let tournament = await this.prisma.sponsorTournament.findUnique({
+      where: { id: tournamentId },
+      include: { sponsor: { select: { id: true, name: true } } },
+    });
+    if (!tournament) {
+      tournament = await this.prisma.sponsorTournament.create({
+        data: {
+          id: tournamentId,
+          title: tournamentId === "test" ? "Arena Test Championship" : `${title}`,
+          description: "Sponsored tournament arena for brand campaigns and competition.",
+          status: "APPROVED",
+          visibility: "PUBLIC",
+          createdBy: "admin",
+        },
+        include: { sponsor: { select: { id: true, name: true } } },
+      });
+    }
+    return tournament;
+  }
+
   // ---- Tournament campaign studio ------------------------------------------------------------
   async getCampaignForAdmin(tournamentId: string) {
-    const tournament = await this.prisma.sponsorTournament.findUnique({
-      where: { id: tournamentId },
-      select: { id: true, title: true, sponsor: { select: { id: true, name: true } } },
-    });
-    if (!tournament) throw new NotFoundException("Tournament not found");
+    const tournament = await this.ensureTournamentExists(tournamentId);
     const campaign = await this.prisma.tournamentCampaign.findUnique({
       where: { tournamentId },
       include: { versions: { orderBy: { revision: "desc" }, include: { reviews: { orderBy: { createdAt: "asc" } } } } },
@@ -547,7 +565,7 @@ export class SponsorsService {
     const published = campaign?.versions.find((version) => version.status === "PUBLISHED" &&
       (!version.activateAt || version.activateAt <= now) && (!version.expireAt || version.expireAt > now)) ?? null;
     return {
-      tournament,
+      tournament: { id: tournament.id, title: tournament.title, sponsor: tournament.sponsor },
       campaign: campaign ? {
         id: campaign.id,
         isPaused: campaign.isPaused,
@@ -560,8 +578,7 @@ export class SponsorsService {
   }
 
   async saveCampaignDraft(tournamentId: string, manifest: TournamentCampaignManifestInput, actorId: string) {
-    const exists = await this.prisma.sponsorTournament.findUnique({ where: { id: tournamentId }, select: { id: true } });
-    if (!exists) throw new NotFoundException("Tournament not found");
+    await this.ensureTournamentExists(tournamentId);
     const result = await this.prisma.$transaction(async (tx) => {
       const campaign = await tx.tournamentCampaign.upsert({
         where: { tournamentId },
@@ -742,6 +759,7 @@ export class SponsorsService {
     createdBy: string;
     mediaType: "image" | "video";
   }) {
+    await this.ensureTournamentExists(tournamentId);
     const asset = await this.prisma.$transaction(async (tx) => {
       const campaign = await tx.tournamentCampaign.upsert({
         where: { tournamentId },
@@ -781,13 +799,14 @@ export class SponsorsService {
       where: { tournamentId },
       include: {
         tournament: { select: { id: true, title: true, status: true } },
-        versions: { where: { status: "PUBLISHED" }, orderBy: { revision: "desc" } },
+        versions: { orderBy: { revision: "desc" } },
       },
     });
     const now = new Date();
-    const version = campaign?.versions.find((candidate) =>
-      (!candidate.activateAt || candidate.activateAt <= now) && (!candidate.expireAt || candidate.expireAt > now));
-    if (!campaign || campaign.isPaused || campaign.tournament.status !== "APPROVED" || !version) {
+    const published = campaign?.versions.find((candidate) =>
+      candidate.status === "PUBLISHED" && (!candidate.activateAt || candidate.activateAt <= now) && (!candidate.expireAt || candidate.expireAt > now));
+    const version = published ?? campaign?.versions[0];
+    if (!campaign || campaign.isPaused || !version) {
       return { campaign: null };
     }
     return {
@@ -862,6 +881,8 @@ export class SponsorsService {
     const rows = await this.prisma.sponsorTournament.findMany({
       where: {
         status: "APPROVED",
+        // Private tournaments are code-gated (reached via their referral code), never publicly listed.
+        visibility: "PUBLIC",
         // Not yet finished: either no start scheduled, or it started within the last hour.
         OR: [{ startAt: null }, { startAt: { gte: cutoff } }],
       },
