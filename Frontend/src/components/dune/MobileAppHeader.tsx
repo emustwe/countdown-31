@@ -37,7 +37,7 @@ export function MobileAppHeader({
         <b>31</b>
       </button>
 
-      <div className="mobile-header-actions">
+      <div className={`mobile-header-actions ${showRules && onOpenRules ? "" : "is-single"}`}>
         {showRules && onOpenRules && (
           <button type="button" onClick={onOpenRules} aria-label="Game rules">
             <BookOpen size={18} />

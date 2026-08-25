@@ -25,43 +25,53 @@ export function MobileNumberDeck({
   status: "waiting" | "playing" | "over";
   lastMove?: LastMoveInfo | null;
 }) {
-  const offsets = [-1, 0, 1, 2, 3];
+  const historyValues = [-2, -1, 0].map((offset) => wrapNumber(currentCount + offset));
+  const playableValues = [1, 2, 3].map((offset) => wrapNumber(currentCount + offset));
+
+  function renderCard(value: number, playable: boolean) {
+    const selected = playable && selectedCards.includes(value);
+    const wasPlayed = !playable && lastMove?.picks.includes(value);
+    const bomb = value === TARGET;
+    const danger = value >= 28 && value < TARGET;
+    const canTap = myTurn && status === "playing" && playable;
+
+    return (
+      <button
+        type="button"
+        key={`${playable ? "next" : "previous"}-${value}`}
+        aria-label={`Number ${value}`}
+        disabled={!canTap}
+        onClick={() => {
+          soundManager.playClick();
+          onToggleCard(value);
+        }}
+        className={`mobile-number-card ${playable ? "is-playable" : "is-previous"} ${wasPlayed ? "was-played" : ""} ${selected ? "is-selected" : ""} ${bomb ? "is-bomb" : ""}`}
+      >
+        <span className="mobile-number-badge">
+          {bomb ? <Skull size={11} /> : danger ? <Flame size={11} /> : playable ? <Sparkles size={10} /> : null}
+        </span>
+        <strong>{value}</strong>
+        {selected && <small>Picked</small>}
+      </button>
+    );
+  }
 
   return (
-    <div className="mobile-number-deck" aria-label="Number board">
-      <div className="mobile-deck-rim" aria-hidden="true" />
-      <div className="mobile-deck-cards">
-        {offsets.map((offset) => {
-          const value = wrapNumber(currentCount + 1 + offset);
-          const playable = offset >= 0 && offset <= 2;
-          const selected = selectedCards.includes(value);
-          const previous = lastMove?.picks.includes(value) || offset === -1;
-          const bomb = value === TARGET;
-          const danger = value >= 28 && value < TARGET;
-          const canTap = myTurn && status === "playing" && playable;
-
-          return (
-            <button
-              type="button"
-              key={`${offset}-${value}`}
-              aria-label={`Number ${value}`}
-              disabled={!canTap}
-              onClick={() => {
-                soundManager.playClick();
-                onToggleCard(value);
-              }}
-              className={`mobile-number-card ${playable ? "is-playable" : ""} ${previous ? "is-previous" : ""} ${selected ? "is-selected" : ""} ${bomb ? "is-bomb" : ""}`}
-            >
-              <span className="mobile-number-badge">
-                {bomb ? <Skull size={11} /> : danger ? <Flame size={11} /> : playable ? <Sparkles size={10} /> : null}
-              </span>
-              <strong>{value}</strong>
-              {selected && <small>Picked</small>}
-            </button>
-          );
-        })}
+    <div className="mobile-number-deck-stack" aria-label="Number board">
+      <div className="mobile-number-deck is-history" aria-label="Previous numbers">
+        <div className="mobile-deck-rim" aria-hidden="true" />
+        <div className="mobile-deck-cards">
+          {historyValues.map((value) => renderCard(value, false))}
+        </div>
+        <div className="mobile-deck-rim is-bottom" aria-hidden="true" />
       </div>
-      <div className="mobile-deck-rim is-bottom" aria-hidden="true" />
+      <div className="mobile-number-deck is-action" aria-label="Your next numbers">
+        <div className="mobile-deck-rim" aria-hidden="true" />
+        <div className="mobile-deck-cards">
+          {playableValues.map((value) => renderCard(value, true))}
+        </div>
+        <div className="mobile-deck-rim is-bottom" aria-hidden="true" />
+      </div>
     </div>
   );
 }

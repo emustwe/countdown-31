@@ -2182,9 +2182,11 @@ h3 {
   }
 
   .mobile-header-brand {
+    position: relative;
+    z-index: 2;
     display: inline-flex;
-    min-width: 210px;
-    height: 46px;
+    min-width: 224px;
+    height: 50px;
     align-items: center;
     justify-content: center;
     gap: 8px;
@@ -2194,7 +2196,7 @@ h3 {
     background: linear-gradient(135deg, #351303, #7c3104 52%, #351303);
     box-shadow: 0 7px 18px rgb(0 0 0 / .5), inset 0 1px rgb(255 255 255 / .2);
     color: white;
-    font: 950 20px/1 var(--font-fredoka);
+    font: 950 21px/1 var(--font-fredoka);
     letter-spacing: .045em;
     white-space: nowrap;
   }
@@ -2215,8 +2217,11 @@ h3 {
   .mobile-header-actions {
     position: absolute;
     right: 10px;
+    left: 10px;
     display: flex;
+    justify-content: space-between;
     gap: 7px;
+    pointer-events: none;
   }
 
   .mobile-header-actions button {
@@ -2229,6 +2234,11 @@ h3 {
     background: rgb(5 16 10 / .92);
     color: #fcd34d;
     box-shadow: 0 5px 15px rgb(0 0 0 / .45);
+    pointer-events: auto;
+  }
+
+  .mobile-header-actions.is-single button {
+    margin-left: auto;
   }
 
   .mobile-arena-shell {
@@ -2255,15 +2265,31 @@ h3 {
     min-height: 0;
   }
 
+  .mobile-number-deck-stack {
+    display: grid;
+    width: min(100%, 410px);
+    gap: 6px;
+    margin: 0 auto;
+  }
+
   .mobile-number-deck {
     position: relative;
-    width: min(100%, 680px);
-    margin: 0 auto;
+    width: 100%;
     overflow: hidden;
     border: 1px solid rgb(245 158 11 / .65);
-    border-radius: 18px;
+    border-radius: 15px;
     background: rgb(3 10 7 / .96);
     box-shadow: 0 12px 25px rgb(0 0 0 / .55), 0 0 18px rgb(245 158 11 / .14);
+  }
+
+  .mobile-number-deck.is-history {
+    filter: saturate(.78);
+    box-shadow: 0 8px 18px rgb(0 0 0 / .48), 0 0 12px rgb(245 158 11 / .1);
+  }
+
+  .mobile-number-deck.is-action {
+    border-color: rgb(52 211 153 / .72);
+    box-shadow: 0 12px 25px rgb(0 0 0 / .55), 0 0 18px rgb(52 211 153 / .2);
   }
 
   .mobile-deck-rim {
@@ -2279,16 +2305,16 @@ h3 {
 
   .mobile-deck-cards {
     display: grid;
-    grid-template-columns: .78fr 1fr 1fr 1fr .78fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 5px;
-    padding: 6px;
+    padding: 5px 6px;
   }
 
   .mobile-number-card {
     position: relative;
     display: grid;
     min-width: 0;
-    height: 86px;
+    height: 66px;
     place-items: center;
     border: 1px solid rgb(120 53 15 / .7);
     border-radius: 13px;
@@ -2309,6 +2335,12 @@ h3 {
 
   .mobile-number-card.is-previous {
     color: #fbbf24;
+  }
+
+  .mobile-number-card.is-previous.was-played {
+    border-color: rgb(251 191 36 / .82);
+    background: linear-gradient(180deg, #3b2005, #100a02);
+    box-shadow: inset 0 0 14px rgb(251 191 36 / .12), 0 0 10px rgb(251 191 36 / .2);
   }
 
   .mobile-number-card.is-bomb {
@@ -2594,17 +2626,17 @@ h3 {
 
 @media (max-width: 560px) {
   .mobile-app-header {
-    height: 56px;
-    flex-basis: 56px;
-    justify-content: flex-start;
+    height: 60px;
+    flex-basis: 60px;
+    justify-content: center;
     padding-inline: 7px;
   }
 
   .mobile-header-brand {
-    min-width: 0;
-    height: 42px;
-    padding-inline: 12px;
-    font-size: 16px;
+    min-width: 205px;
+    height: 48px;
+    padding-inline: 14px;
+    font-size: 19px;
   }
 
   .mobile-header-brand b {
@@ -2615,6 +2647,7 @@ h3 {
 
   .mobile-header-actions {
     right: 7px;
+    left: 7px;
   }
 
   .mobile-header-actions button {
@@ -2653,7 +2686,7 @@ h3 {
   }
 
   .mobile-number-card {
-    height: 82px;
+    height: 62px;
   }
 
   .mobile-player-pod strong {
@@ -2673,7 +2706,7 @@ h3 {
   }
 
   .mobile-number-card {
-    height: 70px;
+    height: 49px;
   }
 
   .mobile-battle-strip {

@@ -15,9 +15,11 @@ test.describe("Dedicated mobile and tablet arena shell", () => {
     await page.goto("/home", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(600);
 
-    // Mobile intentionally shows only the five useful nearby numbers.
-    const cardButtons = page.locator('.mobile-number-deck button[aria-label^="Number "]');
-    await expect(cardButtons).toHaveCount(5);
+    // Mobile shows one three-card history drum and one three-card action drum.
+    const cardButtons = page.locator('.mobile-number-deck-stack button[aria-label^="Number "]');
+    await expect(cardButtons).toHaveCount(6);
+    await expect(page.locator('.mobile-number-deck.is-history button')).toHaveCount(3);
+    await expect(page.locator('.mobile-number-deck.is-action button')).toHaveCount(3);
 
     // Players use compact game-style pods instead of vertically stretched cards.
     const joinPrompt = page.getByRole('button', { name: /tap to join/i });
@@ -28,7 +30,7 @@ test.describe("Dedicated mobile and tablet arena shell", () => {
 
     // The whole arena cluster should sit around the vertical center of its playable area.
     const shellBox = await page.locator('.mobile-arena-shell').boundingBox();
-    const deckBox = await page.locator('.mobile-number-deck').boundingBox();
+    const deckBox = await page.locator('.mobile-number-deck-stack').boundingBox();
     const modesBox = await page.locator('.mobile-arena-modes').boundingBox();
     expect(shellBox && deckBox && modesBox).toBeTruthy();
     const shellMiddle = shellBox!.y + shellBox!.height / 2;
@@ -66,7 +68,7 @@ test.describe("Dedicated mobile and tablet arena shell", () => {
     await page.screenshot({ path: path.join(screenshotDir, "mobile-02-joined-battle.png"), fullPage: true });
 
     // Select Card 1 and verify the CONFIRM MOVE button appears cleanly without overlapping avatars
-    const card1 = page.locator('.mobile-number-deck button[aria-label="Number 1"]');
+    const card1 = page.locator('.mobile-number-deck.is-action button[aria-label="Number 1"]');
     if (await card1.isVisible()) {
       await card1.click();
       await page.waitForTimeout(300);
@@ -82,8 +84,8 @@ test.describe("Dedicated mobile and tablet arena shell", () => {
     await page.goto("/home", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(600);
 
-    const cardButtons = page.locator('.mobile-number-deck button[aria-label^="Number "]');
-    await expect(cardButtons).toHaveCount(5);
+    const cardButtons = page.locator('.mobile-number-deck-stack button[aria-label^="Number "]');
+    await expect(cardButtons).toHaveCount(6);
 
     // Verify no horizontal overflow
     const overflow = await page.evaluate(() => {
