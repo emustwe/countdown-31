@@ -36,17 +36,17 @@ This roadmap turns the sponsor-platform design into small vertical slices. Every
 
 **Human test:** move a campaign from draft to approval to scheduled live, then roll back safely.
 
-## Chunk 5 — Sponsor analytics and reports
+## Chunk 5 — Sponsor analytics and reports ✅ Implemented
 
 - Record viewable impressions and safe engagement events by placement and device.
 - Add admin dashboards, delivery pacing, anomaly warnings, and exportable sponsor reports.
 
 **Human test:** run a staged match and reconcile the dashboard/export with known test events.
 
-## Chunk 6 — Pilot hardening
+## Chunk 6 — Pilot hardening ✅ Implemented
 
 - Accessibility, performance budgets, content security, moderation, failure drills, and device-matrix QA.
-- Operational runbook and sponsor handoff checklist.
+- Operational runbook and sponsor handoff checklist in `docs/tournament-sponsor-operational-runbook.md`.
 
 **Human test:** complete the release checklist and a simulated asset/API outage before a real sponsor pilot.
 
