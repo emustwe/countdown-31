@@ -2285,10 +2285,15 @@ h3 {
   .mobile-number-deck.is-history {
     width: 92%;
     margin: 0 auto;
-    opacity: .68;
-    filter: saturate(.48) brightness(.74);
     transform: scale(.98);
+    border-color: rgb(120 113 108 / .35);
+    background: rgb(3 8 5 / .86);
     box-shadow: 0 7px 16px rgb(0 0 0 / .42);
+  }
+
+  .mobile-number-deck.is-history .mobile-deck-rim {
+    opacity: .48;
+    filter: saturate(.35);
   }
 
   .mobile-number-deck.is-action {
@@ -2355,14 +2360,34 @@ h3 {
     box-shadow: inset 0 0 12px rgb(0 0 0 / .7);
   }
 
+  .mobile-number-deck.is-history .mobile-number-card:not(.was-played) {
+    opacity: .48;
+    filter: saturate(.35) brightness(.72);
+  }
+
   .mobile-number-deck.is-history .mobile-number-card strong {
     font-size: 23px;
   }
 
   .mobile-number-deck.is-history .mobile-number-card.was-played {
-    border-color: rgb(251 191 36 / .7);
-    background: linear-gradient(180deg, #292008, #090805);
-    color: #e7cf77;
+    z-index: 2;
+    border: 2px solid #fcd34d;
+    background: linear-gradient(180deg, #6b3a05, #211302);
+    color: #fff7c2;
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: inset 0 0 18px rgb(251 191 36 / .22), 0 0 0 2px rgb(251 191 36 / .16), 0 0 18px rgb(251 191 36 / .72);
+    text-shadow: 0 0 10px rgb(251 191 36 / .85);
+  }
+
+  .mobile-number-deck.is-history .mobile-number-card.was-played .mobile-number-badge {
+    top: 5px;
+    width: 19px;
+    height: 19px;
+    min-height: 0;
+    border-radius: 50%;
+    background: #fcd34d;
+    color: #351a03;
+    box-shadow: 0 0 10px rgb(251 191 36 / .8);
   }
 
   .mobile-number-card.is-bomb {

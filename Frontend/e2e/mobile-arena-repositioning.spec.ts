@@ -22,10 +22,10 @@ test.describe("Dedicated mobile and tablet arena shell", () => {
     await expect(page.locator('.mobile-number-deck.is-action button')).toHaveCount(3);
     const actionCardBox = await page.locator('.mobile-number-deck.is-action button').first().boundingBox();
     expect(actionCardBox!.height).toBeGreaterThan(actionCardBox!.width);
-    const historyOpacity = await page.locator('.mobile-number-deck.is-history').evaluate(
+    const historyOpacity = await page.locator('.mobile-number-deck.is-history button').first().evaluate(
       (element) => Number.parseFloat(getComputedStyle(element).opacity),
     );
-    expect(historyOpacity).toBeLessThan(.8);
+    expect(historyOpacity).toBeLessThan(.6);
 
     // Players use compact game-style pods instead of vertically stretched cards.
     const joinPrompt = page.getByRole('button', { name: /tap to join/i });

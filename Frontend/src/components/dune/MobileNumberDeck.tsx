@@ -1,6 +1,6 @@
 "use client";
 
-import { Flame, Skull, Sparkles } from "lucide-react";
+import { Check, Flame, Skull, Sparkles } from "lucide-react";
 import type { LastMoveInfo } from "../../lib/hooks/useCountdownLive";
 import { soundManager } from "../../lib/soundManager";
 
@@ -48,7 +48,7 @@ export function MobileNumberDeck({
         className={`mobile-number-card ${playable ? "is-playable" : "is-previous"} ${wasPlayed ? "was-played" : ""} ${selected ? "is-selected" : ""} ${bomb ? "is-bomb" : ""}`}
       >
         <span className="mobile-number-badge">
-          {bomb ? <Skull size={11} /> : danger ? <Flame size={11} /> : playable ? <Sparkles size={10} /> : null}
+          {wasPlayed ? <Check size={13} strokeWidth={4} /> : bomb ? <Skull size={11} /> : danger ? <Flame size={11} /> : playable ? <Sparkles size={10} /> : null}
         </span>
         <strong>{value}</strong>
         {selected && <small>Picked</small>}
