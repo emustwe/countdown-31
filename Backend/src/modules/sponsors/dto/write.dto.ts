@@ -36,6 +36,40 @@ const promoFields = {
 export const PromoCreateSchema = z.object({ ...promoFields, title: z.string().min(1).max(120) });
 export const PromoUpdateSchema = z.object({ ...promoFields, status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional() });
 
+// ---- Tournament campaign studio ----
+const safeAssetUrl = z.string().max(500).refine(
+  (value) => value === "" || value.startsWith("/") || /^https:\/\//i.test(value),
+  "Use a local asset path or an HTTPS URL",
+);
+const hexColor = z.string().regex(/^#[0-9a-f]{6}$/i, "Use a six-digit hex color");
+export const TournamentCampaignManifestSchema = z.object({
+  identity: z.object({
+    campaignTitle: z.string().min(1).max(80),
+    sponsorName: z.string().min(1).max(60),
+    disclosureLabel: z.string().min(1).max(40),
+    demoDisclaimer: z.string().max(140).optional(),
+  }).strict(),
+  theme: z.object({
+    primaryColor: hexColor,
+    secondaryColor: hexColor,
+    backgroundImage: safeAssetUrl,
+    overlayOpacity: z.number().min(0.35).max(0.9),
+  }).strict(),
+  logoTile: z.object({
+    enabled: z.boolean(),
+    logoText: z.string().min(1).max(30),
+    animationPreset: z.enum(["float", "turntable", "pulse", "static"]),
+    desktopEnabled: z.boolean(),
+    mobileEnabled: z.boolean(),
+  }).strict(),
+  featurePanel: z.object({
+    enabled: z.boolean(),
+    headline: z.string().min(1).max(80),
+    body: z.string().max(180),
+  }).strict(),
+}).strict();
+export type TournamentCampaignManifestInput = z.infer<typeof TournamentCampaignManifestSchema>;
+
 // ---- Sponsors ----
 export const SponsorCreateSchema = z.object({
   name: z.string().min(1).max(80),

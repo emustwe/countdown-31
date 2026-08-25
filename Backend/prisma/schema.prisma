@@ -176,9 +176,37 @@ model SponsorTournament {
   inquiries   Inquiry[]
   teams       TournamentTeam[]
   timeVotes   TournamentTimeVote[]
+  campaign    TournamentCampaign?
 
   @@index([status])
   @@index([visibility, status])
+}
+
+// Tournament-scoped sponsor presentation. Drafts are versioned so an admin can safely edit a
+// future look without changing a live match. Exactly one version is marked PUBLISHED at a time.
+model TournamentCampaign {
+  id           String                    @id @default(uuid())
+  tournamentId String                    @unique
+  tournament   SponsorTournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  isPaused     Boolean                   @default(false)
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  versions     TournamentCampaignVersion[]
+}
+
+model TournamentCampaignVersion {
+  id          String             @id @default(uuid())
+  campaignId  String
+  campaign    TournamentCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  revision    Int
+  status      String             @default("DRAFT")
+  manifest    Json
+  createdBy   String
+  createdAt   DateTime           @default(now())
+  publishedAt DateTime?
+
+  @@unique([campaignId, revision])
+  @@index([campaignId, status])
 }
 
 enum PromoType {

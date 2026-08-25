@@ -27,6 +27,8 @@ import {
   JoinSchema,
   VoteTimeSchema,
   CosmeticsSchema,
+  TournamentCampaignManifestSchema,
+  type TournamentCampaignManifestInput,
 } from "./dto/write.dto";
 
 // Admin-only sponsor management.
@@ -91,6 +93,30 @@ export class AdminPromoController {
   @Post(":id/reject")
   reject(@Param("id") id: string) {
     return this.sponsors.setStatus(id, "REJECTED");
+  }
+  @Get(":id/campaign")
+  campaign(@Param("id") id: string) {
+    return this.sponsors.getCampaignForAdmin(id);
+  }
+  @Patch(":id/campaign/draft")
+  saveCampaignDraft(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(TournamentCampaignManifestSchema)) body: TournamentCampaignManifestInput,
+  ) {
+    return this.sponsors.saveCampaignDraft(id, body, user.sub);
+  }
+  @Post(":id/campaign/publish")
+  publishCampaign(@CurrentUser() user: AccessTokenPayload, @Param("id") id: string) {
+    return this.sponsors.publishCampaign(id, user.sub);
+  }
+  @Post(":id/campaign/pause")
+  pauseCampaign(@Param("id") id: string) {
+    return this.sponsors.setCampaignPaused(id, true);
+  }
+  @Post(":id/campaign/resume")
+  resumeCampaign(@Param("id") id: string) {
+    return this.sponsors.setCampaignPaused(id, false);
   }
 }
 
@@ -180,6 +206,10 @@ export class PublicPromoController {
   ) {
     // Public detail; joined-state is resolved on the authed variant below.
     return this.sponsors.getForUser(id, code, undefined);
+  }
+  @Get(":id/campaign/active")
+  activeCampaign(@Param("id") id: string) {
+    return this.sponsors.getActiveCampaign(id);
   }
   @UseGuards(JwtAuthGuard)
   @Get(":id/me")

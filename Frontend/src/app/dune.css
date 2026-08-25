@@ -2143,6 +2143,107 @@ h3 {
     transform: scale(.55);
   }
 }
+.tournament-game-page { position: fixed; inset: 0; z-index: 250; }
+.tournament-game-back {
+  position: fixed;
+  top: 72px;
+  left: 12px;
+  z-index: 90;
+  padding: 8px 11px !important;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, .72) !important;
+  font-size: 10px !important;
+  backdrop-filter: blur(10px);
+}
+
+/* Tournament sponsor layer: deliberately occupies only established dead zones. It never accepts
+   clicks and sits below gameplay/result overlays. Practice mode never renders this component. */
+.tournament-sponsor-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  font-family: var(--numeric);
+}
+.tournament-sponsor-disclosure {
+  display: none;
+  position: absolute;
+  top: 118px;
+  left: 50%;
+  translate: -50% 0;
+  padding: 5px 12px;
+  border: 1px solid color-mix(in srgb, var(--sponsor-accent) 55%, transparent);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .75);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+}
+.tournament-sponsor-disclosure strong { color: var(--sponsor-accent); }
+.tournament-sponsor-logo {
+  position: absolute;
+  left: clamp(18px, 3vw, 52px);
+  bottom: 72px;
+  display: none;
+  width: 116px;
+  aspect-ratio: 1;
+  place-items: center;
+  padding: 12px;
+  border: 2px solid var(--sponsor-accent);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(10,10,10,.95), rgba(0,0,0,.82));
+  color: var(--sponsor-primary);
+  text-align: center;
+  box-shadow: 0 14px 35px rgba(0,0,0,.65), 0 0 22px color-mix(in srgb, var(--sponsor-accent) 25%, transparent);
+  transform-style: preserve-3d;
+}
+.tournament-sponsor-logo.show-desktop { display: grid; }
+.tournament-sponsor-logo span { font-size: 15px; font-weight: 900; line-height: 1; letter-spacing: -.02em; }
+.tournament-sponsor-logo small { margin-top: -25px; color: color-mix(in srgb, var(--sponsor-primary) 60%, transparent); font-size: 6px; font-weight: 800; letter-spacing: .11em; }
+.tournament-sponsor-story {
+  position: absolute;
+  right: clamp(18px, 3vw, 52px);
+  bottom: 72px;
+  width: min(280px, 20vw);
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--sponsor-accent) 55%, transparent);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(7,13,9,.94), rgba(0,0,0,.88));
+  box-shadow: 0 14px 35px rgba(0,0,0,.65);
+}
+.tournament-sponsor-story small { display: block; color: var(--sponsor-accent); font-size: 8px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.tournament-sponsor-story strong { display: block; margin-top: 5px; color: var(--sponsor-primary); font-size: 17px; line-height: 1.05; }
+.tournament-sponsor-story p { margin: 6px 0 0; color: rgba(255,255,255,.72); font-size: 10px; line-height: 1.4; }
+.sponsor-motion-float { animation: sponsor-float 3.2s ease-in-out infinite; }
+.sponsor-motion-turntable { animation: sponsor-turntable 4.8s ease-in-out infinite; }
+.sponsor-motion-pulse { animation: sponsor-pulse 2.2s ease-in-out infinite; }
+@keyframes sponsor-float { 50% { transform: translateY(-10px); } }
+@keyframes sponsor-turntable { 0%, 100% { transform: perspective(500px) rotateY(-14deg); } 50% { transform: perspective(500px) rotateY(14deg); } }
+@keyframes sponsor-pulse { 50% { scale: 1.06; filter: brightness(1.18); } }
+
+@media (max-width: 1180px) {
+  .tournament-sponsor-disclosure { top: 78px; display: block; font-size: 8px; }
+  .tournament-sponsor-logo.show-desktop { display: none; }
+  .tournament-sponsor-logo.show-mobile {
+    right: auto;
+    bottom: calc(92px + env(safe-area-inset-bottom));
+    left: 10px;
+    display: grid;
+    width: 72px;
+    border-radius: 17px;
+    padding: 8px;
+  }
+  .tournament-sponsor-logo span { font-size: 10px; }
+  .tournament-sponsor-logo small { display: none; }
+  .tournament-sponsor-story { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tournament-sponsor-logo { animation: none !important; }
+}
 
 /* Dedicated responsive app shell ---------------------------------------
  * Desktop and touch layouts are separate compositions. Mobile-only class names keep legacy

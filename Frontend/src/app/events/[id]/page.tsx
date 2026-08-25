@@ -44,14 +44,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // When a joined player enters the game, show the knockout Count Down 31 for this tournament's room.
   if (t && playing) {
     return (
-      <PageShell className="events-page">
-        <main className="page-main cd31-page">
-          <button className="text-button" onClick={() => setPlaying(false)} style={{ marginBottom: 4 }}>
-            <ChevronLeft size={16} /> {t.title} — details
-          </button>
-          <CountDown31 roomId={`tour:${id}`} />
-        </main>
-      </PageShell>
+      <div className="practice-page tournament-game-page">
+        <button className="tournament-game-back text-button" onClick={() => setPlaying(false)}>
+          <ChevronLeft size={16} /> Tournament details
+        </button>
+        <CountDown31 roomId={`tour:${id}`} />
+      </div>
     );
   }
 

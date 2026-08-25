@@ -16,6 +16,7 @@ import { AuthThrottleService } from "../../common/auth-throttle/auth-throttle.se
 import { encryptSecret, decryptSecret } from "../../common/crypto/secret-box";
 import type { Prisma, SponsorTournament } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import type { TournamentCampaignManifestInput } from "./dto/write.dto";
 
 export interface SponsorTokenPayload {
   sub: string; // sponsor id
@@ -527,6 +528,124 @@ export class SponsorsService {
     return this.prisma.sponsorTournament.update({ where: { id }, data: { status } }).catch(() => {
       throw new NotFoundException("Tournament not found");
     });
+  }
+
+  // ---- Tournament campaign studio ------------------------------------------------------------
+  async getCampaignForAdmin(tournamentId: string) {
+    const tournament = await this.prisma.sponsorTournament.findUnique({
+      where: { id: tournamentId },
+      select: { id: true, title: true, sponsor: { select: { id: true, name: true } } },
+    });
+    if (!tournament) throw new NotFoundException("Tournament not found");
+    const campaign = await this.prisma.tournamentCampaign.findUnique({
+      where: { tournamentId },
+      include: { versions: { orderBy: { revision: "desc" } } },
+    });
+    const draft = campaign?.versions.find((version) => version.status === "DRAFT") ?? null;
+    const published = campaign?.versions.find((version) => version.status === "PUBLISHED") ?? null;
+    return {
+      tournament,
+      campaign: campaign ? {
+        id: campaign.id,
+        isPaused: campaign.isPaused,
+        draft: draft ? this.serializeCampaignVersion(draft) : null,
+        published: published ? this.serializeCampaignVersion(published) : null,
+      } : null,
+    };
+  }
+
+  async saveCampaignDraft(tournamentId: string, manifest: TournamentCampaignManifestInput, actorId: string) {
+    const exists = await this.prisma.sponsorTournament.findUnique({ where: { id: tournamentId }, select: { id: true } });
+    if (!exists) throw new NotFoundException("Tournament not found");
+    const result = await this.prisma.$transaction(async (tx) => {
+      const campaign = await tx.tournamentCampaign.upsert({
+        where: { tournamentId },
+        update: {},
+        create: { tournamentId },
+        include: { versions: { orderBy: { revision: "desc" } } },
+      });
+      const currentDraft = campaign.versions.find((version) => version.status === "DRAFT");
+      const version = currentDraft
+        ? await tx.tournamentCampaignVersion.update({
+            where: { id: currentDraft.id },
+            data: { manifest: manifest as Prisma.InputJsonValue, createdBy: actorId },
+          })
+        : await tx.tournamentCampaignVersion.create({
+            data: {
+              campaignId: campaign.id,
+              revision: (campaign.versions[0]?.revision ?? 0) + 1,
+              manifest: manifest as Prisma.InputJsonValue,
+              createdBy: actorId,
+            },
+          });
+      return { campaign, version };
+    });
+    this.audit.record("TOURNAMENT_CAMPAIGN_DRAFT", { actor: actorId, detail: { tournamentId, revision: result.version.revision } });
+    return this.getCampaignForAdmin(tournamentId);
+  }
+
+  async publishCampaign(tournamentId: string, actorId: string) {
+    await this.prisma.$transaction(async (tx) => {
+      const campaign = await tx.tournamentCampaign.findUnique({
+        where: { tournamentId },
+        include: { versions: { orderBy: { revision: "desc" } } },
+      });
+      if (!campaign) throw new BadRequestException("Save a campaign draft before publishing");
+      const draft = campaign.versions.find((version) => version.status === "DRAFT");
+      if (!draft) throw new BadRequestException("There is no draft to publish");
+      await tx.tournamentCampaignVersion.updateMany({
+        where: { campaignId: campaign.id, status: "PUBLISHED" },
+        data: { status: "ARCHIVED" },
+      });
+      await tx.tournamentCampaignVersion.update({
+        where: { id: draft.id },
+        data: { status: "PUBLISHED", publishedAt: new Date(), createdBy: actorId },
+      });
+      await tx.tournamentCampaign.update({ where: { id: campaign.id }, data: { isPaused: false } });
+    });
+    this.audit.record("TOURNAMENT_CAMPAIGN_PUBLISH", { actor: actorId, detail: { tournamentId } });
+    return this.getCampaignForAdmin(tournamentId);
+  }
+
+  async setCampaignPaused(tournamentId: string, isPaused: boolean) {
+    const campaign = await this.prisma.tournamentCampaign.findUnique({ where: { tournamentId } });
+    if (!campaign) throw new NotFoundException("Campaign not found");
+    const updated = await this.prisma.tournamentCampaign.update({ where: { id: campaign.id }, data: { isPaused } });
+    this.audit.record(isPaused ? "TOURNAMENT_CAMPAIGN_PAUSE" : "TOURNAMENT_CAMPAIGN_RESUME", { detail: { tournamentId } });
+    return { tournamentId, isPaused: updated.isPaused };
+  }
+
+  async getActiveCampaign(tournamentId: string) {
+    const campaign = await this.prisma.tournamentCampaign.findUnique({
+      where: { tournamentId },
+      include: {
+        tournament: { select: { id: true, title: true, status: true } },
+        versions: { where: { status: "PUBLISHED" }, orderBy: { revision: "desc" }, take: 1 },
+      },
+    });
+    const version = campaign?.versions[0];
+    if (!campaign || campaign.isPaused || campaign.tournament.status !== "APPROVED" || !version) {
+      return { campaign: null };
+    }
+    return {
+      campaign: {
+        tournamentId,
+        tournamentTitle: campaign.tournament.title,
+        revision: version.revision,
+        manifest: version.manifest,
+      },
+    };
+  }
+
+  private serializeCampaignVersion(version: { id: string; revision: number; status: string; manifest: Prisma.JsonValue; createdAt: Date; publishedAt: Date | null }) {
+    return {
+      id: version.id,
+      revision: version.revision,
+      status: version.status,
+      manifest: version.manifest,
+      createdAt: version.createdAt,
+      publishedAt: version.publishedAt,
+    };
   }
 
   // ---- Promo tournaments: listing -------------------------------------------------------------

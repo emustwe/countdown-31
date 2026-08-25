@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   CheckCircle2,
   Copy,
@@ -17,6 +18,7 @@ import {
   DollarSign,
   Users,
   Check,
+  Palette,
 } from "lucide-react";
 import {
   useAdminPromoTournaments,
@@ -459,6 +461,14 @@ export default function TournamentAdminPage() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  <Link
+                    href={`/admin/tournament/${t.id}/campaign`}
+                    onClick={() => soundManager.playClick()}
+                    className="px-3 py-1.5 rounded-xl border border-lime-400/40 bg-lime-400/10 text-lime-300 font-title font-bold text-xs flex items-center gap-1 cursor-pointer hover:bg-lime-400/20"
+                  >
+                    <Palette size={13} />
+                    <span>Sponsor Studio</span>
+                  </Link>
                   {t.status === "PENDING" && (
                     <>
                       <button

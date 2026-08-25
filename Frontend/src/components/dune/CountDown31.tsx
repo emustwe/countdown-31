@@ -23,11 +23,16 @@ import { DEFAULT_GAME_CONFIG } from "../../lib/game-config";
 import { MobileArenaShell } from "./MobileArenaShell";
 import { MobileNumberDeck } from "./MobileNumberDeck";
 import { MobileBattleStrip } from "./MobileBattleStrip";
+import { TournamentSponsorLayer } from "./TournamentSponsorLayer";
+import { useActiveTournamentCampaign } from "../../lib/hooks/useTournamentCampaign";
 
 export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const router = useRouter();
   const { data: serverConfig } = useGameConfig();
   const isTournament = roomId !== "practice";
+  const tournamentId = roomId.startsWith("tour:") ? roomId.slice(5) : null;
+  const { data: campaignData } = useActiveTournamentCampaign(tournamentId);
+  const campaign = campaignData?.campaign?.manifest ?? null;
   const gameConfig = isTournament ? (serverConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG;
   const guestName = useGuestStore((s) => s.username);
   const setGuestName = useGuestStore((s) => s.setUsername);
@@ -319,7 +324,13 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   return (
     <div
       className={`arena-viewport relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${isShaking ? "animate-screen-shake" : ""}`}
+      style={campaign ? {
+        backgroundImage: `linear-gradient(rgba(3, 9, 6, ${campaign.theme.overlayOpacity}), rgba(3, 9, 6, ${campaign.theme.overlayOpacity})), url("${campaign.theme.backgroundImage}")`,
+        backgroundPosition: "center",
+        backgroundSize: "cover",
+      } : undefined}
     >
+      {campaign && <TournamentSponsorLayer manifest={campaign} />}
       {/* Top Arcade Header Marquee with Game Mode Switcher */}
       <ArcadeHeader
         onOpenRules={() => setShowRules(true)}
