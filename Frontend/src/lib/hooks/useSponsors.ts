@@ -182,6 +182,21 @@ export function useSetPromoStatus() {
     onSuccess: () => invalidatePromos(qc),
   });
 }
+export interface SponsorDemoSetup {
+  sponsor: { id: string; name: string; username: string; password: string };
+  tournament: { id: string; title: string };
+  revision: number;
+}
+export function useSetupSponsorDemo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiRequest<SponsorDemoSetup>("/admin/promo-tournaments/demo/setup", { method: "POST" }),
+    onSuccess: () => {
+      invalidatePromos(qc);
+      qc.invalidateQueries({ queryKey: ["admin-sponsors"] });
+    },
+  });
+}
 
 // ---- Public + user: promo tournaments -------------------------------------------------------
 export function usePublicPromoTournaments() {

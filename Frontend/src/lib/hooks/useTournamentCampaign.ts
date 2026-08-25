@@ -151,49 +151,21 @@ export function useUploadTournamentCampaignAsset(tournamentId: string) {
   return useMutation({
     mutationFn: async ({ kind, file }: { kind: CampaignAssetKind; file: File }) => {
       const token = useAuthStore.getState().accessToken;
+      if (!token) throw new Error("Your admin session has expired. Sign in again before uploading.");
       const form = new FormData();
       form.append("file", file);
-      try {
-        const response = await fetch(`${apiBaseUrl()}/admin/promo-tournaments/${tournamentId}/campaign/assets/${kind}`, {
-          method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          credentials: "include",
-          body: form,
-        });
-        if (response.ok) {
-          const result = (await response.json()) as { asset?: CampaignAsset; assets?: CampaignAsset[]; message?: string };
-          if (result.asset) {
-            return result as { asset: CampaignAsset; assets: CampaignAsset[] };
-          }
-        }
-      } catch {
-        // Fallback to local DataURL / ObjectURL below
-      }
-
-      // Local / Offline fallback: Convert file to local preview URL so testing always works seamlessly
-      const localUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => resolve(URL.createObjectURL(file));
-        reader.readAsDataURL(file);
+      const response = await fetch(`${apiBaseUrl()}/admin/promo-tournaments/${tournamentId}/campaign/assets/${kind}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+        body: form,
       });
-
-      const fallbackAsset: CampaignAsset = {
-        id: `local-${Date.now()}`,
-        kind,
-        url: localUrl,
-        originalName: file.name,
-        mimeType: file.type || "image/png",
-        mediaType: file.type.startsWith("video/") ? "video" : "image",
-        bytes: file.size,
-        supersedesId: null,
-        archivedAt: null,
-        createdAt: new Date().toISOString(),
-      };
-
-      const prevAssets = client.getQueryData<{ assets: CampaignAsset[] }>(["admin", "tournament-campaign", tournamentId, "assets"])?.assets ?? [];
-      const updatedAssets = [fallbackAsset, ...prevAssets.filter((a) => a.kind !== kind || a.id !== fallbackAsset.id)];
-      return { asset: fallbackAsset, assets: updatedAssets };
+      const result = (await response.json().catch(() => ({}))) as { asset?: CampaignAsset; assets?: CampaignAsset[]; message?: string | string[] };
+      if (!response.ok || !result.asset) {
+        const message = Array.isArray(result.message) ? result.message.join(" ") : result.message;
+        throw new Error(message || `Upload failed (${response.status}). Check that the backend is running and try again.`);
+      }
+      return result as { asset: CampaignAsset; assets: CampaignAsset[] };
     },
     onSuccess: (result) => {
       client.setQueryData(["admin", "tournament-campaign", tournamentId, "assets"], { assets: result.assets });
@@ -342,4 +314,3 @@ export async function sendCampaignEventsBatch(tournamentId: string, batch: Campa
     console.debug("[CampaignTelemetry] batch send failed:", err);
   }
 }
-

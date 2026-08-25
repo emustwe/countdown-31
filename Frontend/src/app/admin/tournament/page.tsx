@@ -5,13 +5,14 @@ import Link from "next/link";
 import {
   Check,
   CheckCircle2,
-  ChevronRight,
   Clock,
   Copy,
   Crown,
   Lock,
   Pencil,
+  Play,
   Plus,
+  Rocket,
   Sparkles,
   Trash2,
   Trophy,
@@ -25,6 +26,7 @@ import {
   useUpdatePromo,
   useDeletePromo,
   useSetPromoStatus,
+  useSetupSponsorDemo,
   useSponsors,
   type PromoTournament,
   type PromoType,
@@ -104,6 +106,7 @@ export default function TournamentAdminPage() {
   const update = useUpdatePromo();
   const del = useDeletePromo();
   const setStatus = useSetPromoStatus();
+  const setupDemo = useSetupSponsorDemo();
 
   const [form, setForm] = useState<FormState>(EMPTY);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -247,7 +250,18 @@ export default function TournamentAdminPage() {
     } catch {}
   }
 
-  const busy = create.isPending || update.isPending;
+  async function createSponsorDemo() {
+    soundManager.playConfirm();
+    setError("");
+    try {
+      await setupDemo.mutateAsync();
+      soundManager.playVictory();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not build the sponsor demo");
+    }
+  }
+
+  const busy = create.isPending || update.isPending || setupDemo.isPending;
   const list = useMemo(() => promos ?? [], [promos]);
 
   return (
@@ -259,8 +273,10 @@ export default function TournamentAdminPage() {
           <h1 className="font-title font-black text-2xl sm:text-3xl text-white tracking-wide mt-0.5">Tournaments Manager</h1>
           <p className="text-xs text-slate-400 mt-1">Create Regular knockouts and Group (team) tournaments, with players voting the GMT start time.</p>
         </div>
-        <span className="px-3.5 py-1.5 rounded-xl bg-black/60 border border-amber-400/40 text-amber-300 font-title font-bold text-xs">{list.length} Total</span>
+        <div className="flex flex-wrap items-center gap-2"><button onClick={createSponsorDemo} disabled={setupDemo.isPending} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-lime-300 to-emerald-400 px-4 py-2.5 font-title text-xs font-black text-slate-950 shadow-[0_0_20px_rgba(132,204,22,.25)] disabled:opacity-50"><Rocket size={15}/>{setupDemo.isPending ? "BUILDING DEMO…" : "BUILD COMPLETE DEMO"}</button><span className="px-3.5 py-1.5 rounded-xl bg-black/60 border border-amber-400/40 text-amber-300 font-title font-bold text-xs">{list.length} Total</span></div>
       </div>
+
+      {setupDemo.data && <div className="rounded-3xl border-2 border-lime-300/60 bg-gradient-to-r from-lime-950/70 via-[#0d1b12] to-cyan-950/60 p-5 shadow-xl"><div className="flex flex-wrap items-center justify-between gap-4"><div><div className="flex items-center gap-2 text-[10px] font-title font-black uppercase tracking-widest text-lime-300"><CheckCircle2 size={14}/> Demo ready · revision {setupDemo.data.revision}</div><h2 className="mt-1 font-title text-xl font-black text-white">{setupDemo.data.tournament.title}</h2><p className="mt-1 text-xs text-slate-300">Fictional sponsor account: <b>{setupDemo.data.sponsor.username}</b> · password <b>{setupDemo.data.sponsor.password}</b></p></div><div className="flex flex-wrap gap-2"><Link href={`/admin/tournament/${setupDemo.data.tournament.id}/campaign`} className="flex items-center gap-2 rounded-xl border border-lime-300/50 bg-lime-300/10 px-4 py-2.5 text-xs font-title font-black text-lime-200"><Sparkles size={14}/> OPEN SPONSOR STUDIO</Link><Link href={`/events/${setupDemo.data.tournament.id}`} className="flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-title font-black text-slate-950"><Play size={14}/> VIEW LIVE DEMO</Link></div></div></div>}
 
       {/* Post-create code reveal */}
       {createdCodes && (
@@ -480,6 +496,7 @@ export default function TournamentAdminPage() {
                     </>
                   )}
                   <Link href={`/admin/tournament/${t.id}/campaign`} className="px-3 py-1.5 rounded-xl bg-lime-400/20 border border-lime-300/60 hover:bg-lime-400/30 text-lime-300 font-title font-bold text-xs flex items-center gap-1 cursor-pointer"><Sparkles size={13} /> Sponsor Studio</Link>
+                  {t.status === "APPROVED" && <Link href={`/events/${t.id}`} className="px-3 py-1.5 rounded-xl bg-amber-400/15 border border-amber-300/50 hover:bg-amber-400/25 text-amber-200 font-title font-bold text-xs flex items-center gap-1 cursor-pointer"><Play size={13}/> Launch</Link>}
                   <button onClick={() => startEdit(t)} className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-title font-bold text-xs flex items-center gap-1 cursor-pointer"><Pencil size={13} /> Edit</button>
                   <button onClick={() => { soundManager.playClick(); del.mutate(t.id); }} className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-300 font-title font-bold text-xs flex items-center gap-1 cursor-pointer"><Trash2 size={13} /> Delete</button>
                 </div>

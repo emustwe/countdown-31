@@ -100,6 +100,50 @@ const USERNAME_RE = /^[a-z0-9._-]{3,30}$/;
 // Distinct team colours (up to 6 groups): blue, red, green, gold, purple, teal.
 const TEAM_COLORS = ["#5aa8ff", "#ff6b7f", "#5be348", "#f4b942", "#b48cff", "#38e0d0"];
 const MAX_GROUPS = TEAM_COLORS.length;
+export const SPONSOR_DEMO_TOURNAMENT_ID = "demo-moomorrow-cup";
+const SPONSOR_DEMO_USERNAME = "moomorrow-demo";
+const SPONSOR_DEMO_PASSWORD = "DemoSponsor123!";
+
+const SPONSOR_DEMO_MANIFEST: TournamentCampaignManifestInput = {
+  identity: {
+    campaignTitle: "Play It Forward Cup",
+    sponsorName: "MooMorrow Farms",
+    disclosureLabel: "Presented by",
+    demoDisclaimer: "Fictional sponsor and campaign created only for Countdown 31 product testing.",
+  },
+  theme: {
+    primaryColor: "#fff4cf",
+    secondaryColor: "#8cff65",
+    backgroundImage: "/assets/barnaby/barnaby-pasture-arena.jpg",
+    mobileBackgroundImage: "/assets/barnaby/barnaby-field.jpg",
+    overlayOpacity: 0.62,
+  },
+  logoTile: {
+    enabled: true,
+    logoText: "MOO MORROW",
+    animationPreset: "float",
+    desktopEnabled: true,
+    mobileEnabled: true,
+  },
+  featurePanel: {
+    enabled: true,
+    headline: "PLAY TODAY. GROW TOMORROW.",
+    body: "Every round helps open more community play spaces for young people.",
+  },
+  cause: {
+    enabled: true,
+    label: "Playing for good",
+    title: "100 new places to play",
+    message: "This fictional campaign demonstrates sponsor-supported community sports funding.",
+    beneficiaryName: "MooMorrow Community Play Fund",
+    targetAmount: 50000,
+    raisedAmount: 32750,
+    currency: "USD",
+    showProgress: true,
+    ctaLabel: "See the demo cause",
+    ctaUrl: "https://example.org/moomorrow-play-it-forward",
+  },
+};
 
 // Standard include for reading a promo tournament with its sponsor, entry count, and teams.
 const PROMO_INCLUDE = {
@@ -531,31 +575,124 @@ export class SponsorsService {
     });
   }
 
-  // Ensures a tournament record exists for test mode, local development, or dummy campaigns
-  async ensureTournamentExists(tournamentId: string, title = "Arena Championship") {
-    let tournament = await this.prisma.sponsorTournament.findUnique({
-      where: { id: tournamentId },
-      include: { sponsor: { select: { id: true, name: true } } },
-    });
-    if (!tournament) {
-      tournament = await this.prisma.sponsorTournament.create({
-        data: {
-          id: tournamentId,
-          title: tournamentId === "test" ? "Arena Test Championship" : `${title}`,
-          description: "Sponsored tournament arena for brand campaigns and competition.",
-          status: "APPROVED",
-          visibility: "PUBLIC",
-          createdBy: "admin",
+  /** Builds a repeatable fictional sponsor pilot with a published campaign and sample analytics.
+   * It is intentionally explicit and admin-only: normal reads never create database records. */
+  async setupSponsorDemo(actorId: string) {
+    const passwordHash = await argon2.hash(SPONSOR_DEMO_PASSWORD);
+    const now = new Date();
+    const dateBucket = now.toISOString().slice(0, 10);
+    const result = await this.prisma.$transaction(async (tx) => {
+      const sponsor = await tx.sponsor.upsert({
+        where: { username: SPONSOR_DEMO_USERNAME },
+        update: {
+          name: "MooMorrow Farms",
+          status: "ACTIVE",
+          passwordHash,
+          passwordEnc: encryptSecret(SPONSOR_DEMO_PASSWORD),
         },
-        include: { sponsor: { select: { id: true, name: true } } },
+        create: {
+          name: "MooMorrow Farms",
+          username: SPONSOR_DEMO_USERNAME,
+          passwordHash,
+          passwordEnc: encryptSecret(SPONSOR_DEMO_PASSWORD),
+        },
       });
-    }
-    return tournament;
+      const tournament = await tx.sponsorTournament.upsert({
+        where: { id: SPONSOR_DEMO_TOURNAMENT_ID },
+        update: {
+          title: "MooMorrow Play It Forward Cup",
+          description: "A complete fictional sponsor pilot: branded lobby, live arena placements, cause message, approvals, and proof-of-performance.",
+          visibility: "PUBLIC",
+          status: "APPROVED",
+          type: "REGULAR",
+          hasInfluencers: false,
+          prizePool: "5,000 USDT",
+          winnerCount: 3,
+          minPlayers: 2,
+          maxPlayers: 100,
+          sponsorId: sponsor.id,
+          seekingSponsor: false,
+          startAt: null,
+          endAt: null,
+        },
+        create: {
+          id: SPONSOR_DEMO_TOURNAMENT_ID,
+          title: "MooMorrow Play It Forward Cup",
+          description: "A complete fictional sponsor pilot: branded lobby, live arena placements, cause message, approvals, and proof-of-performance.",
+          visibility: "PUBLIC",
+          status: "APPROVED",
+          type: "REGULAR",
+          hasInfluencers: false,
+          prizePool: "5,000 USDT",
+          winnerCount: 3,
+          minPlayers: 2,
+          maxPlayers: 100,
+          sponsorId: sponsor.id,
+          seekingSponsor: false,
+          createdBy: actorId,
+        },
+      });
+      const campaign = await tx.tournamentCampaign.upsert({
+        where: { tournamentId: tournament.id },
+        update: { isPaused: false, isCausePaused: false },
+        create: { tournamentId: tournament.id },
+        include: { versions: { orderBy: { revision: "desc" }, take: 1 } },
+      });
+      await tx.tournamentCampaignVersion.updateMany({
+        where: { campaignId: campaign.id, status: "PUBLISHED" },
+        data: { status: "ARCHIVED" },
+      });
+      const version = await tx.tournamentCampaignVersion.create({
+        data: {
+          campaignId: campaign.id,
+          revision: (campaign.versions[0]?.revision ?? 0) + 1,
+          status: "PUBLISHED",
+          manifest: SPONSOR_DEMO_MANIFEST as Prisma.InputJsonValue,
+          createdBy: actorId,
+          approvedBy: actorId,
+          approvedAt: now,
+          publishedAt: now,
+          activateAt: now,
+          reviews: {
+            create: [
+              { reviewerId: actorId, lane: "BRAND", decision: "APPROVED", comment: "Demo brand presentation approved." },
+              { reviewerId: actorId, lane: "SAFETY", decision: "APPROVED", comment: "Demo placement and cause messaging approved." },
+            ],
+          },
+        },
+      });
+      await tx.tournamentCampaignEventAggregate.deleteMany({ where: { campaignId: campaign.id } });
+      await tx.tournamentCampaignEventAggregate.createMany({
+        data: [
+          { campaignId: campaign.id, tournamentId: tournament.id, revision: version.revision, placement: "arenaBackground", deviceClass: "desktop", eventType: "eligible_load", count: 184, dateBucket },
+          { campaignId: campaign.id, tournamentId: tournament.id, revision: version.revision, placement: "arenaBackground", deviceClass: "desktop", eventType: "rendered_impression", count: 181, dateBucket },
+          { campaignId: campaign.id, tournamentId: tournament.id, revision: version.revision, placement: "arenaBackground", deviceClass: "mobile", eventType: "rendered_impression", count: 126, dateBucket },
+          { campaignId: campaign.id, tournamentId: tournament.id, revision: version.revision, placement: "logoTile", deviceClass: "desktop", eventType: "rendered_impression", count: 181, dateBucket },
+          { campaignId: campaign.id, tournamentId: tournament.id, revision: version.revision, placement: "logoTile", deviceClass: "mobile", eventType: "rendered_impression", count: 126, dateBucket },
+          { campaignId: campaign.id, tournamentId: tournament.id, revision: version.revision, placement: "logoTile", deviceClass: "desktop", eventType: "viewable_seconds", count: 181, totalSeconds: 4525, dateBucket },
+          { campaignId: campaign.id, tournamentId: tournament.id, revision: version.revision, placement: "causeCard", deviceClass: "desktop", eventType: "rendered_impression", count: 181, dateBucket },
+          { campaignId: campaign.id, tournamentId: tournament.id, revision: version.revision, placement: "causeCard", deviceClass: "mobile", eventType: "rendered_impression", count: 126, dateBucket },
+          { campaignId: campaign.id, tournamentId: tournament.id, revision: version.revision, placement: "causeCard", deviceClass: "mobile", eventType: "cause_expand", count: 38, dateBucket },
+          { campaignId: campaign.id, tournamentId: tournament.id, revision: version.revision, placement: "causeCard", deviceClass: "mobile", eventType: "cta_click", count: 17, dateBucket },
+        ],
+      });
+      return { sponsor, tournament, version };
+    });
+    this.audit.record("TOURNAMENT_SPONSOR_DEMO_SETUP", { actor: actorId, detail: { tournamentId: result.tournament.id, sponsorId: result.sponsor.id, revision: result.version.revision } });
+    return {
+      sponsor: { id: result.sponsor.id, name: result.sponsor.name, username: SPONSOR_DEMO_USERNAME, password: SPONSOR_DEMO_PASSWORD },
+      tournament: { id: result.tournament.id, title: result.tournament.title },
+      revision: result.version.revision,
+    };
   }
 
   // ---- Tournament campaign studio ------------------------------------------------------------
   async getCampaignForAdmin(tournamentId: string) {
-    const tournament = await this.ensureTournamentExists(tournamentId);
+    const tournament = await this.prisma.sponsorTournament.findUnique({
+      where: { id: tournamentId },
+      include: { sponsor: { select: { id: true, name: true } } },
+    });
+    if (!tournament) throw new NotFoundException("Tournament not found");
     const campaign = await this.prisma.tournamentCampaign.findUnique({
       where: { tournamentId },
       include: { versions: { orderBy: { revision: "desc" }, include: { reviews: { orderBy: { createdAt: "asc" } } } } },
@@ -578,7 +715,8 @@ export class SponsorsService {
   }
 
   async saveCampaignDraft(tournamentId: string, manifest: TournamentCampaignManifestInput, actorId: string) {
-    await this.ensureTournamentExists(tournamentId);
+    const exists = await this.prisma.sponsorTournament.findUnique({ where: { id: tournamentId }, select: { id: true } });
+    if (!exists) throw new NotFoundException("Tournament not found");
     const result = await this.prisma.$transaction(async (tx) => {
       const campaign = await tx.tournamentCampaign.upsert({
         where: { tournamentId },
@@ -759,7 +897,8 @@ export class SponsorsService {
     createdBy: string;
     mediaType: "image" | "video";
   }) {
-    await this.ensureTournamentExists(tournamentId);
+    const exists = await this.prisma.sponsorTournament.findUnique({ where: { id: tournamentId }, select: { id: true } });
+    if (!exists) throw new NotFoundException("Tournament not found");
     const asset = await this.prisma.$transaction(async (tx) => {
       const campaign = await tx.tournamentCampaign.upsert({
         where: { tournamentId },
@@ -803,10 +942,9 @@ export class SponsorsService {
       },
     });
     const now = new Date();
-    const published = campaign?.versions.find((candidate) =>
+    const version = campaign?.versions.find((candidate) =>
       candidate.status === "PUBLISHED" && (!candidate.activateAt || candidate.activateAt <= now) && (!candidate.expireAt || candidate.expireAt > now));
-    const version = published ?? campaign?.versions[0];
-    if (!campaign || campaign.isPaused || !version) {
+    if (!campaign || campaign.isPaused || campaign.tournament.status !== "APPROVED" || !version) {
       return { campaign: null };
     }
     return {
@@ -1226,7 +1364,8 @@ export class SponsorsService {
     if (!u) throw new NotFoundException();
     const current = (u.cosmeticsJson ?? {}) as Record<string, unknown>;
     // Never persist the transient `owned` field into the equipped-look blob.
-    const { owned: _ignore, ...cleanPatch } = (patch ?? {}) as Record<string, unknown>;
+    const cleanPatch = { ...(patch ?? {}) } as Record<string, unknown>;
+    delete cleanPatch.owned;
     const next = { ...current, ...cleanPatch };
 
     const owned = new Set(Array.isArray(u.cosmeticsOwned) ? (u.cosmeticsOwned as unknown[]).filter((x): x is string => typeof x === "string") : []);
@@ -1351,7 +1490,7 @@ export class SponsorsService {
     });
 
     const liveVersion = campaign?.versions[0] ?? null;
-    const manifest = (liveVersion?.manifest ?? {}) as Record<string, any>;
+    const manifest = (liveVersion?.manifest ?? {}) as unknown as TournamentCampaignManifestInput;
     const events = campaign?.events ?? [];
 
     let eligibleSessions = 0;

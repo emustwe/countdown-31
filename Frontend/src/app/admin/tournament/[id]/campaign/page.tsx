@@ -13,6 +13,7 @@ import {
   Check,
   Clock,
   Download,
+  ExternalLink,
   Eye,
   Film,
   HeartHandshake,
@@ -55,19 +56,20 @@ import { soundManager } from "../../../../../lib/soundManager";
 
 const DEMO: TournamentCampaignManifest = {
   identity: {
-    campaignTitle: "Future Champions Cup",
-    sponsorName: "Nike Demo",
-    disclosureLabel: "Sponsored by",
-    demoDisclaimer: "Hypothetical concept only — not affiliated with or endorsed by Nike.",
+    campaignTitle: "Play It Forward Cup",
+    sponsorName: "MooMorrow Farms",
+    disclosureLabel: "Presented by",
+    demoDisclaimer: "Fictional sponsor and campaign created only for Countdown 31 product testing.",
   },
   theme: {
-    primaryColor: "#f4f4f4",
-    secondaryColor: "#c7ff2f",
+    primaryColor: "#fff4cf",
+    secondaryColor: "#8cff65",
     backgroundImage: "/assets/barnaby/barnaby-pasture-arena.jpg",
-    overlayOpacity: 0.66,
+    mobileBackgroundImage: "/assets/barnaby/barnaby-field.jpg",
+    overlayOpacity: 0.62,
   },
-  logoTile: { enabled: true, logoText: "NIKE DEMO", animationPreset: "turntable", desktopEnabled: true, mobileEnabled: true },
-  featurePanel: { enabled: true, headline: "FUTURE CHAMPIONS", body: "Every move builds the future. Play boldly and keep the countdown alive." },
+  logoTile: { enabled: true, logoText: "MOO MORROW", animationPreset: "float", desktopEnabled: true, mobileEnabled: true },
+  featurePanel: { enabled: true, headline: "PLAY TODAY. GROW TOMORROW.", body: "Every round helps open more community play spaces for young people." },
 };
 
 const DEFAULT_CAUSE: CampaignCause = {
@@ -189,7 +191,7 @@ export default function TournamentCampaignStudioPage() {
     <header className="rounded-3xl border-2 border-lime-300/60 bg-gradient-to-br from-[#18241c] to-[#050807] p-5 shadow-2xl sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4"><Link href="/admin/tournament" className="grid h-11 w-11 place-items-center rounded-xl border border-slate-700 bg-black/50 text-white hover:border-lime-300"><ArrowLeft size={19}/></Link><div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-lime-300"><Sparkles size={13}/> Sponsor Studio · Campaign + Assets + Analytics</div><h1 className="mt-1 font-title text-2xl font-black text-white sm:text-3xl">{query.data?.tournament.title ?? "Tournament campaign"}</h1></div></div>
-        <div className={`rounded-full border px-4 py-2 text-xs font-black uppercase ${status === "Live" ? "border-emerald-400 bg-emerald-400/15 text-emerald-300" : status === "Paused" ? "border-amber-400 bg-amber-400/15 text-amber-300" : "border-slate-600 bg-slate-800 text-slate-300"}`}>{status}</div>
+        <div className="flex flex-wrap items-center gap-2">{query.data?.campaign?.published&&<Link href={`/events/${id}`} className="flex items-center gap-2 rounded-xl border border-amber-300/50 bg-amber-300/10 px-4 py-2 text-xs font-black text-amber-200"><ExternalLink size={14}/> Open live tournament</Link>}<div className={`rounded-full border px-4 py-2 text-xs font-black uppercase ${status === "Live" ? "border-emerald-400 bg-emerald-400/15 text-emerald-300" : status === "Paused" ? "border-amber-400 bg-amber-400/15 text-amber-300" : "border-slate-600 bg-slate-800 text-slate-300"}`}>{status}</div></div>
       </div>
     </header>
 
@@ -245,7 +247,7 @@ export default function TournamentCampaignStudioPage() {
 
     <div className="grid gap-5 xl:grid-cols-[minmax(380px,.82fr)_minmax(520px,1.18fr)]">
       <section className="flex flex-col gap-5 rounded-3xl border border-amber-400/40 bg-[#09110d]/95 p-5 sm:p-6">
-        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/8 p-4 text-xs text-amber-100"><strong>Safe demo:</strong> this is a hypothetical visual concept. It uses no official Nike logo or supplied brand assets.</div>
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/8 p-4 text-xs text-amber-100"><strong>Safe demo:</strong> MooMorrow Farms is fictional. Replace its copy and assets with reviewed sponsor material before a real campaign.</div>
         <div className="rounded-2xl border border-rose-400/35 bg-gradient-to-br from-rose-950/35 to-black/30 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-rose-300"><HeartHandshake size={14}/> Cause campaign</div><p className="mb-0 mt-1 text-[10px] text-slate-400">Information and external links only. Countdown 31 does not process donations in this module.</p></div><button onClick={() => setCause("enabled", !cause.enabled)} className={`rounded-xl border px-4 py-2 text-[10px] font-black uppercase ${cause.enabled ? "border-rose-300 bg-rose-300 text-rose-950" : "border-slate-700 bg-black/50 text-slate-400"}`}>{cause.enabled ? <Check className="mr-1 inline" size={13}/> : null}{cause.enabled ? "Cause enabled" : "Enable cause"}</button></div>
           <div className={`mt-4 grid gap-3 sm:grid-cols-2 ${cause.enabled ? "" : "opacity-55"}`}>

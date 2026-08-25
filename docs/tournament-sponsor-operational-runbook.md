@@ -33,6 +33,19 @@
 
 ## 2. Pre-Pilot Verification Checklist (Go-Live Gate)
 
+### 2.0 Product acceptance demo
+
+Use the built-in fictional pilot before testing a real sponsor:
+
+1. Open `/admin/tournament` and select **Build complete demo**.
+2. Open the resulting Sponsor Studio and confirm that the preview, managed asset library, analytics, and revision history load.
+3. Make a harmless copy change, save a draft, and submit it for review.
+4. Approve the exact revision in both the **Brand** and **Safety** lanes, then publish it.
+5. Open `/events/demo-moomorrow-cup`, confirm the branded lobby, and enter the match.
+6. Confirm the sponsor layer is present while the number deck, player controls, skills, timer, and result flow remain unobstructed.
+
+The demo company and campaign are fictional and clearly labelled as test content. Rebuilding it resets its sample aggregate analytics and creates a new immutable published revision.
+
 Before setting a sponsor tournament to `Live`, the tournament operator must check off all 8 items:
 
 | # | Check Item | Requirement | Verification Method |

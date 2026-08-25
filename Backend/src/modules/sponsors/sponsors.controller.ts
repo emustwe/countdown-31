@@ -85,6 +85,10 @@ export class AdminPromoController {
   list() {
     return this.sponsors.listAll();
   }
+  @Post("demo/setup")
+  setupSponsorDemo(@CurrentUser() user: AccessTokenPayload) {
+    return this.sponsors.setupSponsorDemo(user.sub);
+  }
   @Post()
   create(@Body(new ZodValidationPipe(PromoCreateSchema)) body: AdminCreatePromoInput) {
     return this.sponsors.createByAdmin(body ?? {});

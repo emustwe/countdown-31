@@ -11,6 +11,9 @@ import { CountDown31 } from "../../../components/dune/CountDown31";
 import { usePromoDetail, useJoinPromo, useVoteStartTime } from "../../../lib/hooks/useSponsors";
 import { useAuthStore } from "../../../stores/auth-store";
 import { soundManager } from "../../../lib/soundManager";
+import { resolveCampaignAssetUrl, useActiveTournamentCampaign } from "../../../lib/hooks/useTournamentCampaign";
+
+const SPONSOR_DEMO_TOURNAMENT_ID = "demo-moomorrow-cup";
 
 function fmtGmtDate(iso: string | null): string {
   if (!iso) return "TBA";
@@ -37,6 +40,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const authed = !!useAuthStore((s) => s.user);
 
   const { data: t, isLoading, isError } = usePromoDetail(id, { code, authed });
+  const { data: campaignData } = useActiveTournamentCampaign(id);
+  const campaign = campaignData?.campaign?.manifest ?? null;
   const join = useJoinPromo();
   const voteTime = useVoteStartTime();
   const [error, setError] = useState("");
@@ -57,7 +62,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const startMs = t?.startAt ? Date.parse(t.startAt) : null;
   const started = startMs != null && now >= startMs;
   // TEMPORARY: an always-open test tournament ("[TEST] …") can be entered any time (bypasses lobby).
-  const isTest = !!t?.title?.startsWith("[TEST]");
+  const isTest = id === SPONSOR_DEMO_TOURNAMENT_ID || !!t?.title?.startsWith("[TEST]");
   const canEnter = started || isTest;
 
   useEffect(() => {
@@ -106,7 +111,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col p-2 sm:p-6 select-none text-white">
-      <div className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity" style={{ backgroundImage: "url('/assets/barnaby/barnaby-field.jpg')" }} />
+      <div className={`fixed inset-0 pointer-events-none bg-cover bg-center ${campaign ? "opacity-70" : "opacity-40 mix-blend-luminosity"}`} style={{ backgroundImage: `url('${resolveCampaignAssetUrl(campaign?.theme.backgroundImage) ?? "/assets/barnaby/barnaby-field.jpg"}')` }} />
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.3)_0%,#040906_90%)]" />
 
       <div className="relative z-20">
@@ -134,7 +139,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         )}
 
         {t && (
-          <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/60 shadow-2xl flex flex-col gap-5">
+          <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 shadow-2xl flex flex-col gap-5" style={{borderColor:campaign?.theme.secondaryColor??"rgba(251,191,36,.6)"}}>
+            {campaign && <div className="rounded-2xl border border-white/15 bg-black/65 p-4 backdrop-blur-md"><div className="flex flex-wrap items-center justify-between gap-4"><div><div className="text-[10px] font-title font-black uppercase tracking-[.18em]" style={{color:campaign.theme.secondaryColor}}>{campaign.identity.disclosureLabel} {campaign.identity.sponsorName}</div><strong className="mt-1 block font-title text-xl font-black text-white">{campaign.identity.campaignTitle}</strong><p className="mb-0 mt-1 text-xs text-slate-300">{campaign.featurePanel.body}</p></div><div className="grid min-h-16 min-w-28 place-items-center rounded-2xl border-2 bg-black/70 p-3 font-title text-sm font-black" style={{borderColor:campaign.theme.secondaryColor,color:campaign.theme.primaryColor}}>{campaign.logoTile.mediaUrl?<img src={resolveCampaignAssetUrl(campaign.logoTile.mediaUrl)} alt={campaign.identity.sponsorName} className="h-12 w-24 object-contain"/>:campaign.logoTile.logoText}</div></div>{campaign.cause?.enabled&&!campaignData?.campaign?.isCausePaused&&<div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2 text-[11px]"><span className="text-slate-300"><b style={{color:campaign.theme.secondaryColor}}>{campaign.cause.label}:</b> {campaign.cause.title}</span><span className="shrink-0 font-black text-white">{campaign.cause.raisedAmount.toLocaleString()} / {campaign.cause.targetAmount.toLocaleString()} {campaign.cause.currency}</span></div>}</div>}
             {/* Header */}
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 shadow">
@@ -200,7 +206,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             {/* Join / lobby / enter */}
             {isTest ? (
               <>
-                <div className="flex items-center gap-2 text-amber-300 font-title font-bold text-sm"><CheckCircle2 size={18} /> Always-open TEST arena — 100 CPU cows are already playing.</div>
+                <div className="flex items-center gap-2 text-amber-300 font-title font-bold text-sm"><CheckCircle2 size={18} /> Always-open demo arena — CPU cows are ready to play.</div>
                 <button onClick={() => { soundManager.playClick(); setPlaying(true); }} className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 text-slate-950 font-title font-black text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.6)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2">
                   <Trophy size={18} /> Enter the game
                 </button>

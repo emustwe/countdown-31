@@ -1,6 +1,6 @@
 # Tournament Sponsor Platform — Implementation Status
 
-**Last updated:** August 25, 2026  
+**Last updated:** August 26, 2026
 **Total chunks:** 6  
 **Completed:** 6  
 **Remaining:** 0  
@@ -68,6 +68,20 @@
 
 ## Summary of Delivery
 
-The Tournament Sponsor Platform is **100% complete and fully verified** across frontend and backend. Sponsoring companies can now run branded, cause-aligned tournaments with full audit governance, real-time analytics, and proof-of-performance exports without ever modifying core Countdown 31 gameplay rules or controls.
+The six planned chunks are implemented. A repeatable end-to-end acceptance demo now verifies the admin, sponsor, lobby, and game surfaces together without weakening the approval workflow.
 
+## Repeatable acceptance demo
 
+1. Sign in as an admin and open `/admin/tournament`.
+2. Select **Build complete demo**.
+3. Open **Sponsor Studio** to edit, save a draft, submit it, approve both Brand and Safety lanes, and publish it.
+4. Select **View live demo** or open `/events/demo-moomorrow-cup`.
+5. Enter the always-open local match to verify the published background, sponsor disclosure, animated logo placement, feature message, and cause treatment in the actual arena.
+
+The fixture is deliberately fictional:
+
+- Sponsor: **MooMorrow Farms**
+- Tournament: **MooMorrow Play It Forward Cup**
+- Sponsor login: `moomorrow-demo` / `DemoSponsor123!`
+
+Rebuilding the demo is safe and repeatable. It resets the fixture to a fresh published revision, seeds privacy-safe sample analytics, and never creates tournaments during ordinary read requests.
