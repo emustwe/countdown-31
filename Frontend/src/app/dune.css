@@ -2247,7 +2247,7 @@ h3 {
     flex: 1 1 auto;
     grid-template-rows: auto auto auto auto;
     align-content: center;
-    gap: 6px;
+    gap: 10px;
     width: 100%;
     max-width: 850px;
     margin: 0 auto;
@@ -2267,8 +2267,8 @@ h3 {
 
   .mobile-number-deck-stack {
     display: grid;
-    width: min(100%, 410px);
-    gap: 6px;
+    width: min(100%, 300px);
+    gap: 9px;
     margin: 0 auto;
   }
 
@@ -2283,8 +2283,12 @@ h3 {
   }
 
   .mobile-number-deck.is-history {
-    filter: saturate(.78);
-    box-shadow: 0 8px 18px rgb(0 0 0 / .48), 0 0 12px rgb(245 158 11 / .1);
+    width: 92%;
+    margin: 0 auto;
+    opacity: .68;
+    filter: saturate(.48) brightness(.74);
+    transform: scale(.98);
+    box-shadow: 0 7px 16px rgb(0 0 0 / .42);
   }
 
   .mobile-number-deck.is-action {
@@ -2307,14 +2311,14 @@ h3 {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 5px;
-    padding: 5px 6px;
+    padding: 6px 8px;
   }
 
   .mobile-number-card {
     position: relative;
     display: grid;
     min-width: 0;
-    height: 66px;
+    height: 110px;
     place-items: center;
     border: 1px solid rgb(120 53 15 / .7);
     border-radius: 13px;
@@ -2324,7 +2328,7 @@ h3 {
   }
 
   .mobile-number-card strong {
-    font: 950 27px/1 var(--font-fredoka);
+    font: 950 29px/1 var(--font-fredoka);
   }
 
   .mobile-number-card.is-playable {
@@ -2341,6 +2345,24 @@ h3 {
     border-color: rgb(251 191 36 / .82);
     background: linear-gradient(180deg, #3b2005, #100a02);
     box-shadow: inset 0 0 14px rgb(251 191 36 / .12), 0 0 10px rgb(251 191 36 / .2);
+  }
+
+  .mobile-number-deck.is-history .mobile-number-card {
+    height: 90px;
+    border-color: rgb(120 113 108 / .38);
+    background: linear-gradient(180deg, #111612, #050706);
+    color: #b7ab7a;
+    box-shadow: inset 0 0 12px rgb(0 0 0 / .7);
+  }
+
+  .mobile-number-deck.is-history .mobile-number-card strong {
+    font-size: 23px;
+  }
+
+  .mobile-number-deck.is-history .mobile-number-card.was-played {
+    border-color: rgb(251 191 36 / .7);
+    background: linear-gradient(180deg, #292008, #090805);
+    color: #e7cf77;
   }
 
   .mobile-number-card.is-bomb {
@@ -2452,20 +2474,20 @@ h3 {
     display: grid;
     width: min(100%, 620px);
     grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
-    grid-template-rows: 112px 39px;
+    grid-template-rows: 172px 41px;
     gap: 5px 7px;
     margin: 0 auto;
   }
 
   .mobile-player-pod {
     position: relative;
-    display: grid;
+    display: flex;
     min-width: 0;
-    grid-template-columns: 76px minmax(0, 1fr);
-    grid-template-rows: 25px 1fr;
+    flex-direction: column;
     align-items: center;
-    gap: 3px 8px;
-    padding: 7px;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 7px;
     border: 1px solid rgb(251 191 36 / .48);
     border-radius: 18px;
     background: linear-gradient(145deg, rgb(15 38 26 / .96), rgb(3 11 7 / .98));
@@ -2500,14 +2522,13 @@ h3 {
   }
 
   .mobile-pod-avatar {
-    grid-row: 1 / 3;
     display: grid;
-    width: 76px;
-    height: 76px;
+    width: 108px;
+    height: 108px;
     place-items: center;
     overflow: hidden;
     border: 2px solid #fbbf24;
-    border-radius: 17px;
+    border-radius: 21px;
     background: rgb(6 20 13 / .95);
     color: #fbbf24;
   }
@@ -2519,9 +2540,11 @@ h3 {
   .mobile-player-pod strong {
     min-width: 0;
     overflow: hidden;
-    align-self: start;
+    max-width: 100%;
+    align-self: center;
     color: white;
     font: 900 13px/1.05 var(--font-fredoka);
+    text-align: center;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -2656,7 +2679,7 @@ h3 {
   }
 
   .mobile-arena-shell {
-    gap: 4px;
+    gap: 8px;
   }
 
   .mobile-arena-players > * {
@@ -2665,18 +2688,18 @@ h3 {
 
   .mobile-battle-strip {
     grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+    grid-template-rows: 154px 39px;
     column-gap: 4px;
   }
 
   .mobile-player-pod {
-    grid-template-columns: 62px minmax(0, 1fr);
-    padding: 6px;
+    padding: 7px 5px;
   }
 
   .mobile-pod-avatar {
-    width: 62px;
-    height: 62px;
-    border-radius: 14px;
+    width: 90px;
+    height: 90px;
+    border-radius: 18px;
   }
 
   .mobile-versus {
@@ -2686,7 +2709,7 @@ h3 {
   }
 
   .mobile-number-card {
-    height: 62px;
+    height: 104px;
   }
 
   .mobile-player-pod strong {
@@ -2705,17 +2728,41 @@ h3 {
     font-size: 16px;
   }
 
+  .mobile-arena-shell {
+    gap: 4px;
+  }
+
+  .mobile-number-deck-stack {
+    width: min(100%, 230px);
+    gap: 5px;
+  }
+
   .mobile-number-card {
-    height: 49px;
+    height: 56px;
+  }
+
+  .mobile-number-deck.is-history .mobile-number-card {
+    height: 34px;
   }
 
   .mobile-battle-strip {
-    grid-template-rows: 96px 35px;
+    grid-template-rows: 96px 31px;
+  }
+
+  .mobile-pod-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 13px;
+  }
+
+  .mobile-player-pod {
+    gap: 2px;
+    padding-block: 4px;
   }
 
   .mobile-skill-rail button,
   .mobile-skill-rail > div {
-    min-height: 33px;
+    min-height: 29px;
   }
 }
 

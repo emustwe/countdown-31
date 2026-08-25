@@ -20,6 +20,12 @@ test.describe("Dedicated mobile and tablet arena shell", () => {
     await expect(cardButtons).toHaveCount(6);
     await expect(page.locator('.mobile-number-deck.is-history button')).toHaveCount(3);
     await expect(page.locator('.mobile-number-deck.is-action button')).toHaveCount(3);
+    const actionCardBox = await page.locator('.mobile-number-deck.is-action button').first().boundingBox();
+    expect(actionCardBox!.height).toBeGreaterThan(actionCardBox!.width);
+    const historyOpacity = await page.locator('.mobile-number-deck.is-history').evaluate(
+      (element) => Number.parseFloat(getComputedStyle(element).opacity),
+    );
+    expect(historyOpacity).toBeLessThan(.8);
 
     // Players use compact game-style pods instead of vertically stretched cards.
     const joinPrompt = page.getByRole('button', { name: /tap to join/i });
@@ -27,6 +33,8 @@ test.describe("Dedicated mobile and tablet arena shell", () => {
 
     const opponentCard = page.locator('.mobile-player-pod.is-rival').getByText(/Daisy Cow|The Pasture Slayer|Clockwork Bull/);
     await expect(opponentCard.first()).toBeVisible();
+    const avatarBox = await page.locator('.mobile-player-pod.is-rival .mobile-pod-avatar').boundingBox();
+    expect(avatarBox!.width).toBeGreaterThanOrEqual(88);
 
     // The whole arena cluster should sit around the vertical center of its playable area.
     const shellBox = await page.locator('.mobile-arena-shell').boundingBox();
