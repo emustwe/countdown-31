@@ -89,6 +89,17 @@ export const TournamentCampaignManifestSchema = z.object({
   }).strict().optional(),
 }).strict();
 export type TournamentCampaignManifestInput = z.infer<typeof TournamentCampaignManifestSchema>;
+export const CampaignReviewSchema = z.object({
+  lane: z.enum(["BRAND", "SAFETY"]),
+  decision: z.enum(["COMMENT", "APPROVED", "CHANGES_REQUESTED"]),
+  comment: z.string().max(1000).default(""),
+}).strict();
+export const CampaignPublishSchema = z.object({
+  activateAt: z.string().datetime().nullable().optional(),
+  expireAt: z.string().datetime().nullable().optional(),
+}).strict();
+export type CampaignReviewInput = z.infer<typeof CampaignReviewSchema>;
+export type CampaignPublishInput = z.infer<typeof CampaignPublishSchema>;
 
 // ---- Sponsors ----
 export const SponsorCreateSchema = z.object({

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Check, Eye, Film, HeartHandshake, History, Image as ImageIcon, Monitor, Pause, Play, RotateCcw, Save, ShieldCheck, Smartphone, Sparkles, Upload } from "lucide-react";
+import { AlertTriangle, ArrowLeft, BadgeCheck, CalendarClock, Check, Eye, Film, HeartHandshake, History, Image as ImageIcon, MessageSquare, Monitor, Pause, Play, RotateCcw, Save, ShieldCheck, Smartphone, Sparkles, Undo2, Upload } from "lucide-react";
 import {
   useAdminTournamentCampaign,
   useCampaignActions,
@@ -14,6 +14,8 @@ import {
   type CampaignCause,
   type CampaignAsset,
   type CampaignAssetKind,
+  type CampaignReviewLane,
+  type CampaignVersion,
   type TournamentCampaignManifest,
 } from "../../../../../lib/hooks/useTournamentCampaign";
 import { soundManager } from "../../../../../lib/soundManager";
@@ -66,6 +68,23 @@ function AssetMedia({ asset, className = "" }: { asset: CampaignAsset; className
     : <img src={url} alt="" className={className}/>;
 }
 
+function readableDate(value: string | null | undefined) {
+  if (!value) return "Not set";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function toIso(value: string) {
+  return value ? new Date(value).toISOString() : null;
+}
+
+const VERSION_STYLE: Record<CampaignVersion["status"], string> = {
+  DRAFT: "border-slate-600 bg-slate-800/80 text-slate-200",
+  IN_REVIEW: "border-cyan-400/60 bg-cyan-400/10 text-cyan-200",
+  APPROVED: "border-lime-300/60 bg-lime-300/10 text-lime-200",
+  PUBLISHED: "border-emerald-400/60 bg-emerald-400/10 text-emerald-200",
+  ARCHIVED: "border-slate-700 bg-black/40 text-slate-500",
+};
+
 export default function TournamentCampaignStudioPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -75,10 +94,18 @@ export default function TournamentCampaignStudioPage() {
   const uploadAsset = useUploadTournamentCampaignAsset(id);
   const [manifest, setManifest] = useState<TournamentCampaignManifest>(DEMO);
   const [saved, setSaved] = useState(false);
-  const source = query.data?.campaign?.draft?.manifest ?? query.data?.campaign?.published?.manifest;
+  const [reviewLane, setReviewLane] = useState<CampaignReviewLane>("BRAND");
+  const [reviewComment, setReviewComment] = useState("");
+  const [activateAt, setActivateAt] = useState("");
+  const [expireAt, setExpireAt] = useState("");
+  const source = query.data?.campaign?.draft?.manifest ?? query.data?.campaign?.published?.manifest ?? query.data?.campaign?.versions[0]?.manifest;
   useEffect(() => { if (source) setManifest({ ...source, cause: source.cause ?? DEFAULT_CAUSE }); }, [source]);
 
   const status = useMemo(() => {
+    const scheduled = query.data?.campaign?.versions.find((version) => version.status === "PUBLISHED" && version.activateAt && new Date(version.activateAt) > new Date());
+    if (scheduled) return "Scheduled";
+    if (query.data?.campaign?.draft?.status === "IN_REVIEW") return "In review";
+    if (query.data?.campaign?.draft?.status === "APPROVED") return "Approved";
     if (!query.data?.campaign?.published) return "Draft only";
     return query.data.campaign.isPaused ? "Paused" : "Live";
   }, [query.data]);
@@ -102,8 +129,17 @@ export default function TournamentCampaignStudioPage() {
   }
 
   async function saveDraft() { soundManager.playClick(); await actions.save.mutateAsync(manifest); setSaved(true); setTimeout(() => setSaved(false), 1500); }
-  async function publish() { soundManager.playConfirm(); await actions.save.mutateAsync(manifest); await actions.publish.mutateAsync(); }
-  const busy = actions.save.isPending || actions.publish.isPending || actions.pause.isPending || actions.pauseCause.isPending || uploadAsset.isPending;
+  async function submitForReview() { soundManager.playConfirm(); await actions.save.mutateAsync(manifest); await actions.submitReview.mutateAsync(); }
+  async function review(decision: "COMMENT" | "APPROVED" | "CHANGES_REQUESTED") {
+    if (!workingVersion) return;
+    soundManager.playClick();
+    await actions.review.mutateAsync({ versionId: workingVersion.id, lane: reviewLane, decision, comment: reviewComment });
+    setReviewComment("");
+  }
+  async function publish() { soundManager.playConfirm(); await actions.publish.mutateAsync({ activateAt: toIso(activateAt), expireAt: toIso(expireAt) }); }
+  const busy = actions.save.isPending || actions.publish.isPending || actions.submitReview.isPending || actions.review.isPending || actions.rollback.isPending || actions.pause.isPending || actions.pauseCause.isPending || uploadAsset.isPending;
+  const campaign = query.data?.campaign;
+  const workingVersion = campaign?.draft ?? null;
   const publishedCauseEnabled = !!query.data?.campaign?.published?.manifest.cause?.enabled;
 
   return <div className="flex flex-col gap-5 pb-12">
@@ -131,6 +167,35 @@ export default function TournamentCampaignStudioPage() {
       </div>
       {(assetsQuery.data?.assets.some((asset) => asset.archivedAt) ?? false) && <details className="mt-4 rounded-2xl border border-slate-800 bg-black/35 p-3"><summary className="cursor-pointer text-[10px] font-black uppercase tracking-widest text-slate-400"><History className="mr-2 inline" size={13}/> Replacement history</summary><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{assetsQuery.data!.assets.filter((asset) => asset.archivedAt).map((asset) => <button key={asset.id} onClick={() => asset.kind === "LOGO" ? setManifest((old) => ({...old,logoTile:{...old.logoTile,mediaUrl:asset.url,mediaType:asset.mediaType}})) : asset.kind === "BACKGROUND_MOBILE" ? setTheme("mobileBackgroundImage",asset.url) : setTheme("backgroundImage",asset.url)} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-black/50 p-2 text-left hover:border-cyan-400/50"><div className="h-10 w-14 overflow-hidden rounded-lg bg-slate-900"><AssetMedia asset={asset} className="h-full w-full object-contain"/></div><span className="min-w-0"><strong className="block truncate text-[10px] text-slate-300">{asset.originalName}</strong><small className="text-[8px] text-slate-600">Use archived version</small></span></button>)}</div></details>}
       {uploadAsset.error && <div className="mt-3 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-xs font-bold text-rose-300">{uploadAsset.error.message}</div>}
+    </section>
+
+    <section className="rounded-3xl border border-violet-400/35 bg-gradient-to-br from-[#171126] via-[#090b10] to-[#050807] p-5 shadow-xl sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-violet-300"><ShieldCheck size={14}/> Release control</div><h2 className="mt-1 font-title text-xl font-black text-white">Review, schedule, go live</h2><p className="mb-0 mt-1 max-w-2xl text-xs text-slate-400">Every revision needs separate brand and safety approval. Published versions are locked and can always be restored.</p></div>
+        {workingVersion && <span className={`rounded-full border px-3 py-1 text-[10px] font-black ${VERSION_STYLE[workingVersion.status]}`}>REV {workingVersion.revision} · {workingVersion.status.replace("_", " ")}</span>}
+      </div>
+
+      <div className="mt-5 grid gap-2 sm:grid-cols-5">
+        {["Draft", "Brand check", "Safety check", "Approved", "Live"].map((step, index) => {
+          const brand = !!workingVersion?.reviews.some((review) => review.lane === "BRAND" && review.decision === "APPROVED");
+          const safety = !!workingVersion?.reviews.some((review) => review.lane === "SAFETY" && review.decision === "APPROVED");
+          const done = index === 0 ? !!workingVersion : index === 1 ? brand : index === 2 ? safety : index === 3 ? workingVersion?.status === "APPROVED" : !!campaign?.published;
+          return <div key={step} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black ${done ? "border-lime-300/50 bg-lime-300/10 text-lime-200" : "border-slate-800 bg-black/35 text-slate-600"}`}><span className={`grid h-5 w-5 place-items-center rounded-full ${done ? "bg-lime-300 text-slate-950" : "bg-slate-800"}`}>{done ? <Check size={12}/> : index + 1}</span>{step}</div>;
+        })}
+      </div>
+
+      {!workingVersion && <div className="mt-5 rounded-2xl border border-slate-700 bg-black/40 p-4 text-sm text-slate-400">The live revision is locked. Edit and save below whenever you want to start the next controlled revision.</div>}
+
+      {workingVersion?.status === "DRAFT" && <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-400/30 bg-cyan-400/5 p-4"><div><strong className="text-sm text-white">Ready for reviewers?</strong><p className="mb-0 mt-1 text-[10px] text-slate-400">Your current editor values will be saved before review begins.</p></div><button disabled={busy} onClick={submitForReview} className="flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-2.5 text-xs font-black text-slate-950"><ShieldCheck size={15}/> Submit for review</button></div>}
+
+      {workingVersion?.status === "IN_REVIEW" && <div className="mt-5 grid gap-4 lg:grid-cols-[.75fr_1.25fr]">
+        <div className="rounded-2xl border border-slate-700 bg-black/40 p-4"><div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reviewer lane</div><div className="mt-3 grid grid-cols-2 gap-2">{(["BRAND","SAFETY"] as CampaignReviewLane[]).map((lane)=><button key={lane} onClick={()=>setReviewLane(lane)} className={`rounded-xl border px-3 py-2.5 text-xs font-black ${reviewLane===lane?"border-violet-300 bg-violet-300/15 text-violet-200":"border-slate-700 text-slate-500"}`}>{lane === "BRAND" ? <Sparkles className="mr-1 inline" size={13}/> : <ShieldCheck className="mr-1 inline" size={13}/>} {lane}</button>)}</div><textarea value={reviewComment} maxLength={1000} onChange={(event)=>setReviewComment(event.target.value)} placeholder="Add a clear review note…" className="mt-3 min-h-24 w-full rounded-xl border border-slate-700 bg-black/70 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-300"/><div className="mt-2 grid gap-2 sm:grid-cols-3"><button disabled={busy||!reviewComment.trim()} onClick={()=>review("COMMENT")} className="rounded-xl border border-slate-600 px-3 py-2 text-[10px] font-black text-slate-300"><MessageSquare className="mr-1 inline" size={13}/> Comment</button><button disabled={busy||!reviewComment.trim()} onClick={()=>review("CHANGES_REQUESTED")} className="rounded-xl border border-rose-400/60 bg-rose-400/10 px-3 py-2 text-[10px] font-black text-rose-200"><AlertTriangle className="mr-1 inline" size={13}/> Request changes</button><button disabled={busy} onClick={()=>review("APPROVED")} className="rounded-xl bg-lime-300 px-3 py-2 text-[10px] font-black text-slate-950"><BadgeCheck className="mr-1 inline" size={13}/> Approve</button></div></div>
+        <ReviewTimeline version={workingVersion}/>
+      </div>}
+
+      {workingVersion?.status === "APPROVED" && <div className="mt-5 rounded-2xl border border-lime-300/35 bg-lime-300/5 p-4"><div className="flex items-center gap-2 text-sm font-black text-lime-200"><BadgeCheck size={17}/> Both review lanes approved</div><div className="mt-4 grid gap-3 md:grid-cols-2"><label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Activation · blank means now<input type="datetime-local" value={activateAt} onChange={(event)=>setActivateAt(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-700 bg-black/70 px-3 py-2.5 text-sm text-white"/></label><label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Expiration · optional<input type="datetime-local" value={expireAt} onChange={(event)=>setExpireAt(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-700 bg-black/70 px-3 py-2.5 text-sm text-white"/></label></div><button disabled={busy} onClick={publish} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-lime-300 to-emerald-400 px-5 py-3 text-xs font-black text-slate-950 shadow-[0_0_20px_rgba(190,242,100,.25)]"><CalendarClock size={16}/>{activateAt ? "Schedule approved revision" : "Publish approved revision now"}</button></div>}
+
+      {(campaign?.versions.length ?? 0) > 0 && <details className="mt-5 rounded-2xl border border-slate-700 bg-black/35 p-4" open><summary className="cursor-pointer text-[10px] font-black uppercase tracking-widest text-slate-300"><History className="mr-2 inline text-violet-300" size={14}/> Immutable revision history</summary><div className="mt-3 grid gap-2">{campaign!.versions.map((version)=><div key={version.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-black/50 p-3"><div className="flex items-center gap-3"><span className={`rounded-lg border px-2 py-1 text-[9px] font-black ${VERSION_STYLE[version.status]}`}>REV {version.revision}</span><span><strong className="block text-xs text-white">{version.status.replace("_", " ")}</strong><small className="text-[9px] text-slate-500">{version.activateAt ? `Activates ${readableDate(version.activateAt)}` : `Created ${readableDate(version.createdAt)}`}{version.expireAt ? ` · Ends ${readableDate(version.expireAt)}` : ""}</small></span></div>{version.approvedAt && ["PUBLISHED","ARCHIVED"].includes(version.status) && <button disabled={busy || (version.status === "PUBLISHED" && version.id === campaign?.published?.id)} onClick={()=>actions.rollback.mutate(version.id)} className="flex items-center gap-1.5 rounded-lg border border-violet-400/50 bg-violet-400/10 px-3 py-2 text-[10px] font-black text-violet-200 disabled:opacity-35"><Undo2 size={13}/> Restore as new revision</button>}</div>)}</div></details>}
     </section>
 
     <div className="grid gap-5 xl:grid-cols-[minmax(380px,.82fr)_minmax(520px,1.18fr)]">
@@ -171,7 +236,11 @@ export default function TournamentCampaignStudioPage() {
       </section>
     </div>
 
-    <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/50 bg-black/90 p-3 shadow-2xl backdrop-blur-xl"><button onClick={()=>setManifest({...DEMO,cause:DEFAULT_CAUSE})} className="flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-xs font-black text-slate-300"><RotateCcw size={15}/> Load demo</button><div className="flex flex-wrap gap-2">{publishedCauseEnabled&&<button disabled={busy} onClick={()=>actions.pauseCause.mutate(!query.data?.campaign?.isCausePaused)} className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-black ${query.data?.campaign?.isCausePaused?"border-emerald-400/60 bg-emerald-400/10 text-emerald-200":"border-rose-400/60 bg-rose-400/10 text-rose-200"}`}>{query.data?.campaign?.isCausePaused?<Play size={15}/>:<AlertTriangle size={15}/>} {query.data?.campaign?.isCausePaused?"Restore cause":"Hide cause now"}</button>}<button disabled={busy} onClick={saveDraft} className="flex items-center gap-2 rounded-xl border border-lime-300/50 bg-lime-300/10 px-4 py-2 text-xs font-black text-lime-200"><Save size={15}/>{saved ? "Saved" : "Save draft"}</button>{query.data?.campaign?.published && <button disabled={busy} onClick={()=>actions.pause.mutate(!query.data?.campaign?.isPaused)} className="flex items-center gap-2 rounded-xl border border-amber-400/50 bg-amber-400/10 px-4 py-2 text-xs font-black text-amber-200">{query.data.campaign.isPaused ? <Play size={15}/> : <Pause size={15}/>} {query.data.campaign.isPaused ? "Resume" : "Pause"}</button>}<button disabled={busy} onClick={publish} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-lime-300 to-emerald-400 px-5 py-2 text-xs font-black text-slate-950 shadow-[0_0_20px_rgba(190,242,100,.35)]"><Sparkles size={15}/> Publish to tournament</button></div></div>
-    {actions.save.error || actions.publish.error || actions.pause.error || actions.pauseCause.error ? <div className="text-sm font-bold text-rose-400">{String((actions.save.error ?? actions.publish.error ?? actions.pause.error ?? actions.pauseCause.error) instanceof Error ? (actions.save.error ?? actions.publish.error ?? actions.pause.error ?? actions.pauseCause.error)?.message : "Campaign action failed")}</div> : null}
+    <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/50 bg-black/90 p-3 shadow-2xl backdrop-blur-xl"><button onClick={()=>setManifest({...DEMO,cause:DEFAULT_CAUSE})} className="flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-xs font-black text-slate-300"><RotateCcw size={15}/> Load demo</button><div className="flex flex-wrap gap-2">{publishedCauseEnabled&&<button disabled={busy} onClick={()=>actions.pauseCause.mutate(!query.data?.campaign?.isCausePaused)} className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-black ${query.data?.campaign?.isCausePaused?"border-emerald-400/60 bg-emerald-400/10 text-emerald-200":"border-rose-400/60 bg-rose-400/10 text-rose-200"}`}>{query.data?.campaign?.isCausePaused?<Play size={15}/>:<AlertTriangle size={15}/>} {query.data?.campaign?.isCausePaused?"Restore cause":"Hide cause now"}</button>}<button disabled={busy} onClick={saveDraft} className="flex items-center gap-2 rounded-xl border border-lime-300/50 bg-lime-300/10 px-4 py-2 text-xs font-black text-lime-200"><Save size={15}/>{saved ? "Saved" : workingVersion && workingVersion.status !== "DRAFT" ? "Save as new revision" : "Save draft"}</button>{query.data?.campaign?.published && <button disabled={busy} onClick={()=>actions.pause.mutate(!query.data?.campaign?.isPaused)} className="flex items-center gap-2 rounded-xl border border-amber-400/50 bg-amber-400/10 px-4 py-2 text-xs font-black text-amber-200">{query.data.campaign.isPaused ? <Play size={15}/> : <Pause size={15}/>} {query.data.campaign.isPaused ? "Resume" : "Pause"}</button>}</div></div>
+    {actions.save.error || actions.publish.error || actions.submitReview.error || actions.review.error || actions.rollback.error || actions.pause.error || actions.pauseCause.error ? <div className="text-sm font-bold text-rose-400">{String((actions.save.error ?? actions.publish.error ?? actions.submitReview.error ?? actions.review.error ?? actions.rollback.error ?? actions.pause.error ?? actions.pauseCause.error) instanceof Error ? (actions.save.error ?? actions.publish.error ?? actions.submitReview.error ?? actions.review.error ?? actions.rollback.error ?? actions.pause.error ?? actions.pauseCause.error)?.message : "Campaign action failed")}</div> : null}
   </div>;
+}
+
+function ReviewTimeline({ version }: { version: CampaignVersion }) {
+  return <div className="rounded-2xl border border-slate-700 bg-black/40 p-4"><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400"><MessageSquare size={13}/> Review history</div>{version.reviews.length ? <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">{version.reviews.map((review)=><div key={review.id} className="rounded-xl border border-slate-800 bg-black/50 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[9px] font-black text-violet-300">{review.lane} · {review.decision.replace("_", " ")}</span><span className="text-[8px] text-slate-600">{readableDate(review.createdAt)}</span></div>{review.comment&&<p className="mb-0 mt-1 text-xs text-slate-300">{review.comment}</p>}</div>)}</div> : <p className="mb-0 mt-3 text-xs text-slate-500">No decisions yet. Both lanes must approve this exact revision.</p>}</div>;
 }

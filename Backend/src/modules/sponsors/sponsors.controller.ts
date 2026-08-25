@@ -33,6 +33,10 @@ import {
   CosmeticsSchema,
   TournamentCampaignManifestSchema,
   type TournamentCampaignManifestInput,
+  CampaignReviewSchema,
+  CampaignPublishSchema,
+  type CampaignReviewInput,
+  type CampaignPublishInput,
 } from "./dto/write.dto";
 import { acceptsCampaignFile, detectCampaignFile, type CampaignAssetKind } from "./campaign-assets";
 
@@ -112,8 +116,33 @@ export class AdminPromoController {
     return this.sponsors.saveCampaignDraft(id, body, user.sub);
   }
   @Post(":id/campaign/publish")
-  publishCampaign(@CurrentUser() user: AccessTokenPayload, @Param("id") id: string) {
-    return this.sponsors.publishCampaign(id, user.sub);
+  publishCampaign(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(CampaignPublishSchema)) body: CampaignPublishInput,
+  ) {
+    return this.sponsors.publishCampaign(id, user.sub, body ?? {});
+  }
+  @Post(":id/campaign/submit-review")
+  submitCampaignReview(@CurrentUser() user: AccessTokenPayload, @Param("id") id: string) {
+    return this.sponsors.submitCampaignForReview(id, user.sub);
+  }
+  @Post(":id/campaign/versions/:versionId/reviews")
+  reviewCampaignVersion(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id") id: string,
+    @Param("versionId") versionId: string,
+    @Body(new ZodValidationPipe(CampaignReviewSchema)) body: CampaignReviewInput,
+  ) {
+    return this.sponsors.reviewCampaignVersion(id, versionId, body, user.sub);
+  }
+  @Post(":id/campaign/versions/:versionId/rollback")
+  rollbackCampaignVersion(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id") id: string,
+    @Param("versionId") versionId: string,
+  ) {
+    return this.sponsors.rollbackCampaign(id, versionId, user.sub);
   }
   @Post(":id/campaign/pause")
   pauseCampaign(@Param("id") id: string) {

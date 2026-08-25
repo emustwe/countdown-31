@@ -206,9 +206,29 @@ model TournamentCampaignVersion {
   createdBy   String
   createdAt   DateTime           @default(now())
   publishedAt DateTime?
+  approvedBy  String?
+  approvedAt  DateTime?
+  activateAt  DateTime?
+  expireAt    DateTime?
+  reviews     TournamentCampaignReview[]
 
   @@unique([campaignId, revision])
   @@index([campaignId, status])
+}
+
+// Immutable review events. BRAND and SAFETY are independent approval lanes; COMMENT entries keep
+// discussion attached to the exact revision that was reviewed.
+model TournamentCampaignReview {
+  id         String                    @id @default(uuid())
+  versionId  String
+  version    TournamentCampaignVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  reviewerId String
+  lane       String
+  decision   String
+  comment    String                    @default("")
+  createdAt  DateTime                  @default(now())
+
+  @@index([versionId, createdAt])
 }
 
 // Uploaded sponsor media is immutable. Uploading a replacement archives the previous active item

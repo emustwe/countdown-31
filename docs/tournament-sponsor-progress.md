@@ -2,11 +2,11 @@
 
 **Last updated:** August 25, 2026  
 **Total chunks:** 6  
-**Completed:** 3
+**Completed:** 4
 
-**Remaining:** 3
+**Remaining:** 2
 
-**Overall progress:** 50%
+**Overall progress:** 67%
 
 ## Completed
 
@@ -42,15 +42,16 @@
 - Instant admin hide/restore switch without republishing or disabling sponsor presentation.
 - No donation collection or custody inside Countdown 31.
 
+### ✅ Chunk 4 — Review, approval, scheduling, and rollback
+
+- Exact-revision workflow with draft, in-review, approved, published, and archived states.
+- Independent brand and safety review lanes with comments and immutable decisions.
+- Mandatory dual approval gate before any immediate or scheduled publication.
+- Scheduled activation and optional expiration without displacing the current live revision early.
+- Locked published revisions, complete revision history, and restore-as-new-revision rollback.
+- Persistent audit events for drafting, review, publishing, emergency controls, and rollback.
+
 ## Remaining
-
-### ⏳ Chunk 4 — Review, approval, scheduling, and rollback
-
-- Reviewer roles and campaign comments.
-- Approval gates before publication.
-- Scheduled activation and expiration.
-- Locked published revisions and one-click rollback.
-- Complete operational audit history.
 
 ### ⏳ Chunk 5 — Sponsor analytics and reports
 
@@ -68,7 +69,7 @@
 
 ## Recommended next step
 
-Implement **Chunk 4 — Review, approval, scheduling, and rollback** as the next independently testable release.
+Implement **Chunk 5 — Sponsor analytics and reports** as the next independently testable release.
 
 ## Delivery sequence
 

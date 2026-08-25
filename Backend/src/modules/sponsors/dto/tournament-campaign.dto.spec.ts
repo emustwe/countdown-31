@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TournamentCampaignManifestSchema } from "./write.dto";
+import { CampaignPublishSchema, CampaignReviewSchema, TournamentCampaignManifestSchema } from "./write.dto";
 
 const validManifest = {
   identity: { campaignTitle: "Future Champions Cup", sponsorName: "Nike Demo", disclosureLabel: "Sponsored by" },
@@ -63,5 +63,18 @@ describe("TournamentCampaignManifestSchema", () => {
         ctaUrl: "http://example.org/not-secure",
       },
     }).success).toBe(false);
+  });
+});
+
+describe("campaign release governance schemas", () => {
+  it("accepts bounded reviewer decisions and rejects unknown lanes", () => {
+    expect(CampaignReviewSchema.safeParse({ lane: "BRAND", decision: "APPROVED", comment: "Identity matches the brief." }).success).toBe(true);
+    expect(CampaignReviewSchema.safeParse({ lane: "LEGAL", decision: "APPROVED", comment: "" }).success).toBe(false);
+  });
+
+  it("accepts an empty immediate publish window and ISO schedules", () => {
+    expect(CampaignPublishSchema.safeParse({}).success).toBe(true);
+    expect(CampaignPublishSchema.safeParse({ activateAt: "2026-08-26T12:00:00.000Z", expireAt: null }).success).toBe(true);
+    expect(CampaignPublishSchema.safeParse({ activateAt: "tomorrow" }).success).toBe(false);
   });
 });

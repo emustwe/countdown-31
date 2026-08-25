@@ -17,6 +17,7 @@ import { encryptSecret, decryptSecret } from "../../common/crypto/secret-box";
 import type { Prisma, SponsorTournament } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { TournamentCampaignManifestInput } from "./dto/write.dto";
+import type { CampaignPublishInput, CampaignReviewInput } from "./dto/write.dto";
 import type { CampaignAssetKind } from "./campaign-assets";
 
 export interface SponsorTokenPayload {
@@ -540,10 +541,12 @@ export class SponsorsService {
     if (!tournament) throw new NotFoundException("Tournament not found");
     const campaign = await this.prisma.tournamentCampaign.findUnique({
       where: { tournamentId },
-      include: { versions: { orderBy: { revision: "desc" } } },
+      include: { versions: { orderBy: { revision: "desc" }, include: { reviews: { orderBy: { createdAt: "asc" } } } } },
     });
-    const draft = campaign?.versions.find((version) => version.status === "DRAFT") ?? null;
-    const published = campaign?.versions.find((version) => version.status === "PUBLISHED") ?? null;
+    const draft = campaign?.versions.find((version) => ["DRAFT", "IN_REVIEW", "APPROVED"].includes(version.status)) ?? null;
+    const now = new Date();
+    const published = campaign?.versions.find((version) => version.status === "PUBLISHED" &&
+      (!version.activateAt || version.activateAt <= now) && (!version.expireAt || version.expireAt > now)) ?? null;
     return {
       tournament,
       campaign: campaign ? {
@@ -552,6 +555,7 @@ export class SponsorsService {
         isCausePaused: campaign.isCausePaused,
         draft: draft ? this.serializeCampaignVersion(draft) : null,
         published: published ? this.serializeCampaignVersion(published) : null,
+        versions: campaign.versions.map((version) => this.serializeCampaignVersion(version)),
       } : null,
     };
   }
@@ -564,9 +568,9 @@ export class SponsorsService {
         where: { tournamentId },
         update: {},
         create: { tournamentId },
-        include: { versions: { orderBy: { revision: "desc" } } },
+        include: { versions: { orderBy: { revision: "desc" }, include: { reviews: true } } },
       });
-      const currentDraft = campaign.versions.find((version) => version.status === "DRAFT");
+      const currentDraft = campaign.versions.find((version) => version.status === "DRAFT" && version.reviews.length === 0);
       const version = currentDraft
         ? await tx.tournamentCampaignVersion.update({
             where: { id: currentDraft.id },
@@ -586,26 +590,118 @@ export class SponsorsService {
     return this.getCampaignForAdmin(tournamentId);
   }
 
-  async publishCampaign(tournamentId: string, actorId: string) {
+  async submitCampaignForReview(tournamentId: string, actorId: string) {
+    const campaign = await this.prisma.tournamentCampaign.findUnique({
+      where: { tournamentId },
+      include: { versions: { orderBy: { revision: "desc" } } },
+    });
+    if (!campaign) throw new BadRequestException("Save a campaign draft before review");
+    const draft = campaign.versions.find((version) => version.status === "DRAFT");
+    if (!draft) throw new BadRequestException("There is no draft ready for review");
+    const priorDecision = await this.prisma.tournamentCampaignReview.findFirst({ where: { versionId: draft.id } });
+    if (priorDecision) throw new BadRequestException("Save the requested changes as a new revision before resubmitting");
+    await this.prisma.tournamentCampaignVersion.update({ where: { id: draft.id }, data: { status: "IN_REVIEW" } });
+    this.audit.record("TOURNAMENT_CAMPAIGN_SUBMIT_REVIEW", { actor: actorId, detail: { tournamentId, revision: draft.revision } });
+    return this.getCampaignForAdmin(tournamentId);
+  }
+
+  async reviewCampaignVersion(tournamentId: string, versionId: string, input: CampaignReviewInput, actorId: string) {
+    const version = await this.prisma.tournamentCampaignVersion.findFirst({
+      where: { id: versionId, campaign: { tournamentId } },
+      include: { reviews: { orderBy: { createdAt: "desc" } } },
+    });
+    if (!version) throw new NotFoundException("Campaign revision not found");
+    if (version.status !== "IN_REVIEW") throw new BadRequestException("Only an in-review revision can receive a decision");
+    if (input.decision === "CHANGES_REQUESTED" && !input.comment.trim()) throw new BadRequestException("Explain what needs to change");
     await this.prisma.$transaction(async (tx) => {
+      await tx.tournamentCampaignReview.create({
+        data: { versionId, reviewerId: actorId, lane: input.lane, decision: input.decision, comment: input.comment.trim() },
+      });
+      if (input.decision === "CHANGES_REQUESTED") {
+        await tx.tournamentCampaignVersion.update({ where: { id: versionId }, data: { status: "DRAFT", approvedAt: null, approvedBy: null } });
+        return;
+      }
+      if (input.decision === "APPROVED") {
+        const approvals = await tx.tournamentCampaignReview.findMany({
+          where: { versionId, decision: "APPROVED" },
+          select: { lane: true },
+        });
+        const lanes = new Set([...approvals.map((review) => review.lane), input.lane]);
+        if (lanes.has("BRAND") && lanes.has("SAFETY")) {
+          await tx.tournamentCampaignVersion.update({
+            where: { id: versionId },
+            data: { status: "APPROVED", approvedAt: new Date(), approvedBy: actorId },
+          });
+        }
+      }
+    });
+    this.audit.record("TOURNAMENT_CAMPAIGN_REVIEW", { actor: actorId, detail: { tournamentId, versionId, lane: input.lane, decision: input.decision } });
+    return this.getCampaignForAdmin(tournamentId);
+  }
+
+  async publishCampaign(tournamentId: string, actorId: string, input: CampaignPublishInput) {
+    const now = new Date();
+    const activateAt = input.activateAt ? new Date(input.activateAt) : now;
+    const expireAt = input.expireAt ? new Date(input.expireAt) : null;
+    if (expireAt && expireAt <= activateAt) throw new BadRequestException("Expiration must be after activation");
+    const publishedRevision = await this.prisma.$transaction(async (tx) => {
       const campaign = await tx.tournamentCampaign.findUnique({
         where: { tournamentId },
         include: { versions: { orderBy: { revision: "desc" } } },
       });
       if (!campaign) throw new BadRequestException("Save a campaign draft before publishing");
-      const draft = campaign.versions.find((version) => version.status === "DRAFT");
-      if (!draft) throw new BadRequestException("There is no draft to publish");
-      await tx.tournamentCampaignVersion.updateMany({
-        where: { campaignId: campaign.id, status: "PUBLISHED" },
-        data: { status: "ARCHIVED" },
-      });
+      const approved = campaign.versions.find((version) => version.status === "APPROVED");
+      if (!approved) throw new BadRequestException("Brand and safety approval are required before publishing");
+      if (activateAt > now) {
+        await tx.tournamentCampaignVersion.updateMany({ where: { campaignId: campaign.id, status: "PUBLISHED", activateAt: { gt: now } }, data: { status: "ARCHIVED" } });
+        await tx.tournamentCampaignVersion.updateMany({
+          where: { campaignId: campaign.id, status: "PUBLISHED", OR: [{ expireAt: null }, { expireAt: { gt: activateAt } }] },
+          data: { expireAt: activateAt },
+        });
+      } else {
+        await tx.tournamentCampaignVersion.updateMany({ where: { campaignId: campaign.id, status: "PUBLISHED" }, data: { status: "ARCHIVED" } });
+      }
       await tx.tournamentCampaignVersion.update({
-        where: { id: draft.id },
-        data: { status: "PUBLISHED", publishedAt: new Date(), createdBy: actorId },
+        where: { id: approved.id },
+        data: { status: "PUBLISHED", publishedAt: now, activateAt, expireAt, createdBy: actorId },
       });
       await tx.tournamentCampaign.update({ where: { id: campaign.id }, data: { isPaused: false, isCausePaused: false } });
+      return approved.revision;
     });
-    this.audit.record("TOURNAMENT_CAMPAIGN_PUBLISH", { actor: actorId, detail: { tournamentId } });
+    this.audit.record("TOURNAMENT_CAMPAIGN_PUBLISH", { actor: actorId, detail: { tournamentId, revision: publishedRevision, activateAt: activateAt.toISOString(), expireAt: expireAt?.toISOString() ?? null } });
+    return this.getCampaignForAdmin(tournamentId);
+  }
+
+  async rollbackCampaign(tournamentId: string, versionId: string, actorId: string) {
+    const rollbackRevision = await this.prisma.$transaction(async (tx) => {
+      const campaign = await tx.tournamentCampaign.findUnique({
+        where: { tournamentId },
+        include: { versions: { orderBy: { revision: "desc" } } },
+      });
+      if (!campaign) throw new NotFoundException("Campaign not found");
+      const source = campaign.versions.find((version) => version.id === versionId);
+      if (!source || !["PUBLISHED", "ARCHIVED"].includes(source.status) || !source.approvedAt) {
+        throw new BadRequestException("Only a previously approved published revision can be restored");
+      }
+      const now = new Date();
+      await tx.tournamentCampaignVersion.updateMany({ where: { campaignId: campaign.id, status: "PUBLISHED" }, data: { status: "ARCHIVED" } });
+      const restored = await tx.tournamentCampaignVersion.create({
+        data: {
+          campaignId: campaign.id,
+          revision: (campaign.versions[0]?.revision ?? 0) + 1,
+          status: "PUBLISHED",
+          manifest: source.manifest as Prisma.InputJsonValue,
+          createdBy: actorId,
+          approvedBy: actorId,
+          approvedAt: now,
+          publishedAt: now,
+          activateAt: now,
+        },
+      });
+      await tx.tournamentCampaign.update({ where: { id: campaign.id }, data: { isPaused: false } });
+      return restored.revision;
+    });
+    this.audit.record("TOURNAMENT_CAMPAIGN_ROLLBACK", { actor: actorId, detail: { tournamentId, sourceVersionId: versionId, revision: rollbackRevision } });
     return this.getCampaignForAdmin(tournamentId);
   }
 
@@ -686,10 +782,12 @@ export class SponsorsService {
       where: { tournamentId },
       include: {
         tournament: { select: { id: true, title: true, status: true } },
-        versions: { where: { status: "PUBLISHED" }, orderBy: { revision: "desc" }, take: 1 },
+        versions: { where: { status: "PUBLISHED" }, orderBy: { revision: "desc" } },
       },
     });
-    const version = campaign?.versions[0];
+    const now = new Date();
+    const version = campaign?.versions.find((candidate) =>
+      (!candidate.activateAt || candidate.activateAt <= now) && (!candidate.expireAt || candidate.expireAt > now));
     if (!campaign || campaign.isPaused || campaign.tournament.status !== "APPROVED" || !version) {
       return { campaign: null };
     }
@@ -700,11 +798,13 @@ export class SponsorsService {
         revision: version.revision,
         manifest: version.manifest,
         isCausePaused: campaign.isCausePaused,
+        activateAt: version.activateAt,
+        expireAt: version.expireAt,
       },
     };
   }
 
-  private serializeCampaignVersion(version: { id: string; revision: number; status: string; manifest: Prisma.JsonValue; createdAt: Date; publishedAt: Date | null }) {
+  private serializeCampaignVersion(version: { id: string; revision: number; status: string; manifest: Prisma.JsonValue; createdAt: Date; publishedAt: Date | null; approvedBy: string | null; approvedAt: Date | null; activateAt: Date | null; expireAt: Date | null; reviews?: Array<{ id: string; reviewerId: string; lane: string; decision: string; comment: string; createdAt: Date }> }) {
     return {
       id: version.id,
       revision: version.revision,
@@ -712,6 +812,18 @@ export class SponsorsService {
       manifest: version.manifest,
       createdAt: version.createdAt,
       publishedAt: version.publishedAt,
+      approvedBy: version.approvedBy,
+      approvedAt: version.approvedAt,
+      activateAt: version.activateAt,
+      expireAt: version.expireAt,
+      reviews: (version.reviews ?? []).map((review) => ({
+        id: review.id,
+        reviewerId: review.reviewerId,
+        lane: review.lane,
+        decision: review.decision,
+        comment: review.comment,
+        createdAt: review.createdAt,
+      })),
     };
   }
 

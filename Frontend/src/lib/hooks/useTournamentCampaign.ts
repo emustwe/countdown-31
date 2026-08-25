@@ -76,18 +76,36 @@ export function resolveCampaignAssetUrl(url: string | undefined): string | undef
   return url.startsWith("/uploads/") ? `${apiBaseUrl()}${url}` : url;
 }
 
-interface CampaignVersion {
+export type CampaignVersionStatus = "DRAFT" | "IN_REVIEW" | "APPROVED" | "PUBLISHED" | "ARCHIVED";
+export type CampaignReviewLane = "BRAND" | "SAFETY";
+export type CampaignReviewDecision = "COMMENT" | "APPROVED" | "CHANGES_REQUESTED";
+
+export interface CampaignReview {
+  id: string;
+  reviewerId: string;
+  lane: CampaignReviewLane;
+  decision: CampaignReviewDecision;
+  comment: string;
+  createdAt: string;
+}
+
+export interface CampaignVersion {
   id: string;
   revision: number;
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  status: CampaignVersionStatus;
   manifest: TournamentCampaignManifest;
   createdAt: string;
   publishedAt: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  activateAt: string | null;
+  expireAt: string | null;
+  reviews: CampaignReview[];
 }
 
 export interface AdminCampaignResponse {
   tournament: { id: string; title: string; sponsor: { id: string; name: string } | null };
-  campaign: { id: string; isPaused: boolean; isCausePaused: boolean; draft: CampaignVersion | null; published: CampaignVersion | null } | null;
+  campaign: { id: string; isPaused: boolean; isCausePaused: boolean; draft: CampaignVersion | null; published: CampaignVersion | null; versions: CampaignVersion[] } | null;
 }
 
 export interface ActiveCampaignResponse {
@@ -97,6 +115,8 @@ export interface ActiveCampaignResponse {
     revision: number;
     manifest: TournamentCampaignManifest;
     isCausePaused: boolean;
+    activateAt: string | null;
+    expireAt: string | null;
   };
 }
 
@@ -162,7 +182,20 @@ export function useCampaignActions(tournamentId: string) {
       onSuccess: refresh,
     }),
     publish: useMutation({
-      mutationFn: () => apiRequest<AdminCampaignResponse>(`/admin/promo-tournaments/${tournamentId}/campaign/publish`, { method: "POST" }),
+      mutationFn: (schedule: { activateAt?: string | null; expireAt?: string | null } = {}) => apiRequest<AdminCampaignResponse>(`/admin/promo-tournaments/${tournamentId}/campaign/publish`, { method: "POST", body: schedule }),
+      onSuccess: refresh,
+    }),
+    submitReview: useMutation({
+      mutationFn: () => apiRequest<AdminCampaignResponse>(`/admin/promo-tournaments/${tournamentId}/campaign/submit-review`, { method: "POST" }),
+      onSuccess: refresh,
+    }),
+    review: useMutation({
+      mutationFn: ({ versionId, lane, decision, comment = "" }: { versionId: string; lane: CampaignReviewLane; decision: CampaignReviewDecision; comment?: string }) =>
+        apiRequest<AdminCampaignResponse>(`/admin/promo-tournaments/${tournamentId}/campaign/versions/${versionId}/reviews`, { method: "POST", body: { lane, decision, comment } }),
+      onSuccess: refresh,
+    }),
+    rollback: useMutation({
+      mutationFn: (versionId: string) => apiRequest<AdminCampaignResponse>(`/admin/promo-tournaments/${tournamentId}/campaign/versions/${versionId}/rollback`, { method: "POST" }),
       onSuccess: refresh,
     }),
     pause: useMutation({

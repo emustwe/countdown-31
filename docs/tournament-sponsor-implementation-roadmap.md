@@ -29,10 +29,10 @@ This roadmap turns the sponsor-platform design into small vertical slices. Every
 
 **Human test:** enable and disable a cause card during a staged tournament without affecting gameplay.
 
-## Chunk 4 — Review, approval, scheduling, and rollback
+## Chunk 4 — Review, approval, scheduling, and rollback ✅ Implemented
 
-- Add explicit reviewer roles, comments, approval gates, scheduled activation, expiry, and one-click rollback.
-- Lock published revisions and preserve a complete audit trail.
+- Add explicit brand and safety review lanes, comments, approval gates, scheduled activation, expiry, and one-click rollback.
+- Lock published revisions, restore old releases as new revisions, and preserve a complete audit trail.
 
 **Human test:** move a campaign from draft to approval to scheduled live, then roll back safely.
 
