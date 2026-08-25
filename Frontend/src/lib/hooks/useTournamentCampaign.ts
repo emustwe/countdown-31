@@ -208,3 +208,106 @@ export function useCampaignActions(tournamentId: string) {
     }),
   };
 }
+
+export interface CampaignReportResponse {
+  tournament: { id: string; title: string; sponsor: { id: string; name: string } | null };
+  campaign: { id: string; isPaused: boolean; isCausePaused: boolean } | null;
+  liveRevision: number | null;
+  summary: {
+    eligibleSessions: number;
+    renderedImpressions: number;
+    totalViewableSeconds: number;
+    averageViewableSeconds: number;
+    renderSuccessRate: number;
+    causeExpansions: number;
+    ctaClicks: number;
+    completedLoops: number;
+    clickThroughRate: number;
+    pacingStatus: "ON_TRACK" | "PAUSED" | "DRAFT";
+  };
+  placementBreakdown: Array<{
+    placement: string;
+    impressions: number;
+    viewableSeconds: number;
+    interactions: number;
+    sharePct: number;
+  }>;
+  deviceBreakdown: Array<{
+    device: string;
+    impressions: number;
+    viewableSeconds: number;
+    sharePct: number;
+  }>;
+  anomalies: Array<{
+    type: "HEALTHY" | "WARNING" | "INFO";
+    message: string;
+  }>;
+  proof: {
+    campaignTitle: string;
+    sponsorName: string;
+    disclosureLabel: string;
+    publishedAt: string | null;
+    activateAt: string | null;
+    expireAt: string | null;
+    hasCause: boolean;
+    beneficiaryName: string | null;
+    ctaUrl: string | null;
+  };
+}
+
+export function useTournamentCampaignReport(tournamentId: string, role: "admin" | "sponsor" = "admin") {
+  const path = role === "sponsor"
+    ? `/sponsor/tournaments/${tournamentId}/campaign/report`
+    : `/admin/promo-tournaments/${tournamentId}/campaign/report`;
+
+  return useQuery({
+    queryKey: [role, "tournament-campaign-report", tournamentId],
+    queryFn: () => apiRequest<CampaignReportResponse>(path),
+    enabled: !!tournamentId,
+    refetchInterval: 15_000,
+  });
+}
+
+export async function downloadCampaignReportCsv(tournamentId: string, role: "admin" | "sponsor" = "admin") {
+  const path = role === "sponsor"
+    ? `/sponsor/tournaments/${tournamentId}/campaign/report/export`
+    : `/admin/promo-tournaments/${tournamentId}/campaign/report/export`;
+
+  const { csv, filename } = await apiRequest<{ csv: string; filename: string }>(path);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", filename || `campaign-report-${tournamentId}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export interface CampaignEventItem {
+  placement: "logoTile" | "arenaBackground" | "featurePanel" | "causeCard" | "lobbyHero" | "resultSignature";
+  eventType: "eligible_load" | "rendered_impression" | "viewable_seconds" | "completed_loop" | "cause_expand" | "cta_click";
+  count?: number;
+  seconds?: number;
+}
+
+export interface CampaignEventBatchInput {
+  revision?: number;
+  deviceClass?: "desktop" | "tablet" | "mobile";
+  events: CampaignEventItem[];
+}
+
+export async function sendCampaignEventsBatch(tournamentId: string, batch: CampaignEventBatchInput) {
+  try {
+    return await apiRequest(`/promo-tournaments/${tournamentId}/campaign/events`, {
+      method: "POST",
+      body: batch,
+      auth: false,
+    });
+  } catch (err) {
+    // Telemetry is best-effort and non-blocking
+    console.debug("[CampaignTelemetry] batch send failed:", err);
+  }
+}
+

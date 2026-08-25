@@ -154,3 +154,43 @@ const CardSchema = z
 export const CosmeticsSchema = z
   .object({ card: CardSchema.optional(), avatar: AvatarSchema.optional(), board: z.object({ skin: cosStr }).strict().optional() })
   .strict();
+
+export const CampaignPlacementEnum = z.enum([
+  "logoTile",
+  "arenaBackground",
+  "featurePanel",
+  "causeCard",
+  "lobbyHero",
+  "resultSignature",
+]);
+
+export const CampaignEventTypeEnum = z.enum([
+  "eligible_load",
+  "rendered_impression",
+  "viewable_seconds",
+  "completed_loop",
+  "cause_expand",
+  "cta_click",
+]);
+
+export const CampaignDeviceClassEnum = z.enum(["desktop", "tablet", "mobile"]);
+
+export const CampaignEventItemSchema = z
+  .object({
+    placement: CampaignPlacementEnum,
+    eventType: CampaignEventTypeEnum,
+    count: z.number().int().min(1).max(500).default(1),
+    seconds: z.number().min(0).max(600).default(0),
+  })
+  .strict();
+
+export const CampaignEventBatchSchema = z
+  .object({
+    sessionId: z.string().min(6).max(128).optional(),
+    revision: z.number().int().positive().optional(),
+    deviceClass: CampaignDeviceClassEnum.default("desktop"),
+    events: z.array(CampaignEventItemSchema).min(1).max(50),
+  })
+  .strict();
+
+export type CampaignEventBatchInput = z.infer<typeof CampaignEventBatchSchema>;

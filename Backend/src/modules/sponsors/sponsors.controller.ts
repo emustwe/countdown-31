@@ -37,6 +37,8 @@ import {
   CampaignPublishSchema,
   type CampaignReviewInput,
   type CampaignPublishInput,
+  CampaignEventBatchSchema,
+  type CampaignEventBatchInput,
 } from "./dto/write.dto";
 import { acceptsCampaignFile, detectCampaignFile, type CampaignAssetKind } from "./campaign-assets";
 
@@ -160,6 +162,14 @@ export class AdminPromoController {
   resumeCampaignCause(@Param("id") id: string) {
     return this.sponsors.setCampaignCausePaused(id, false);
   }
+  @Get(":id/campaign/report")
+  campaignReport(@Param("id") id: string) {
+    return this.sponsors.getCampaignReport(id);
+  }
+  @Get(":id/campaign/report/export")
+  campaignReportExport(@Param("id") id: string) {
+    return this.sponsors.exportCampaignReportCsv(id);
+  }
   @Get(":id/campaign/assets")
   campaignAssets(@Param("id") id: string) {
     return this.sponsors.listCampaignAssets(id);
@@ -262,6 +272,16 @@ export class SponsorController {
   inquiries(@Req() req: Request & { sponsor: { id: string } }) {
     return this.sponsors.listInquiriesForSponsor(req.sponsor.id);
   }
+  @UseGuards(SponsorAuthGuard)
+  @Get("tournaments/:id/campaign/report")
+  campaignReport(@Req() req: Request & { sponsor: { id: string } }, @Param("id") id: string) {
+    return this.sponsors.getCampaignReport(id, req.sponsor.id);
+  }
+  @UseGuards(SponsorAuthGuard)
+  @Get("tournaments/:id/campaign/report/export")
+  campaignReportExport(@Req() req: Request & { sponsor: { id: string } }, @Param("id") id: string) {
+    return this.sponsors.exportCampaignReportCsv(id, req.sponsor.id);
+  }
 }
 
 // Public + user-facing promo tournaments.
@@ -291,6 +311,13 @@ export class PublicPromoController {
   @Get(":id/campaign/active")
   activeCampaign(@Param("id") id: string) {
     return this.sponsors.getActiveCampaign(id);
+  }
+  @Post(":id/campaign/events")
+  recordEvents(
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(CampaignEventBatchSchema)) body: CampaignEventBatchInput,
+  ) {
+    return this.sponsors.recordCampaignEvents(id, body, false);
   }
   @UseGuards(JwtAuthGuard)
   @Get(":id/me")

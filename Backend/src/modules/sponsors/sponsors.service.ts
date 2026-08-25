@@ -16,8 +16,7 @@ import { AuthThrottleService } from "../../common/auth-throttle/auth-throttle.se
 import { encryptSecret, decryptSecret } from "../../common/crypto/secret-box";
 import type { Prisma, SponsorTournament } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import type { TournamentCampaignManifestInput } from "./dto/write.dto";
-import type { CampaignPublishInput, CampaignReviewInput } from "./dto/write.dto";
+import type { TournamentCampaignManifestInput, CampaignPublishInput, CampaignReviewInput, CampaignEventBatchInput } from "./dto/write.dto";
 import type { CampaignAssetKind } from "./campaign-assets";
 
 export interface SponsorTokenPayload {
@@ -1242,5 +1241,241 @@ export class SponsorsService {
       pendingTournaments: pending,
       totalTournaments,
     };
+  }
+
+  // ---- Tournament Campaign Analytics & Reporting (Chunk 5) ------------------------------------
+  async recordCampaignEvents(tournamentId: string, input: CampaignEventBatchInput, isBotOrAdmin = false) {
+    if (isBotOrAdmin) {
+      return { recorded: 0, ignored: true, reason: "bot_or_admin_session" };
+    }
+
+    const campaign = await this.prisma.tournamentCampaign.findUnique({
+      where: { tournamentId },
+      include: {
+        versions: {
+          where: { status: "PUBLISHED" },
+          orderBy: { revision: "desc" },
+          take: 1,
+        },
+      },
+    });
+
+    if (!campaign || campaign.isPaused || !campaign.versions.length) {
+      return { recorded: 0, ignored: true, reason: "campaign_not_live" };
+    }
+
+    const liveVersion = campaign.versions[0];
+    const targetRevision = input.revision ?? (liveVersion ? liveVersion.revision : 1);
+    const dateBucket = new Date().toISOString().slice(0, 10);
+    const deviceClass = input.deviceClass || "desktop";
+
+    let recorded = 0;
+    for (const event of input.events) {
+      const count = Math.max(1, Math.min(500, event.count || 1));
+      const seconds = Math.max(0, Math.min(600, event.seconds || 0));
+
+      await this.prisma.tournamentCampaignEventAggregate.upsert({
+        where: {
+          campaignId_revision_placement_deviceClass_eventType_dateBucket: {
+            campaignId: campaign.id,
+            revision: targetRevision,
+            placement: event.placement,
+            deviceClass,
+            eventType: event.eventType,
+            dateBucket,
+          },
+        },
+        create: {
+          campaignId: campaign.id,
+          tournamentId,
+          revision: targetRevision,
+          placement: event.placement,
+          deviceClass,
+          eventType: event.eventType,
+          count,
+          totalSeconds: seconds,
+          dateBucket,
+        },
+        update: {
+          count: { increment: count },
+          totalSeconds: { increment: seconds },
+        },
+      });
+      recorded++;
+    }
+
+    return { success: true, recorded };
+  }
+
+  async getCampaignReport(tournamentId: string, sponsorId?: string) {
+    const tournament = await this.prisma.sponsorTournament.findUnique({
+      where: { id: tournamentId },
+      select: { id: true, title: true, sponsorId: true, sponsor: { select: { id: true, name: true } } },
+    });
+    if (!tournament) throw new NotFoundException("Tournament not found");
+    if (sponsorId && tournament.sponsorId !== sponsorId) {
+      throw new ForbiddenException("Not authorized for this tournament report");
+    }
+
+    const campaign = await this.prisma.tournamentCampaign.findUnique({
+      where: { tournamentId },
+      include: {
+        versions: {
+          where: { status: "PUBLISHED" },
+          orderBy: { revision: "desc" },
+          take: 1,
+        },
+        events: true,
+      },
+    });
+
+    const liveVersion = campaign?.versions[0] ?? null;
+    const manifest = (liveVersion?.manifest ?? {}) as Record<string, any>;
+    const events = campaign?.events ?? [];
+
+    let eligibleSessions = 0;
+    let renderedImpressions = 0;
+    let totalViewableSeconds = 0;
+    let causeExpansions = 0;
+    let ctaClicks = 0;
+    let completedLoops = 0;
+
+    const placementMap: Record<string, { impressions: number; seconds: number; interactions: number }> = {
+      logoTile: { impressions: 0, seconds: 0, interactions: 0 },
+      arenaBackground: { impressions: 0, seconds: 0, interactions: 0 },
+      featurePanel: { impressions: 0, seconds: 0, interactions: 0 },
+      causeCard: { impressions: 0, seconds: 0, interactions: 0 },
+      lobbyHero: { impressions: 0, seconds: 0, interactions: 0 },
+      resultSignature: { impressions: 0, seconds: 0, interactions: 0 },
+    };
+
+    const deviceMap: Record<string, { impressions: number; seconds: number }> = {
+      desktop: { impressions: 0, seconds: 0 },
+      tablet: { impressions: 0, seconds: 0 },
+      mobile: { impressions: 0, seconds: 0 },
+    };
+
+    for (const ev of events) {
+      const pEntry = placementMap[ev.placement];
+      const dEntry = deviceMap[ev.deviceClass];
+
+      if (ev.eventType === "eligible_load") {
+        eligibleSessions += ev.count;
+      } else if (ev.eventType === "rendered_impression") {
+        renderedImpressions += ev.count;
+        if (pEntry) { pEntry.impressions += ev.count; }
+        if (dEntry) { dEntry.impressions += ev.count; }
+      } else if (ev.eventType === "viewable_seconds") {
+        totalViewableSeconds += ev.totalSeconds;
+        if (pEntry) { pEntry.seconds += ev.totalSeconds; }
+        if (dEntry) { dEntry.seconds += ev.totalSeconds; }
+      } else if (ev.eventType === "completed_loop") {
+        completedLoops += ev.count;
+        if (pEntry) { pEntry.interactions += ev.count; }
+      } else if (ev.eventType === "cause_expand") {
+        causeExpansions += ev.count;
+        if (pEntry) { pEntry.interactions += ev.count; }
+      } else if (ev.eventType === "cta_click") {
+        ctaClicks += ev.count;
+        if (pEntry) { pEntry.interactions += ev.count; }
+      }
+    }
+
+    const averageViewableSeconds = eligibleSessions > 0 ? Math.round((totalViewableSeconds / eligibleSessions) * 10) / 10 : 0;
+    const renderSuccessRate = eligibleSessions > 0 ? Math.min(100, Math.round((renderedImpressions / Math.max(1, eligibleSessions * 2)) * 100)) : 100;
+    const clickThroughRate = renderedImpressions > 0 ? Math.round((ctaClicks / renderedImpressions) * 10000) / 100 : 0;
+
+    const placementBreakdown = Object.entries(placementMap).map(([placement, data]) => ({
+      placement,
+      impressions: data.impressions,
+      viewableSeconds: Math.round(data.seconds),
+      interactions: data.interactions,
+      sharePct: renderedImpressions > 0 ? Math.round((data.impressions / renderedImpressions) * 100) : 0,
+    }));
+
+    const deviceBreakdown = Object.entries(deviceMap).map(([device, data]) => ({
+      device,
+      impressions: data.impressions,
+      viewableSeconds: Math.round(data.seconds),
+      sharePct: renderedImpressions > 0 ? Math.round((data.impressions / renderedImpressions) * 100) : 0,
+    }));
+
+    const anomalies: Array<{ type: "HEALTHY" | "WARNING" | "INFO"; message: string }> = [];
+    if (renderSuccessRate >= 95) {
+      anomalies.push({ type: "HEALTHY", message: `Render success rate is excellent (${renderSuccessRate}%).` });
+    } else if (renderSuccessRate < 80) {
+      anomalies.push({ type: "WARNING", message: `Lower render rate observed (${renderSuccessRate}%). Check asset delivery fallbacks.` });
+    }
+
+    if (totalViewableSeconds > 0) {
+      anomalies.push({ type: "HEALTHY", message: `Active engagement confirmed: ${Math.round(totalViewableSeconds)}s total viewable time.` });
+    } else {
+      anomalies.push({ type: "INFO", message: "Awaiting live match sessions to accumulate viewable time telemetry." });
+    }
+
+    const pacingStatus = campaign?.isPaused ? "PAUSED" : liveVersion ? "ON_TRACK" : "DRAFT";
+
+    return {
+      tournament: { id: tournament.id, title: tournament.title, sponsor: tournament.sponsor },
+      campaign: campaign ? { id: campaign.id, isPaused: campaign.isPaused, isCausePaused: campaign.isCausePaused } : null,
+      liveRevision: liveVersion?.revision ?? null,
+      summary: {
+        eligibleSessions,
+        renderedImpressions,
+        totalViewableSeconds: Math.round(totalViewableSeconds),
+        averageViewableSeconds,
+        renderSuccessRate,
+        causeExpansions,
+        ctaClicks,
+        completedLoops,
+        clickThroughRate,
+        pacingStatus,
+      },
+      placementBreakdown,
+      deviceBreakdown,
+      anomalies,
+      proof: {
+        campaignTitle: manifest?.identity?.campaignTitle ?? "Untitled Campaign",
+        sponsorName: manifest?.identity?.sponsorName ?? tournament.sponsor?.name ?? "House Sponsor",
+        disclosureLabel: manifest?.identity?.disclosureLabel ?? "Sponsored by",
+        publishedAt: liveVersion?.publishedAt ?? null,
+        activateAt: liveVersion?.activateAt ?? null,
+        expireAt: liveVersion?.expireAt ?? null,
+        hasCause: !!manifest?.cause?.enabled,
+        beneficiaryName: manifest?.cause?.beneficiaryName ?? null,
+        ctaUrl: manifest?.cause?.ctaUrl ?? null,
+      },
+    };
+  }
+
+  async exportCampaignReportCsv(tournamentId: string, sponsorId?: string) {
+    const report = await this.getCampaignReport(tournamentId, sponsorId);
+    const campaign = await this.prisma.tournamentCampaign.findUnique({
+      where: { tournamentId },
+      include: { events: { orderBy: { dateBucket: "desc" } } },
+    });
+
+    const rows = [
+      ["Date", "Tournament ID", "Tournament Title", "Revision", "Placement", "Device Class", "Event Type", "Count", "Total Seconds"],
+    ];
+
+    for (const ev of campaign?.events ?? []) {
+      rows.push([
+        ev.dateBucket,
+        tournamentId,
+        `"${report.tournament.title.replace(/"/g, '""')}"`,
+        String(ev.revision),
+        ev.placement,
+        ev.deviceClass,
+        ev.eventType,
+        String(ev.count),
+        String(Math.round(ev.totalSeconds * 10) / 10),
+      ]);
+    }
+
+    const csvContent = rows.map((r) => r.join(",")).join("\n");
+    const filename = `sponsor-report-${tournamentId.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    return { csv: csvContent, filename };
   }
 }

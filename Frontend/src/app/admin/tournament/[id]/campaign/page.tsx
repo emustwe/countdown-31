@@ -3,12 +3,45 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertTriangle, ArrowLeft, BadgeCheck, CalendarClock, Check, Eye, Film, HeartHandshake, History, Image as ImageIcon, MessageSquare, Monitor, Pause, Play, RotateCcw, Save, ShieldCheck, Smartphone, Sparkles, Undo2, Upload } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowLeft,
+  BadgeCheck,
+  BarChart3,
+  CalendarClock,
+  Check,
+  Clock,
+  Download,
+  Eye,
+  Film,
+  HeartHandshake,
+  History,
+  Image as ImageIcon,
+  Layers,
+  MessageSquare,
+  Monitor,
+  MousePointerClick,
+  Pause,
+  Play,
+  Radio,
+  RotateCcw,
+  Save,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Tablet,
+  TrendingUp,
+  Undo2,
+  Upload,
+} from "lucide-react";
 import {
   useAdminTournamentCampaign,
   useCampaignActions,
   useTournamentCampaignAssets,
   useUploadTournamentCampaignAsset,
+  useTournamentCampaignReport,
+  downloadCampaignReportCsv,
   resolveCampaignAssetUrl,
   campaignCauseProgress,
   type CampaignCause,
@@ -71,6 +104,16 @@ function AssetMedia({ asset, className = "" }: { asset: CampaignAsset; className
 function readableDate(value: string | null | undefined) {
   if (!value) return "Not set";
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function formatDwellTime(totalSeconds: number): string {
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const mins = Math.floor(totalSeconds / 60);
+  const remSecs = totalSeconds % 60;
+  if (mins < 60) return `${mins}m ${remSecs}s`;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  return `${hours}h ${remMins}m`;
 }
 
 function toIso(value: string) {
@@ -145,10 +188,12 @@ export default function TournamentCampaignStudioPage() {
   return <div className="flex flex-col gap-5 pb-12">
     <header className="rounded-3xl border-2 border-lime-300/60 bg-gradient-to-br from-[#18241c] to-[#050807] p-5 shadow-2xl sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4"><Link href="/admin/tournament" className="grid h-11 w-11 place-items-center rounded-xl border border-slate-700 bg-black/50 text-white hover:border-lime-300"><ArrowLeft size={19}/></Link><div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-lime-300"><Sparkles size={13}/> Sponsor Studio · Campaign + Assets</div><h1 className="mt-1 font-title text-2xl font-black text-white sm:text-3xl">{query.data?.tournament.title ?? "Tournament campaign"}</h1></div></div>
+        <div className="flex items-center gap-4"><Link href="/admin/tournament" className="grid h-11 w-11 place-items-center rounded-xl border border-slate-700 bg-black/50 text-white hover:border-lime-300"><ArrowLeft size={19}/></Link><div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-lime-300"><Sparkles size={13}/> Sponsor Studio · Campaign + Assets + Analytics</div><h1 className="mt-1 font-title text-2xl font-black text-white sm:text-3xl">{query.data?.tournament.title ?? "Tournament campaign"}</h1></div></div>
         <div className={`rounded-full border px-4 py-2 text-xs font-black uppercase ${status === "Live" ? "border-emerald-400 bg-emerald-400/15 text-emerald-300" : status === "Paused" ? "border-amber-400 bg-amber-400/15 text-amber-300" : "border-slate-600 bg-slate-800 text-slate-300"}`}>{status}</div>
       </div>
     </header>
+
+    <CampaignAnalyticsSection tournamentId={id} />
 
     <section className="rounded-3xl border border-cyan-400/35 bg-gradient-to-br from-[#071814] to-[#040807] p-5 shadow-xl sm:p-6">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-cyan-300"><ImageIcon size={14}/> Managed asset library</div><h2 className="mt-1 font-title text-xl font-black text-white">Sponsor media</h2><p className="mb-0 mt-1 text-xs text-slate-400">A new upload replaces the active slot while preserving the previous file in history.</p></div><span className="rounded-full border border-slate-700 bg-black/50 px-3 py-1 text-[10px] font-black text-slate-400">{assetsQuery.data?.assets.length ?? 0} VERSIONED FILES</span></div>
@@ -239,6 +284,232 @@ export default function TournamentCampaignStudioPage() {
     <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/50 bg-black/90 p-3 shadow-2xl backdrop-blur-xl"><button onClick={()=>setManifest({...DEMO,cause:DEFAULT_CAUSE})} className="flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-xs font-black text-slate-300"><RotateCcw size={15}/> Load demo</button><div className="flex flex-wrap gap-2">{publishedCauseEnabled&&<button disabled={busy} onClick={()=>actions.pauseCause.mutate(!query.data?.campaign?.isCausePaused)} className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-black ${query.data?.campaign?.isCausePaused?"border-emerald-400/60 bg-emerald-400/10 text-emerald-200":"border-rose-400/60 bg-rose-400/10 text-rose-200"}`}>{query.data?.campaign?.isCausePaused?<Play size={15}/>:<AlertTriangle size={15}/>} {query.data?.campaign?.isCausePaused?"Restore cause":"Hide cause now"}</button>}<button disabled={busy} onClick={saveDraft} className="flex items-center gap-2 rounded-xl border border-lime-300/50 bg-lime-300/10 px-4 py-2 text-xs font-black text-lime-200"><Save size={15}/>{saved ? "Saved" : workingVersion && workingVersion.status !== "DRAFT" ? "Save as new revision" : "Save draft"}</button>{query.data?.campaign?.published && <button disabled={busy} onClick={()=>actions.pause.mutate(!query.data?.campaign?.isPaused)} className="flex items-center gap-2 rounded-xl border border-amber-400/50 bg-amber-400/10 px-4 py-2 text-xs font-black text-amber-200">{query.data.campaign.isPaused ? <Play size={15}/> : <Pause size={15}/>} {query.data.campaign.isPaused ? "Resume" : "Pause"}</button>}</div></div>
     {actions.save.error || actions.publish.error || actions.submitReview.error || actions.review.error || actions.rollback.error || actions.pause.error || actions.pauseCause.error ? <div className="text-sm font-bold text-rose-400">{String((actions.save.error ?? actions.publish.error ?? actions.submitReview.error ?? actions.review.error ?? actions.rollback.error ?? actions.pause.error ?? actions.pauseCause.error) instanceof Error ? (actions.save.error ?? actions.publish.error ?? actions.submitReview.error ?? actions.review.error ?? actions.rollback.error ?? actions.pause.error ?? actions.pauseCause.error)?.message : "Campaign action failed")}</div> : null}
   </div>;
+}
+
+function CampaignAnalyticsSection({ tournamentId }: { tournamentId: string }) {
+  const reportQuery = useTournamentCampaignReport(tournamentId, "admin");
+  const [downloading, setDownloading] = useState(false);
+  const data = reportQuery.data;
+
+  async function handleCsvDownload() {
+    try {
+      setDownloading(true);
+      soundManager.playClick();
+      await downloadCampaignReportCsv(tournamentId, "admin");
+    } catch (err) {
+      console.error("CSV download error:", err);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  if (reportQuery.isLoading) {
+    return (
+      <section className="rounded-3xl border border-slate-800 bg-[#060b09] p-6 text-center text-xs text-slate-500">
+        <Activity className="mx-auto mb-2 animate-pulse text-lime-300" size={20} />
+        Loading campaign analytics telemetry…
+      </section>
+    );
+  }
+
+  if (!data) return null;
+
+  const { summary, placementBreakdown, deviceBreakdown, anomalies, proof } = data;
+
+  return (
+    <section className="rounded-3xl border-2 border-emerald-500/40 bg-gradient-to-br from-[#061712] via-[#040e0b] to-[#020504] p-5 shadow-2xl sm:p-7">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-emerald-500/20 pb-5">
+        <div>
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-emerald-400">
+            <BarChart3 size={14} /> Sponsor Analytics & Proof of Performance
+          </div>
+          <h2 className="mt-1 font-title text-xl font-black text-white sm:text-2xl">
+            Live Telemetry & Impression Proof
+          </h2>
+          <p className="mb-0 mt-1 max-w-2xl text-xs text-slate-400">
+            Aggregated match dwell time, verified placement impressions, device split, and interactive CTR.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] font-black text-emerald-300">
+            <Radio size={11} className="animate-pulse text-emerald-400" />
+            Live Ingestion Active
+          </div>
+          <button
+            onClick={handleCsvDownload}
+            disabled={downloading}
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-400 to-lime-300 px-4 py-2 text-xs font-black text-slate-950 shadow-lg hover:brightness-110 disabled:opacity-50"
+          >
+            <Download size={14} />
+            {downloading ? "Exporting CSV…" : "Export CSV Report"}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-slate-800 bg-black/50 p-4">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider">Tournament Sessions</span>
+            <Activity size={15} className="text-cyan-400" />
+          </div>
+          <div className="mt-2 text-2xl font-black text-white">
+            {summary.eligibleSessions.toLocaleString()}
+          </div>
+          <div className="mt-1 text-[10px] font-medium text-slate-500">
+            Matches with live sponsor layer
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-black/50 p-4">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider">Rendered Impressions</span>
+            <Eye size={15} className="text-emerald-400" />
+          </div>
+          <div className="mt-2 text-2xl font-black text-white">
+            {summary.renderedImpressions.toLocaleString()}
+          </div>
+          <div className="mt-1 flex items-center gap-1.5 text-[10px] font-bold text-emerald-400">
+            <BadgeCheck size={12} /> {summary.renderSuccessRate}% Render Success
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-black/50 p-4">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider">Viewable Dwell Time</span>
+            <Clock size={15} className="text-amber-400" />
+          </div>
+          <div className="mt-2 text-2xl font-black text-white">
+            {formatDwellTime(summary.totalViewableSeconds)}
+          </div>
+          <div className="mt-1 text-[10px] font-medium text-slate-500">
+            Avg {summary.averageViewableSeconds}s active per session
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-black/50 p-4">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider">Interactions & CTR</span>
+            <MousePointerClick size={15} className="text-rose-400" />
+          </div>
+          <div className="mt-2 text-2xl font-black text-white">
+            {summary.causeExpansions + summary.ctaClicks}{" "}
+            <span className="text-xs font-bold text-slate-400">({summary.ctaClicks} clicks)</span>
+          </div>
+          <div className="mt-1 flex items-center gap-1.5 text-[10px] font-bold text-rose-300">
+            <TrendingUp size={12} /> {summary.clickThroughRate}% CTR
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        <div className="rounded-2xl border border-slate-800 bg-black/40 p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-300">
+              <Layers size={14} className="text-lime-300" /> Placement Breakdown
+            </div>
+            <span className="text-[10px] text-slate-500">Share of Total</span>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {placementBreakdown.map((item) => (
+              <div key={item.placement} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-300">
+                    {item.placement === "logoTile"
+                      ? "Animated Logo Tile"
+                      : item.placement === "arenaBackground"
+                      ? "Arena Background"
+                      : item.placement === "featurePanel"
+                      ? "Feature Panel"
+                      : item.placement === "causeCard"
+                      ? "Cause Card"
+                      : item.placement}
+                  </span>
+                  <span className="text-[10px] font-black text-emerald-400">
+                    {item.impressions.toLocaleString()} imp ({item.sharePct}%) · {formatDwellTime(item.viewableSeconds)}
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-lime-300 transition-all duration-500"
+                    style={{ width: `${Math.max(4, item.sharePct)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="rounded-2xl border border-slate-800 bg-black/40 p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-300">
+                <Monitor size={14} className="text-cyan-300" /> Device Distribution
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {deviceBreakdown.map((d) => {
+                const Icon = d.device === "mobile" ? Smartphone : d.device === "tablet" ? Tablet : Monitor;
+                return (
+                  <div key={d.device} className="rounded-xl border border-slate-800 bg-black/60 p-3 text-center">
+                    <Icon size={16} className="mx-auto text-slate-400" />
+                    <div className="mt-1.5 text-xs font-black uppercase text-white">{d.device}</div>
+                    <div className="mt-0.5 text-sm font-black text-cyan-300">{d.sharePct}%</div>
+                    <div className="mt-0.5 text-[9px] text-slate-500">{d.impressions.toLocaleString()} views</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-black/40 p-5">
+            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+              Health & Delivery Checks
+            </div>
+            <div className="mt-3 space-y-2">
+              {anomalies.map((anom, i) => (
+                <div
+                  key={i}
+                  className={`flex items-start gap-2 rounded-xl border p-2.5 text-xs ${
+                    anom.type === "HEALTHY"
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                      : anom.type === "WARNING"
+                      ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                      : "border-slate-700 bg-black/50 text-slate-400"
+                  }`}
+                >
+                  {anom.type === "HEALTHY" ? (
+                    <BadgeCheck size={14} className="mt-0.5 shrink-0 text-emerald-400" />
+                  ) : anom.type === "WARNING" ? (
+                    <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-400" />
+                  ) : (
+                    <Radio size={14} className="mt-0.5 shrink-0 text-slate-400" />
+                  )}
+                  <span>{anom.message}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-xs text-emerald-100">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <strong className="text-white">Active Attribution Proof:</strong> {proof.disclosureLabel}{" "}
+            <span className="font-bold text-lime-300">{proof.sponsorName}</span> · Campaign:{" "}
+            <em>“{proof.campaignTitle}”</em>
+            {proof.beneficiaryName && <span> · Beneficiary: {proof.beneficiaryName}</span>}
+          </div>
+          <span className="text-[10px] font-mono text-emerald-400">
+            {data.liveRevision ? `REVISION ${data.liveRevision}` : "UNPUBLISHED"}
+          </span>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function ReviewTimeline({ version }: { version: CampaignVersion }) {

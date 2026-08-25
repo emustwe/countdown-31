@@ -194,6 +194,7 @@ model TournamentCampaign {
   updatedAt    DateTime                  @updatedAt
   versions     TournamentCampaignVersion[]
   assets       TournamentCampaignAsset[]
+  events       TournamentCampaignEventAggregate[]
 }
 
 model TournamentCampaignVersion {
@@ -249,6 +250,28 @@ model TournamentCampaignAsset {
   createdAt    DateTime           @default(now())
 
   @@index([campaignId, kind, createdAt])
+}
+
+// Aggregated campaign telemetry for sponsor reporting. Privacy-safe: records aggregate counts and
+// viewable seconds by placement, device class, and date bucket without personal player data.
+model TournamentCampaignEventAggregate {
+  id           String             @id @default(uuid())
+  campaignId   String
+  campaign     TournamentCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  tournamentId String
+  revision     Int
+  placement    String             // "logoTile" | "arenaBackground" | "featurePanel" | "causeCard" | "lobbyHero" | "resultSignature"
+  deviceClass  String             // "desktop" | "tablet" | "mobile"
+  eventType    String             // "eligible_load" | "rendered_impression" | "viewable_seconds" | "completed_loop" | "cause_expand" | "cta_click"
+  count        Int                @default(0)
+  totalSeconds Float              @default(0)
+  dateBucket   String             // "YYYY-MM-DD"
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@unique([campaignId, revision, placement, deviceClass, eventType, dateBucket])
+  @@index([tournamentId, createdAt])
+  @@index([campaignId, dateBucket])
 }
 
 enum PromoType {

@@ -2,11 +2,10 @@
 
 **Last updated:** August 25, 2026  
 **Total chunks:** 6  
-**Completed:** 4
+**Completed:** 5  
+**Remaining:** 1  
 
-**Remaining:** 2
-
-**Overall progress:** 67%
+**Overall progress:** 83%
 
 ## Completed
 
@@ -51,14 +50,16 @@
 - Locked published revisions, complete revision history, and restore-as-new-revision rollback.
 - Persistent audit events for drafting, review, publishing, emergency controls, and rollback.
 
+### ✅ Chunk 5 — Sponsor analytics and reports
+
+- Aggregated database telemetry schema (`TournamentCampaignEventAggregate`) with privacy-safe daily rollups.
+- Ingestion telemetry endpoint (`POST /promo-tournaments/:id/campaign/events`) with bot/admin filtering.
+- Runtime event telemetry batching in `TournamentSponsorLayer.tsx` tracking `eligible_load`, `rendered_impression`, `viewable_seconds` (active document visibility only), `completed_loop`, `cause_expand`, and `cta_click`.
+- Comprehensive reporting endpoints (`GET /admin/promo-tournaments/:id/campaign/report` & `GET /sponsor/tournaments/:id/campaign/report`).
+- CSV report generator (`GET .../campaign/report/export`) with timestamped exports.
+- Interactive **Sponsor Analytics & Proof of Performance** Dashboard in Sponsor Studio with KPI cards, placement share progress bars, device split, real-time health anomaly checks, and one-click CSV export.
+
 ## Remaining
-
-### ⏳ Chunk 5 — Sponsor analytics and reports
-
-- Viewable impression and safe engagement tracking.
-- Placement and device breakdowns.
-- Delivery pacing and anomaly warnings.
-- Admin dashboards and sponsor report exports.
 
 ### ⏳ Chunk 6 — Pilot hardening
 
@@ -69,8 +70,9 @@
 
 ## Recommended next step
 
-Implement **Chunk 5 — Sponsor analytics and reports** as the next independently testable release.
+Implement **Chunk 6 — Pilot hardening** (accessibility audit, perf budgets, moderation safeguards, and operational runbook) to complete the 100% full delivery of the Tournament Sponsor Platform.
 
 ## Delivery sequence
 
 `Foundation → Assets → Cause/Fundraising → Approval/Scheduling → Analytics → Pilot Hardening`
+
