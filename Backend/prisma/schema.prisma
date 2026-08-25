@@ -192,6 +192,7 @@ model TournamentCampaign {
   createdAt    DateTime                  @default(now())
   updatedAt    DateTime                  @updatedAt
   versions     TournamentCampaignVersion[]
+  assets       TournamentCampaignAsset[]
 }
 
 model TournamentCampaignVersion {
@@ -207,6 +208,26 @@ model TournamentCampaignVersion {
 
   @@unique([campaignId, revision])
   @@index([campaignId, status])
+}
+
+// Uploaded sponsor media is immutable. Uploading a replacement archives the previous active item
+// but keeps its file and record available to already-published campaign revisions.
+model TournamentCampaignAsset {
+  id           String             @id @default(uuid())
+  campaignId   String
+  campaign     TournamentCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  kind         String
+  url          String
+  storagePath  String
+  originalName String
+  mimeType     String
+  bytes        Int
+  createdBy    String
+  supersedesId String?
+  archivedAt   DateTime?
+  createdAt    DateTime           @default(now())
+
+  @@index([campaignId, kind, createdAt])
 }
 
 enum PromoType {

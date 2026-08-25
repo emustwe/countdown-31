@@ -1,5 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import type { Request } from "express";
+import { mkdir, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { randomUUID } from "node:crypto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import type { AccessTokenPayload } from "../auth/token.types";
@@ -30,6 +34,7 @@ import {
   TournamentCampaignManifestSchema,
   type TournamentCampaignManifestInput,
 } from "./dto/write.dto";
+import { acceptsCampaignFile, detectCampaignFile, type CampaignAssetKind } from "./campaign-assets";
 
 // Admin-only sponsor management.
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -117,6 +122,45 @@ export class AdminPromoController {
   @Post(":id/campaign/resume")
   resumeCampaign(@Param("id") id: string) {
     return this.sponsors.setCampaignPaused(id, false);
+  }
+  @Get(":id/campaign/assets")
+  campaignAssets(@Param("id") id: string) {
+    return this.sponsors.listCampaignAssets(id);
+  }
+  @Post(":id/campaign/assets/:kind")
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 12 * 1024 * 1024 } }))
+  async uploadCampaignAsset(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param("id") id: string,
+    @Param("kind") rawKind: string,
+    @UploadedFile() file: { originalname: string; size: number; buffer: Buffer } | undefined,
+  ) {
+    if (!file) throw new BadRequestException("Choose a file to upload");
+    const kind = rawKind.toUpperCase() as CampaignAssetKind;
+    if (!["LOGO", "BACKGROUND_DESKTOP", "BACKGROUND_MOBILE"].includes(kind)) throw new BadRequestException("Unknown campaign asset type");
+    const detected = detectCampaignFile(file.buffer);
+    if (!detected || !acceptsCampaignFile(kind, detected)) {
+      throw new BadRequestException(kind === "LOGO" ? "Use a PNG, JPG, WebP, GIF, MP4, or WebM logo" : "Use a JPG, PNG, or WebP background image");
+    }
+    await this.sponsors.getCampaignForAdmin(id);
+    const directory = resolve(process.cwd(), "uploads", "tournament-campaigns", id);
+    await mkdir(directory, { recursive: true });
+    const fileName = `${randomUUID()}${detected.extension}`;
+    const storagePath = resolve(directory, fileName);
+    await writeFile(storagePath, file.buffer);
+    // Keep stored URLs host-independent so LAN, localhost, and Tailscale clients resolve the same
+    // asset against whichever API origin they are currently using.
+    const url = `/uploads/tournament-campaigns/${id}/${fileName}`;
+    return this.sponsors.recordCampaignAsset(id, {
+      kind,
+      url,
+      storagePath,
+      originalName: file.originalname.slice(0, 180),
+      mimeType: detected.mimeType,
+      bytes: file.size,
+      createdBy: user.sub,
+      mediaType: detected.mediaType,
+    });
   }
 }
 

@@ -2,7 +2,7 @@
 
 This roadmap turns the sponsor-platform design into small vertical slices. Every chunk ends in a usable, reviewable state and leaves normal practice games unchanged.
 
-## Chunk 1 — Campaign foundation and live demo
+## Chunk 1 — Campaign foundation and live demo ✅ Implemented
 
 - Store versioned campaign drafts per tournament.
 - Give admins a visual Sponsor Studio with a clearly labelled hypothetical Nike demo preset.
@@ -13,11 +13,11 @@ This roadmap turns the sponsor-platform design into small vertical slices. Every
 
 **Human test:** create or choose a tournament, open Sponsor Studio, load the demo, publish it, launch that tournament, then pause it and confirm the normal arena returns. Confirm practice mode never changes.
 
-## Chunk 2 — Managed asset library and placement controls
+## Chunk 2 — Managed asset library and placement controls ✅ Implemented
 
-- Upload and validate transparent logos, backgrounds, short video/animation assets, and mobile crops.
-- Add placement visibility, animation, safe-area, and device controls.
-- Add asset previews, replacement history, and automatic fallback media.
+- Upload and signature-validate transparent logos, backgrounds, short video/animation assets, and mobile crops.
+- Resolve managed media across localhost, LAN, and Tailscale API origins.
+- Add desktop/mobile placement visibility, animation presets, responsive background selection, previews, immutable replacement history, and automatic text/house fallbacks.
 
 **Human test:** build a campaign entirely from uploaded sponsor files and verify desktop/mobile fallbacks.
 

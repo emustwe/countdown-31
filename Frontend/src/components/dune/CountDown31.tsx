@@ -24,7 +24,7 @@ import { MobileArenaShell } from "./MobileArenaShell";
 import { MobileNumberDeck } from "./MobileNumberDeck";
 import { MobileBattleStrip } from "./MobileBattleStrip";
 import { TournamentSponsorLayer } from "./TournamentSponsorLayer";
-import { useActiveTournamentCampaign } from "../../lib/hooks/useTournamentCampaign";
+import { resolveCampaignAssetUrl, useActiveTournamentCampaign } from "../../lib/hooks/useTournamentCampaign";
 
 export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
   const router = useRouter();
@@ -323,12 +323,12 @@ export function CountDown31({ roomId = "practice" }: { roomId?: string }) {
 
   return (
     <div
-      className={`arena-viewport relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${isShaking ? "animate-screen-shake" : ""}`}
+      className={`arena-viewport relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${campaign ? "has-tournament-campaign" : ""} ${isShaking ? "animate-screen-shake" : ""}`}
       style={campaign ? {
-        backgroundImage: `linear-gradient(rgba(3, 9, 6, ${campaign.theme.overlayOpacity}), rgba(3, 9, 6, ${campaign.theme.overlayOpacity})), url("${campaign.theme.backgroundImage}")`,
-        backgroundPosition: "center",
-        backgroundSize: "cover",
-      } : undefined}
+        "--campaign-overlay": String(campaign.theme.overlayOpacity),
+        "--campaign-bg-desktop": `url("${resolveCampaignAssetUrl(campaign.theme.backgroundImage)}")`,
+        "--campaign-bg-mobile": `url("${resolveCampaignAssetUrl(campaign.theme.mobileBackgroundImage || campaign.theme.backgroundImage)}")`,
+      } as React.CSSProperties : undefined}
     >
       {campaign && <TournamentSponsorLayer manifest={campaign} />}
       {/* Top Arcade Header Marquee with Game Mode Switcher */}

@@ -2155,6 +2155,14 @@ h3 {
   font-size: 10px !important;
   backdrop-filter: blur(10px);
 }
+.arena-viewport.has-tournament-campaign {
+  background-image:
+    linear-gradient(rgba(3, 9, 6, var(--campaign-overlay)), rgba(3, 9, 6, var(--campaign-overlay))),
+    var(--campaign-bg-desktop);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
 
 /* Tournament sponsor layer: deliberately occupies only established dead zones. It never accepts
    clicks and sits below gameplay/result overlays. Practice mode never renders this component. */
@@ -2202,6 +2210,7 @@ h3 {
 }
 .tournament-sponsor-logo.show-desktop { display: grid; }
 .tournament-sponsor-logo span { font-size: 15px; font-weight: 900; line-height: 1; letter-spacing: -.02em; }
+.tournament-sponsor-logo-media { width: 100%; height: 66%; object-fit: contain; }
 .tournament-sponsor-logo small { margin-top: -25px; color: color-mix(in srgb, var(--sponsor-primary) 60%, transparent); font-size: 6px; font-weight: 800; letter-spacing: .11em; }
 .tournament-sponsor-story {
   position: absolute;
@@ -2225,6 +2234,7 @@ h3 {
 @keyframes sponsor-pulse { 50% { scale: 1.06; filter: brightness(1.18); } }
 
 @media (max-width: 1180px) {
+  .arena-viewport.has-tournament-campaign { background-image: linear-gradient(rgba(3, 9, 6, var(--campaign-overlay)), rgba(3, 9, 6, var(--campaign-overlay))), var(--campaign-bg-mobile); }
   .tournament-sponsor-disclosure { top: 78px; display: block; font-size: 8px; }
   .tournament-sponsor-logo.show-desktop { display: none; }
   .tournament-sponsor-logo.show-mobile {

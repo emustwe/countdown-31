@@ -53,6 +53,7 @@ export const TournamentCampaignManifestSchema = z.object({
     primaryColor: hexColor,
     secondaryColor: hexColor,
     backgroundImage: safeAssetUrl,
+    mobileBackgroundImage: safeAssetUrl.optional(),
     overlayOpacity: z.number().min(0.35).max(0.9),
   }).strict(),
   logoTile: z.object({
@@ -61,6 +62,8 @@ export const TournamentCampaignManifestSchema = z.object({
     animationPreset: z.enum(["float", "turntable", "pulse", "static"]),
     desktopEnabled: z.boolean(),
     mobileEnabled: z.boolean(),
+    mediaUrl: safeAssetUrl.optional(),
+    mediaType: z.enum(["image", "video"]).optional(),
   }).strict(),
   featurePanel: z.object({
     enabled: z.boolean(),

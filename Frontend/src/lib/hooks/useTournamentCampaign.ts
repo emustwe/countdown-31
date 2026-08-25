@@ -2,6 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../api-client";
+import { apiBaseUrl } from "../runtime-host";
+import { useAuthStore } from "../../stores/auth-store";
 
 export type CampaignAnimation = "float" | "turntable" | "pulse" | "static";
 
@@ -16,6 +18,7 @@ export interface TournamentCampaignManifest {
     primaryColor: string;
     secondaryColor: string;
     backgroundImage: string;
+    mobileBackgroundImage?: string;
     overlayOpacity: number;
   };
   logoTile: {
@@ -24,12 +27,33 @@ export interface TournamentCampaignManifest {
     animationPreset: CampaignAnimation;
     desktopEnabled: boolean;
     mobileEnabled: boolean;
+    mediaUrl?: string;
+    mediaType?: "image" | "video";
   };
   featurePanel: {
     enabled: boolean;
     headline: string;
     body: string;
   };
+}
+
+export type CampaignAssetKind = "LOGO" | "BACKGROUND_DESKTOP" | "BACKGROUND_MOBILE";
+export interface CampaignAsset {
+  id: string;
+  kind: CampaignAssetKind;
+  url: string;
+  originalName: string;
+  mimeType: string;
+  mediaType: "image" | "video";
+  bytes: number;
+  supersedesId: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+}
+
+export function resolveCampaignAssetUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  return url.startsWith("/uploads/") ? `${apiBaseUrl()}${url}` : url;
 }
 
 interface CampaignVersion {
@@ -70,6 +94,37 @@ export function useActiveTournamentCampaign(tournamentId: string | null) {
     enabled: !!tournamentId,
     staleTime: 15_000,
     refetchInterval: 30_000,
+  });
+}
+
+export function useTournamentCampaignAssets(tournamentId: string) {
+  return useQuery({
+    queryKey: ["admin", "tournament-campaign", tournamentId, "assets"],
+    queryFn: () => apiRequest<{ assets: CampaignAsset[] }>(`/admin/promo-tournaments/${tournamentId}/campaign/assets`),
+    enabled: !!tournamentId,
+  });
+}
+
+export function useUploadTournamentCampaignAsset(tournamentId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ kind, file }: { kind: CampaignAssetKind; file: File }) => {
+      const token = useAuthStore.getState().accessToken;
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch(`${apiBaseUrl()}/admin/promo-tournaments/${tournamentId}/campaign/assets/${kind}`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: "include",
+        body: form,
+      });
+      const result = (await response.json()) as { asset?: CampaignAsset; assets?: CampaignAsset[]; message?: string };
+      if (!response.ok || !result.asset) throw new Error(result.message || "Asset upload failed");
+      return result as { asset: CampaignAsset; assets: CampaignAsset[] };
+    },
+    onSuccess: (result) => {
+      client.setQueryData(["admin", "tournament-campaign", tournamentId, "assets"], { assets: result.assets });
+    },
   });
 }
 

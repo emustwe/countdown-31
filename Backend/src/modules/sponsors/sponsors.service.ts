@@ -17,6 +17,7 @@ import { encryptSecret, decryptSecret } from "../../common/crypto/secret-box";
 import type { Prisma, SponsorTournament } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { TournamentCampaignManifestInput } from "./dto/write.dto";
+import type { CampaignAssetKind } from "./campaign-assets";
 
 export interface SponsorTokenPayload {
   sub: string; // sponsor id
@@ -615,6 +616,62 @@ export class SponsorsService {
     return { tournamentId, isPaused: updated.isPaused };
   }
 
+  async listCampaignAssets(tournamentId: string) {
+    const tournament = await this.prisma.sponsorTournament.findUnique({ where: { id: tournamentId }, select: { id: true } });
+    if (!tournament) throw new NotFoundException("Tournament not found");
+    const campaign = await this.prisma.tournamentCampaign.findUnique({ where: { tournamentId } });
+    if (!campaign) return { assets: [] };
+    const assets = await this.prisma.tournamentCampaignAsset.findMany({
+      where: { campaignId: campaign.id },
+      orderBy: { createdAt: "desc" },
+    });
+    return { assets: assets.map((asset) => this.serializeCampaignAsset(asset)) };
+  }
+
+  async recordCampaignAsset(tournamentId: string, input: {
+    kind: CampaignAssetKind;
+    url: string;
+    storagePath: string;
+    originalName: string;
+    mimeType: string;
+    bytes: number;
+    createdBy: string;
+    mediaType: "image" | "video";
+  }) {
+    const asset = await this.prisma.$transaction(async (tx) => {
+      const campaign = await tx.tournamentCampaign.upsert({
+        where: { tournamentId },
+        update: {},
+        create: { tournamentId },
+      });
+      const previous = await tx.tournamentCampaignAsset.findFirst({
+        where: { campaignId: campaign.id, kind: input.kind, archivedAt: null },
+        orderBy: { createdAt: "desc" },
+      });
+      if (previous) {
+        await tx.tournamentCampaignAsset.update({ where: { id: previous.id }, data: { archivedAt: new Date() } });
+      }
+      return tx.tournamentCampaignAsset.create({
+        data: {
+          campaignId: campaign.id,
+          kind: input.kind,
+          url: input.url,
+          storagePath: input.storagePath,
+          originalName: input.originalName,
+          mimeType: input.mimeType,
+          bytes: input.bytes,
+          createdBy: input.createdBy,
+          supersedesId: previous?.id,
+        },
+      });
+    });
+    this.audit.record("TOURNAMENT_CAMPAIGN_ASSET_UPLOAD", {
+      actor: input.createdBy,
+      detail: { tournamentId, assetId: asset.id, kind: input.kind, bytes: input.bytes, mediaType: input.mediaType },
+    });
+    return { asset: this.serializeCampaignAsset(asset), ...(await this.listCampaignAssets(tournamentId)) };
+  }
+
   async getActiveCampaign(tournamentId: string) {
     const campaign = await this.prisma.tournamentCampaign.findUnique({
       where: { tournamentId },
@@ -645,6 +702,21 @@ export class SponsorsService {
       manifest: version.manifest,
       createdAt: version.createdAt,
       publishedAt: version.publishedAt,
+    };
+  }
+
+  private serializeCampaignAsset(asset: { id: string; kind: string; url: string; originalName: string; mimeType: string; bytes: number; supersedesId: string | null; archivedAt: Date | null; createdAt: Date }) {
+    return {
+      id: asset.id,
+      kind: asset.kind,
+      url: asset.url,
+      originalName: asset.originalName,
+      mimeType: asset.mimeType,
+      mediaType: asset.mimeType.startsWith("video/") ? "video" : "image",
+      bytes: asset.bytes,
+      supersedesId: asset.supersedesId,
+      archivedAt: asset.archivedAt,
+      createdAt: asset.createdAt,
     };
   }
 
