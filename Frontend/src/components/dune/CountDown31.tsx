@@ -631,6 +631,7 @@ export function CountDown31({ roomId = "practice", testArena = false }: { roomId
         lastEliminated={state?.lastEliminated ?? null}
         isMyWin={isMyWin}
         isLocalDefeat={isLocalDefeat}
+        suppressIdle={Boolean(campaign?.logoTile.enabled)}
         onPlayAgain={handlePlayAgain}
       />
 

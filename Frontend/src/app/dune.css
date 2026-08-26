@@ -2214,29 +2214,35 @@ h3 {
 .tournament-sponsor-logo small { margin-top: -25px; color: color-mix(in srgb, var(--sponsor-primary) 60%, transparent); font-size: 6px; font-weight: 800; letter-spacing: .11em; }
 .tournament-sponsor-story {
   position: absolute;
-  right: clamp(18px, 3vw, 52px);
+  right: auto;
   bottom: 72px;
+  left: 50%;
   width: min(280px, 20vw);
   padding: 18px;
   border: 1px solid color-mix(in srgb, var(--sponsor-accent) 55%, transparent);
   border-radius: 22px;
   background: linear-gradient(145deg, rgba(7,13,9,.94), rgba(0,0,0,.88));
   box-shadow: 0 14px 35px rgba(0,0,0,.65);
+  translate: -50% 0;
 }
 .tournament-sponsor-story small { display: block; color: var(--sponsor-accent); font-size: 8px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
 .tournament-sponsor-story strong { display: block; margin-top: 5px; color: var(--sponsor-primary); font-size: 17px; line-height: 1.05; }
 .tournament-sponsor-story p { margin: 6px 0 0; color: rgba(255,255,255,.72); font-size: 10px; line-height: 1.4; }
 .tournament-cause-card {
   position: absolute;
-  right: clamp(18px, 3vw, 52px);
+  right: auto;
   bottom: 72px;
+  left: 50%;
   width: min(310px, 23vw);
+  max-height: min(190px, 25vh);
+  overflow-y: auto;
   padding: 13px;
   border: 1px solid rgba(253, 164, 175, .72);
   border-radius: 22px;
   background: linear-gradient(145deg, rgba(43, 8, 19, .96), rgba(2, 7, 5, .94));
   box-shadow: 0 14px 38px rgba(0,0,0,.7), 0 0 24px rgba(251,113,133,.14);
   pointer-events: auto;
+  translate: -50% 0;
 }
 .tournament-cause-card small { display: block; color: #fda4af; font-size: 8px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
 .tournament-cause-card strong { display: block; margin-top: 3px; color: #fff; font-size: 15px; line-height: 1.05; }
@@ -2276,8 +2282,11 @@ h3 {
     bottom: calc(92px + env(safe-area-inset-bottom));
     left: 90px;
     width: auto;
+    max-height: none;
     padding: 9px 10px;
     border-radius: 15px;
+    overflow: visible;
+    translate: 0 0;
   }
   .tournament-cause-card small,
   .tournament-cause-card > span,
@@ -2288,6 +2297,15 @@ h3 {
   .tournament-cause-card a { position: absolute; right: 6px; bottom: 6px; width: auto; margin: 0; padding: 5px 7px; font-size: 7px; }
   .tournament-cause-card:has(a) .tournament-cause-progress { margin-right: 76px; }
 }
+
+.arena-roster-scroll {
+  scrollbar-color: rgba(52, 211, 153, .8) rgba(15, 23, 42, .72);
+  scrollbar-width: thin;
+}
+.arena-roster-scroll::-webkit-scrollbar { width: 7px; }
+.arena-roster-scroll::-webkit-scrollbar-track { border-radius: 99px; background: rgba(15, 23, 42, .72); }
+.arena-roster-scroll::-webkit-scrollbar-thumb { border: 1px solid rgba(3, 10, 7, .9); border-radius: 99px; background: linear-gradient(#34d399, #0891b2); }
+.arena-roster-scroll:focus-visible { outline: 2px solid #34d399; outline-offset: 3px; }
 
 @media (prefers-reduced-motion: reduce) {
   .tournament-sponsor-logo { animation: none !important; }

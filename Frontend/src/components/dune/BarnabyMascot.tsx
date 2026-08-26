@@ -12,6 +12,7 @@ interface BarnabyMascotProps {
   lastEliminated: { name: string; reason: string } | null;
   isMyWin: boolean;
   isLocalDefeat: boolean;
+  suppressIdle?: boolean;
   onPlayAgain?: () => void;
 }
 
@@ -24,6 +25,7 @@ export function BarnabyMascot({
   lastEliminated,
   isMyWin,
   isLocalDefeat,
+  suppressIdle = false,
   onPlayAgain,
 }: BarnabyMascotProps) {
   // The cow is ALWAYS on stage and ALWAYS animating (looping) on the side. When the LOCAL player is
@@ -57,10 +59,11 @@ export function BarnabyMascot({
         ? `${lastEliminated.name} repeated a count`
         : `${lastEliminated.name} hit 31`
     : "Round complete";
+  const showStage = dancing || !suppressIdle;
 
   return (
     <div className="defeat-cow-layer" aria-live="polite">
-      <div className={`defeat-cow-stage ${dancing ? "is-local-defeat" : "is-idle"}`}>
+      {showStage && <div className={`defeat-cow-stage ${dancing ? "is-local-defeat" : "is-idle"}`}>
         {dancing && (
           <div className="defeat-cow-stars" aria-hidden="true">
             {[0, 1, 2, 3, 4].map((star) => (
@@ -94,7 +97,7 @@ export function BarnabyMascot({
             <span>{resultText}</span>
           </motion.div>
         )}
-      </div>
+      </div>}
 
       {status === "over" && (
         <motion.div

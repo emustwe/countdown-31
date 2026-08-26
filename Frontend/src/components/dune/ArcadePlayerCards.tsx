@@ -667,12 +667,18 @@ export function ArcadeOpponentCard({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-1.5">
+          <div
+            className="arena-roster-scroll grid max-h-[clamp(150px,36vh,330px)] grid-cols-2 gap-1.5 overflow-y-auto overscroll-contain pr-1"
+            role="list"
+            aria-label={`${allPlayers.length} tournament players`}
+            tabIndex={0}
+          >
             {allPlayers.map((p) => {
               const isTurn = p.id === currentId && status === "playing";
               return (
                 <div
                   key={p.id}
+                  role="listitem"
                   className={`flex items-center justify-between px-2 py-1.5 rounded-xl text-[11px] font-title font-bold border transition-colors ${
                     p.eliminated
                       ? "bg-rose-950/40 text-rose-400/60 border-rose-900/30 line-through"
