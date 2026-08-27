@@ -138,7 +138,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.3)_0%,#040906_90%)]" />
 
       <div className="relative z-20">
-        <ArcadeHeader onOpenRules={() => setShowRules(true)} />
+        <ArcadeHeader
+          onOpenRules={() => setShowRules(true)}
+          campaign={campaign}
+          causePaused={campaignData?.campaign?.isCausePaused}
+          tournamentId={id}
+          campaignRevision={campaignData?.campaign?.revision}
+          isTournament={true}
+        />
       </div>
 
       <main className="relative z-10 w-full max-w-3xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-5">

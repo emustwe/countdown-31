@@ -43,3 +43,9 @@ Only durable decisions belong here. Turn-by-turn activity belongs in `AI_WORKLOG
 - **Status:** Active
 - **Decision:** A campaign cause is represented by a header icon and its full message appears only in a dismissible popover after the player opens it.
 - **Reason:** Cause campaigns remain discoverable and measurable without covering the tournament roster or persistent game controls.
+
+## D-008 — Mobile gameplay is landscape-only
+
+- **Status:** Active
+- **Decision:** At widths up to 1180px, both standard and tournament matches use a dedicated landscape shell with the local player on the left, the number deck and primary action in the center, and the opponent on the right. Portrait orientation shows a full-screen rotate prompt instead of a second playable layout. Desktop gameplay remains a separate composition.
+- **Reason:** A single landscape touch arena preserves card scale, keeps both players visible, improves thumb reach, and prevents mobile overrides from destabilizing the desktop game.

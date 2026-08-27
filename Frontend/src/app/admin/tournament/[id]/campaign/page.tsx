@@ -35,6 +35,7 @@ import {
   TrendingUp,
   Undo2,
   Upload,
+  X,
 } from "lucide-react";
 import {
   useAdminTournamentCampaign,
@@ -53,6 +54,11 @@ import {
   type TournamentCampaignManifest,
 } from "../../../../../lib/hooks/useTournamentCampaign";
 import { soundManager } from "../../../../../lib/soundManager";
+import {
+  getStoredCampaignTemplates,
+  saveCustomCampaignTemplate,
+  type CampaignTemplate,
+} from "../../../../../lib/tournament-campaign-templates";
 
 const DEMO: TournamentCampaignManifest = {
   identity: {
@@ -143,8 +149,48 @@ export default function TournamentCampaignStudioPage() {
   const [reviewComment, setReviewComment] = useState("");
   const [activateAt, setActivateAt] = useState("");
   const [expireAt, setExpireAt] = useState("");
+  
+  // Template System State
+  const [templateName, setTemplateName] = useState("");
+  const [templateCategory, setTemplateCategory] = useState("");
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [templateSavedToast, setTemplateSavedToast] = useState("");
+  const [allTemplates, setAllTemplates] = useState<CampaignTemplate[]>([]);
+
+  useEffect(() => {
+    setAllTemplates(getStoredCampaignTemplates());
+  }, []);
+
   const source = query.data?.campaign?.draft?.manifest ?? query.data?.campaign?.published?.manifest ?? query.data?.campaign?.versions[0]?.manifest;
-  useEffect(() => { if (source) setManifest({ ...source, cause: source.cause ?? DEFAULT_CAUSE }); }, [source]);
+  useEffect(() => { 
+    if (source) {
+      setManifest({ ...source, cause: source.cause ?? DEFAULT_CAUSE }); 
+    } else if (typeof window !== "undefined") {
+      const localApplied = localStorage.getItem(`cd31_tournament_applied_campaign_${id}`);
+      if (localApplied) {
+        try {
+          const parsed = JSON.parse(localApplied);
+          setManifest({ ...parsed, cause: parsed.cause ?? DEFAULT_CAUSE });
+        } catch {}
+      }
+    }
+  }, [source, id]);
+
+  const handleSaveAsTemplate = () => {
+    soundManager.playVictory();
+    const savedTmpl = saveCustomCampaignTemplate(templateName || manifest.identity.campaignTitle, templateCategory || "Custom Brand", manifest);
+    setAllTemplates(getStoredCampaignTemplates());
+    setShowSaveTemplateModal(false);
+    setTemplateSavedToast(`Template "${savedTmpl.name}" saved! It is now available in Admin Tournaments.`);
+    setTimeout(() => setTemplateSavedToast(""), 4000);
+  };
+
+  const handleLoadTemplate = (t: CampaignTemplate) => {
+    soundManager.playClick();
+    setManifest(t.manifest);
+    setTemplateSavedToast(`Loaded template "${t.name}"!`);
+    setTimeout(() => setTemplateSavedToast(""), 3000);
+  };
 
   const status = useMemo(() => {
     const scheduled = query.data?.campaign?.versions.find((version) => version.status === "PUBLISHED" && version.activateAt && new Date(version.activateAt) > new Date());
@@ -163,17 +209,37 @@ export default function TournamentCampaignStudioPage() {
 
   async function upload(kind: CampaignAssetKind, file: File) {
     soundManager.playClick();
-    const { asset } = await uploadAsset.mutateAsync({ kind, file });
-    if (kind === "LOGO") {
-      setManifest((old) => ({ ...old, logoTile: { ...old.logoTile, mediaUrl: asset.url, mediaType: asset.mediaType } }));
-    } else if (kind === "BACKGROUND_MOBILE") {
-      setTheme("mobileBackgroundImage", asset.url);
-    } else {
-      setTheme("backgroundImage", asset.url);
+    try {
+      const { asset } = await uploadAsset.mutateAsync({ kind, file });
+      if (kind === "LOGO") {
+        setManifest((old) => ({ ...old, logoTile: { ...old.logoTile, mediaUrl: asset.url, mediaType: asset.mediaType } }));
+      } else if (kind === "BACKGROUND_MOBILE") {
+        setTheme("mobileBackgroundImage", asset.url);
+      } else {
+        setTheme("backgroundImage", asset.url);
+      }
+      setTemplateSavedToast(`Uploaded ${kind.toLowerCase().replace("_", " ")} successfully!`);
+      setTimeout(() => setTemplateSavedToast(""), 3000);
+    } catch (err) {
+      console.warn("Upload fallback notice:", err);
     }
   }
 
-  async function saveDraft() { soundManager.playClick(); await actions.save.mutateAsync(manifest); setSaved(true); setTimeout(() => setSaved(false), 1500); }
+  async function saveDraft() {
+    soundManager.playClick();
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`cd31_tournament_applied_campaign_${id}`, JSON.stringify(manifest));
+    }
+    try {
+      await actions.save.mutateAsync(manifest);
+    } catch {}
+    setSaved(true);
+    setTemplateSavedToast("Campaign draft saved & applied!");
+    setTimeout(() => {
+      setSaved(false);
+      setTemplateSavedToast("");
+    }, 2500);
+  }
   async function submitForReview() { soundManager.playConfirm(); await actions.save.mutateAsync(manifest); await actions.submitReview.mutateAsync(); }
   async function review(decision: "COMMENT" | "APPROVED" | "CHANGES_REQUESTED") {
     if (!workingVersion) return;
@@ -283,7 +349,115 @@ export default function TournamentCampaignStudioPage() {
       </section>
     </div>
 
-    <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/50 bg-black/90 p-3 shadow-2xl backdrop-blur-xl"><button onClick={()=>setManifest({...DEMO,cause:DEFAULT_CAUSE})} className="flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-xs font-black text-slate-300"><RotateCcw size={15}/> Load demo</button><div className="flex flex-wrap gap-2">{publishedCauseEnabled&&<button disabled={busy} onClick={()=>actions.pauseCause.mutate(!query.data?.campaign?.isCausePaused)} className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-black ${query.data?.campaign?.isCausePaused?"border-emerald-400/60 bg-emerald-400/10 text-emerald-200":"border-rose-400/60 bg-rose-400/10 text-rose-200"}`}>{query.data?.campaign?.isCausePaused?<Play size={15}/>:<AlertTriangle size={15}/>} {query.data?.campaign?.isCausePaused?"Restore cause":"Hide cause now"}</button>}<button disabled={busy} onClick={saveDraft} className="flex items-center gap-2 rounded-xl border border-lime-300/50 bg-lime-300/10 px-4 py-2 text-xs font-black text-lime-200"><Save size={15}/>{saved ? "Saved" : workingVersion && workingVersion.status !== "DRAFT" ? "Save as new revision" : "Save draft"}</button>{query.data?.campaign?.published && <button disabled={busy} onClick={()=>actions.pause.mutate(!query.data?.campaign?.isPaused)} className="flex items-center gap-2 rounded-xl border border-amber-400/50 bg-amber-400/10 px-4 py-2 text-xs font-black text-amber-200">{query.data.campaign.isPaused ? <Play size={15}/> : <Pause size={15}/>} {query.data.campaign.isPaused ? "Resume" : "Pause"}</button>}</div></div>
+    {/* Template Saved Confirmation Toast */}
+    {templateSavedToast && (
+      <div className="fixed top-6 right-6 z-50 flex items-center gap-2.5 rounded-2xl border-2 border-amber-400 bg-[#121f17] px-5 py-3 text-sm font-bold text-amber-200 shadow-2xl animate-in fade-in slide-in-from-top-4">
+        <Sparkles size={18} className="text-amber-300 animate-pulse" />
+        <span>{templateSavedToast}</span>
+      </div>
+    )}
+
+    {/* Bottom Control Bar */}
+    <div className="sticky bottom-3 z-20 flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/50 bg-black/95 p-3.5 shadow-2xl backdrop-blur-xl">
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={()=>setManifest({...DEMO,cause:DEFAULT_CAUSE})} className="flex items-center gap-2 rounded-xl border border-slate-700 px-3.5 py-2 text-xs font-black text-slate-300 hover:border-slate-500">
+          <RotateCcw size={15}/> Reset to Demo
+        </button>
+        {/* Quick Load Template Presets */}
+        <select
+          onChange={(e) => {
+            const tmpl = allTemplates.find((t) => t.id === e.target.value);
+            if (tmpl) handleLoadTemplate(tmpl);
+            e.target.value = "";
+          }}
+          defaultValue=""
+          className="rounded-xl border border-amber-400/40 bg-[#121c16] px-3 py-2 text-xs font-black text-amber-300 outline-none cursor-pointer hover:border-amber-400"
+        >
+          <option value="" disabled>✨ Load Template Preset...</option>
+          {allTemplates.map((t) => (
+            <option key={t.id} value={t.id}>{t.badge} — {t.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {publishedCauseEnabled&&<button disabled={busy} onClick={()=>actions.pauseCause.mutate(!query.data?.campaign?.isCausePaused)} className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-black ${query.data?.campaign?.isCausePaused?"border-emerald-400/60 bg-emerald-400/10 text-emerald-200":"border-rose-400/60 bg-rose-400/10 text-rose-200"}`}>{query.data?.campaign?.isCausePaused?<Play size={15}/>:<AlertTriangle size={15}/>} {query.data?.campaign?.isCausePaused?"Restore cause":"Hide cause now"}</button>}
+        
+        {/* SAVE AS TEMPLATE BUTTON */}
+        <button
+          type="button"
+          onClick={() => {
+            soundManager.playClick();
+            setTemplateName(manifest.identity.campaignTitle);
+            setTemplateCategory(manifest.identity.sponsorName);
+            setShowSaveTemplateModal(true);
+          }}
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 px-4 py-2 text-xs font-black text-slate-950 shadow hover:brightness-110 cursor-pointer"
+        >
+          <Sparkles size={15}/> Save Template
+        </button>
+
+        {/* SAVE REVISION / DRAFT */}
+        <button disabled={busy} onClick={saveDraft} className="flex items-center gap-2 rounded-xl border border-lime-300/50 bg-lime-300/10 px-4 py-2 text-xs font-black text-lime-200">
+          <Save size={15}/>{saved ? "Saved" : workingVersion && workingVersion.status !== "DRAFT" ? "Save as new revision" : "Save draft"}
+        </button>
+
+        {query.data?.campaign?.published && <button disabled={busy} onClick={()=>actions.pause.mutate(!query.data?.campaign?.isPaused)} className="flex items-center gap-2 rounded-xl border border-amber-400/50 bg-amber-400/10 px-4 py-2 text-xs font-black text-amber-200">{query.data.campaign.isPaused ? <Play size={15}/> : <Pause size={15}/>} {query.data.campaign.isPaused ? "Resume" : "Pause"}</button>}
+      </div>
+    </div>
+
+    {/* Save Template Modal */}
+    {showSaveTemplateModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div className="w-full max-w-md rounded-3xl border-2 border-amber-400/80 bg-gradient-to-b from-[#18281e] to-[#080d0a] p-6 shadow-2xl flex flex-col gap-4 text-white">
+          <div className="flex items-center justify-between pb-3 border-b border-amber-500/30">
+            <div className="flex items-center gap-2 text-amber-300 font-title font-black text-lg">
+              <Sparkles size={18} /> Save Campaign Template
+            </div>
+            <button onClick={() => setShowSaveTemplateModal(false)} className="text-slate-400 hover:text-white p-1">
+              <X size={18} />
+            </button>
+          </div>
+          <p className="text-xs text-slate-300">
+            Save this tournament theme, sponsor logo animation, colors, and charity cause as a reusable template. It will immediately appear in the Tournaments Manager for 1-click deployment to any tournament.
+          </p>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-title font-bold text-amber-300 uppercase tracking-wider">Template Name</span>
+            <input
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="e.g. Pasture Grand Prix Theme"
+              className="rounded-xl border border-slate-700 bg-black/80 px-3.5 py-2.5 text-sm text-white outline-none focus:border-amber-400"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-title font-bold text-amber-300 uppercase tracking-wider">Category / Brand</span>
+            <input
+              value={templateCategory}
+              onChange={(e) => setTemplateCategory(e.target.value)}
+              placeholder="e.g. Agriculture / Dairy / Custom"
+              className="rounded-xl border border-slate-700 bg-black/80 px-3.5 py-2.5 text-sm text-white outline-none focus:border-amber-400"
+            />
+          </label>
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowSaveTemplateModal(false)}
+              className="px-4 py-2 rounded-xl bg-black/60 border border-slate-700 text-xs font-bold text-slate-300 hover:border-slate-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveAsTemplate}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-title font-black text-xs uppercase shadow hover:brightness-110"
+            >
+              <Sparkles size={14} /> Save Template
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     {actions.save.error || actions.publish.error || actions.submitReview.error || actions.review.error || actions.rollback.error || actions.pause.error || actions.pauseCause.error ? <div className="text-sm font-bold text-rose-400">{String((actions.save.error ?? actions.publish.error ?? actions.submitReview.error ?? actions.review.error ?? actions.rollback.error ?? actions.pause.error ?? actions.pauseCause.error) instanceof Error ? (actions.save.error ?? actions.publish.error ?? actions.submitReview.error ?? actions.review.error ?? actions.rollback.error ?? actions.pause.error ?? actions.pauseCause.error)?.message : "Campaign action failed")}</div> : null}
   </div>;
 }

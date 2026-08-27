@@ -1,7 +1,19 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Crown, LogIn, Clock, Dices, Sparkles, Send, Users, Trophy, X } from "lucide-react";
+import {
+  Crown,
+  LogIn,
+  Clock,
+  Dices,
+  Sparkles,
+  Send,
+  Users,
+  Trophy,
+  X,
+  Eye,
+  RotateCcw,
+} from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useGuestStore } from "../../stores/guest-store";
 import { useAuthStore } from "../../stores/auth-store";
@@ -9,6 +21,7 @@ import { useCosmetics } from "../../lib/hooks/useSponsors";
 import { useCountdownLive, type SkillType, type GameMode } from "../../lib/hooks/useCountdownLive";
 import { soundManager } from "../../lib/soundManager";
 import { BarnabyMascot } from "./BarnabyMascot";
+import { SkillFXOverlay } from "./SkillFXOverlay";
 import { ArcadeHeader } from "./ArcadeHeader";
 import { Arcade3DCylinder } from "./Arcade3DCylinder";
 import { ArcadePlayerCard, ArcadeOpponentCard } from "./ArcadePlayerCards";
@@ -24,6 +37,7 @@ import { DEFAULT_GAME_CONFIG } from "../../lib/game-config";
 import { MobileArenaShell } from "./MobileArenaShell";
 import { MobileNumberDeck } from "./MobileNumberDeck";
 import { MobileBattleStrip } from "./MobileBattleStrip";
+import { MobileLandscape } from "./MobileLandscape";
 import { TournamentSponsorLayer } from "./TournamentSponsorLayer";
 import {
   resolveCampaignAssetUrl,
@@ -102,12 +116,11 @@ export function CountDown31({
   const isMyWin = !!(
     state?.winner && players.find((player) => player.id === myId)?.name === state.winner.name
   );
-  const isLocalDefeat =
-    !dismissedDefeat && !!(myPlayer?.eliminated && state?.lastEliminated?.name === myPlayer.name);
+  const isLocalDefeat = !dismissedDefeat && !!myPlayer?.eliminated && status === "playing";
 
-  // Reset dismissed defeat whenever a new active round starts
+  // Reset dismissed defeat whenever a fresh game starts or game finishes
   useEffect(() => {
-    if (status === "playing" && !myPlayer?.eliminated) {
+    if (status === "over" || (status === "playing" && !myPlayer?.eliminated)) {
       setDismissedDefeat(false);
     }
   }, [status, myPlayer?.eliminated]);
@@ -334,7 +347,7 @@ export function CountDown31({
 
   return (
     <div
-      className={`arena-viewport relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${campaign ? "has-tournament-campaign" : ""} ${isShaking ? "animate-screen-shake" : ""}`}
+      className={`arena-viewport mobile-landscape-game relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${campaign ? "has-tournament-campaign" : ""} ${isShaking ? "animate-screen-shake" : ""}`}
       style={
         campaign
           ? ({
@@ -345,6 +358,7 @@ export function CountDown31({
           : undefined
       }
     >
+      <MobileLandscape />
       {campaign && (
         <TournamentSponsorLayer
           manifest={campaign}
@@ -403,14 +417,14 @@ export function CountDown31({
           <div className="w-full max-w-xl mx-auto flex items-center justify-center min-h-[42px] my-1 sm:my-3 z-30">
             {status !== "over" && amIn && status === "playing" ? (
               myTurn && selectedCards.length > 0 ? (
-                <div className="w-full flex items-center justify-between gap-2.5 rounded-2xl border-2 border-emerald-400/80 bg-gradient-to-r from-emerald-950/90 via-black/90 to-emerald-950/90 p-1.5 shadow-[0_0_25px_rgba(52,211,153,0.35)]">
+                <div className="w-full flex items-center justify-between gap-2.5 rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-[#064e3b] via-[#022c22] to-[#064e3b] p-1.5 shadow-[0_0_25px_rgba(52,211,153,0.5)] select-none">
                   <button
                     onClick={() => {
                       soundManager.playConfirm();
                       handleConfirmMove();
                     }}
                     data-sound="none"
-                    className="flex-1 py-2 sm:py-2.5 px-4 sm:px-6 rounded-xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-sm sm:text-base shadow-[0_0_20px_rgba(52,211,153,0.8)] hover:brightness-110 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2"
+                    className="flex-1 py-3 px-6 rounded-xl bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 text-slate-950 font-title font-black text-sm sm:text-base tracking-wide shadow-lg cursor-pointer flex items-center justify-center gap-2 select-none active:scale-[0.99] transition-colors"
                   >
                     <span>
                       CONFIRM MOVE ({selectedCards.length}{" "}
@@ -420,9 +434,9 @@ export function CountDown31({
                   </button>
 
                   <div
-                    className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 font-title text-xs font-black shrink-0 ${
+                    className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 font-title text-xs font-black shrink-0 ${
                       isLowTime
-                        ? "border-rose-500 bg-rose-950/90 text-rose-300 animate-bounce"
+                        ? "border-rose-500 bg-rose-950/90 text-rose-300 animate-pulse"
                         : "border-emerald-400/50 bg-emerald-950/70 text-emerald-300"
                     }`}
                   >
@@ -612,26 +626,6 @@ export function CountDown31({
             skillsLocked={count >= 22}
           />
         }
-        modeSwitch={
-          !campaign && gameConfig.gameplay.allowClassic && gameConfig.gameplay.allowSkills ? (
-            <div className="mobile-mode-switch" role="group" aria-label="Game mode">
-              <button
-                type="button"
-                onClick={() => handleModeChange("classic")}
-                className={gameMode === "classic" ? "active" : ""}
-              >
-                <Dices size={15} /> Classic
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModeChange("skills")}
-                className={gameMode === "skills" ? "active skills" : ""}
-              >
-                <Sparkles size={15} /> Skills
-              </button>
-            </div>
-          ) : null
-        }
       />
 
       {/* Desktop HUD: Stats are the bottom dock on desktop only */}
@@ -640,7 +634,11 @@ export function CountDown31({
           playerCount={players.length}
           maxPlayers={botCount + 1}
           round={state?.round ?? 1}
-          arenaName={gameConfig.arena.name}
+          arenaName={
+            campaign
+              ? `${campaign.logoTile.logoText || campaign.identity.sponsorName} 31`
+              : gameConfig.arena.name
+          }
           turnTime={gameConfig.gameplay.turnSeconds}
           pingMs={48}
           showPing={gameConfig.features.showPing}
@@ -648,7 +646,7 @@ export function CountDown31({
       </div>
 
       {/* Mobile Match Stats Floating Button - Bottom Right above Bottom Navigation */}
-      <div className="fixed bottom-[74px] right-3 z-30 lg:hidden flex items-center select-none">
+      <div className="mobile-stats-trigger fixed bottom-[86px] right-3 z-30 lg:hidden flex items-center select-none">
         <button
           type="button"
           onClick={() => {
@@ -671,11 +669,11 @@ export function CountDown31({
       {/* Mobile Match Stats Modal Popup */}
       {showMobileStats && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm select-none"
+          className="mobile-stats-modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm select-none"
           onClick={() => setShowMobileStats(false)}
         >
           <div
-            className="w-full max-w-sm rounded-3xl border-2 border-amber-400/80 bg-gradient-to-b from-[#15241b] via-[#0c1611] to-[#060c09] p-5 shadow-[0_10px_35px_rgba(0,0,0,0.9)] text-white flex flex-col gap-4"
+            className="mobile-stats-card w-full max-w-sm rounded-3xl border-2 border-amber-400/80 bg-gradient-to-b from-[#15241b] via-[#0c1611] to-[#060c09] p-5 shadow-[0_10px_35px_rgba(0,0,0,0.9)] text-white flex flex-col gap-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -696,7 +694,11 @@ export function CountDown31({
               playerCount={players.length}
               maxPlayers={botCount + 1}
               round={state?.round ?? 1}
-              arenaName={gameConfig.arena.name}
+              arenaName={
+                campaign
+                  ? `${campaign.logoTile.logoText || campaign.identity.sponsorName} 31`
+                  : gameConfig.arena.name
+              }
               turnTime={gameConfig.gameplay.turnSeconds}
               pingMs={48}
               showPing={gameConfig.features.showPing}
@@ -713,7 +715,35 @@ export function CountDown31({
         isLocalDefeat={isLocalDefeat}
         suppressIdle={false}
         onPlayAgain={handlePlayAgain}
+        onSpectate={() => {
+          soundManager.playClick();
+          setDismissedDefeat(true);
+        }}
       />
+
+      {/* 3D Cinematic Tactical Skill FX Overlay */}
+      <SkillFXOverlay lastSkillUsed={state?.lastSkillUsed} />
+
+      {/* Floating Spectating Mode Pill (active when user chooses to watch the match) */}
+      {dismissedDefeat && myPlayer?.eliminated && status === "playing" && (
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-black/90 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-amber-400/60 shadow-[0_0_30px_rgba(0,0,0,0.8)] flex items-center gap-3 sm:gap-4 animate-fade-in pointer-events-auto select-none">
+          <div className="flex items-center gap-2">
+            <Eye size={18} className="text-amber-400 animate-pulse" />
+            <span className="text-xs font-title font-bold text-slate-200 tracking-wide">
+              SPECTATING MATCH
+            </span>
+          </div>
+          <div className="h-4 w-px bg-slate-700" />
+          <button
+            type="button"
+            onClick={handlePlayAgain}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 text-slate-950 font-title font-black text-xs flex items-center gap-1.5 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+          >
+            <RotateCcw size={13} />
+            <span>PLAY AGAIN</span>
+          </button>
+        </div>
+      )}
 
       {/* Pre-Match 2-Skill Loadout Selector Modal */}
       <SkillLoadoutModal

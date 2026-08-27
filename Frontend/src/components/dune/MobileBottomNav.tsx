@@ -20,9 +20,9 @@ interface MobileLink {
 
 const MOBILE_LINKS: MobileLink[] = [
   { label: "Home", path: "/home", icon: Home, protected: false },
-  { label: "Events", path: "/events", icon: Trophy, protected: false },
-  { label: "Profile", path: "/profile", icon: User, protected: true, profile: true },
-  { label: "Shop", path: "/shop", icon: ShoppingBag, protected: true },
+  { label: "Tournaments", path: "/events", icon: Trophy, protected: false },
+  { label: "Avatars", path: "/avatar", icon: User, protected: false, profile: true },
+  { label: "Shop", path: "/shop", icon: ShoppingBag, protected: false },
   { label: "More", path: "/more", icon: MoreHorizontal, protected: false, more: true },
 ];
 

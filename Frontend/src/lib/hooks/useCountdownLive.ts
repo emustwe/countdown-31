@@ -247,10 +247,13 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
           processNextTurn(nextState);
         }
       },
-      runtimeConfigRef.current.gameplay.botThinkMinMs +
+      Math.max(4000, runtimeConfigRef.current.gameplay.botThinkMinMs) +
         Math.random() *
-          (runtimeConfigRef.current.gameplay.botThinkMaxMs -
-            runtimeConfigRef.current.gameplay.botThinkMinMs),
+          Math.max(
+            1200,
+            runtimeConfigRef.current.gameplay.botThinkMaxMs -
+              runtimeConfigRef.current.gameplay.botThinkMinMs,
+          ),
     );
   }, []);
 

@@ -5,42 +5,29 @@ This is the compact current state. The helper script replaces only the marked bl
 <!-- AI-HANDOFF:START -->
 ## Latest checkpoint
 
-- **Updated:** 2026-08-27 15:54:41 +05:00
-- **Outgoing agent:** Gemini
+- **Updated:** 2026-08-28 03:28:46 +05:00
+- **Outgoing agent:** Codex
 - **Status:** completed
-- **Branch:** `feat/tournament-campaign-platform`
-- **Last verified commit:** `9b18ab6`
-- **Summary:** Enabled the bottom-left Barnaby Mascot cow animation in tournament and campaign mode to match base game behavior with idle looping and defeat center-stage slide
-- **Validation:** next build passed 26/26 routes; TypeScript typecheck passed
-- **Exact next action:** User testing of bottom-left cow animation in desktop tournament mode
+- **Branch:** `codex/mobile-landscape-arena`
+- **Last verified commit:** `3bf8f71`
+- **Summary:** Replaced the portrait mobile match with a dedicated landscape-only arena for standard and tournament games: local player left, three-card deck and action center, opponent right, compact header controls, landscape defeat flow, and a clean portrait rotate gate.
+- **Validation:** Frontend TypeScript passed with --incremental false; Targeted ESLint found zero errors; three pre-existing unused-item warnings remain; Next.js production build passed with webpack; Browser QA passed at 844x390 and 667x375 with zero document overflow; MooMorrow tournament sponsor header and cause popover verified; Portrait 390x844 rotate gate verified
+- **Exact next action:** Have the user test codex/mobile-landscape-arena on a physical phone; then merge or cherry-pick after the concurrent base-game branch is ready.
 <!-- AI-HANDOFF:END -->
 
 ## Stable project state
 
-- Demo tournament: `/events/demo-moomorrow-cup`
-- Admin campaign studio: `/admin/tournament/demo-moomorrow-cup/campaign`
-- Demo sponsor login: `moomorrow-demo` / `DemoSponsor123!`
-- Frontend: Next.js application under `Frontend/`
-- Backend: NestJS and Prisma application under `Backend/`
+- Demo tournament: /events/demo-moomorrow-cup
+- Admin campaign studio: /admin/tournament/demo-moomorrow-cup/campaign
+- Demo sponsor login: moomorrow-demo / DemoSponsor123!
+- Frontend: Next.js application under Frontend/
+- Backend: NestJS and Prisma application under Backend/
 - Local dependencies: PostgreSQL and Redis through Docker
-- Sponsor lifecycle: draft ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ Brand and Safety review ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ approved ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ published
-- Public runtime reads only approved, published campaign revisions.
-
-## Preserve these unrelated working-tree paths
-
-These files existed outside the tournament task and must not be staged or removed without an explicit user request:
-
-- `Frontend/next-env.d.ts`
-- `Frontend/tsconfig.tsbuildinfo`
-- `Frontend/UI assets/0825.mov`
-- `Frontend/test-results/`
-- `Frontend/Frontend.zip`
-- `Frontend/Frontend 8-27-2026.zip`
-- `countdown31-tournament-sponsor-platform-plan.pdf`
-
-## Recovery notes
-
-- The dedicated tournament branch was created from commit `9545119` on the earlier `feat/admin-panel-and-game-studio-overhaul` branch.
-- The Tailscale Funnel configuration maps the public root to frontend port 3000 and port 8443 to backend port 4000, but local services must be running after a reboot.
-- On 2026-08-27, Prisma reported an old failed initial migration although the live schema matched `prisma/schema.prisma` exactly. An empty schema diff was verified, then all existing migrations were recorded as applied; `prisma migrate status` now reports the database up to date.
-- Do not restore the removed fake Data URL upload fallback or the removed create-on-read tournament behavior.
+- Sponsor lifecycle: draft -> pending_review -> approved -> active -> completed
+- Verification commands:
+  - Frontend: 
+pm run lint and 
+pm run test (or targeted Vitest files)
+  - Backend: 
+pm test and 
+pm run test:e2e

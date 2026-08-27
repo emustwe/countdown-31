@@ -228,7 +228,7 @@ export function PageShell({ children, className = "", brandVa = false }: { child
     <div className={`app-shell ${className} ${brandVa ? "va-shell" : ""}`}>
       <TopNav activeKey={activeKey} authed={authed} initials={initials} avatarUrl={profile?.avatarUrl} name={name} email={email} brandVa={brandVa} />
       {children}
-      {pathname !== "/home" && <MobileBottomNav />}
+      <MobileBottomNav />
       <footer><span>18+</span> Play responsibly. <b>Set your limits.</b></footer>
     </div>
   );

@@ -11,6 +11,7 @@ import {
   Home,
   Volume2,
   VolumeX,
+  Music,
   Sparkles,
   Dices,
   User,
@@ -24,6 +25,12 @@ import {
   ShieldAlert,
   HeartHandshake,
   ExternalLink,
+  Check,
+  Disc,
+  Zap,
+  Sun,
+  Gamepad2,
+  Coffee,
   X,
 } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
@@ -74,6 +81,32 @@ export function ArcadeHeader({
   const router = useRouter();
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
   const toggleSoundStore = useSettingsStore((s) => s.toggleSound);
+  const bgmEnabled = useSettingsStore((s) => s.bgmEnabled);
+  const toggleBgmStore = useSettingsStore((s) => s.toggleBgm);
+  const bgmTrack = useSettingsStore((s) => s.bgmTrack);
+  const setBgmTrackStore = useSettingsStore((s) => s.setBgmTrack);
+  const bgmVolume = useSettingsStore((s) => s.bgmVolume);
+  const setBgmVolumeStore = useSettingsStore((s) => s.setBgmVolume);
+
+  const [showMusicMenu, setShowMusicMenu] = useState(false);
+  const musicMenuRef = useRef<HTMLDivElement>(null);
+
+  function toggleBgm() {
+    soundManager.playClick();
+    toggleBgmStore();
+  }
+
+  useEffect(() => {
+    soundManager.setBgmVolume(bgmVolume);
+  }, [bgmVolume]);
+
+  useEffect(() => {
+    if (bgmEnabled && soundEnabled) {
+      soundManager.startBgm(bgmTrack);
+    } else {
+      soundManager.stopBgm();
+    }
+  }, [bgmEnabled, soundEnabled, bgmTrack]);
 
   const user = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -89,9 +122,11 @@ export function ArcadeHeader({
 
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showCause, setShowCause] = useState(false);
+  const [showMobileModeMenu, setShowMobileModeMenu] = useState(false);
   const [campaignLogoFailed, setCampaignLogoFailed] = useState(false);
   const causeImpressionSent = useRef(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileModeMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -100,14 +135,20 @@ export function ArcadeHeader({
         setShowProfileMenu(false);
         setShowCause(false);
       }
+      if (musicMenuRef.current && !musicMenuRef.current.contains(event.target as Node)) {
+        setShowMusicMenu(false);
+      }
+      if (mobileModeMenuRef.current && !mobileModeMenuRef.current.contains(event.target as Node)) {
+        setShowMobileModeMenu(false);
+      }
     }
-    if (showProfileMenu || showCause) {
+    if (showProfileMenu || showCause || showMusicMenu || showMobileModeMenu) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showProfileMenu, showCause]);
+  }, [showProfileMenu, showCause, showMusicMenu, showMobileModeMenu]);
 
   useEffect(() => {
     if (!isAuthenticated) setShowProfileMenu(false);
@@ -202,39 +243,122 @@ export function ArcadeHeader({
     >
       {/* Left Slot: Mode Selector (Desktop Arena) OR Single Heart Cause Button (Tournament) */}
       <div className="arcade-mode-selector flex items-center gap-1.5 sm:gap-2 z-20 pt-0.5 sm:pt-1">
-        {/* Mode Selector Toggle Pill - ONLY rendered on Game Arena page */}
+        {/* Mode Selector - ONLY rendered on Game Arena page */}
         {canToggle && (
-          <div className="hidden sm:flex items-center bg-black/75 border border-amber-400/50 rounded-2xl p-1 shadow-lg backdrop-blur-md">
-            <button
-              onClick={() => {
-                soundManager.playClick();
-                onToggleMode?.("classic");
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-title font-black transition-all cursor-pointer ${
-                gameMode === "classic"
-                  ? "bg-amber-400 text-slate-950 shadow-[0_0_12px_rgba(245,158,11,0.8)] scale-102"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              <Dices size={14} />
-              <span>CLASSIC</span>
-            </button>
+          <>
+            {/* Desktop Mode Selector Toggle Pill */}
+            <div className="desktop-mode-switch hidden sm:flex items-center bg-black/75 border border-amber-400/50 rounded-2xl p-1 shadow-lg backdrop-blur-md">
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playClick();
+                  onToggleMode?.("classic");
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-title font-black transition-all cursor-pointer ${
+                  gameMode === "classic"
+                    ? "bg-amber-400 text-slate-950 shadow-[0_0_12px_rgba(245,158,11,0.8)] scale-102"
+                    : "text-slate-300 hover:text-white"
+                }`}
+              >
+                <Dices size={14} />
+                <span>CLASSIC</span>
+              </button>
 
-            <button
-              onClick={() => {
-                soundManager.playClick();
-                onToggleMode?.("skills");
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-title font-black transition-all cursor-pointer ${
-                gameMode === "skills"
-                  ? "bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-[0_0_14px_rgba(168,85,247,0.8)] scale-102"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              <Sparkles size={14} className="text-yellow-300 fill-yellow-300 animate-pulse" />
-              <span>SKILL MODE</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playClick();
+                  onToggleMode?.("skills");
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-title font-black transition-all cursor-pointer ${
+                  gameMode === "skills"
+                    ? "bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-[0_0_14px_rgba(168,85,247,0.8)] scale-102"
+                    : "text-slate-300 hover:text-white"
+                }`}
+              >
+                <Sparkles size={14} className="text-yellow-300 fill-yellow-300 animate-pulse" />
+                <span>SKILL MODE</span>
+              </button>
+            </div>
+
+            {/* Mobile Top-Left Mode Selector Icon Button & Dropdown */}
+            <div ref={mobileModeMenuRef} className="mobile-mode-picker relative sm:hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playClick();
+                  setShowMobileModeMenu(!showMobileModeMenu);
+                }}
+                className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-md ${
+                  gameMode === "skills"
+                    ? "bg-purple-950/90 border-purple-400 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.4)]"
+                    : "bg-black/85 border-amber-400/80 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
+                }`}
+                title={`Game Mode: ${gameMode === "skills" ? "Tactical Skills" : "Classic 31"}`}
+                aria-label="Toggle game mode selector"
+              >
+                {gameMode === "skills" ? (
+                  <Sparkles size={17} className="text-yellow-300 fill-yellow-300" />
+                ) : (
+                  <Dices size={17} className="text-amber-400" />
+                )}
+              </button>
+
+              <AnimatePresence>
+                {showMobileModeMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.94 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.94 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-0 top-11 z-50 flex flex-col gap-1 p-1.5 bg-black/95 backdrop-blur-xl border-2 border-amber-400/80 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.95)] min-w-[155px]"
+                  >
+                    <span className="text-[9px] font-title font-bold text-slate-400 px-2 py-0.5 uppercase tracking-wider">
+                      GAME MODE
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundManager.playClick();
+                        onToggleMode?.("classic");
+                        setShowMobileModeMenu(false);
+                      }}
+                      className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-title font-black transition-all cursor-pointer ${
+                        gameMode === "classic"
+                          ? "bg-amber-400 text-slate-950 shadow-[0_0_10px_rgba(245,158,11,0.8)]"
+                          : "bg-white/5 text-slate-300 hover:bg-white/10"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <Dices size={14} />
+                        <span>Classic 31</span>
+                      </div>
+                      {gameMode === "classic" && <Check size={12} strokeWidth={3} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundManager.playClick();
+                        onToggleMode?.("skills");
+                        setShowMobileModeMenu(false);
+                      }}
+                      className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-title font-black transition-all cursor-pointer ${
+                        gameMode === "skills"
+                          ? "bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-[0_0_12px_rgba(168,85,247,0.8)]"
+                          : "bg-white/5 text-slate-300 hover:bg-white/10"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-yellow-300 fill-yellow-300" />
+                        <span>Skill Mode</span>
+                      </div>
+                      {gameMode === "skills" && <Check size={12} strokeWidth={3} />}
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </>
         )}
 
         {/* Single Cause Heart Icon strictly on the Left */}
@@ -361,11 +485,229 @@ export function ArcadeHeader({
           </button>
         )}
 
-        {/* Sound Toggle Button */}
+        {/* Music (BGM) Button & Interactive Track / Volume Popover */}
+        <div className="relative" ref={musicMenuRef}>
+          <button
+            onClick={() => {
+              soundManager.playClick();
+              setShowMusicMenu((prev) => !prev);
+            }}
+            className={`arcade-bgm-trigger w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer select-none ${
+              bgmEnabled && soundEnabled
+                ? "bg-gradient-to-b from-emerald-900 via-emerald-800 to-black border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(52,211,153,0.7),inset_0_1px_2px_rgba(255,255,255,0.4)]"
+                : "bg-gradient-to-b from-[#1f2b23] to-[#0a140e] border-amber-400/40 text-slate-400 shadow-[0_4px_12px_rgba(0,0,0,0.6)] opacity-70"
+            }`}
+            title="Music Settings & Tracks"
+            aria-label="Music Settings"
+          >
+            <Music
+              size={19}
+              className={
+                bgmEnabled && soundEnabled ? "animate-pulse text-emerald-300" : "text-slate-500"
+              }
+            />
+          </button>
+
+          <AnimatePresence>
+            {showMusicMenu && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.94, y: 8 }}
+                className="absolute right-0 top-[calc(100%+10px)] z-50 w-72 sm:w-80 rounded-2xl border-2 border-amber-400/80 bg-gradient-to-b from-[#16271c] via-[#0c1811] to-[#050b07] p-4 text-white shadow-[0_12px_36px_rgba(0,0,0,0.9)] backdrop-blur-xl select-none flex flex-col gap-3.5"
+                role="dialog"
+                aria-label="Music and Sound Controls"
+              >
+                {/* Header: Title & Quick Master Mute */}
+                <div className="flex items-center justify-between border-b border-amber-400/30 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Music size={16} className="text-amber-400" />
+                    <span className="font-title font-black text-sm tracking-wider text-amber-300">
+                      MUSIC & AUDIO
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundManager.playClick();
+                      toggleBgmStore();
+                    }}
+                    className={`px-2.5 py-1 rounded-full text-xs font-title font-bold transition-all cursor-pointer ${
+                      bgmEnabled
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/60 shadow-[0_0_10px_rgba(52,211,153,0.3)]"
+                        : "bg-slate-800 text-slate-400 border border-slate-700"
+                    }`}
+                  >
+                    {bgmEnabled ? "MUSIC ON" : "MUTED"}
+                  </button>
+                </div>
+
+                {/* BGM Volume Slider */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-xs font-title">
+                    <span className="text-slate-300 font-bold">MUSIC VOLUME</span>
+                    <span className="text-amber-300 font-black">
+                      {Math.round(bgmVolume * 100)}%
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <VolumeX size={15} className="text-slate-500 shrink-0" />
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={Math.round(bgmVolume * 100)}
+                      onChange={(e) => {
+                        const val = Number(e.target.value) / 100;
+                        setBgmVolumeStore(val);
+                        soundManager.setBgmVolume(val);
+                      }}
+                      className="w-full h-2 bg-black/60 rounded-lg appearance-none cursor-pointer accent-emerald-400 border border-amber-400/40"
+                    />
+                    <Volume2 size={16} className="text-amber-400 shrink-0" />
+                  </div>
+                </div>
+
+                {/* BGM Track Selector */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-title font-bold text-slate-300">
+                      SELECT MUSIC TRACK
+                    </span>
+                    <span className="text-[10px] text-amber-400 font-mono">7 SOUNDTRACKS</span>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto pr-1">
+                    {[
+                      {
+                        id: "arcade" as const,
+                        name: "Arcade Party Groove",
+                        desc: "136 BPM Mastered Party Beat",
+                        icon: Disc,
+                        activeBorder: "border-emerald-400",
+                        activeBg: "bg-gradient-to-r from-emerald-950/80 to-emerald-900/60",
+                        activeText: "text-emerald-200",
+                        iconColor: "text-emerald-400",
+                        shadow: "shadow-[0_0_12px_rgba(52,211,153,0.35)]",
+                      },
+                      {
+                        id: "vegas" as const,
+                        name: "Vegas Casino Funk",
+                        desc: "128 BPM Disco House & Slap Bass",
+                        icon: Sparkles,
+                        activeBorder: "border-amber-400",
+                        activeBg: "bg-gradient-to-r from-amber-950/80 to-amber-900/60",
+                        activeText: "text-amber-200",
+                        iconColor: "text-amber-400",
+                        shadow: "shadow-[0_0_12px_rgba(251,191,36,0.35)]",
+                      },
+                      {
+                        id: "synthwave" as const,
+                        name: "Cyber Synthwave 80s",
+                        desc: "125 BPM Retro Synth & Running Bass",
+                        icon: Zap,
+                        activeBorder: "border-cyan-400",
+                        activeBg: "bg-gradient-to-r from-cyan-950/80 to-blue-900/60",
+                        activeText: "text-cyan-200",
+                        iconColor: "text-cyan-400",
+                        shadow: "shadow-[0_0_12px_rgba(34,211,238,0.35)]",
+                      },
+                      {
+                        id: "tropical" as const,
+                        name: "Tropical Beach Party",
+                        desc: "120 BPM Calypso Marimba & Bouncy Bass",
+                        icon: Sun,
+                        activeBorder: "border-yellow-400",
+                        activeBg: "bg-gradient-to-r from-yellow-950/80 to-orange-900/60",
+                        activeText: "text-yellow-200",
+                        iconColor: "text-yellow-400",
+                        shadow: "shadow-[0_0_12px_rgba(250,204,21,0.35)]",
+                      },
+                      {
+                        id: "vip" as const,
+                        name: "High-Stakes VIP Club",
+                        desc: "130 BPM Electro House & Saw Stabs",
+                        icon: Crown,
+                        activeBorder: "border-fuchsia-400",
+                        activeBg: "bg-gradient-to-r from-fuchsia-950/80 to-purple-900/60",
+                        activeText: "text-fuchsia-200",
+                        iconColor: "text-fuchsia-400",
+                        shadow: "shadow-[0_0_12px_rgba(232,121,249,0.35)]",
+                      },
+                      {
+                        id: "chiptune" as const,
+                        name: "8-Bit Retro Chiptune",
+                        desc: "144 BPM Fast Gamified Pixel Arcade",
+                        icon: Gamepad2,
+                        activeBorder: "border-rose-400",
+                        activeBg: "bg-gradient-to-r from-rose-950/80 to-red-900/60",
+                        activeText: "text-rose-200",
+                        iconColor: "text-rose-400",
+                        shadow: "shadow-[0_0_12px_rgba(251,113,133,0.35)]",
+                      },
+                      {
+                        id: "lofi" as const,
+                        name: "Lofi Chill Hop Pasture",
+                        desc: "90 BPM Warm Jazz Rhodes & Vinyl Swing",
+                        icon: Coffee,
+                        activeBorder: "border-teal-400",
+                        activeBg: "bg-gradient-to-r from-teal-950/80 to-emerald-900/60",
+                        activeText: "text-teal-200",
+                        iconColor: "text-teal-400",
+                        shadow: "shadow-[0_0_12px_rgba(45,212,191,0.35)]",
+                      },
+                    ].map((trackItem) => {
+                      const IconComponent = trackItem.icon;
+                      const isActive = bgmTrack === trackItem.id;
+                      return (
+                        <button
+                          key={trackItem.id}
+                          type="button"
+                          onClick={() => {
+                            soundManager.playClick();
+                            setBgmTrackStore(trackItem.id);
+                          }}
+                          className={`p-2 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
+                            isActive
+                              ? `${trackItem.activeBg} ${trackItem.activeBorder} ${trackItem.activeText} ${trackItem.shadow}`
+                              : "bg-black/40 border-slate-700/60 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <IconComponent
+                              size={16}
+                              className={
+                                isActive ? `${trackItem.iconColor} animate-pulse` : "text-slate-500"
+                              }
+                            />
+                            <div>
+                              <p className="font-title font-bold text-xs text-white leading-tight">
+                                {trackItem.name}
+                              </p>
+                              <p className="text-[10px] text-slate-400 font-medium leading-tight">
+                                {trackItem.desc}
+                              </p>
+                            </div>
+                          </div>
+                          {isActive && (
+                            <Check size={15} className={`${trackItem.iconColor} shrink-0`} />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Sound SFX Toggle Button */}
         <button
           onClick={toggleSound}
           className="arcade-sound-trigger w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-[#1f2b23] to-[#0a140e] border-2 border-amber-400 shadow-[0_4px_12px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.4)] flex items-center justify-center text-amber-300 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-          title={soundEnabled ? "Mute sound" : "Enable sound"}
+          title={soundEnabled ? "Mute Sound SFX" : "Enable Sound SFX"}
           aria-label="Sound Toggle"
         >
           {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} className="text-slate-400" />}

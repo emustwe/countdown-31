@@ -126,6 +126,9 @@ export function MasterAvatar({
         <div className={`pointer-events-none absolute inset-0 z-10 rounded-[inherit] ${frame.className}`} aria-hidden="true" />
       )}
 
+      {/* Dynamic Holographic Shine Sweep */}
+      <div className="absolute inset-0 anim-holo-shimmer opacity-25 pointer-events-none z-15" />
+
       {/* Optional Level Badge */}
       {showLevel && (
         <span className="absolute bottom-1.5 left-1.5 text-[9px] font-title font-black bg-emerald-500 text-slate-950 px-1.5 py-0.2 rounded-md border border-white shadow-lg z-20">

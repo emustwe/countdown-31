@@ -9,6 +9,8 @@ interface TransparentVideoProps {
   width?: number;
   height?: number;
   audioEnabled?: boolean;
+  /** Playback speed multiplier (e.g. 1.35 for snappy animation) */
+  playbackRate?: number;
   /** When false (default) the clip plays through once and holds its last frame. */
   loop?: boolean;
   /** Drives one-shot playback: flip to true to play from frame 0; false pauses + resets to
@@ -106,6 +108,7 @@ export function TransparentVideo({
   width = 360,
   height = 640,
   audioEnabled = true,
+  playbackRate = 1.35,
   loop = false,
   playing,
   onEnded,
@@ -123,7 +126,8 @@ export function TransparentVideo({
     if (!video) return;
     video.muted = !soundEnabled || !audioEnabled;
     video.volume = 0.85;
-  }, [audioEnabled, soundEnabled, src]);
+    video.playbackRate = playbackRate;
+  }, [audioEnabled, soundEnabled, src, playbackRate]);
 
   /* Playback control keyed on `loop`:
      - loop=true  → the clip plays continuously (the cow is always animating, e.g. on the side).
@@ -134,13 +138,14 @@ export function TransparentVideo({
     const video = videoRef.current;
     if (!video || playing !== undefined) return; // `playing` path (legacy) handled below
     video.loop = loop;
+    video.playbackRate = playbackRate;
     try {
       video.currentTime = 0;
     } catch {
       /* seeking before metadata is loaded — ignored */
     }
     video.play().catch(() => undefined);
-  }, [loop, playing]);
+  }, [loop, playing, playbackRate]);
 
   /* Legacy one-shot control via `playing` (kept for any other callers). */
   useEffect(() => {

@@ -93,8 +93,8 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   gameplay: {
     turnSeconds: 7,
     defaultBotCount: 1,
-    botThinkMinMs: 900,
-    botThinkMaxMs: 2300,
+    botThinkMinMs: 4000,
+    botThinkMaxMs: 5500,
     allowClassic: true,
     allowSkills: true,
     defaultMode: "skills",
@@ -220,7 +220,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     },
     {
       id: "cow",
-      label: "My Cow",
+      label: "My Avatars",
       path: "/avatar",
       icon: "cow",
       enabled: true,

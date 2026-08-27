@@ -16,6 +16,7 @@ export interface AvatarConfig {
   hasMustache: boolean;
   hasCrown: boolean;
   title: string;
+  unlockedItemIds: string[];
 }
 
 interface AvatarStore extends AvatarConfig {
@@ -27,6 +28,8 @@ interface AvatarStore extends AvatarConfig {
   toggleMustache: () => void;
   toggleCrown: () => void;
   setTitle: (title: string) => void;
+  unlockItem: (itemId: string) => void;
+  isItemUnlocked: (itemId: string) => boolean;
   equipAll: () => void;
   removeAll: () => void;
   resetDefault: () => void;
@@ -41,11 +44,20 @@ const DEFAULT_CONFIG: AvatarConfig = {
   hasMustache: false,
   hasCrown: false,
   title: "The 31 Evader 👑",
+  unlockedItemIds: [
+    "champion",
+    "cow_v1_base",
+    "emerald",
+    "none",
+    "base_bull",
+    "golden_emperor",
+    "mythic_gold",
+  ],
 };
 
 export const useAvatarStore = create<AvatarStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...DEFAULT_CONFIG,
       setVariant: (variantId) => {
         const variant = getAvatarVariant(variantId);
@@ -64,6 +76,16 @@ export const useAvatarStore = create<AvatarStore>()(
       toggleMustache: () => set((s) => ({ hasMustache: !s.hasMustache })),
       toggleCrown: () => set((s) => ({ hasCrown: !s.hasCrown })),
       setTitle: (title) => set({ title }),
+      unlockItem: (itemId) =>
+        set((s) => ({
+          unlockedItemIds: s.unlockedItemIds.includes(itemId)
+            ? s.unlockedItemIds
+            : [...s.unlockedItemIds, itemId],
+        })),
+      isItemUnlocked: (itemId) => {
+        const { unlockedItemIds } = get();
+        return (unlockedItemIds || DEFAULT_CONFIG.unlockedItemIds).includes(itemId);
+      },
       equipAll: () => set({ hasGlasses: true, hasMustache: true, hasCrown: true }),
       removeAll: () => set({ hasGlasses: false, hasMustache: false, hasCrown: false }),
       resetDefault: () => set({ ...DEFAULT_CONFIG }),

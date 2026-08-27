@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Check, Flame, Skull, Sparkles } from "lucide-react";
 import type { LastMoveInfo } from "../../lib/hooks/useCountdownLive";
 import { soundManager } from "../../lib/soundManager";
@@ -36,11 +37,18 @@ export function MobileNumberDeck({
     const canTap = myTurn && status === "playing" && playable;
 
     return (
-      <button
+      <motion.button
         type="button"
         key={`${playable ? "next" : "previous"}-${value}`}
         aria-label={`Number ${value}`}
         disabled={!canTap}
+        initial={false}
+        animate={{
+          scale: selected ? 1.08 : 1,
+          y: selected ? -4 : 0,
+        }}
+        whileTap={canTap ? { scale: 0.95 } : undefined}
+        transition={{ type: "spring", stiffness: 350, damping: 25 }}
         onClick={() => {
           soundManager.playClick();
           onToggleCard(value);
@@ -48,11 +56,19 @@ export function MobileNumberDeck({
         className={`mobile-number-card ${playable ? "is-playable" : "is-previous"} ${wasPlayed ? "was-played" : ""} ${selected ? "is-selected" : ""} ${bomb ? "is-bomb" : ""}`}
       >
         <span className="mobile-number-badge">
-          {wasPlayed ? <Check size={13} strokeWidth={4} /> : bomb ? <Skull size={11} /> : danger ? <Flame size={11} /> : playable ? <Sparkles size={10} /> : null}
+          {wasPlayed ? (
+            <Check size={13} strokeWidth={4} />
+          ) : bomb ? (
+            <Skull size={12} className="animate-pulse text-rose-400" />
+          ) : danger ? (
+            <Flame size={12} className="animate-pulse text-amber-400" />
+          ) : playable ? (
+            <Sparkles size={11} className={selected ? "text-emerald-300" : "text-amber-300"} />
+          ) : null}
         </span>
         <strong>{value}</strong>
-        {selected && <small>Picked</small>}
-      </button>
+        {selected && <small className="animate-pulse">Picked</small>}
+      </motion.button>
     );
   }
 
@@ -75,3 +91,4 @@ export function MobileNumberDeck({
     </div>
   );
 }
+

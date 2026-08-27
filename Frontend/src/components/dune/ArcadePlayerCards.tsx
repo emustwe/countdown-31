@@ -306,14 +306,18 @@ export function ArcadePlayerCard({
     <div className="w-full flex flex-col gap-3">
       {/* Top Section: Big 3D Avatar Frame + Attached Side Skills (if Skill Mode) */}
       <div className="flex items-center gap-2 sm:gap-3 justify-center h-44 sm:h-48 md:h-52">
-        {/* BIG Full 3D Battle Card Avatar Showcase */}
+        {/* BIG Full 3D Battle Card Avatar Showcase with Floating & Combat Halo */}
         <div
-          className={`relative w-44 h-44 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-3xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.8)] border-3 transition-all ${
+          className={`relative w-44 h-44 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-3xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.8)] border-3 transition-all anim-avatar-float ${
             myTurn
-              ? "border-emerald-400 shadow-[0_0_35px_rgba(52,211,153,0.8)] scale-[1.02]"
+              ? "border-emerald-400 anim-emerald-halo scale-[1.03]"
               : "border-amber-400/70"
           }`}
         >
+          {/* Active Turn Energy Perimeter */}
+          {myTurn && (
+            <div className="absolute inset-0 rounded-3xl border-2 border-emerald-300 animate-ping opacity-30 pointer-events-none" />
+          )}
           <MasterAvatar
             config={avatar}
             showLevel={true}
@@ -566,14 +570,19 @@ export function ArcadeOpponentCard({
     <div className="w-full flex flex-col gap-3">
       {/* Top Section: Opponent Big 3D Avatar Frame + Attached Side Skills (if Skill Mode) */}
       <div className="flex items-center gap-2 sm:gap-3 justify-center h-44 sm:h-48 md:h-52">
-        {/* BIG Full 3D Rival Battle Card Avatar Showcase */}
+        {/* BIG Full 3D Rival Battle Card Avatar Showcase with Floating & Combat Halo */}
         <div
-          className={`relative w-44 h-44 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-3xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.8)] border-3 transition-all ${
+          className={`relative w-44 h-44 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-3xl overflow-hidden shadow-[0_15px_35px_rgba(0,0,0,0.8)] border-3 transition-all anim-avatar-float ${
             isOpponentTurn
-              ? "border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.8)] scale-[1.02]"
+              ? "border-cyan-400 anim-combat-halo scale-[1.03]"
               : "border-purple-400/60"
           }`}
+          style={{ animationDelay: "1.8s" }}
         >
+          {/* Active Turn Energy Perimeter for Rival */}
+          {isOpponentTurn && (
+            <div className="absolute inset-0 rounded-3xl border-2 border-cyan-300 animate-ping opacity-30 pointer-events-none" />
+          )}
           <MasterAvatar
             config={profile.config}
             showLevel={true}
