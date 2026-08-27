@@ -252,61 +252,86 @@ export function ArcadeHeader({
         )}
       </div>
 
-      {/* Center marquee becomes the sponsor identity only inside a published campaign. */}
+      {/* Center marquee: Separate Sponsor Themed Card & Standalone '31' Badge */}
       <div className="arcade-brand absolute left-1/2 -translate-x-1/2 top-1 sm:top-2 flex flex-col items-center pointer-events-none z-10">
-        <div
-          onClick={() => router.push("/home")}
-          className={`pointer-events-auto cursor-pointer relative flex items-center justify-center gap-2 sm:gap-2.5 bg-gradient-to-r from-amber-950 via-yellow-900 to-amber-950 px-3.5 sm:px-10 py-1.5 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all ${hasCampaign ? "tournament-header-brand" : ""}`}
-        >
-          {/* Decorative Corner Rivets (Desktop) */}
-          <span className="hidden sm:block absolute top-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
-          <span className="hidden sm:block absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
-          <span className="hidden sm:block absolute bottom-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
-          <span className="hidden sm:block absolute bottom-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
-
-          {campaign ? (
+        {campaign ? (
+          /* SPONSOR CAMPAIGN MODE: Separate Sponsor Themed Box + Standalone 3D '31' Badge */
+          <div
+            onClick={() => router.push("/home")}
+            className="pointer-events-auto cursor-pointer flex items-center gap-2 sm:gap-3.5 select-none"
+          >
+            {/* Sponsor Themed Card (e.g. Moomorrow Black Card) */}
             <div
-              className={`tournament-header-sponsor sponsor-motion-${campaign.logoTile.animationPreset}`}
-              aria-label={campaign.identity.sponsorName}
+              className={`tournament-sponsor-card relative flex items-center justify-center px-4 sm:px-8 py-2 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-400/90 shadow-[0_8px_30px_rgba(0,0,0,0.9),0_0_25px_rgba(245,158,11,0.35),inset_0_1px_2px_rgba(255,255,255,0.3)] hover:brightness-110 transition-all bg-gradient-to-b from-[#1c1f1d] via-[#101311] to-[#080a09]`}
             >
-              {campaignLogoUrl && !campaignLogoFailed ? (
-                campaign.logoTile.mediaType === "video" ? (
-                  <video
-                    src={campaignLogoUrl}
-                    muted
-                    loop
-                    autoPlay
-                    playsInline
-                    onError={() => setCampaignLogoFailed(true)}
-                  />
+              {/* Corner Rivets (Desktop) */}
+              <span className="hidden sm:block absolute top-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-300 border border-amber-950" />
+              <span className="hidden sm:block absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-300 border border-amber-950" />
+              <span className="hidden sm:block absolute bottom-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-300 border border-amber-950" />
+              <span className="hidden sm:block absolute bottom-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-300 border border-amber-950" />
+
+              <div
+                className={`tournament-header-sponsor sponsor-motion-${campaign.logoTile.animationPreset}`}
+                aria-label={campaign.identity.sponsorName}
+              >
+                {campaignLogoUrl && !campaignLogoFailed ? (
+                  campaign.logoTile.mediaType === "video" ? (
+                    <video
+                      src={campaignLogoUrl}
+                      muted
+                      loop
+                      autoPlay
+                      playsInline
+                      onError={() => setCampaignLogoFailed(true)}
+                    />
+                  ) : (
+                    <img
+                      src={campaignLogoUrl}
+                      alt={campaign.identity.sponsorName}
+                      onError={() => setCampaignLogoFailed(true)}
+                    />
+                  )
                 ) : (
-                  <img
-                    src={campaignLogoUrl}
-                    alt={campaign.identity.sponsorName}
-                    onError={() => setCampaignLogoFailed(true)}
-                  />
-                )
-              ) : (
-                <span>{campaign.logoTile.logoText || campaign.identity.sponsorName}</span>
-              )}
+                  <span>{campaign.logoTile.logoText || campaign.identity.sponsorName}</span>
+                )}
+              </div>
             </div>
-          ) : (
+
+            {/* Standalone 3D Golden "31" Shield Badge */}
+            <div className="flex items-center justify-center w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 border-2 sm:border-3 border-white shadow-[0_6px_20px_rgba(245,158,11,0.95),inset_0_1px_2px_rgba(255,255,255,0.7)] hover:scale-105 transition-transform shrink-0">
+              <span className="font-title font-black text-base sm:text-2xl text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
+                31
+              </span>
+            </div>
+          </div>
+        ) : (
+          /* STANDARD CLASSIC ARENA MODE: Unified Title Box */
+          <div
+            onClick={() => router.push("/home")}
+            className="pointer-events-auto cursor-pointer relative flex items-center justify-center gap-2 sm:gap-2.5 bg-gradient-to-r from-amber-950 via-yellow-900 to-amber-950 px-6 sm:px-10 py-2 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all"
+          >
+            {/* Decorative Corner Rivets (Desktop) */}
+            <span className="hidden sm:block absolute top-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
+            <span className="hidden sm:block absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
+            <span className="hidden sm:block absolute bottom-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
+            <span className="hidden sm:block absolute bottom-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
+
             <h1 className="font-title font-black text-xl sm:text-3xl md:text-4xl tracking-wider text-white drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)]">
               {config.branding.gameTitle}
             </h1>
-          )}
 
-          {/* 3D Golden "31" Shield Badge */}
-          <div className="flex items-center justify-center w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 border-2 border-white shadow-[0_4px_12px_rgba(245,158,11,0.9)] -mr-1">
-            <span className="font-title font-black text-base sm:text-2xl text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
-              31
-            </span>
+            {/* 3D Golden "31" Shield Badge */}
+            <div className="flex items-center justify-center w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 border-2 border-white shadow-[0_4px_12px_rgba(245,158,11,0.9)] -mr-1 shrink-0">
+              <span className="font-title font-black text-base sm:text-2xl text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
+                31
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Subtitle Warning Pill - ONLY shown in Game Arena */}
         {(canToggle || campaign) && (
-          <span className="mt-1 text-[10px] sm:text-xs font-title font-black tracking-wider text-amber-300 uppercase bg-black/85 px-3 py-0.5 rounded-full border border-amber-400/40 shadow pointer-events-auto whitespace-nowrap">
+          <span className="mt-1 text-[10px] sm:text-xs font-title font-black tracking-wider text-amber-300 uppercase bg-black/85 px-3.5 py-0.5 rounded-full border border-amber-400/40 shadow pointer-events-auto whitespace-nowrap">
             {campaign
               ? `${campaign.identity.disclosureLabel} ${campaign.identity.sponsorName}`
               : gameMode === "skills"

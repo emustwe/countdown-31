@@ -2229,7 +2229,19 @@ h3 {
 .tournament-sponsor-story strong { display: block; margin-top: 5px; color: var(--sponsor-primary); font-size: 17px; line-height: 1.05; }
 .tournament-sponsor-story p { margin: 6px 0 0; color: rgba(255,255,255,.72); font-size: 10px; line-height: 1.4; }
 
-/* Campaign header: the sponsor becomes the title instead of occupying a gameplay corner. */
+/* Campaign header: separate themed sponsor card (e.g. Moomorrow Black Card) */
+.tournament-sponsor-card {
+  min-width: clamp(160px, 20vw, 320px);
+  height: clamp(42px, 4.8vw, 56px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #181c19 0%, #0d100e 50%, #060807 100%);
+  border: 2.5px solid #fbbf24;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.9), 0 0 25px rgba(245, 158, 11, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(12px);
+}
 .tournament-header-brand {
   min-width: clamp(340px, 35vw, 520px);
   justify-content: center;
@@ -9026,6 +9038,12 @@ button.mini:hover { filter: brightness(1.06); }
     transform: scale(.52);
   }
 
+  .arcade-arena-header .tournament-sponsor-card {
+    min-width: 0;
+    max-width: calc(100vw - 150px);
+    height: 38px;
+    padding: 4px 10px !important;
+  }
   .arcade-arena-header .tournament-header-brand {
     min-width: 0;
     max-width: calc(100vw - 140px);

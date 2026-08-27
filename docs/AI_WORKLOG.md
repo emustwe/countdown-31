@@ -100,3 +100,12 @@ Short, append-only checkpoints from substantive agent turns. Git remains authori
   - next build passed
   - Static pages generated 26/26
 - Next: User testing of restored header presentation
+## 2026-08-27 15:40:50 +05:00 â€” Gemini â€” completed
+
+- Branch: `feat/tournament-campaign-platform`
+- Starting commit: `06c75f2`
+- Summary: Separated the sponsor themed header box (Moomorrow black card) from the 31 badge so the sponsor card and the standalone 3D golden 31 badge appear as two distinct side-by-side elements in desktop and mobile tournament mode
+- Validation:
+  - next build passed 26/26 routes
+  - TypeScript typecheck passed
+- Next: User testing of separate sponsor card and standalone 31 badge in header
