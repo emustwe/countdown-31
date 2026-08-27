@@ -1,273 +1,287 @@
 "use client";
 
-import React, { useState } from "react";
-import { ShoppingBag, Check, Coins, Gem, Palette } from "lucide-react";
+import { Check, CircleDollarSign, LockKeyhole, Palette, ShoppingBag, Sparkles } from "lucide-react";
+import { useState } from "react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
-import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { AuthGateModal } from "../../components/dune/AuthGateModal";
-import { useAuthStore } from "../../stores/auth-store";
-import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
+import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
+import { ApiError } from "../../lib/api-client";
+import { usePurchaseShopItem, useShopAccount } from "../../lib/hooks/useShop";
+import { formatUsdt } from "../../lib/money";
+import {
+  SHOP_CATALOG,
+  isStarterItem,
+  type ShopCatalogItem,
+  type ShopCategory,
+} from "../../lib/shop-catalog";
 import { soundManager } from "../../lib/soundManager";
+import { useAuthStore } from "../../stores/auth-store";
+import { useAvatarStore } from "../../stores/avatar-customization-store";
 
-type ShopTab = "skins" | "frames" | "skills" | "vault";
-
-interface ShopItem {
-  id: string;
-  name: string;
-  category: ShopTab;
-  rarity: "Common" | "Epic" | "Mythic" | "Legendary";
-  price: number;
-  currency: "coins" | "gems";
-  preview: string;
-  description: string;
-  unlocked?: boolean;
-}
-
-const SHOP_ITEMS: ShopItem[] = [
-  // Skins
-  { id: "golden_emperor", name: "Golden Emperor Bull", category: "skins", rarity: "Mythic", price: 1500, currency: "coins", preview: "/assets/Avatar1/avatar.png", description: "Legendary gilded monarch bull with sovereign radiance.", unlocked: true },
-  { id: "base_bull", name: "Classic Varsity Bull", category: "skins", rarity: "Common", price: 0, currency: "coins", preview: "/assets/Simple Avatar no background.png", description: "The iconic Barnaby varsity athlete bull.", unlocked: true },
-  { id: "barnaby", name: "Barnaby Pasture Master", category: "skins", rarity: "Epic", price: 750, currency: "coins", preview: "/assets/barnaby/barnaby-field.jpg", description: "The fearless captain of the 31 counting pasture." },
-  
-  // Frames
-  { id: "mythic_gold", name: "Sovereign Gold Crest", category: "frames", rarity: "Mythic", price: 1000, currency: "coins", preview: "border-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.8)]", description: "Forged from pure pasture gold with radiant corner gems." },
-  { id: "neon_glacier", name: "Neon Glacier Frame", category: "frames", rarity: "Epic", price: 500, currency: "coins", preview: "border-cyan-400 shadow-[0_0_25px_rgba(34,211,238,0.7)]", description: "Sub-zero frozen crystal border with icy pulsations." },
-  { id: "inferno", name: "Infernal Volcano Crest", category: "frames", rarity: "Epic", price: 600, currency: "coins", preview: "border-rose-500 shadow-[0_0_25px_rgba(244,63,94,0.7)]", description: "Molten volcanic rock border with burning ember particles." },
-
-  // Skills
-  { id: "skill_rewind", name: "Chrono Rewind Pack (x5)", category: "skills", rarity: "Epic", price: 300, currency: "coins", preview: "🔄 -2 STEPS", description: "Rewinds live counter by 2 digits during tough countdowns." },
-  { id: "skill_turbo", name: "Turbo Leap Pack (x5)", category: "skills", rarity: "Epic", price: 300, currency: "coins", preview: "⚡ +3 LEAP", description: "Instantly leaps forward +3 numbers in a surprise rush." },
-  { id: "skill_shield", name: "Bovine Barrier (x5)", category: "skills", rarity: "Legendary", price: 450, currency: "coins", preview: "🛡️ SHIELD", description: "Grants Divine Shield immunity for 1 turn against blunders." },
-  { id: "skill_snooze", name: "Pasture Snooze (x5)", category: "skills", rarity: "Legendary", price: 500, currency: "coins", preview: "🌙 SKIP", description: "Safely passes turn to the next player without picking cards." },
-
-  // Vault
-  { id: "vault_1", name: "Handful of Gold (500 Coins)", category: "vault", rarity: "Common", price: 5, currency: "gems", preview: "🪙 500", description: "Starter coin stash for pasture brawlers." },
-  { id: "vault_2", name: "Barnaby Chest (2,500 Coins)", category: "vault", rarity: "Epic", price: 20, currency: "gems", preview: "🪙 2,500", description: "Heavy wooden chest packed with arcade gold." },
-  { id: "vault_3", name: "Royal Bull Vault (10,000 Coins)", category: "vault", rarity: "Mythic", price: 60, currency: "gems", preview: "🪙 10,000", description: "Grand treasury of royal pasture coins with 20% bonus." },
+const TABS: readonly { key: ShopCategory; label: string }[] = [
+  { key: "avatars", label: "Avatars" },
+  { key: "backgrounds", label: "Backgrounds" },
+  { key: "frames", label: "Frames" },
+  { key: "skills", label: "Skill Packs" },
 ];
 
+const RARITY_STYLES: Record<ShopCatalogItem["rarity"], string> = {
+  Starter: "bg-emerald-300 text-emerald-950",
+  Rare: "bg-cyan-300 text-cyan-950",
+  Epic: "bg-violet-300 text-violet-950",
+  Legendary: "bg-amber-300 text-amber-950",
+};
+
+function errorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    const message = error.envelope.message;
+    if (typeof message === "string") return message;
+    return (
+      message.message ??
+      message.issues?.map((issue) => issue.message).join(" ") ??
+      "Purchase failed."
+    );
+  }
+  return "That purchase did not go through. Please try again.";
+}
+
 export default function ShopPage() {
-  const [tab, setTab] = useState<ShopTab>("skins");
+  const [tab, setTab] = useState<ShopCategory>("avatars");
   const [showRules, setShowRules] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
-  const accessToken = useAuthStore((s) => s.accessToken);
+  const [notice, setNotice] = useState<string | null>(null);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const variantId = useAvatarStore((state) => state.variantId);
+  const backgroundId = useAvatarStore((state) => state.backgroundId);
+  const frameId = useAvatarStore((state) => state.frameId);
+  const setVariant = useAvatarStore((state) => state.setVariant);
+  const setBackground = useAvatarStore((state) => state.setBackground);
+  const setFrame = useAvatarStore((state) => state.setFrame);
+  const shop = useShopAccount(Boolean(accessToken));
+  const purchase = usePurchaseShopItem();
+  const owned = new Set(shop.data?.owned ?? []);
+  const items = SHOP_CATALOG.filter((item) => item.category === tab);
 
-  const avatar = useAvatarStore();
-  const setSkin = useAvatarStore((s) => s.setSkin);
-  const setFrame = useAvatarStore((s) => s.setFrame);
+  function isOwned(item: ShopCatalogItem) {
+    return isStarterItem(item.key) || owned.has(item.key);
+  }
 
-  const [coins, setCoins] = useState(1250);
-  const [gems, setGems] = useState(50);
-  const [purchasedIds, setPurchasedIds] = useState<string[]>(["golden_emperor", "base_bull", "mythic_gold"]);
+  function isEquipped(item: ShopCatalogItem) {
+    return (
+      (item.category === "avatars" && variantId === item.id) ||
+      (item.category === "backgrounds" && backgroundId === item.id) ||
+      (item.category === "frames" && frameId === item.id)
+    );
+  }
 
-  function handleBuyOrEquip(item: ShopItem) {
-    // Guest protection: prompt account creation on purchases
-    if (!accessToken && item.price > 0 && !purchasedIds.includes(item.id)) {
+  function equip(item: ShopCatalogItem, announce = true) {
+    if (item.category === "avatars") setVariant(item.id as Parameters<typeof setVariant>[0]);
+    if (item.category === "backgrounds")
+      setBackground(item.id as Parameters<typeof setBackground>[0]);
+    if (item.category === "frames") setFrame(item.id as Parameters<typeof setFrame>[0]);
+    soundManager.playEquip();
+    if (announce) setNotice(`${item.name} equipped.`);
+  }
+
+  async function handleItem(item: ShopCatalogItem) {
+    setNotice(null);
+    if (!accessToken) {
       soundManager.playOpen();
       setShowAuthGate(true);
       return;
     }
-
-    const isPurchased = purchasedIds.includes(item.id);
-
-    if (isPurchased) {
-      soundManager.playEquip();
-      if (item.category === "skins") {
-        setSkin(item.id as AvatarConfig["skinId"]);
-      } else if (item.category === "frames") {
-        setFrame(item.id as AvatarConfig["frameId"]);
-      }
+    if (isOwned(item)) {
+      if (!isEquipped(item) && item.category !== "skills") equip(item);
       return;
     }
-
-    // Purchase
-    if (item.currency === "coins" && coins >= item.price) {
+    try {
+      const result = await purchase.mutateAsync(item.key);
       soundManager.playCoin();
-      setCoins((c) => c - item.price);
-      setPurchasedIds((prev) => [...prev, item.id]);
-    } else if (item.currency === "gems" && gems >= item.price) {
-      soundManager.playCoin();
-      setGems((g) => g - item.price);
-      setPurchasedIds((prev) => [...prev, item.id]);
-    } else {
+      if (item.category !== "skills") equip(item, false);
+      setNotice(`${item.name} unlocked for ${formatUsdt(result.charged)}.`);
+    } catch (error) {
       soundManager.playError();
+      setNotice(errorMessage(error));
     }
   }
 
-  const items = SHOP_ITEMS.filter((i) => i.category === tab);
-
   return (
-    <div className="friendly-page relative w-full min-h-screen bg-[#070e0a] overflow-x-hidden flex flex-col justify-between p-2 sm:p-6 select-none text-white">
-      {/* Background Pasture Atmosphere */}
+    <div className="friendly-page relative flex min-h-screen w-full select-none flex-col overflow-x-hidden bg-[#070e0a] p-2 text-white sm:p-6">
       <div
-        className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-40 mix-blend-luminosity"
+        className="pointer-events-none fixed inset-0 bg-cover bg-center opacity-40 mix-blend-luminosity"
         style={{ backgroundImage: "url('/assets/barnaby/barnaby-field.jpg')" }}
       />
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.3)_0%,#040906_90%)]" />
-
-      {/* Header */}
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,.25)_0%,#040906_90%)]" />
       <div className="relative z-20">
         <ArcadeHeader onOpenRules={() => setShowRules(true)} />
       </div>
 
-      {/* Main Shop Arena - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
-      <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-5">
-        {/* Top Shop Banner: Live Currency Vault */}
-        <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col sm:flex-row items-center justify-between gap-4">
+      <main className="relative z-10 mx-auto mb-6 mt-8 flex w-full max-w-6xl flex-1 flex-col gap-5 sm:mt-12">
+        <section className="flex flex-col items-center justify-between gap-4 rounded-3xl border-2 border-amber-400/80 bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 p-5 shadow-[0_20px_50px_rgba(0,0,0,.8)] sm:flex-row sm:p-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 shadow">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-amber-400 bg-amber-500/20 text-amber-300">
               <ShoppingBag size={24} />
             </div>
             <div>
-              <h1 className="font-title font-black text-2xl sm:text-3xl text-amber-300 tracking-wide">
-                ARCADE BAZAAR
+              <h1 className="font-title text-2xl font-black tracking-wide text-amber-300 sm:text-3xl">
+                PASTURE SHOP
               </h1>
               <p className="text-xs text-slate-300">
-                Unlock mythical skins, golden frames, and tactical battle powers!
+                One price. One wallet. Unlock your favorites with USDT.
               </p>
             </div>
           </div>
-
-          {/* Currency Badges */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-black/70 border border-amber-400/60 shadow">
-              <Coins size={18} className="text-yellow-400 fill-yellow-400 animate-pulse" />
-              <span className="font-title font-black text-base text-amber-300">{coins.toLocaleString()}</span>
-              <span className="text-[10px] font-title font-bold text-slate-400">COINS</span>
-            </div>
-
-            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-black/70 border border-cyan-400/60 shadow">
-              <Gem size={18} className="text-cyan-400 fill-cyan-400" />
-              <span className="font-title font-black text-base text-cyan-300">{gems}</span>
-              <span className="text-[10px] font-title font-bold text-slate-400">GEMS</span>
+          <div className="flex min-w-52 items-center gap-3 rounded-2xl border border-emerald-400/60 bg-black/70 px-4 py-3 shadow">
+            <CircleDollarSign className="text-emerald-300" size={22} />
+            <div>
+              <div className="font-title text-base font-black text-emerald-200">
+                {shop.isLoading
+                  ? "Loading…"
+                  : accessToken
+                    ? formatUsdt(shop.data?.balance ?? "0")
+                    : "Sign in"}
+              </div>
+              <div className="text-[10px] font-black uppercase tracking-wider text-white/45">
+                USDT wallet balance
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Category Navigation Tabs */}
-        <div className="w-full flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
-          {[
-            { key: "skins", label: "👑 AVATARS & SKINS" },
-            { key: "frames", label: "🖼️ 3D METALLIC FRAMES" },
-            { key: "skills", label: "🔮 SKILLS" },
-            { key: "vault", label: "💰 COIN VAULT" },
-          ].map((t) => (
+        <nav
+          className="grid grid-cols-2 gap-2 sm:flex sm:justify-center"
+          aria-label="Shop categories"
+        >
+          {TABS.map((item) => (
             <button
-              key={t.key}
+              key={item.key}
+              type="button"
               onClick={() => {
                 soundManager.playClick();
-                setTab(t.key as ShopTab);
+                setTab(item.key);
               }}
-              className={`px-4 sm:px-6 py-2.5 rounded-2xl font-title font-black text-xs sm:text-sm tracking-wider transition-all cursor-pointer border ${
-                tab === t.key
-                  ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.7)] scale-105"
-                  : "bg-black/60 text-slate-300 border-slate-800 hover:border-amber-400/40"
-              }`}
+              className={`min-h-11 rounded-2xl border px-4 font-title text-xs font-black tracking-wide transition active:scale-95 sm:px-6 ${tab === item.key ? "border-amber-300 bg-gradient-to-r from-amber-300 to-yellow-500 text-slate-950 shadow-[0_0_18px_rgba(245,158,11,.5)]" : "border-white/10 bg-black/60 text-white/70 hover:border-amber-400/50"}`}
             >
-              {t.label}
+              {item.label}
             </button>
           ))}
-        </div>
+        </nav>
 
-        {/* Shop Items Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {notice && (
+          <div
+            role="status"
+            className="rounded-2xl border border-amber-300/35 bg-black/75 px-4 py-3 text-center text-sm font-bold text-amber-100"
+          >
+            {notice}
+          </div>
+        )}
+
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {
-            const isOwned = purchasedIds.includes(item.id);
-            const isEquipped =
-              (item.category === "skins" && avatar.skinId === item.id) ||
-              (item.category === "frames" && avatar.frameId === item.id);
-
+            const itemOwned = isOwned(item);
+            const equipped = isEquipped(item);
+            const price = shop.data?.prices[item.key] ?? shop.data?.price ?? "500000";
             return (
-              <div
-                key={item.id}
-                className="relative rounded-3xl p-5 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 hover:border-amber-400 transition-all flex flex-col justify-between shadow-xl"
+              <article
+                key={item.key}
+                className="relative flex flex-col justify-between overflow-hidden rounded-3xl border-2 border-amber-400/45 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] p-5 shadow-xl transition hover:border-amber-300"
               >
-                {/* Rarity & Ownership Tag */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="mb-3 flex items-center justify-between gap-2">
                   <span
-                    className={`text-[10px] font-title font-black px-2.5 py-0.5 rounded-full uppercase shadow ${
-                      item.rarity === "Mythic"
-                        ? "bg-amber-400 text-slate-950"
-                        : item.rarity === "Legendary"
-                          ? "bg-emerald-400 text-slate-950"
-                          : item.rarity === "Epic"
-                            ? "bg-purple-400 text-slate-950"
-                            : "bg-slate-700 text-white"
-                    }`}
+                    className={`rounded-full px-2.5 py-1 font-title text-[10px] font-black uppercase ${RARITY_STYLES[item.rarity]}`}
                   >
                     {item.rarity}
                   </span>
-
-                  {isEquipped ? (
-                    <span className="text-[10px] font-title font-black text-emerald-300 bg-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-400 flex items-center gap-1">
-                      <Check size={12} /> EQUIPPED
-                    </span>
-                  ) : isOwned ? (
-                    <span className="text-[10px] font-title font-black text-cyan-300 bg-cyan-950 px-2 py-0.5 rounded-lg border border-cyan-400">
-                      OWNED
-                    </span>
-                  ) : null}
+                  <span
+                    className={`flex items-center gap-1 rounded-lg border px-2 py-1 font-title text-[10px] font-black ${equipped ? "border-emerald-300 bg-emerald-950 text-emerald-200" : itemOwned ? "border-cyan-300/50 bg-cyan-950 text-cyan-200" : "border-white/15 bg-black/60 text-white/65"}`}
+                  >
+                    {equipped ? (
+                      <>
+                        <Check size={12} /> EQUIPPED
+                      </>
+                    ) : itemOwned ? (
+                      <>
+                        <Check size={12} /> OWNED
+                      </>
+                    ) : (
+                      <>
+                        <LockKeyhole size={12} /> LOCKED
+                      </>
+                    )}
+                  </span>
                 </div>
-
-                {/* Preview Box */}
-                <div className="w-full h-32 rounded-2xl bg-black/60 border border-white/10 flex items-center justify-center relative overflow-hidden my-2 shadow-inner">
-                  {item.category === "skins" ? (
-                    <img src={item.preview} alt={item.name} className="h-28 object-contain drop-shadow-xl" />
-                  ) : item.category === "frames" ? (
-                    <div className={`w-20 h-20 rounded-2xl border-3 bg-emerald-950/40 flex items-center justify-center ${item.preview}`}>
-                      <Palette size={24} className="text-amber-300" />
+                <div className="relative my-2 flex h-36 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/60 shadow-inner">
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="h-full w-full object-contain drop-shadow-xl"
+                    />
+                  ) : item.previewClass ? (
+                    <div
+                      className={`flex h-24 w-24 items-center justify-center rounded-3xl border-4 bg-gradient-to-br ${item.previewClass}`}
+                    >
+                      <Palette className="text-white" size={28} />
                     </div>
                   ) : (
-                    <span className="font-title font-black text-2xl text-amber-300 tracking-wider">
-                      {item.preview}
+                    <span className="font-title text-2xl font-black tracking-wider text-amber-300">
+                      {item.previewText}
                     </span>
                   )}
+                  {!itemOwned && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/55 backdrop-blur-[2px]">
+                      <span className="rounded-2xl border border-amber-300/60 bg-black/75 p-3 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,.25)]">
+                        <LockKeyhole size={26} />
+                      </span>
+                      <span className="font-title text-xs font-black text-white">
+                        Unlock to use
+                      </span>
+                    </div>
+                  )}
                 </div>
-
-                {/* Name & Description */}
                 <div className="my-2">
-                  <h3 className="font-title font-black text-base text-white">{item.name}</h3>
-                  <p className="text-xs text-slate-400 mt-1 leading-snug">{item.description}</p>
+                  <h2 className="font-title text-base font-black text-white">{item.name}</h2>
+                  <p className="mt-1 text-xs leading-snug text-slate-400">{item.description}</p>
                 </div>
-
-                {/* Buy / Equip Button */}
                 <button
-                  onClick={() => handleBuyOrEquip(item)}
-                  data-sound="none"
-                  className={`w-full py-2.5 rounded-2xl font-title font-black text-xs uppercase tracking-wider transition-all mt-2 cursor-pointer flex items-center justify-center gap-1.5 shadow-lg ${
-                    isEquipped
-                      ? "bg-slate-900 text-slate-400 border border-slate-700 cursor-default"
-                      : isOwned
-                        ? "bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 hover:brightness-110 active:scale-95"
-                        : "bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 hover:brightness-110 active:scale-95"
-                  }`}
+                  type="button"
+                  disabled={equipped || purchase.isPending}
+                  onClick={() => void handleItem(item)}
+                  className={`mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-3 font-title text-xs font-black uppercase tracking-wide transition active:scale-[.98] disabled:cursor-default ${equipped ? "border border-white/10 bg-slate-900 text-white/40" : itemOwned ? "bg-gradient-to-r from-cyan-300 to-blue-500 text-slate-950" : "bg-gradient-to-r from-amber-300 to-orange-400 text-slate-950 shadow-[0_8px_22px_rgba(245,158,11,.2)]"}`}
                 >
-                  {isEquipped ? (
-                    <span>CURRENTLY EQUIPPED</span>
-                  ) : isOwned ? (
-                    <span>EQUIP ITEM</span>
+                  {equipped ? (
+                    <>
+                      <Check size={15} /> Equipped
+                    </>
+                  ) : itemOwned ? (
+                    item.category === "skills" ? (
+                      <>
+                        <Check size={15} /> Owned
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={15} /> Equip
+                      </>
+                    )
                   ) : (
                     <>
-                      <span>UNLOCK FOR {item.price} {item.currency === "coins" ? "🪙" : "💎"}</span>
+                      <LockKeyhole size={15} /> {formatUsdt(price)}
                     </>
                   )}
                 </button>
-              </div>
+              </article>
             );
           })}
-        </div>
+        </section>
       </main>
 
-      <OfficialRulesModal
-        isOpen={showRules}
-        onClose={() => setShowRules(false)}
-      />
+      <OfficialRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
       <AuthGateModal
         isOpen={showAuthGate}
         onClose={() => setShowAuthGate(false)}
-        title="Marketplace Account Required"
-        description="Sign in or create an account to unlock rare skins, frames, and power-up packs with your coins & gems!"
-        featureName="the Marketplace"
+        title="Sign in to unlock items"
+        description="Your purchases and avatar collection belong to your account. Sign in, then use your USDT wallet here."
+        featureName="the Pasture Shop"
         redirectTo="/shop"
       />
     </div>

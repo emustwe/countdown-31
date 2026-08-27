@@ -3,7 +3,13 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { LedgerService } from "../wallet/ledger.service";
 import { BalanceGateway } from "../realtime/balance.gateway";
-import { SHOP_ITEM_PRICE, isBasicItem, isValidItemKey } from "../../common/shop-items";
+import {
+  SHOP_CURRENCY,
+  SHOP_ITEM_PRICE,
+  catalogPrices,
+  isBasicItem,
+  priceForItem,
+} from "../../common/shop-items";
 
 // The in-app treasury: a dedicated system account whose wallet accrues all shop revenue. Created
 // lazily so a fresh database "just works". Its email is unguessable-ish and it cannot be logged
@@ -23,7 +29,10 @@ export class ShopService {
   /** Find (or create) the treasury wallet that receives shop payments. */
   private async ensureTreasuryWalletId(): Promise<string> {
     if (this.treasuryWalletId) return this.treasuryWalletId;
-    const existing = await this.prisma.user.findUnique({ where: { email: TREASURY_EMAIL }, include: { wallet: true } });
+    const existing = await this.prisma.user.findUnique({
+      where: { email: TREASURY_EMAIL },
+      include: { wallet: true },
+    });
     if (existing?.wallet) {
       this.treasuryWalletId = existing.wallet.id;
       return existing.wallet.id;
@@ -55,7 +64,10 @@ export class ShopService {
   }
 
   private async ownedOf(userId: string): Promise<Set<string>> {
-    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { cosmeticsOwned: true } });
+    const u = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { cosmeticsOwned: true },
+    });
     if (!u) throw new NotFoundException();
     const arr = Array.isArray(u.cosmeticsOwned) ? (u.cosmeticsOwned as unknown[]) : [];
     return new Set(arr.filter((x): x is string => typeof x === "string"));
@@ -66,15 +78,21 @@ export class ShopService {
     const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
     return {
       price: SHOP_ITEM_PRICE.toString(),
+      prices: catalogPrices(),
+      currency: SHOP_CURRENCY,
       owned: [...owned],
       balance: (wallet?.cachedBalance ?? 0n).toString(),
     };
   }
 
-  /** Buy a cosmetic item: charge 0.5 USDT from the player's wallet to the treasury, then grant
-   * ownership. Basic/default items are free (no charge). Already-owned items are a no-op. */
-  async purchase(userId: string, itemKey: string): Promise<{ owned: string[]; balance: string; charged: string }> {
-    if (!isValidItemKey(itemKey)) throw new BadRequestException("Unknown shop item");
+  /** Buy an item at its catalog USDT price, credit the treasury, then grant ownership.
+   * Basic/default items are free (no charge). Already-owned items are a no-op. */
+  async purchase(
+    userId: string,
+    itemKey: string,
+  ): Promise<{ owned: string[]; balance: string; charged: string }> {
+    const itemPrice = priceForItem(itemKey);
+    if (itemPrice === null) throw new BadRequestException("Unknown shop item");
 
     // Free/basic items are owned by everyone — nothing to charge.
     if (isBasicItem(itemKey)) {
@@ -88,8 +106,15 @@ export class ShopService {
     const result = await this.prisma.$transaction(async (tx) => {
       // Lock the buyer's wallet so concurrent purchases serialize.
       await tx.$executeRaw`SELECT id FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE`;
-      const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { cosmeticsOwned: true } });
-      const owned = new Set((Array.isArray(user.cosmeticsOwned) ? (user.cosmeticsOwned as unknown[]) : []).filter((x): x is string => typeof x === "string"));
+      const user = await tx.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { cosmeticsOwned: true },
+      });
+      const owned = new Set(
+        (Array.isArray(user.cosmeticsOwned) ? (user.cosmeticsOwned as unknown[]) : []).filter(
+          (x): x is string => typeof x === "string",
+        ),
+      );
 
       const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
 
@@ -98,22 +123,40 @@ export class ShopService {
         return { owned: [...owned], balance: wallet.cachedBalance.toString(), charged: "0" };
       }
 
-      if (wallet.cachedBalance < SHOP_ITEM_PRICE) {
+      if (wallet.cachedBalance < itemPrice) {
         throw new BadRequestException("Insufficient funds — deposit USDT to buy shop items");
       }
 
       // Double-entry: debit the buyer, credit the treasury.
-      const buyerBalance = wallet.cachedBalance - SHOP_ITEM_PRICE;
-      await this.ledger.appendEntry(tx, { walletId: wallet.id, amount: -SHOP_ITEM_PRICE, type: "SHOP_PURCHASE", refType: "SHOP_ITEM", refId: itemKey });
-      await tx.wallet.update({ where: { id: wallet.id }, data: { cachedBalance: buyerBalance, version: { increment: 1 } } });
+      const buyerBalance = wallet.cachedBalance - itemPrice;
+      await this.ledger.appendEntry(tx, {
+        walletId: wallet.id,
+        amount: -itemPrice,
+        type: "SHOP_PURCHASE",
+        refType: "SHOP_ITEM",
+        refId: itemKey,
+      });
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { cachedBalance: buyerBalance, version: { increment: 1 } },
+      });
 
-      await this.ledger.appendEntry(tx, { walletId: treasuryWalletId, amount: SHOP_ITEM_PRICE, type: "SHOP_REVENUE", refType: "SHOP_ITEM", refId: itemKey });
-      await tx.wallet.update({ where: { id: treasuryWalletId }, data: { cachedBalance: { increment: SHOP_ITEM_PRICE }, version: { increment: 1 } } });
+      await this.ledger.appendEntry(tx, {
+        walletId: treasuryWalletId,
+        amount: itemPrice,
+        type: "SHOP_REVENUE",
+        refType: "SHOP_ITEM",
+        refId: itemKey,
+      });
+      await tx.wallet.update({
+        where: { id: treasuryWalletId },
+        data: { cachedBalance: { increment: itemPrice }, version: { increment: 1 } },
+      });
 
       owned.add(itemKey);
       await tx.user.update({ where: { id: userId }, data: { cosmeticsOwned: [...owned] } });
 
-      return { owned: [...owned], balance: buyerBalance.toString(), charged: SHOP_ITEM_PRICE.toString() };
+      return { owned: [...owned], balance: buyerBalance.toString(), charged: itemPrice.toString() };
     });
 
     this.balanceGateway.emitBalanceUpdate(userId, result.balance);

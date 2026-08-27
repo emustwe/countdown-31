@@ -43,3 +43,9 @@ Only durable decisions belong here. Turn-by-turn activity belongs in `AI_WORKLOG
 - **Status:** Active
 - **Decision:** A campaign cause is represented by a header icon and its full message appears only in a dismissible popover after the player opens it.
 - **Reason:** Cause campaigns remain discoverable and measurable without covering the tournament roster or persistent game controls.
+
+## D-008 — Cosmetic ownership and pricing are account-backed
+
+- **Status:** Active
+- **Decision:** The player-facing shop uses USDT only. The backend publishes stable per-item prices and grants ownership after a wallet-funded purchase. The default avatar, Emerald background, and Mythic frame remain starter items; every other avatar, background, and frame stays locked until the signed-in account owns it.
+- **Reason:** A single real currency removes confusing fake balances, while backend-authoritative ownership prevents premium cosmetics from being equipped through client-only state.

@@ -287,7 +287,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     },
     {
       id: "cow",
-      label: "My Cow",
+      label: "My Avatars",
       path: "/avatar",
       icon: "cow",
       enabled: true,

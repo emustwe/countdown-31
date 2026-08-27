@@ -5,14 +5,14 @@ This is the compact current state. The helper script replaces only the marked bl
 <!-- AI-HANDOFF:START -->
 ## Latest checkpoint
 
-- **Updated:** 2026-08-27 15:54:41 +05:00
-- **Outgoing agent:** Gemini
+- **Updated:** 2026-08-27 22:50:53 +05:00
+- **Outgoing agent:** Codex
 - **Status:** completed
-- **Branch:** `feat/tournament-campaign-platform`
-- **Last verified commit:** `9b18ab6`
-- **Summary:** Enabled the bottom-left Barnaby Mascot cow animation in tournament and campaign mode to match base game behavior with idle looping and defeat center-stage slide
-- **Validation:** next build passed 26/26 routes; TypeScript typecheck passed
-- **Exact next action:** User testing of bottom-left cow animation in desktop tournament mode
+- **Branch:** `codex/avatar-shop-usdt-paywall`
+- **Last verified commit:** `09e4ccb`
+- **Summary:** Replaced the fake coin and gem shop with an account-backed USDT catalog, renamed My Cow to My Avatars, added stable backend prices, and locked unpurchased avatars, backgrounds, and frames until purchase.
+- **Validation:** Backend catalog tests: 3 passed; Backend game-config tests: 4 passed; Frontend catalog tests: 3 passed; Backend targeted ESLint: passed; Frontend targeted ESLint: passed; Backend Nest build: passed; Frontend TypeScript: passed; Frontend Next production build with webpack: passed; Protected /shop route browser smoke test: passed with no console errors
+- **Exact next action:** After the other UI agent finishes, cherry-pick this branch commit into feat/tournament-campaign-platform, restart backend and frontend, then test one funded USDT purchase and equip flow with a signed-in account.
 <!-- AI-HANDOFF:END -->
 
 ## Stable project state

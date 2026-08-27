@@ -8,8 +8,7 @@ import { ShopService } from "./shop.service";
 
 const PurchaseSchema = z.object({ itemKey: z.string().min(1).max(80) }).strict();
 
-// Signed-in player's shop: what they own + the flat item price + their balance, and the purchase
-// endpoint (charges 0.5 USDT to the treasury and grants the item).
+// Signed-in player's shop: authoritative per-item USDT prices, ownership and wallet balance.
 @UseGuards(JwtAuthGuard)
 @Controller("shop")
 export class ShopController {
@@ -21,7 +20,10 @@ export class ShopController {
   }
 
   @Post("purchase")
-  purchase(@CurrentUser() user: AccessTokenPayload, @Body(new ZodValidationPipe(PurchaseSchema)) body: { itemKey: string }) {
+  purchase(
+    @CurrentUser() user: AccessTokenPayload,
+    @Body(new ZodValidationPipe(PurchaseSchema)) body: { itemKey: string },
+  ) {
     return this.shop.purchase(user.sub, body.itemKey.trim());
   }
 }
