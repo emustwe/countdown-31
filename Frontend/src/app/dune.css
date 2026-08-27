@@ -9018,8 +9018,8 @@ button.mini:hover { filter: brightness(1.06); }
   }
 
   .arcade-arena-header {
-    height: 70px !important;
-    padding-inline: 8px !important;
+    height: 86px !important;
+    padding-inline: 10px !important;
   }
 
   .arcade-arena-header.is-page-header .arcade-brand {
@@ -9028,39 +9028,40 @@ button.mini:hover { filter: brightness(1.06); }
 
   .arcade-arena-header .tournament-header-brand {
     min-width: 0;
-    max-width: calc(100vw - 165px);
-    padding: 3px 6px !important;
-    gap: 3px;
+    max-width: calc(100vw - 140px);
+    padding: 6px 10px !important;
+    gap: 6px !important;
   }
   .tournament-header-sponsor {
     width: auto;
-    max-width: calc(100vw - 220px);
-    height: 26px;
+    max-width: calc(100vw - 205px);
+    height: 32px;
   }
   .tournament-header-sponsor span {
-    font-size: 13px;
-    letter-spacing: -0.02em;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
   }
   .arcade-arena-header .tournament-header-brand > div:last-child {
-    width: 25px;
-    height: 25px;
-    border-radius: 7px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     margin-right: -2px;
   }
   .arcade-arena-header .tournament-header-brand > div:last-child span {
-    font-size: 13px;
+    font-size: 15px;
   }
   .tournament-header-action,
   .arcade-arena-header .arcade-sound-trigger {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
   }
   .arcade-header-actions {
-    gap: 4px !important;
-    margin-left: 6px !important;
+    gap: 5px !important;
+    margin-left: 4px !important;
   }
   .arcade-mode-selector {
-    margin-right: 6px !important;
+    margin-right: 4px !important;
   }
   .tournament-cause-popover {
     position: fixed;

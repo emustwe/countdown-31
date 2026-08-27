@@ -256,13 +256,13 @@ export function ArcadeHeader({
       <div className="arcade-brand absolute left-1/2 -translate-x-1/2 top-1 sm:top-2 flex flex-col items-center pointer-events-none z-10">
         <div
           onClick={() => router.push("/home")}
-          className={`pointer-events-auto cursor-pointer relative flex items-center gap-1.5 sm:gap-2 bg-gradient-to-r from-amber-950 via-yellow-900 to-amber-950 px-2.5 sm:px-10 py-1.5 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all ${hasCampaign ? "tournament-header-brand" : ""}`}
+          className={`pointer-events-auto cursor-pointer relative flex items-center justify-center gap-2 sm:gap-2.5 bg-gradient-to-r from-amber-950 via-yellow-900 to-amber-950 px-3.5 sm:px-10 py-1.5 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all ${hasCampaign ? "tournament-header-brand" : ""}`}
         >
-          {/* Decorative Corner Rivets */}
-          <span className="absolute top-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
-          <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
-          <span className="absolute bottom-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
-          <span className="absolute bottom-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
+          {/* Decorative Corner Rivets (Desktop) */}
+          <span className="hidden sm:block absolute top-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
+          <span className="hidden sm:block absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
+          <span className="hidden sm:block absolute bottom-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
+          <span className="hidden sm:block absolute bottom-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
 
           {campaign ? (
             <div
@@ -298,7 +298,7 @@ export function ArcadeHeader({
 
           {/* 3D Golden "31" Shield Badge */}
           <div className="flex items-center justify-center w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 border-2 border-white shadow-[0_4px_12px_rgba(245,158,11,0.9)] -mr-1">
-            <span className="font-title font-black text-lg sm:text-2xl text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
+            <span className="font-title font-black text-base sm:text-2xl text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
               31
             </span>
           </div>
@@ -306,7 +306,7 @@ export function ArcadeHeader({
 
         {/* Subtitle Warning Pill - ONLY shown in Game Arena */}
         {(canToggle || campaign) && (
-          <span className="mt-1.5 text-[10px] sm:text-xs font-title font-black tracking-widest text-amber-300 uppercase bg-black/80 px-3.5 py-0.5 rounded-full border border-amber-400/40 shadow pointer-events-auto">
+          <span className="mt-1 text-[10px] sm:text-xs font-title font-black tracking-wider text-amber-300 uppercase bg-black/85 px-3 py-0.5 rounded-full border border-amber-400/40 shadow pointer-events-auto whitespace-nowrap">
             {campaign
               ? `${campaign.identity.disclosureLabel} ${campaign.identity.sponsorName}`
               : gameMode === "skills"

@@ -5,14 +5,14 @@ This is the compact current state. The helper script replaces only the marked bl
 <!-- AI-HANDOFF:START -->
 ## Latest checkpoint
 
-- **Updated:** 2026-08-27 14:50:47 +05:00
+- **Updated:** 2026-08-27 14:55:59 +05:00
 - **Outgoing agent:** Gemini
 - **Status:** completed
 - **Branch:** `feat/tournament-campaign-platform`
-- **Last verified commit:** `094e3ea`
-- **Summary:** Shifted arena elements upward by compacting mobile header, reducing top margins and compacting avatar cards; created dedicated bottom space for the Cow mascot animation without overlapping skills; added clean ~20px horizontal spacing between MooMorrow header brand and game mode icon
-- **Validation:** next build passed 26/26 routes; TypeScript typecheck passed
-- **Exact next action:** User testing of mobile spacing, upward arena layout, and bottom mascot area
+- **Last verified commit:** `7449bcd`
+- **Summary:** Restored premium proportion, padding and typography to header brand marquee on mobile; hid corner rivets on small screens to prevent clipping; added whitespace-nowrap to subtitle warning pill
+- **Validation:** next build passed; Static pages generated 26/26
+- **Exact next action:** User testing of restored header presentation
 <!-- AI-HANDOFF:END -->
 
 ## Stable project state
@@ -23,7 +23,7 @@ This is the compact current state. The helper script replaces only the marked bl
 - Frontend: Next.js application under `Frontend/`
 - Backend: NestJS and Prisma application under `Backend/`
 - Local dependencies: PostgreSQL and Redis through Docker
-- Sponsor lifecycle: draft ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Brand and Safety review ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ approved ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ published
+- Sponsor lifecycle: draft ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Brand and Safety review ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ approved ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ published
 - Public runtime reads only approved, published campaign revisions.
 
 ## Preserve these unrelated working-tree paths

@@ -91,3 +91,12 @@ Short, append-only checkpoints from substantive agent turns. Git remains authori
   - next build passed 26/26 routes
   - TypeScript typecheck passed
 - Next: User testing of mobile spacing, upward arena layout, and bottom mascot area
+## 2026-08-27 14:55:59 +05:00 â€” Gemini â€” completed
+
+- Branch: `feat/tournament-campaign-platform`
+- Starting commit: `7449bcd`
+- Summary: Restored premium proportion, padding and typography to header brand marquee on mobile; hid corner rivets on small screens to prevent clipping; added whitespace-nowrap to subtitle warning pill
+- Validation:
+  - next build passed
+  - Static pages generated 26/26
+- Next: User testing of restored header presentation
