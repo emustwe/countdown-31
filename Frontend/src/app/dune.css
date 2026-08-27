@@ -9017,20 +9017,61 @@ button.mini:hover { filter: brightness(1.06); }
     height: 51px;
   }
 
+  .arcade-arena-header {
+    height: 70px !important;
+    padding-inline: 8px !important;
+  }
+
   .arcade-arena-header.is-page-header .arcade-brand {
     transform: scale(.52);
   }
 
-  .arcade-arena-header .tournament-header-brand { min-width: 210px; padding: 5px 8px !important; gap: 4px; }
-  .tournament-header-cow { width: 39px; height: 39px; }
-  .tournament-header-sponsor { width: 105px; height: 31px; }
-  .tournament-header-sponsor span { font-size: 14px; }
-  .arcade-arena-header .tournament-header-brand > div:last-child { width: 29px; height: 29px; border-radius: 9px; }
-  .arcade-arena-header .tournament-header-brand > div:last-child span { font-size: 16px; }
+  .arcade-arena-header .tournament-header-brand {
+    min-width: 0;
+    max-width: calc(100vw - 165px);
+    padding: 3px 6px !important;
+    gap: 3px;
+  }
+  .tournament-header-sponsor {
+    width: auto;
+    max-width: calc(100vw - 220px);
+    height: 26px;
+  }
+  .tournament-header-sponsor span {
+    font-size: 13px;
+    letter-spacing: -0.02em;
+  }
+  .arcade-arena-header .tournament-header-brand > div:last-child {
+    width: 25px;
+    height: 25px;
+    border-radius: 7px;
+    margin-right: -2px;
+  }
+  .arcade-arena-header .tournament-header-brand > div:last-child span {
+    font-size: 13px;
+  }
   .tournament-header-action,
-  .arcade-arena-header .arcade-sound-trigger { width: 38px; height: 38px; }
-  .arcade-header-actions { gap: 5px !important; }
-  .tournament-cause-popover { position: fixed; top: 62px; left: 8px; right: 8px; width: auto; max-width: calc(100vw - 16px); padding: 14px; z-index: 250; }
+  .arcade-arena-header .arcade-sound-trigger {
+    width: 36px;
+    height: 36px;
+  }
+  .arcade-header-actions {
+    gap: 4px !important;
+    margin-left: 6px !important;
+  }
+  .arcade-mode-selector {
+    margin-right: 6px !important;
+  }
+  .tournament-cause-popover {
+    position: fixed;
+    top: 62px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: calc(100vw - 16px);
+    padding: 14px;
+    z-index: 250;
+  }
 }
 
 @media (min-width: 768px) and (max-width: 900px) {

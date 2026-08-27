@@ -82,3 +82,12 @@ Short, append-only checkpoints from substantive agent turns. Git remains authori
   - next build passed
   - GET /events/demo-moomorrow-cup returns 200
 - Next: User testing of mobile UI layout and arena adjustments
+## 2026-08-27 14:50:47 +05:00 â€” Gemini â€” completed
+
+- Branch: `feat/tournament-campaign-platform`
+- Starting commit: `094e3ea`
+- Summary: Shifted arena elements upward by compacting mobile header, reducing top margins and compacting avatar cards; created dedicated bottom space for the Cow mascot animation without overlapping skills; added clean ~20px horizontal spacing between MooMorrow header brand and game mode icon
+- Validation:
+  - next build passed 26/26 routes
+  - TypeScript typecheck passed
+- Next: User testing of mobile spacing, upward arena layout, and bottom mascot area

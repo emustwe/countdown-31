@@ -367,7 +367,7 @@ export function CountDown31({
       />
 
       {/* Main Arcade Arena Battlefield (3 Columns on Desktop with Expanded Center) */}
-      <main className="desktop-arena-layout arena-main mx-auto grid min-h-0 w-full max-w-[1580px] flex-1 grid-cols-[270px_minmax(0,1fr)_270px] items-start gap-6 overflow-hidden mt-4">
+      <main className="desktop-arena-layout arena-main mx-auto grid min-h-0 w-full max-w-[1580px] flex-1 grid-cols-[270px_minmax(0,1fr)_270px] items-start gap-6 overflow-hidden mt-0 sm:mt-4">
         {/* Left Column: Local Player Big Battle Card Showcase (Desktop) */}
         <div className="arena-player-panel hidden lg:flex order-2 mx-auto w-full max-w-[270px] items-start justify-center lg:order-1">
           <div className="w-full">
@@ -384,7 +384,7 @@ export function CountDown31({
         </div>
 
         {/* Center Column: 3D Horizontal Number Cylinder Drum, Mobile Battle Cards, & Actions */}
-        <div className="arena-center order-1 mx-auto flex w-full max-w-[850px] flex-col items-center justify-start gap-2 lg:order-2 pt-1 sm:pt-2">
+        <div className="arena-center order-1 mx-auto flex w-full max-w-[850px] flex-col items-center justify-start gap-1 sm:gap-2 lg:order-2 pt-0 sm:pt-2">
           {/* The Hero 3D Horizontal Arcade Cylinder with Direct Card Selection */}
           <Arcade3DCylinder
             currentCount={count}
@@ -400,7 +400,7 @@ export function CountDown31({
           />
 
           {/* Action Zone: Confirm Move Button (when cards selected) OR Turn Strip OR Join Button */}
-          <div className="w-full max-w-xl mx-auto flex items-center justify-center min-h-[48px] my-2 sm:my-3 z-30">
+          <div className="w-full max-w-xl mx-auto flex items-center justify-center min-h-[42px] my-1 sm:my-3 z-30">
             {status !== "over" && amIn && status === "playing" ? (
               myTurn && selectedCards.length > 0 ? (
                 <div className="w-full flex items-center justify-between gap-2.5 rounded-2xl border-2 border-emerald-400/80 bg-gradient-to-r from-emerald-950/90 via-black/90 to-emerald-950/90 p-1.5 shadow-[0_0_25px_rgba(52,211,153,0.35)]">
@@ -649,10 +649,10 @@ export function CountDown31({
 
       {/* Mobile "The Count" Mascot Video - Bottom Left above Bottom Navigation */}
       <div
-        className="fixed bottom-[74px] left-3 z-30 pointer-events-none lg:hidden flex flex-col items-center select-none"
+        className="fixed bottom-[68px] left-3 z-30 pointer-events-none lg:hidden flex flex-col items-center select-none"
         aria-label="Count Down 31 Mascot"
       >
-        <div className="w-14 h-14 sm:w-16 sm:h-16 filter drop-shadow-[0_6px_14px_rgba(0,0,0,0.9)]">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 filter drop-shadow-[0_6px_14px_rgba(0,0,0,0.95)]">
           <TransparentVideo
             src="/assets/lose-animation-60fps.mp4"
             audioEnabled={false}

@@ -177,17 +177,17 @@ export function ArcadePlayerCard({
             soundManager.playClick();
             onJoinClick?.();
           }}
-          className="w-full h-full min-h-[220px] sm:min-h-[260px] flex flex-col items-center justify-center p-3 sm:p-4 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/80 rounded-3xl shadow-xl cursor-pointer hover:border-amber-300 transition-all select-none text-center gap-2"
+          className="w-full h-full min-h-[140px] sm:min-h-[200px] flex flex-col items-center justify-center p-2.5 sm:p-4 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/80 rounded-3xl shadow-xl cursor-pointer hover:border-amber-300 transition-all select-none text-center gap-1.5"
         >
-          <div className="w-18 h-18 sm:w-22 sm:h-22 rounded-2xl bg-amber-500/20 border-2 border-dashed border-amber-400 flex items-center justify-center text-amber-300 shadow-lg">
-            <Plus size={30} />
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-amber-500/20 border-2 border-dashed border-amber-400 flex items-center justify-center text-amber-300 shadow-lg">
+            <Plus size={24} />
           </div>
           <div className="flex flex-col items-center">
-            <span className="text-[10px] font-title font-bold text-amber-300 uppercase tracking-widest flex items-center gap-1">
-              <Crown size={12} className="text-yellow-400 fill-yellow-400" />
+            <span className="text-[9px] font-title font-bold text-amber-300 uppercase tracking-widest flex items-center gap-1">
+              <Crown size={11} className="text-yellow-400 fill-yellow-400" />
               <span>YOUR SEAT</span>
             </span>
-            <span className="font-title font-black text-sm sm:text-base text-white mt-0.5">
+            <span className="font-title font-black text-xs sm:text-sm text-white mt-0.5">
               TAP TO JOIN ⚔️
             </span>
           </div>
@@ -197,7 +197,7 @@ export function ArcadePlayerCard({
 
     return (
       <div
-        className={`w-full h-full flex flex-col justify-between p-2.5 sm:p-3.5 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 rounded-3xl shadow-xl transition-all select-none gap-2 ${
+        className={`w-full h-full flex flex-col justify-between p-2 sm:p-3 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 rounded-3xl shadow-xl transition-all select-none gap-1.5 ${
           myTurn
             ? "border-emerald-400 shadow-[0_0_25px_rgba(52,211,153,0.7)]"
             : "border-amber-400/60"
@@ -206,7 +206,7 @@ export function ArcadePlayerCard({
         {/* Top Header Pill: Crown YOU & Streak */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/50">
-            <Crown size={11} className="text-yellow-400 fill-yellow-400" />
+            <Crown size={10} className="text-yellow-400 fill-yellow-400" />
             <span className="text-[9px] sm:text-[10px] font-title font-black text-amber-300 uppercase tracking-wider">
               YOU {myTurn && "· ⚡ TURN"}
             </span>
@@ -220,7 +220,7 @@ export function ArcadePlayerCard({
 
         {/* 3D MasterAvatar Display */}
         <div
-          className={`relative aspect-square shrink-0 w-22 h-22 sm:w-26 sm:h-26 md:w-28 md:h-28 mx-auto rounded-2xl overflow-hidden border-2 transition-all shadow-lg ${
+          className={`relative aspect-square shrink-0 w-16 h-16 sm:w-22 sm:h-22 mx-auto rounded-2xl overflow-hidden border-2 transition-all shadow-lg ${
             myTurn ? "border-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.8)] scale-102" : "border-amber-400/70"
           }`}
         >
@@ -233,11 +233,11 @@ export function ArcadePlayerCard({
         </div>
 
         {/* Nameplate & Title */}
-        <div className="flex flex-col items-center text-center -mt-1">
-          <span className="font-title font-black text-xs sm:text-sm text-white truncate max-w-[130px] drop-shadow">
+        <div className="flex flex-col items-center text-center -mt-0.5">
+          <span className="font-title font-black text-xs sm:text-sm text-white truncate max-w-[120px] drop-shadow">
             {myPlayer.name}
           </span>
-          <span className="text-[10px] font-title font-bold text-emerald-400/90 truncate max-w-[130px]">
+          <span className="text-[9px] font-title font-bold text-emerald-400/90 truncate max-w-[120px]">
             🏆 {avatar.title}
           </span>
         </div>
@@ -520,7 +520,7 @@ export function ArcadeOpponentCard({
 
         {/* 3D Rival Avatar Display */}
         <div
-          className={`relative aspect-square shrink-0 w-22 h-22 sm:w-26 sm:h-26 md:w-28 md:h-28 mx-auto rounded-2xl overflow-hidden border-2 transition-all shadow-lg ${
+          className={`relative aspect-square shrink-0 w-16 h-16 sm:w-22 sm:h-22 mx-auto rounded-2xl overflow-hidden border-2 transition-all shadow-lg ${
             isOpponentTurn ? "border-cyan-400 shadow-[0_0_18px_rgba(6,182,212,0.8)] scale-102" : "border-purple-400/60"
           }`}
         >
@@ -533,11 +533,11 @@ export function ArcadeOpponentCard({
         </div>
 
         {/* Nameplate & Title */}
-        <div className="flex flex-col items-center text-center -mt-1">
-          <span className="font-title font-black text-xs sm:text-sm text-white truncate max-w-[130px] drop-shadow">
+        <div className="flex flex-col items-center text-center -mt-0.5">
+          <span className="font-title font-black text-xs sm:text-sm text-white truncate max-w-[120px] drop-shadow">
             {oppName}
           </span>
-          <span className="text-[10px] font-title font-bold text-cyan-300/90 truncate max-w-[130px]">
+          <span className="text-[9px] font-title font-bold text-cyan-300/90 truncate max-w-[120px]">
             ✨ {profile.title}
           </span>
         </div>

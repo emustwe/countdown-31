@@ -5,14 +5,14 @@ This is the compact current state. The helper script replaces only the marked bl
 <!-- AI-HANDOFF:START -->
 ## Latest checkpoint
 
-- **Updated:** 2026-08-27 14:30:41 +05:00
+- **Updated:** 2026-08-27 14:50:47 +05:00
 - **Outgoing agent:** Gemini
 - **Status:** completed
 - **Branch:** `feat/tournament-campaign-platform`
-- **Last verified commit:** `10143c9`
-- **Summary:** Fixed header heart cause icon to a single instance on the left of the header; lifted mobile avatars and game box higher; replaced full bottom stats strip on mobile with floating stats pill and modal; placed animated mascot count video in bottom left above bottom navigation bar
-- **Validation:** next build passed; GET /events/demo-moomorrow-cup returns 200
-- **Exact next action:** User testing of mobile UI layout and arena adjustments
+- **Last verified commit:** `094e3ea`
+- **Summary:** Shifted arena elements upward by compacting mobile header, reducing top margins and compacting avatar cards; created dedicated bottom space for the Cow mascot animation without overlapping skills; added clean ~20px horizontal spacing between MooMorrow header brand and game mode icon
+- **Validation:** next build passed 26/26 routes; TypeScript typecheck passed
+- **Exact next action:** User testing of mobile spacing, upward arena layout, and bottom mascot area
 <!-- AI-HANDOFF:END -->
 
 ## Stable project state
@@ -23,7 +23,7 @@ This is the compact current state. The helper script replaces only the marked bl
 - Frontend: Next.js application under `Frontend/`
 - Backend: NestJS and Prisma application under `Backend/`
 - Local dependencies: PostgreSQL and Redis through Docker
-- Sponsor lifecycle: draft Ã¢â€ â€™ Brand and Safety review Ã¢â€ â€™ approved Ã¢â€ â€™ published
+- Sponsor lifecycle: draft ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Brand and Safety review ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ approved ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ published
 - Public runtime reads only approved, published campaign revisions.
 
 ## Preserve these unrelated working-tree paths

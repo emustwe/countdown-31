@@ -198,10 +198,10 @@ export function ArcadeHeader({
 
   return (
     <header
-      className={`arcade-arena-header ${canToggle || hasCampaign ? "is-game-header" : "is-page-header"} relative z-30 flex h-32 w-full shrink-0 select-none items-start justify-between px-3 pb-2 pt-3 sm:h-36 sm:px-8`}
+      className={`arcade-arena-header ${canToggle || hasCampaign ? "is-game-header" : "is-page-header"} relative z-30 flex h-20 w-full shrink-0 select-none items-start justify-between px-2 sm:px-8 pb-1 pt-1.5 sm:h-36`}
     >
       {/* Left Slot: Mode Selector (Desktop Arena) OR Single Heart Cause Button (Tournament) */}
-      <div className="arcade-mode-selector flex items-center gap-2 z-20 pt-1">
+      <div className="arcade-mode-selector flex items-center gap-1.5 sm:gap-2 z-20 pt-0.5 sm:pt-1">
         {/* Mode Selector Toggle Pill - ONLY rendered on Game Arena page */}
         {canToggle && (
           <div className="hidden sm:flex items-center bg-black/75 border border-amber-400/50 rounded-2xl p-1 shadow-lg backdrop-blur-md">
@@ -247,16 +247,16 @@ export function ArcadeHeader({
             aria-label="Open campaign cause"
             aria-expanded={showCause}
           >
-            <HeartHandshake size={20} />
+            <HeartHandshake size={18} />
           </button>
         )}
       </div>
 
       {/* Center marquee becomes the sponsor identity only inside a published campaign. */}
-      <div className="arcade-brand absolute left-1/2 -translate-x-1/2 top-2 flex flex-col items-center pointer-events-none z-10">
+      <div className="arcade-brand absolute left-1/2 -translate-x-1/2 top-1 sm:top-2 flex flex-col items-center pointer-events-none z-10">
         <div
           onClick={() => router.push("/home")}
-          className={`pointer-events-auto cursor-pointer relative flex items-center gap-2 bg-gradient-to-r from-amber-950 via-yellow-900 to-amber-950 px-6 sm:px-10 py-2 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all ${hasCampaign ? "tournament-header-brand" : ""}`}
+          className={`pointer-events-auto cursor-pointer relative flex items-center gap-1.5 sm:gap-2 bg-gradient-to-r from-amber-950 via-yellow-900 to-amber-950 px-2.5 sm:px-10 py-1.5 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all ${hasCampaign ? "tournament-header-brand" : ""}`}
         >
           {/* Decorative Corner Rivets */}
           <span className="absolute top-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
