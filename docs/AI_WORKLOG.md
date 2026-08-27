@@ -283,3 +283,14 @@ Short, append-only checkpoints from substantive agent turns. Git remains authori
   - MooMorrow tournament sponsor header and cause popover verified
   - Portrait 390x844 rotate gate verified
 - Next: Have the user test codex/mobile-landscape-arena on a physical phone; then merge or cherry-pick after the concurrent base-game branch is ready.
+## 2026-08-28 03:41:13 +05:00 — Codex — completed
+
+- Branch: `codex/mobile-landscape-arena-published`
+- Starting commit: `2b38a26`
+- Summary: Published the tournament-platform snapshot with the new landscape-only mobile arena for standard and tournament matches.
+- Validation:
+  - Frontend TypeScript passed
+  - Targeted ESLint passed with zero errors and three pre-existing warnings
+  - Next.js production build passed
+  - Browser QA passed at 844x390, 667x375, and portrait rotate gate
+- Next: User tests the published landscape branch on a physical phone; merge after the concurrent base-game UI work is ready.
