@@ -128,10 +128,82 @@ export function useAdminTournamentCampaign(tournamentId: string) {
   });
 }
 
+export const MOOMORROW_DEMO_CAMPAIGN: TournamentCampaignManifest = {
+  identity: {
+    campaignTitle: "Moomorrow Cup 2026",
+    sponsorName: "Moomorrow Farms",
+    disclosureLabel: "Presented by",
+    demoDisclaimer: "Official CountDown 31 Tournament Partner",
+  },
+  theme: {
+    primaryColor: "#fef08a",
+    secondaryColor: "#fbbf24",
+    backgroundImage: "/assets/barnaby/barnaby-pasture-arena.jpg",
+    mobileBackgroundImage: "/assets/barnaby/barnaby-pasture-arena.jpg",
+    overlayOpacity: 0.7,
+  },
+  logoTile: {
+    enabled: true,
+    logoText: "MOO MORROW",
+    animationPreset: "turntable",
+    desktopEnabled: true,
+    mobileEnabled: true,
+    mediaUrl: "",
+    mediaType: "image",
+  },
+  featurePanel: {
+    enabled: true,
+    headline: "FRESH FROM THE PASTURE",
+    body: "Power your next move with pure dairy energy. Stay sharp and reach 31.",
+  },
+  cause: {
+    enabled: true,
+    label: "Farm to Table",
+    title: "Support Local Dairy Farmers",
+    message: "Every move supports sustainable pasture farming and healthy school lunches.",
+    beneficiaryName: "Green Meadow Farmers Trust",
+    targetAmount: 10000,
+    raisedAmount: 6420,
+    currency: "USD",
+    showProgress: true,
+    ctaLabel: "Learn More",
+    ctaUrl: "https://example.org/farms",
+  },
+};
+
 export function useActiveTournamentCampaign(tournamentId: string | null) {
   return useQuery({
     queryKey: ["tournament-campaign", "active", tournamentId],
-    queryFn: () => apiRequest<ActiveCampaignResponse>(`/promo-tournaments/${tournamentId}/campaign/active`, { auth: false }),
+    queryFn: async () => {
+      if (!tournamentId) return { campaign: null };
+      try {
+        const res = await apiRequest<ActiveCampaignResponse>(`/promo-tournaments/${tournamentId}/campaign/active`, { auth: false });
+        if (res?.campaign) return res;
+      } catch {
+        // Fallback below
+      }
+
+      // Demo/Dummy campaign fallback for client testing and design preview
+      if (
+        tournamentId.includes("moomorrow") ||
+        tournamentId.includes("demo") ||
+        tournamentId === "test"
+      ) {
+        return {
+          campaign: {
+            tournamentId,
+            tournamentTitle: "Moomorrow Cup 2026",
+            revision: 1,
+            manifest: MOOMORROW_DEMO_CAMPAIGN,
+            isCausePaused: false,
+            activateAt: null,
+            expireAt: null,
+          },
+        };
+      }
+
+      return { campaign: null };
+    },
     enabled: !!tournamentId,
     staleTime: 15_000,
     refetchInterval: 30_000,

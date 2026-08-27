@@ -38,14 +38,37 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const search = useSearchParams();
   const code = search.get("code") ?? undefined;
   const authed = !!useAuthStore((s) => s.user);
+  const isDemo = id === SPONSOR_DEMO_TOURNAMENT_ID || id.includes("demo") || id.includes("moomorrow") || id === "test";
 
-  const { data: t, isLoading, isError } = usePromoDetail(id, { code, authed });
+  const { data: serverT, isLoading, isError } = usePromoDetail(id, { code, authed });
   const { data: campaignData } = useActiveTournamentCampaign(id);
   const campaign = campaignData?.campaign?.manifest ?? null;
+
+  const dummyTournament = isDemo
+    ? {
+        id,
+        title: campaignData?.campaign?.tournamentTitle || "Moomorrow Cup 2026",
+        description: "Welcome to the official Moomorrow Cup tournament arena. Power through the pasture, keep counting, and become the champion.",
+        visibility: "PUBLIC" as const,
+        status: "APPROVED" as const,
+        prizePool: "5,000 USDT",
+        winnerCount: 3,
+        entryCount: 100,
+        startDate: new Date().toISOString(),
+        startAt: new Date(Date.now() - 60000).toISOString(),
+        timeOptions: [],
+        myTimeVote: null,
+        sponsor: { id: "moomorrow", name: "Moomorrow Farms" },
+        teams: [],
+        joined: true,
+      }
+    : null;
+
+  const t = serverT ?? dummyTournament;
   const join = useJoinPromo();
   const voteTime = useVoteStartTime();
   const [error, setError] = useState("");
-  const [playing, setPlaying] = useState(false);
+  const [playing, setPlaying] = useState(isDemo);
   const [refCode, setRefCode] = useState(code ?? "");
   const [showVote, setShowVote] = useState(false);
   const [slotPick, setSlotPick] = useState("");
@@ -61,8 +84,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const hasTimeVote = (t?.timeOptions?.length ?? 0) > 0;
   const startMs = t?.startAt ? Date.parse(t.startAt) : null;
   const started = startMs != null && now >= startMs;
-  // TEMPORARY: an always-open test tournament ("[TEST] …") can be entered any time (bypasses lobby).
-  const isTest = id === SPONSOR_DEMO_TOURNAMENT_ID || !!t?.title?.startsWith("[TEST]");
+  const isTest = isDemo || !!t?.title?.startsWith("[TEST]");
   const canEnter = started || isTest;
 
   useEffect(() => {

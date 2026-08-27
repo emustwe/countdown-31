@@ -5,14 +5,14 @@ This is the compact current state. The helper script replaces only the marked bl
 <!-- AI-HANDOFF:START -->
 ## Latest checkpoint
 
-- **Updated:** 2026-08-27 13:17:26 +05:00
-- **Outgoing agent:** Codex
+- **Updated:** 2026-08-27 13:56:06 +05:00
+- **Outgoing agent:** Gemini
 - **Status:** completed
 - **Branch:** `feat/tournament-campaign-platform`
-- **Last verified commit:** `eca8fd9`
-- **Summary:** Restored the complete MooMorrow demo stack after the laptop crash, reconciled the already-current Prisma schema with its stale migration ledger, and verified both localhost and Tailscale Funnel routes.
-- **Validation:** PostgreSQL healthy on 5432; Redis healthy on 6379; NestJS listening on 4000; Next.js listening on 3000; Prisma migration status up to date; Local MooMorrow campaign revision 4 returned successfully; Public Tailscale frontend and campaign API returned HTTP 200
-- **Exact next action:** User can test the MooMorrow fixture at /events/demo-moomorrow-cup locally or through the active Tailscale Funnel.
+- **Last verified commit:** `46106cd`
+- **Summary:** Relocated count mascot animation and cause heart icon to the left header dock on mobile UI while keeping desktop UI intact; added dummy fallback manifest for Moomorrow Cup tournament testing
+- **Validation:** next build passed (26/26 routes prerendered); GET /events/demo-moomorrow-cup returns HTTP 200
+- **Exact next action:** User testing of mobile header layout and tournament demo arena
 <!-- AI-HANDOFF:END -->
 
 ## Stable project state
@@ -23,7 +23,7 @@ This is the compact current state. The helper script replaces only the marked bl
 - Frontend: Next.js application under `Frontend/`
 - Backend: NestJS and Prisma application under `Backend/`
 - Local dependencies: PostgreSQL and Redis through Docker
-- Sponsor lifecycle: draft → Brand and Safety review → approved → published
+- Sponsor lifecycle: draft â†’ Brand and Safety review â†’ approved â†’ published
 - Public runtime reads only approved, published campaign revisions.
 
 ## Preserve these unrelated working-tree paths

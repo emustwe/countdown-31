@@ -64,3 +64,12 @@ Short, append-only checkpoints from substantive agent turns. Git remains authori
   - Local MooMorrow campaign revision 4 returned successfully
   - Public Tailscale frontend and campaign API returned HTTP 200
 - Next: User can test the MooMorrow fixture at /events/demo-moomorrow-cup locally or through the active Tailscale Funnel.
+## 2026-08-27 13:56:06 +05:00 â€” Gemini â€” completed
+
+- Branch: `feat/tournament-campaign-platform`
+- Starting commit: `46106cd`
+- Summary: Relocated count mascot animation and cause heart icon to the left header dock on mobile UI while keeping desktop UI intact; added dummy fallback manifest for Moomorrow Cup tournament testing
+- Validation:
+  - next build passed (26/26 routes prerendered)
+  - GET /events/demo-moomorrow-cup returns HTTP 200
+- Next: User testing of mobile header layout and tournament demo arena
