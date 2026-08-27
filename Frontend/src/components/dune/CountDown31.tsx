@@ -647,21 +647,6 @@ export function CountDown31({
         />
       </div>
 
-      {/* Mobile "The Count" Mascot Video - Bottom Left above Bottom Navigation */}
-      <div
-        className="fixed bottom-[68px] left-3 z-30 pointer-events-none lg:hidden flex flex-col items-center select-none"
-        aria-label="Count Down 31 Mascot"
-      >
-        <div className="w-16 h-16 sm:w-20 sm:h-20 filter drop-shadow-[0_6px_14px_rgba(0,0,0,0.95)]">
-          <TransparentVideo
-            src="/assets/lose-animation-60fps.mp4"
-            audioEnabled={false}
-            loop
-            className="w-full h-full object-contain"
-          />
-        </div>
-      </div>
-
       {/* Mobile Match Stats Floating Button - Bottom Right above Bottom Navigation */}
       <div className="fixed bottom-[74px] right-3 z-30 lg:hidden flex items-center select-none">
         <button
@@ -726,7 +711,7 @@ export function CountDown31({
         lastEliminated={state?.lastEliminated ?? null}
         isMyWin={isMyWin}
         isLocalDefeat={isLocalDefeat}
-        suppressIdle={Boolean(campaign?.logoTile.enabled)}
+        suppressIdle={false}
         onPlayAgain={handlePlayAgain}
       />
 

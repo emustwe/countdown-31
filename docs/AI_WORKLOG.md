@@ -109,3 +109,12 @@ Short, append-only checkpoints from substantive agent turns. Git remains authori
   - next build passed 26/26 routes
   - TypeScript typecheck passed
 - Next: User testing of separate sponsor card and standalone 31 badge in header
+## 2026-08-27 15:54:41 +05:00 â€” Gemini â€” completed
+
+- Branch: `feat/tournament-campaign-platform`
+- Starting commit: `9b18ab6`
+- Summary: Enabled the bottom-left Barnaby Mascot cow animation in tournament and campaign mode to match base game behavior with idle looping and defeat center-stage slide
+- Validation:
+  - next build passed 26/26 routes
+  - TypeScript typecheck passed
+- Next: User testing of bottom-left cow animation in desktop tournament mode
