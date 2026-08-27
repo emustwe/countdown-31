@@ -22,6 +22,9 @@ import {
   ChevronRight,
   Trophy,
   ShieldAlert,
+  HeartHandshake,
+  ExternalLink,
+  X,
 } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useAuthStore } from "../../stores/auth-store";
@@ -34,8 +37,14 @@ import { useAvatarStore } from "../../stores/avatar-customization-store";
 import { MasterAvatar } from "./MasterAvatar";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
 import type { MenuIconId } from "../../lib/game-config";
-import { MobileBottomNav } from "./MobileBottomNav";
 import { DEFAULT_GAME_CONFIG, type GameConfig } from "../../lib/game-config";
+import { TransparentVideo } from "./TransparentVideo";
+import {
+  campaignCauseProgress,
+  resolveCampaignAssetUrl,
+  sendCampaignEventsBatch,
+  type TournamentCampaignManifest,
+} from "../../lib/hooks/useTournamentCampaign";
 
 interface ArcadeHeaderProps {
   onOpenRules?: () => void;
@@ -44,6 +53,10 @@ interface ArcadeHeaderProps {
   showModeToggle?: boolean;
   isTournament?: boolean;
   config?: GameConfig;
+  campaign?: TournamentCampaignManifest | null;
+  causePaused?: boolean;
+  tournamentId?: string | null;
+  campaignRevision?: number;
 }
 
 export function ArcadeHeader({
@@ -53,6 +66,10 @@ export function ArcadeHeader({
   showModeToggle = false,
   isTournament = false,
   config: passedConfig,
+  campaign = null,
+  causePaused = false,
+  tournamentId = null,
+  campaignRevision,
 }: ArcadeHeaderProps) {
   const router = useRouter();
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
@@ -63,13 +80,17 @@ export function ArcadeHeader({
   const isAuthenticated = !!accessToken && !!user;
   const avatar = useAvatarStore();
   const { data: serverConfig } = useGameConfig();
-  const config = passedConfig ?? (isTournament ? (serverConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG);
+  const config =
+    passedConfig ?? (isTournament ? (serverConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG);
   const logoutMutation = useLogout();
 
   const { data: profile } = useProfile();
   const { data: wallet } = useWallet();
 
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showCause, setShowCause] = useState(false);
+  const [campaignLogoFailed, setCampaignLogoFailed] = useState(false);
+  const causeImpressionSent = useRef(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -77,15 +98,16 @@ export function ArcadeHeader({
     function handleClickOutside(event: MouseEvent) {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
+        setShowCause(false);
       }
     }
-    if (showProfileMenu) {
+    if (showProfileMenu || showCause) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showProfileMenu]);
+  }, [showProfileMenu, showCause]);
 
   useEffect(() => {
     if (!isAuthenticated) setShowProfileMenu(false);
@@ -93,7 +115,42 @@ export function ArcadeHeader({
 
   // Show the game-mode selector ONLY when explicitly enabled. (Tournaments pass showModeToggle=false
   // because they are skills-only; they still pass onToggleMode, so we must not OR it in here.)
-  const canToggle = showModeToggle;
+  const hasCampaign = Boolean(campaign);
+  const canToggle = showModeToggle && !hasCampaign;
+  const campaignCause = campaign?.cause?.enabled && !causePaused ? campaign.cause : null;
+  const campaignLogoUrl = resolveCampaignAssetUrl(campaign?.logoTile.mediaUrl);
+
+  useEffect(() => setCampaignLogoFailed(false), [campaignLogoUrl]);
+
+  function campaignDeviceClass(): "desktop" | "tablet" | "mobile" {
+    if (typeof window === "undefined") return "desktop";
+    if (window.innerWidth < 640) return "mobile";
+    if (window.innerWidth < 1024) return "tablet";
+    return "desktop";
+  }
+
+  function recordCauseEvent(eventType: "rendered_impression" | "cause_expand" | "cta_click") {
+    if (!tournamentId) return;
+    void sendCampaignEventsBatch(tournamentId, {
+      revision: campaignRevision,
+      deviceClass: campaignDeviceClass(),
+      events: [{ placement: "causeCard", eventType, count: 1 }],
+    });
+  }
+
+  function toggleCause() {
+    soundManager.playClick();
+    const opening = !showCause;
+    setShowCause(opening);
+    setShowProfileMenu(false);
+    if (opening) {
+      if (!causeImpressionSent.current) {
+        recordCauseEvent("rendered_impression");
+        causeImpressionSent.current = true;
+      }
+      recordCauseEvent("cause_expand");
+    }
+  }
 
   function toggleSound() {
     toggleSoundStore();
@@ -140,8 +197,9 @@ export function ArcadeHeader({
     .sort((a, b) => a.order - b.order);
 
   return (
-    <>
-    <header className={`arcade-arena-header ${canToggle ? "is-game-header" : "is-page-header"} relative z-30 flex h-32 w-full shrink-0 select-none items-start justify-between px-3 pb-2 pt-3 sm:h-36 sm:px-8`}>
+    <header
+      className={`arcade-arena-header ${canToggle || hasCampaign ? "is-game-header" : "is-page-header"} relative z-30 flex h-32 w-full shrink-0 select-none items-start justify-between px-3 pb-2 pt-3 sm:h-36 sm:px-8`}
+    >
       {/* Left Mode Selector Pill (Only in Arena) */}
       <div className="arcade-mode-selector flex items-center gap-2.5 z-20 pt-1">
         {/* Mode Selector Toggle Pill - ONLY rendered on Game Arena page */}
@@ -180,11 +238,11 @@ export function ArcadeHeader({
         )}
       </div>
 
-      {/* Center 3D Marquee Banner: COUNT DOWN 31 (Absolute Dead Center on Screen) */}
+      {/* Center marquee becomes the sponsor identity only inside a published campaign. */}
       <div className="arcade-brand absolute left-1/2 -translate-x-1/2 top-2 flex flex-col items-center pointer-events-none z-10">
         <div
           onClick={() => router.push("/home")}
-          className="pointer-events-auto cursor-pointer relative flex items-center gap-2 bg-gradient-to-r from-amber-950 via-yellow-900 to-amber-950 px-6 sm:px-10 py-2 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all"
+          className={`pointer-events-auto cursor-pointer relative flex items-center gap-2 bg-gradient-to-r from-amber-950 via-yellow-900 to-amber-950 px-6 sm:px-10 py-2 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-400 shadow-[0_8px_25px_rgba(0,0,0,0.8),0_0_25px_rgba(245,158,11,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] hover:brightness-110 transition-all ${hasCampaign ? "tournament-header-brand" : ""}`}
         >
           {/* Decorative Corner Rivets */}
           <span className="absolute top-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
@@ -192,9 +250,48 @@ export function ArcadeHeader({
           <span className="absolute bottom-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
           <span className="absolute bottom-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
 
-          <h1 className="font-title font-black text-xl sm:text-3xl md:text-4xl tracking-wider text-white drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)]">
-            {config.branding.gameTitle}
-          </h1>
+          {hasCampaign && (
+            <div className="tournament-header-cow" aria-label="Count Down 31 mascot">
+              <TransparentVideo
+                src="/assets/lose-animation-60fps.mp4"
+                audioEnabled={false}
+                loop
+                className="h-full w-full"
+              />
+            </div>
+          )}
+
+          {campaign ? (
+            <div
+              className={`tournament-header-sponsor sponsor-motion-${campaign.logoTile.animationPreset}`}
+              aria-label={campaign.identity.sponsorName}
+            >
+              {campaignLogoUrl && !campaignLogoFailed ? (
+                campaign.logoTile.mediaType === "video" ? (
+                  <video
+                    src={campaignLogoUrl}
+                    muted
+                    loop
+                    autoPlay
+                    playsInline
+                    onError={() => setCampaignLogoFailed(true)}
+                  />
+                ) : (
+                  <img
+                    src={campaignLogoUrl}
+                    alt={campaign.identity.sponsorName}
+                    onError={() => setCampaignLogoFailed(true)}
+                  />
+                )
+              ) : (
+                <span>{campaign.logoTile.logoText || campaign.identity.sponsorName}</span>
+              )}
+            </div>
+          ) : (
+            <h1 className="font-title font-black text-xl sm:text-3xl md:text-4xl tracking-wider text-white drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)]">
+              {config.branding.gameTitle}
+            </h1>
+          )}
 
           {/* 3D Golden "31" Shield Badge */}
           <div className="flex items-center justify-center w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 border-2 border-white shadow-[0_4px_12px_rgba(245,158,11,0.9)] -mr-1">
@@ -205,17 +302,50 @@ export function ArcadeHeader({
         </div>
 
         {/* Subtitle Warning Pill - ONLY shown in Game Arena */}
-        {canToggle && (
+        {(canToggle || campaign) && (
           <span className="mt-1.5 text-[10px] sm:text-xs font-title font-black tracking-widest text-amber-300 uppercase bg-black/80 px-3.5 py-0.5 rounded-full border border-amber-400/40 shadow pointer-events-auto">
-            {gameMode === "skills"
-              ? `⚡ ${config.branding.announcement}`
-              : "🎲 Classic Pure Counting!"}
+            {campaign
+              ? `${campaign.identity.disclosureLabel} ${campaign.identity.sponsorName}`
+              : gameMode === "skills"
+                ? `⚡ ${config.branding.announcement}`
+                : "🎲 Classic Pure Counting!"}
           </span>
         )}
       </div>
 
       {/* Right Action Icons: Sound Toggle + Round Profile Avatar Button */}
-      <div className="arcade-header-actions flex items-center gap-2.5 z-20 pt-1 relative" ref={profileMenuRef}>
+      <div
+        className="arcade-header-actions flex items-center gap-2.5 z-20 pt-1 relative"
+        ref={profileMenuRef}
+      >
+        {campaignCause && (
+          <button
+            type="button"
+            onClick={toggleCause}
+            className={`tournament-header-action is-cause ${showCause ? "is-open" : ""}`}
+            title="Campaign cause"
+            aria-label="Open campaign cause"
+            aria-expanded={showCause}
+          >
+            <HeartHandshake size={20} />
+          </button>
+        )}
+
+        {hasCampaign && showModeToggle && (
+          <button
+            type="button"
+            onClick={() => {
+              soundManager.playClick();
+              onToggleMode?.(gameMode === "skills" ? "classic" : "skills");
+            }}
+            className={`tournament-header-action ${gameMode === "skills" ? "is-skills" : "is-classic"}`}
+            title={`Game mode: ${gameMode === "skills" ? "Skills" : "Classic"}. Click to switch.`}
+            aria-label={`Game mode: ${gameMode === "skills" ? "Skills" : "Classic"}`}
+          >
+            {gameMode === "skills" ? <Sparkles size={20} /> : <Dices size={20} />}
+          </button>
+        )}
+
         {/* Sound Toggle Button */}
         <button
           onClick={toggleSound}
@@ -225,6 +355,56 @@ export function ArcadeHeader({
         >
           {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} className="text-slate-400" />}
         </button>
+
+        <AnimatePresence>
+          {showCause && campaignCause && campaign && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 8 }}
+              className="tournament-cause-popover"
+              role="dialog"
+              aria-modal="false"
+              aria-label={campaignCause.title}
+            >
+              <button
+                type="button"
+                className="tournament-cause-close"
+                onClick={toggleCause}
+                aria-label="Close campaign cause"
+              >
+                <X size={15} />
+              </button>
+              <small>{campaignCause.label}</small>
+              <strong>{campaignCause.title}</strong>
+              <span>For {campaignCause.beneficiaryName}</span>
+              <p>{campaignCause.message}</p>
+              {campaignCause.showProgress && (
+                <div className="tournament-cause-progress">
+                  <div>
+                    <i style={{ width: `${campaignCauseProgress(campaignCause)}%` }} />
+                  </div>
+                  <b>
+                    {campaignCause.raisedAmount.toLocaleString()} /{" "}
+                    {campaignCause.targetAmount.toLocaleString()} {campaignCause.currency}
+                  </b>
+                </div>
+              )}
+              {campaignCause.ctaUrl && (
+                <a
+                  href={campaignCause.ctaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  onClick={() => recordCauseEvent("cta_click")}
+                >
+                  {campaignCause.ctaLabel}
+                  <ExternalLink size={12} />
+                </a>
+              )}
+              <em>Information only · Opens an external site</em>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* One menu entry point for account and player navigation. */}
         <button
@@ -369,7 +549,5 @@ export function ArcadeHeader({
         </AnimatePresence>
       </div>
     </header>
-    <MobileBottomNav />
-    </>
   );
 }

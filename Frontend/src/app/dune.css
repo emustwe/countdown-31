@@ -2228,6 +2228,85 @@ h3 {
 .tournament-sponsor-story small { display: block; color: var(--sponsor-accent); font-size: 8px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
 .tournament-sponsor-story strong { display: block; margin-top: 5px; color: var(--sponsor-primary); font-size: 17px; line-height: 1.05; }
 .tournament-sponsor-story p { margin: 6px 0 0; color: rgba(255,255,255,.72); font-size: 10px; line-height: 1.4; }
+
+/* Campaign header: the sponsor becomes the title instead of occupying a gameplay corner. */
+.tournament-header-brand {
+  min-width: clamp(340px, 35vw, 520px);
+  justify-content: center;
+  padding-block: 7px !important;
+  overflow: visible;
+}
+.tournament-header-cow {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  overflow: visible;
+  filter: drop-shadow(0 5px 7px rgba(0,0,0,.78));
+}
+.tournament-header-cow video,
+.tournament-header-cow canvas { width: 100%; height: 100%; object-fit: contain; }
+.tournament-header-sponsor {
+  display: grid;
+  width: min(225px, 19vw);
+  height: 48px;
+  flex: 0 1 auto;
+  place-items: center;
+  color: var(--sponsor-primary, #fff7d6);
+  transform-style: preserve-3d;
+}
+.tournament-header-sponsor img,
+.tournament-header-sponsor video { width: 100%; height: 100%; object-fit: contain; }
+.tournament-header-sponsor span {
+  max-width: 100%;
+  overflow: hidden;
+  color: white;
+  font: 950 clamp(18px, 2.1vw, 31px)/.9 var(--font-fredoka);
+  letter-spacing: -.035em;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-shadow: 0 3px 7px rgba(0,0,0,.85), 0 0 16px color-mix(in srgb, var(--sponsor-accent, #fbbf24) 45%, transparent);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tournament-header-action {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid #fbbf24;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #1f2b23, #07100b);
+  color: #fcd34d;
+  box-shadow: 0 4px 12px rgba(0,0,0,.62), inset 0 1px 2px rgba(255,255,255,.22);
+  transition: transform .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+.tournament-header-action:hover { transform: scale(1.05); }
+.tournament-header-action.is-skills { border-color: #a855f7; color: #e9d5ff; box-shadow: 0 4px 12px rgba(0,0,0,.62), 0 0 15px rgba(168,85,247,.38); }
+.tournament-header-action.is-classic { color: #fcd34d; }
+.tournament-header-action.is-cause { border-color: #fb7185; color: #fda4af; }
+.tournament-header-action.is-cause.is-open { background: linear-gradient(180deg,#9f1239,#4c0519); color: white; box-shadow: 0 0 20px rgba(251,113,133,.5); }
+.tournament-cause-popover {
+  position: absolute;
+  top: 58px;
+  right: 0;
+  z-index: 210;
+  width: min(330px, calc(100vw - 20px));
+  padding: 16px;
+  border: 1px solid rgba(253,164,175,.75);
+  border-radius: 21px;
+  background: linear-gradient(145deg,rgba(53,8,23,.98),rgba(3,9,6,.98));
+  color: white;
+  box-shadow: 0 22px 55px rgba(0,0,0,.82), 0 0 28px rgba(251,113,133,.16);
+  font-family: var(--font-fredoka);
+}
+.tournament-cause-popover > small { display: block; padding-right: 24px; color: #fda4af; font-size: 9px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+.tournament-cause-popover > strong { display: block; margin-top: 4px; padding-right: 24px; font-size: 18px; line-height: 1.05; }
+.tournament-cause-popover > span { display: block; margin-top: 5px; color: #fdba74; font-size: 10px; font-weight: 800; }
+.tournament-cause-popover > p { margin: 8px 0; color: rgba(255,255,255,.74); font-size: 10px; line-height: 1.4; }
+.tournament-cause-popover > a { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 9px; padding: 8px 10px; border-radius: 11px; background: linear-gradient(90deg,#fb7185,#f59e0b); color: #21070d; font-size: 9px; font-weight: 900; text-decoration: none; }
+.tournament-cause-popover > em { display: block; margin-top: 5px; color: rgba(255,255,255,.42); font-size: 7px; font-style: normal; text-align: center; }
+.tournament-cause-close { position: absolute; top: 10px; right: 10px; display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; background: rgba(0,0,0,.32); color: white; }
 .tournament-cause-card {
   position: absolute;
   right: auto;
@@ -2296,6 +2375,12 @@ h3 {
   .tournament-cause-progress { margin-top: 6px; }
   .tournament-cause-card a { position: absolute; right: 6px; bottom: 6px; width: auto; margin: 0; padding: 5px 7px; font-size: 7px; }
   .tournament-cause-card:has(a) .tournament-cause-progress { margin-right: 76px; }
+  .tournament-header-brand { min-width: 245px; padding-inline: 14px !important; }
+  .tournament-header-cow { width: 48px; height: 48px; }
+  .tournament-header-sponsor { width: 125px; height: 38px; }
+  .tournament-header-sponsor span { font-size: 19px; }
+  .tournament-header-action { width: 44px; height: 44px; }
+  .arcade-arena-header.is-game-header .arcade-brand:has(.tournament-header-brand) { top: 8px; transform: none; }
 }
 
 .arena-roster-scroll {
@@ -8794,6 +8879,43 @@ button.mini:hover { filter: brightness(1.06); }
     box-shadow: 0 0 0 4px rgb(4 12 8 / .96), 0 0 24px rgb(52 211 153 / .55);
   }
 
+  .mobile-more-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 181;
+    border: 0;
+    background: rgba(0,0,0,.52);
+    backdrop-filter: blur(3px);
+  }
+
+  .mobile-more-menu {
+    position: fixed;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: calc(88px + env(safe-area-inset-bottom));
+    z-index: 182;
+    display: grid;
+    width: min(300px, calc(100vw - 20px));
+    gap: 8px;
+    padding: 13px;
+    transform-origin: right bottom;
+    border: 1px solid rgba(251,191,36,.62);
+    border-radius: 21px;
+    background: linear-gradient(155deg,rgba(22,39,29,.99),rgba(3,10,7,.99));
+    box-shadow: 0 22px 55px rgba(0,0,0,.8), 0 0 22px rgba(251,191,36,.13);
+    color: white;
+    font-family: var(--font-fredoka);
+  }
+  .mobile-more-heading { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 7px; }
+  .mobile-more-heading div { display: grid; }
+  .mobile-more-heading small { color: #34d399; font-size: 8px; font-weight: 900; letter-spacing: .13em; }
+  .mobile-more-heading strong { font-size: 20px; line-height: 1; }
+  .mobile-more-heading button { display: grid; width: 31px; height: 31px; place-items: center; border: 1px solid rgba(255,255,255,.13); border-radius: 50%; background: rgba(0,0,0,.28); color: #d1d5db; }
+  .mobile-more-menu > button { display: flex; align-items: center; gap: 11px; width: 100%; padding: 11px; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; background: rgba(255,255,255,.045); color: white; text-align: left; }
+  .mobile-more-menu > button > span { display: grid; width: 39px; height: 39px; flex: 0 0 auto; place-items: center; border-radius: 12px; background: rgba(251,191,36,.1); color: #fbbf24; }
+  .mobile-more-menu > button > div { display: grid; gap: 2px; }
+  .mobile-more-menu > button strong { font-size: 13px; }
+  .mobile-more-menu > button small { color: #8ca298; font-size: 9px; }
+
   .topnav {
     display: none !important;
   }
@@ -8884,6 +9006,17 @@ button.mini:hover { filter: brightness(1.06); }
   .arcade-arena-header.is-page-header .arcade-brand {
     transform: scale(.52);
   }
+
+  .arcade-arena-header .tournament-header-brand { min-width: 210px; padding: 5px 8px !important; gap: 4px; }
+  .tournament-header-cow { width: 39px; height: 39px; }
+  .tournament-header-sponsor { width: 105px; height: 31px; }
+  .tournament-header-sponsor span { font-size: 14px; }
+  .arcade-arena-header .tournament-header-brand > div:last-child { width: 29px; height: 29px; border-radius: 9px; }
+  .arcade-arena-header .tournament-header-brand > div:last-child span { font-size: 16px; }
+  .tournament-header-action,
+  .arcade-arena-header .arcade-sound-trigger { width: 38px; height: 38px; }
+  .arcade-header-actions { gap: 5px !important; }
+  .tournament-cause-popover { position: fixed; top: 62px; right: 8px; padding: 14px; }
 }
 
 @media (min-width: 768px) and (max-width: 900px) {

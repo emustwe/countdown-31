@@ -26,14 +26,20 @@ Only durable decisions belong here. Turn-by-turn activity belongs in `AI_WORKLOG
 - **Decision:** The live tournament uses only an approved, published, active campaign revision. Drafts and review revisions never appear publicly.
 - **Reason:** This preserves the Brand and Safety approval gates and reliable rollback.
 
-## D-005 — Tournament sponsor placement owns the idle mascot slot
+## D-005 — Tournament sponsor identity owns the game marquee
 
 - **Status:** Active
-- **Decision:** When a tournament campaign enables its animated sponsor tile, the ordinary idle corner mascot is suppressed. The cow may still appear centrally for an actual defeat.
-- **Reason:** Sponsor media must not be obscured while gameplay feedback remains intact.
+- **Decision:** During a published campaign, the game marquee becomes the animated sponsor identity plus the 31 badge, with the Count Down 31 cow retained as a small animated mark on its left. No sponsor or idle mascot tile occupies the bottom-left gameplay area; the cow may still appear centrally for an actual defeat.
+- **Reason:** Co-branding is prominent without consuming gameplay space or layering two competing animations.
 
 ## D-006 — Demo sponsor content is fictional and repeatable
 
 - **Status:** Active
 - **Decision:** The acceptance fixture uses MooMorrow Farms and the Play It Forward Cup, clearly labelled as fictional test content.
 - **Reason:** The product needs a complete demo without implying a real company endorsement.
+
+## D-007 — Campaign cause content is player-invoked
+
+- **Status:** Active
+- **Decision:** A campaign cause is represented by a header icon and its full message appears only in a dismissible popover after the player opens it.
+- **Reason:** Cause campaigns remain discoverable and measurable without covering the tournament roster or persistent game controls.

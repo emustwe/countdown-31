@@ -24,9 +24,18 @@ import { MobileArenaShell } from "./MobileArenaShell";
 import { MobileNumberDeck } from "./MobileNumberDeck";
 import { MobileBattleStrip } from "./MobileBattleStrip";
 import { TournamentSponsorLayer } from "./TournamentSponsorLayer";
-import { resolveCampaignAssetUrl, useActiveTournamentCampaign } from "../../lib/hooks/useTournamentCampaign";
+import {
+  resolveCampaignAssetUrl,
+  useActiveTournamentCampaign,
+} from "../../lib/hooks/useTournamentCampaign";
 
-export function CountDown31({ roomId = "practice", testArena = false }: { roomId?: string; testArena?: boolean }) {
+export function CountDown31({
+  roomId = "practice",
+  testArena = false,
+}: {
+  roomId?: string;
+  testArena?: boolean;
+}) {
   const router = useRouter();
   const { data: serverConfig } = useGameConfig();
   const isTournament = roomId !== "practice";
@@ -41,7 +50,10 @@ export function CountDown31({ roomId = "practice", testArena = false }: { roomId
   const defaultName = user?.fullName || user?.email?.split("@")[0] || guestName || "";
   const soundOn = useSettingsStore((s) => s.soundEnabled);
   const { data: cosmetics } = useCosmetics(!!accessToken);
-  const { state, myId, join, submit, useSkill } = useCountdownLive(roomId, testArena ? { local: true, botCount: 100 } : undefined);
+  const { state, myId, join, submit, useSkill } = useCountdownLive(
+    roomId,
+    testArena ? { local: true, botCount: 100 } : undefined,
+  );
   const [botCount, setBotCount] = useState<number>(gameConfig.gameplay.defaultBotCount);
 
   const [chosenName, setChosenName] = useState("");
@@ -86,13 +98,10 @@ export function CountDown31({ roomId = "practice", testArena = false }: { roomId
   const opponentPlayer = players.find((p) => p.id !== myId) ?? players[1] ?? null;
   const isOpponentTurn = status === "playing" && currentId !== myId && currentId !== null;
   const isMyWin = !!(
-    state?.winner &&
-    players.find((player) => player.id === myId)?.name === state.winner.name
+    state?.winner && players.find((player) => player.id === myId)?.name === state.winner.name
   );
-  const isLocalDefeat = !dismissedDefeat && !!(
-    myPlayer?.eliminated &&
-    state?.lastEliminated?.name === myPlayer.name
-  );
+  const isLocalDefeat =
+    !dismissedDefeat && !!(myPlayer?.eliminated && state?.lastEliminated?.name === myPlayer.name);
 
   // Reset dismissed defeat whenever a new active round starts
   useEffect(() => {
@@ -324,11 +333,15 @@ export function CountDown31({ roomId = "practice", testArena = false }: { roomId
   return (
     <div
       className={`arena-viewport relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${campaign ? "has-tournament-campaign" : ""} ${isShaking ? "animate-screen-shake" : ""}`}
-      style={campaign ? {
-        "--campaign-overlay": String(campaign.theme.overlayOpacity),
-        "--campaign-bg-desktop": `url("${resolveCampaignAssetUrl(campaign.theme.backgroundImage)}")`,
-        "--campaign-bg-mobile": `url("${resolveCampaignAssetUrl(campaign.theme.mobileBackgroundImage || campaign.theme.backgroundImage)}")`,
-      } as React.CSSProperties : undefined}
+      style={
+        campaign
+          ? ({
+              "--campaign-overlay": String(campaign.theme.overlayOpacity),
+              "--campaign-bg-desktop": `url("${resolveCampaignAssetUrl(campaign.theme.backgroundImage)}")`,
+              "--campaign-bg-mobile": `url("${resolveCampaignAssetUrl(campaign.theme.mobileBackgroundImage || campaign.theme.backgroundImage)}")`,
+            } as React.CSSProperties)
+          : undefined
+      }
     >
       {campaign && (
         <TournamentSponsorLayer
@@ -344,6 +357,11 @@ export function CountDown31({ roomId = "practice", testArena = false }: { roomId
         gameMode={gameMode}
         onToggleMode={handleModeChange}
         showModeToggle={gameConfig.gameplay.allowClassic && gameConfig.gameplay.allowSkills}
+        isTournament={isTournament}
+        campaign={campaign}
+        causePaused={campaignData?.campaign?.isCausePaused}
+        tournamentId={tournamentId}
+        campaignRevision={campaignData?.campaign?.revision}
       />
 
       {/* Main Arcade Arena Battlefield (3 Columns on Desktop with Expanded Center) */}
@@ -392,7 +410,10 @@ export function CountDown31({ roomId = "practice", testArena = false }: { roomId
                     data-sound="none"
                     className="flex-1 py-2 sm:py-2.5 px-4 sm:px-6 rounded-xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-sm sm:text-base shadow-[0_0_20px_rgba(52,211,153,0.8)] hover:brightness-110 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
-                    <span>CONFIRM MOVE ({selectedCards.length} {selectedCards.length === 1 ? "CARD" : "CARDS"})</span>
+                    <span>
+                      CONFIRM MOVE ({selectedCards.length}{" "}
+                      {selectedCards.length === 1 ? "CARD" : "CARDS"})
+                    </span>
                     <Send size={16} />
                   </button>
 
@@ -528,7 +549,7 @@ export function CountDown31({ roomId = "practice", testArena = false }: { roomId
       </main>
 
       <MobileArenaShell
-        board={(
+        board={
           <MobileNumberDeck
             currentCount={count}
             myTurn={myTurn}
@@ -537,8 +558,8 @@ export function CountDown31({ roomId = "practice", testArena = false }: { roomId
             status={status}
             lastMove={state?.lastMove ?? null}
           />
-        )}
-        action={(
+        }
+        action={
           <div className="mobile-turn-action">
             {status !== "over" && amIn && status === "playing" ? (
               myTurn && selectedCards.length > 0 ? (
@@ -575,8 +596,8 @@ export function CountDown31({ roomId = "practice", testArena = false }: { roomId
               )
             )}
           </div>
-        )}
-        battle={(
+        }
+        battle={
           <MobileBattleStrip
             myPlayer={myPlayer}
             opponentPlayer={opponentPlayer}
@@ -588,9 +609,9 @@ export function CountDown31({ roomId = "practice", testArena = false }: { roomId
             onSkill={handleSkill}
             skillsLocked={count >= 22}
           />
-        )}
+        }
         modeSwitch={
-          gameConfig.gameplay.allowClassic && gameConfig.gameplay.allowSkills ? (
+          !campaign && gameConfig.gameplay.allowClassic && gameConfig.gameplay.allowSkills ? (
             <div className="mobile-mode-switch" role="group" aria-label="Game mode">
               <button
                 type="button"
@@ -622,7 +643,6 @@ export function CountDown31({ roomId = "practice", testArena = false }: { roomId
           pingMs={48}
           showPing={gameConfig.features.showPing}
         />
-
       </div>
 
       <BarnabyMascot

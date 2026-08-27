@@ -5,14 +5,14 @@ This is the compact current state. The helper script replaces only the marked bl
 <!-- AI-HANDOFF:START -->
 ## Latest checkpoint
 
-- **Updated:** 2026-08-26 14:58:03 +05:00
+- **Updated:** 2026-08-27 12:40:26 +05:00
 - **Outgoing agent:** Codex
 - **Status:** completed
 - **Branch:** `feat/tournament-campaign-platform`
-- **Last verified commit:** `d597de3`
-- **Summary:** Installed the repository-backed Codex and Gemini continuity workflow and pushed the dedicated tournament campaign feature branch to GitHub.
-- **Validation:** PowerShell helper syntax passed; Helper executed successfully; Branch tracks origin/feat/tournament-campaign-platform; Workflow commit d597de3 pushed successfully
-- **Exact next action:** Continue the next user-requested tournament campaign task from this branch and update the handoff again before finishing.
+- **Last verified commit:** `340dab9`
+- **Summary:** Committed and pushed the redesigned published tournament campaign arena with sponsor marquee, animated cow, icon controls, cause popover, and mobile More menu.
+- **Validation:** Commit 340dab9 created; Targeted ESLint and TypeScript passed; 27 Vitest tests passed; Next.js production build passed; Responsive browser verification passed
+- **Exact next action:** Have the user review the live MooMorrow demo; apply only requested visual refinements or continue the next campaign-platform chunk.
 <!-- AI-HANDOFF:END -->
 
 ## Stable project state
@@ -34,6 +34,8 @@ These files existed outside the tournament task and must not be staged or remove
 - `Frontend/tsconfig.tsbuildinfo`
 - `Frontend/UI assets/0825.mov`
 - `Frontend/test-results/`
+- `Frontend/Frontend.zip`
+- `Frontend/Frontend 8-27-2026.zip`
 - `countdown31-tournament-sponsor-platform-plan.pdf`
 
 ## Recovery notes

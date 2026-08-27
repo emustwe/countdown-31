@@ -24,3 +24,29 @@ Short, append-only checkpoints from substantive agent turns. Git remains authori
   - Branch tracks origin/feat/tournament-campaign-platform
   - Workflow commit d597de3 pushed successfully
 - Next: Continue the next user-requested tournament campaign task from this branch and update the handoff again before finishing.
+## 2026-08-27 12:39:25 +05:00 — Codex — completed
+
+- Branch: `feat/tournament-campaign-platform`
+- Starting commit: `a4fa9a7`
+- Summary: Redesigned the published tournament campaign arena: sponsor-branded marquee with animated cow, icon-only mode control, on-demand cause popover, duplicate-control cleanup, and a mobile More menu for Wallet and Settings.
+- Validation:
+  - Targeted ESLint passed
+  - TypeScript typecheck passed after restart
+  - 27 Vitest tests passed
+  - Next.js production build passed
+  - Live browser verified at 481x912 and 1440x900
+  - Cause popover and More menu interactions verified
+  - Confirmed one mobile nav and no legacy bottom sponsor or cause cards
+- Next: Have the user review the live MooMorrow demo; apply only requested visual refinements or continue the next campaign-platform chunk.
+## 2026-08-27 12:40:26 +05:00 — Codex — completed
+
+- Branch: `feat/tournament-campaign-platform`
+- Starting commit: `340dab9`
+- Summary: Committed and pushed the redesigned published tournament campaign arena with sponsor marquee, animated cow, icon controls, cause popover, and mobile More menu.
+- Validation:
+  - Commit 340dab9 created
+  - Targeted ESLint and TypeScript passed
+  - 27 Vitest tests passed
+  - Next.js production build passed
+  - Responsive browser verification passed
+- Next: Have the user review the live MooMorrow demo; apply only requested visual refinements or continue the next campaign-platform chunk.
