@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Crown, LogIn, Clock, Dices, Sparkles, Send } from "lucide-react";
+import { Crown, LogIn, Clock, Dices, Sparkles, Send, Users, Trophy, X } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useGuestStore } from "../../stores/guest-store";
 import { useAuthStore } from "../../stores/auth-store";
@@ -15,6 +15,7 @@ import { ArcadePlayerCard, ArcadeOpponentCard } from "./ArcadePlayerCards";
 import { ArcadeHUD } from "./ArcadeHUD";
 import { OfficialRulesModal } from "./OfficialRulesModal";
 import { SkillLoadoutModal } from "./SkillLoadoutModal";
+import { TransparentVideo } from "./TransparentVideo";
 import confetti from "canvas-confetti";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
 import { useRouter } from "next/navigation";
@@ -93,6 +94,7 @@ export function CountDown31({
   const amIn = !!myId && players.some((p) => p.id === myId);
   const myTurn = status === "playing" && currentId === myId;
   const [dismissedDefeat, setDismissedDefeat] = useState(false);
+  const [showMobileStats, setShowMobileStats] = useState(false);
 
   const myPlayer = players.find((p) => p.id === myId) ?? null;
   const opponentPlayer = players.find((p) => p.id !== myId) ?? players[1] ?? null;
@@ -462,8 +464,8 @@ export function CountDown31({
             )}
           </div>
 
-          {/* Dedicated Mobile & Tablet Battle Dock (Rendered with Generous Space Below Cylinder) */}
-          <div className="w-full flex lg:hidden flex-col items-center gap-2 mt-8 sm:mt-14 mb-1">
+          {/* Dedicated Mobile & Tablet Battle Dock (Rendered with Balanced Space Below Cylinder) */}
+          <div className="w-full flex lg:hidden flex-col items-center gap-2 mt-2 sm:mt-3 mb-1">
             {/* The Two Yellow Boxes: User on Left, Active Opponent on Right */}
             <div className="w-full grid grid-cols-2 gap-2 sm:gap-3 max-w-xl mx-auto items-stretch">
               {/* Local Player Side with Avatar & Attached Tactical Skills */}
@@ -632,8 +634,8 @@ export function CountDown31({
         }
       />
 
-      {/* Stats are the only bottom dock. */}
-      <div className="arena-bottom mx-auto w-full max-w-5xl shrink-0 pb-1">
+      {/* Desktop HUD: Stats are the bottom dock on desktop only */}
+      <div className="arena-bottom mx-auto w-full max-w-5xl shrink-0 pb-1 hidden lg:block">
         <ArcadeHUD
           playerCount={players.length}
           maxPlayers={botCount + 1}
@@ -644,6 +646,79 @@ export function CountDown31({
           showPing={gameConfig.features.showPing}
         />
       </div>
+
+      {/* Mobile "The Count" Mascot Video - Bottom Left above Bottom Navigation */}
+      <div
+        className="fixed bottom-[74px] left-3 z-30 pointer-events-none lg:hidden flex flex-col items-center select-none"
+        aria-label="Count Down 31 Mascot"
+      >
+        <div className="w-14 h-14 sm:w-16 sm:h-16 filter drop-shadow-[0_6px_14px_rgba(0,0,0,0.9)]">
+          <TransparentVideo
+            src="/assets/lose-animation-60fps.mp4"
+            audioEnabled={false}
+            loop
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>
+
+      {/* Mobile Match Stats Floating Button - Bottom Right above Bottom Navigation */}
+      <div className="fixed bottom-[74px] right-3 z-30 lg:hidden flex items-center select-none">
+        <button
+          type="button"
+          onClick={() => {
+            soundManager.playClick();
+            setShowMobileStats(true);
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/85 border border-amber-400/70 shadow-[0_4px_16px_rgba(0,0,0,0.85)] backdrop-blur-md text-amber-300 font-title font-bold text-xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
+          aria-label="View Match Stats"
+        >
+          <Users size={13} className="text-amber-400" />
+          <span>
+            {players.length}/{botCount + 1}
+          </span>
+          <span className="text-amber-500/50">·</span>
+          <Trophy size={13} className="text-yellow-400" />
+          <span>R{state?.round ?? 1}</span>
+        </button>
+      </div>
+
+      {/* Mobile Match Stats Modal Popup */}
+      {showMobileStats && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm select-none"
+          onClick={() => setShowMobileStats(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border-2 border-amber-400/80 bg-gradient-to-b from-[#15241b] via-[#0c1611] to-[#060c09] p-5 shadow-[0_10px_35px_rgba(0,0,0,0.9)] text-white flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Trophy size={18} className="text-amber-400" />
+                <h3 className="font-title font-black text-base text-amber-300">MATCH STATS</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMobileStats(false)}
+                className="w-8 h-8 rounded-full bg-black/50 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <ArcadeHUD
+              playerCount={players.length}
+              maxPlayers={botCount + 1}
+              round={state?.round ?? 1}
+              arenaName={gameConfig.arena.name}
+              turnTime={gameConfig.gameplay.turnSeconds}
+              pingMs={48}
+              showPing={gameConfig.features.showPing}
+            />
+          </div>
+        </div>
+      )}
 
       <BarnabyMascot
         status={status}

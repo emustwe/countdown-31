@@ -200,7 +200,7 @@ export function ArcadeHeader({
     <header
       className={`arcade-arena-header ${canToggle || hasCampaign ? "is-game-header" : "is-page-header"} relative z-30 flex h-32 w-full shrink-0 select-none items-start justify-between px-3 pb-2 pt-3 sm:h-36 sm:px-8`}
     >
-      {/* Left Mode Selector Pill (Desktop) & Count Animation + Cause Heart Button (Mobile) */}
+      {/* Left Slot: Mode Selector (Desktop Arena) OR Single Heart Cause Button (Tournament) */}
       <div className="arcade-mode-selector flex items-center gap-2 z-20 pt-1">
         {/* Mode Selector Toggle Pill - ONLY rendered on Game Arena page */}
         {canToggle && (
@@ -237,34 +237,18 @@ export function ArcadeHeader({
           </div>
         )}
 
-        {/* Mobile Header Left Slot: Count Cow Mascot Animation + Cause Heart Button */}
-        {hasCampaign && (
-          <div className="flex sm:hidden items-center gap-1.5">
-            <div
-              className="tournament-header-cow-mobile flex w-9 h-9 items-center justify-center filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)]"
-              aria-label="Count Down 31 mascot"
-            >
-              <TransparentVideo
-                src="/assets/lose-animation-60fps.mp4"
-                audioEnabled={false}
-                loop
-                className="h-full w-full object-contain"
-              />
-            </div>
-
-            {campaignCause && (
-              <button
-                type="button"
-                onClick={toggleCause}
-                className={`tournament-header-action is-cause ${showCause ? "is-open" : ""}`}
-                title="Campaign cause"
-                aria-label="Open campaign cause"
-                aria-expanded={showCause}
-              >
-                <HeartHandshake size={18} />
-              </button>
-            )}
-          </div>
+        {/* Single Cause Heart Icon strictly on the Left */}
+        {campaignCause && (
+          <button
+            type="button"
+            onClick={toggleCause}
+            className={`tournament-header-action is-cause ${showCause ? "is-open" : ""}`}
+            title="Campaign cause"
+            aria-label="Open campaign cause"
+            aria-expanded={showCause}
+          >
+            <HeartHandshake size={20} />
+          </button>
         )}
       </div>
 
@@ -279,17 +263,6 @@ export function ArcadeHeader({
           <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
           <span className="absolute bottom-1 left-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
           <span className="absolute bottom-1 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-200 border border-amber-900" />
-
-          {hasCampaign && (
-            <div className="tournament-header-cow hidden sm:block" aria-label="Count Down 31 mascot">
-              <TransparentVideo
-                src="/assets/lose-animation-60fps.mp4"
-                audioEnabled={false}
-                loop
-                className="h-full w-full"
-              />
-            </div>
-          )}
 
           {campaign ? (
             <div
@@ -343,24 +316,11 @@ export function ArcadeHeader({
         )}
       </div>
 
-      {/* Right Action Icons: Sound Toggle + Round Profile Avatar Button */}
+      {/* Right Action Icons: Mode Switch + Sound Toggle + Round Profile Avatar Button */}
       <div
         className="arcade-header-actions flex items-center gap-2.5 z-20 pt-1 relative"
         ref={profileMenuRef}
       >
-        {campaignCause && (
-          <button
-            type="button"
-            onClick={toggleCause}
-            className={`tournament-header-action is-cause hidden sm:grid ${showCause ? "is-open" : ""}`}
-            title="Campaign cause"
-            aria-label="Open campaign cause"
-            aria-expanded={showCause}
-          >
-            <HeartHandshake size={20} />
-          </button>
-        )}
-
         {hasCampaign && showModeToggle && (
           <button
             type="button"

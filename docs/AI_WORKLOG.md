@@ -73,3 +73,12 @@ Short, append-only checkpoints from substantive agent turns. Git remains authori
   - next build passed (26/26 routes prerendered)
   - GET /events/demo-moomorrow-cup returns HTTP 200
 - Next: User testing of mobile header layout and tournament demo arena
+## 2026-08-27 14:30:41 +05:00 â€” Gemini â€” completed
+
+- Branch: `feat/tournament-campaign-platform`
+- Starting commit: `10143c9`
+- Summary: Fixed header heart cause icon to a single instance on the left of the header; lifted mobile avatars and game box higher; replaced full bottom stats strip on mobile with floating stats pill and modal; placed animated mascot count video in bottom left above bottom navigation bar
+- Validation:
+  - next build passed
+  - GET /events/demo-moomorrow-cup returns 200
+- Next: User testing of mobile UI layout and arena adjustments

@@ -5,14 +5,14 @@ This is the compact current state. The helper script replaces only the marked bl
 <!-- AI-HANDOFF:START -->
 ## Latest checkpoint
 
-- **Updated:** 2026-08-27 13:56:06 +05:00
+- **Updated:** 2026-08-27 14:30:41 +05:00
 - **Outgoing agent:** Gemini
 - **Status:** completed
 - **Branch:** `feat/tournament-campaign-platform`
-- **Last verified commit:** `46106cd`
-- **Summary:** Relocated count mascot animation and cause heart icon to the left header dock on mobile UI while keeping desktop UI intact; added dummy fallback manifest for Moomorrow Cup tournament testing
-- **Validation:** next build passed (26/26 routes prerendered); GET /events/demo-moomorrow-cup returns HTTP 200
-- **Exact next action:** User testing of mobile header layout and tournament demo arena
+- **Last verified commit:** `10143c9`
+- **Summary:** Fixed header heart cause icon to a single instance on the left of the header; lifted mobile avatars and game box higher; replaced full bottom stats strip on mobile with floating stats pill and modal; placed animated mascot count video in bottom left above bottom navigation bar
+- **Validation:** next build passed; GET /events/demo-moomorrow-cup returns 200
+- **Exact next action:** User testing of mobile UI layout and arena adjustments
 <!-- AI-HANDOFF:END -->
 
 ## Stable project state
@@ -23,7 +23,7 @@ This is the compact current state. The helper script replaces only the marked bl
 - Frontend: Next.js application under `Frontend/`
 - Backend: NestJS and Prisma application under `Backend/`
 - Local dependencies: PostgreSQL and Redis through Docker
-- Sponsor lifecycle: draft â†’ Brand and Safety review â†’ approved â†’ published
+- Sponsor lifecycle: draft Ã¢â€ â€™ Brand and Safety review Ã¢â€ â€™ approved Ã¢â€ â€™ published
 - Public runtime reads only approved, published campaign revisions.
 
 ## Preserve these unrelated working-tree paths
