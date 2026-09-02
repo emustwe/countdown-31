@@ -96,14 +96,13 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
         }),
     [config.skills],
   );
-  const [selected, setSelected] = useState<SkillType[]>(["rewind", "turbo"]);
+  // Nothing is pre-selected — it's a skill-based game, so the player deliberately picks their own
+  // loadout (0, 1, or 2 skills). We only ever DROP a picked skill that a config change removed.
+  const [selected, setSelected] = useState<SkillType[]>([]);
 
   useEffect(() => {
     const available = visibleSkills.map((skill) => skill.type);
-    setSelected((current) => {
-      const valid = current.filter((skill) => available.includes(skill));
-      return [...valid, ...available.filter((skill) => !valid.includes(skill))].slice(0, 2);
-    });
+    setSelected((current) => current.filter((skill) => available.includes(skill)));
   }, [visibleSkills]);
 
   if (!isOpen) return null;
@@ -135,18 +134,18 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md select-none"
+        className="fixed inset-0 z-[130] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md select-none"
       >
         <motion.div
           initial={{ scale: 0.9, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 20 }}
-          className="relative max-w-2xl w-full bg-gradient-to-b from-[#132019] via-[#0a1410] to-[#050b08] p-5 sm:p-7 rounded-3xl border-3 border-amber-400/80 shadow-[0_0_60px_rgba(0,0,0,0.9)] flex flex-col gap-4 text-white"
+          className="relative max-w-2xl w-full bg-gradient-to-b from-[#132019] via-[#0a1410] to-[#050b08] p-3 sm:p-7 rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-amber-400/80 shadow-[0_0_60px_rgba(0,0,0,0.9)] flex flex-col gap-1.5 sm:gap-4 text-white"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
+          <div className="flex items-center justify-between border-b border-amber-500/20 pb-2 sm:pb-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-300 shadow">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-300 shadow">
                 <Sparkles size={20} className="fill-yellow-400 text-yellow-400 animate-pulse" />
               </div>
               <div>
@@ -180,7 +179,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
           </div>
 
           {/* 4 Skill Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 [@media(max-height:470px)]:grid-cols-4 gap-1.5 sm:gap-3">
             {visibleSkills.map((skill) => {
               const isChosen = selected.includes(skill.type);
               return (
@@ -188,7 +187,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
                   key={skill.type}
                   onClick={() => toggleSkill(skill.type)}
                   data-sound="none"
-                  className={`relative p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between select-none ${
+                  className={`relative p-2 sm:p-3.5 rounded-xl sm:rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between select-none ${
                     skill.gradient
                   } ${
                     isChosen
@@ -196,9 +195,9 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
                       : "border-slate-800 opacity-60 hover:opacity-90"
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-1 sm:mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-xl bg-black/50 border border-white/10">
+                      <div className="p-1 sm:p-1.5 rounded-xl bg-black/50 border border-white/10">
                         {skill.icon}
                       </div>
                       <div>
@@ -221,7 +220,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
                     )}
                   </div>
 
-                  <p className="text-[11px] text-slate-300/90 leading-snug">{skill.description}</p>
+                  <p className="hidden sm:block text-[11px] text-slate-300/90 leading-snug">{skill.description}</p>
                 </div>
               );
             })}
@@ -232,7 +231,7 @@ export function SkillLoadoutModal({ isOpen, onClose, onConfirm }: SkillLoadoutMo
             onClick={handleStart}
             data-sound="none"
             disabled={selected.length > 2}
-            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-base shadow-[0_0_25px_rgba(52,211,153,0.8)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed"
+            className="w-full py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400 text-slate-950 font-title font-black text-sm sm:text-base shadow-[0_0_25px_rgba(52,211,153,0.8)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed"
           >
             <span>START GAME</span>
             <ArrowRight size={18} />

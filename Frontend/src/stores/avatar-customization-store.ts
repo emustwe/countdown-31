@@ -15,7 +15,10 @@ export interface AvatarConfig {
   hasGlasses: boolean;
   hasMustache: boolean;
   hasCrown: boolean;
+  // Styling: wearable glasses layered onto the cow's eyes (equipped from the Styling section).
+  stylingGlasses: boolean;
   title: string;
+  unlockedItemIds: string[];
 }
 
 interface AvatarStore extends AvatarConfig {
@@ -23,10 +26,13 @@ interface AvatarStore extends AvatarConfig {
   setSkin: (skinId: AvatarConfig["skinId"]) => void;
   setBackground: (bgId: AvatarConfig["backgroundId"]) => void;
   setFrame: (frameId: AvatarConfig["frameId"]) => void;
+  setStylingGlasses: (on: boolean) => void;
   toggleGlasses: () => void;
   toggleMustache: () => void;
   toggleCrown: () => void;
   setTitle: (title: string) => void;
+  unlockItem: (itemId: string) => void;
+  isItemUnlocked: (itemId: string) => boolean;
   equipAll: () => void;
   removeAll: () => void;
   resetDefault: () => void;
@@ -40,12 +46,22 @@ const DEFAULT_CONFIG: AvatarConfig = {
   hasGlasses: false,
   hasMustache: false,
   hasCrown: false,
+  stylingGlasses: false,
   title: "The 31 Evader 👑",
+  unlockedItemIds: [
+    "champion",
+    "cow_v1_base",
+    "emerald",
+    "none",
+    "base_bull",
+    "golden_emperor",
+    "mythic_gold",
+  ],
 };
 
 export const useAvatarStore = create<AvatarStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...DEFAULT_CONFIG,
       setVariant: (variantId) => {
         const variant = getAvatarVariant(variantId);
@@ -60,10 +76,21 @@ export const useAvatarStore = create<AvatarStore>()(
       setSkin: (skinId) => set({ skinId, variantId: skinId === "base_bull" ? DEFAULT_AVATAR_VARIANT_ID : null }),
       setBackground: (backgroundId) => set({ backgroundId }),
       setFrame: (frameId) => set({ frameId }),
+      setStylingGlasses: (on) => set({ stylingGlasses: on }),
       toggleGlasses: () => set((s) => ({ hasGlasses: !s.hasGlasses })),
       toggleMustache: () => set((s) => ({ hasMustache: !s.hasMustache })),
       toggleCrown: () => set((s) => ({ hasCrown: !s.hasCrown })),
       setTitle: (title) => set({ title }),
+      unlockItem: (itemId) =>
+        set((s) => ({
+          unlockedItemIds: s.unlockedItemIds.includes(itemId)
+            ? s.unlockedItemIds
+            : [...s.unlockedItemIds, itemId],
+        })),
+      isItemUnlocked: (itemId) => {
+        const { unlockedItemIds } = get();
+        return (unlockedItemIds || DEFAULT_CONFIG.unlockedItemIds).includes(itemId);
+      },
       equipAll: () => set({ hasGlasses: true, hasMustache: true, hasCrown: true }),
       removeAll: () => set({ hasGlasses: false, hasMustache: false, hasCrown: false }),
       resetDefault: () => set({ ...DEFAULT_CONFIG }),

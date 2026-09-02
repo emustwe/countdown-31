@@ -78,7 +78,7 @@ export function NewAdminNav() {
                 </span>
               </span>
               <span className="block truncate text-[9px] font-bold uppercase tracking-[.18em] text-emerald-400/75 sm:text-[10px]">
-                Count Down 31
+                Thirty One 31
               </span>
             </span>
           </button>

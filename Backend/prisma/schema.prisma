@@ -132,28 +132,24 @@ model SponsorTournament {
   description String           @default("")
   visibility  PromoVisibility  @default(PUBLIC)
   status      PromoStatus      @default(PENDING)
-  // REGULAR = a normal knockout. INFLUENCER = a team battle with `groupCount` teams: each team has a
-  // captain (influencer) who invites players with the team's captain code; the last player standing
-  // wins the whole tournament for their team.
+  // REGULAR = a plain single-knockout (one pool plays down to one winner). GROUP = the multi-day
+  // 31-per-group format: entrants auto-fill groups of 31 by join order, each group plays its own
+  // match sending one winner on, and all winners meet in a final on the last day.
   type        PromoType        @default(REGULAR)
-  // INFLUENCER only: how many teams/captains (influencers). 2..6. One TournamentTeam row per group.
-  groupCount  Int              @default(2)
-  // Whether the tournament features named influencer-captains. Independent of `type`:
-  //  • GROUP  (type=INFLUENCER) + true  → each group is led by a named captain-influencer (captain code + special card)
-  //  • GROUP  + false → groups exist but with no named captains (players join via member code)
-  //  • REGULAR + true  → a solo knockout that also features named influencer players (invite codes)
-  //  • REGULAR + false → a plain solo knockout
-  hasInfluencers Boolean       @default(false)
-  // INFLUENCER only: target players PER GROUP (the regular min/max apply to the whole field).
-  minGroupPlayers Int?
-  maxGroupPlayers Int?
+  // GROUP only: how many DAYS the tournament runs (including the final day, which is the last day).
+  // The group-stage days are days 1..durationDays-1; the final is on day durationDays.
+  durationDays Int?
   // The admin picks the DATE (as GMT/UTC midnight). Players then vote for the start TIME (GMT) from
   // `timeOptions` — the most-voted slot resolves the effective `startAt`.
   startDate   DateTime?
   timeOptions Json             @default("[]") // ["14:00","18:00",...] GMT time slots users vote on
-  // When play starts (GMT). Entry closes at startAt. Resolved from startDate + the winning time
-  // vote (or set directly). Null = not scheduled yet.
+  // When play starts (GMT). Resolved from startDate + the winning time vote (or set directly).
+  // Null = not scheduled yet.
   startAt     DateTime?
+  // Entry closes 24h before startAt (GROUP tournaments). Computed whenever startAt resolves.
+  entryClosesAt DateTime?
+  // GROUP only: set when the admin has run the automatic group assignment (entries → groups of 31).
+  groupsAssignedAt DateTime?
   endAt       DateTime?
   // Prize as admin-entered free text (e.g. "1,000 USDT") + how many ranks get paid. A private
   // tournament may be created with no prize yet (set later once a sponsor is secured).
@@ -170,12 +166,22 @@ model SponsorTournament {
   joinCode    String?          @unique // user must supply this to join
   sponsorId   String?
   sponsor     Sponsor?         @relation(fields: [sponsorId], references: [id], onDelete: SetNull)
+  // Optional sponsor THEME (from the Game Studio theme registry) applied to this tournament's game —
+  // overrides its brand name/logo/tagline + arena backdrop. Null = the default "31 THIRTY ONE" look.
+  themeId     String?
   createdBy   String           // "admin" or the sponsor id
+  // Tournament finish/prize lifecycle. When the knockout ends the winner is recorded here and the
+  // tournament stays LISTED (with a "Watch winner" state) until the admin confirms the prize was
+  // paid out (prizeDelivered = true), at which point it drops off the public tournaments screen.
+  completedAt    DateTime?
+  winnerName     String?
+  prizeDelivered Boolean  @default(false)
   createdAt   DateTime         @default(now())
   entries     PromoEntry[]
   inquiries   Inquiry[]
-  teams       TournamentTeam[]
+  groups      TournamentGroup[]
   timeVotes   TournamentTimeVote[]
+  campaign    TournamentCampaign?
 
   @@index([status])
   @@index([visibility, status])
@@ -183,26 +189,53 @@ model SponsorTournament {
 
 enum PromoType {
   REGULAR
-  INFLUENCER
+  GROUP
 }
 
-// One team in an INFLUENCER tournament. Two entry codes: `captainCode` is the influencer's own
-// "special code" — using it enters them AS the captain (they play with a special card). `memberCode`
-// is the code the influencer shares with followers to join the team as a regular player. The last
-// surviving player wins for their team.
-model TournamentTeam {
+enum GroupStatus {
+  PENDING
+  PLAYING
+  DONE
+}
+
+enum MemberResult {
+  PENDING
+  ADVANCED
+  ELIMINATED
+}
+
+// One group in a GROUP tournament. Stage groups hold up to 31 entrants (the last one may hold
+// fewer) and each sends its single winner to the final group (isFinal). Assignment into groups is
+// automatic (by join order); the admin only chooses which DAY each group plays.
+model TournamentGroup {
   id           String            @id @default(uuid())
   tournamentId String
   tournament   SponsorTournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  name         String
-  captainName  String
-  captainCode  String            @unique // influencer/captain entry code (special card)
-  memberCode   String?           @unique // code the captain shares with players to join the team
-  color        String            @default("#5aa8ff")
+  index        Int               // 1-based ordering among stage groups (the final sorts last)
+  isFinal      Boolean           @default(false)
+  day          Int?              // 1-based tournament day this group plays (final = durationDays)
+  scheduledAt  DateTime?         // resolved GMT start for this group's match
+  status       GroupStatus       @default(PENDING)
+  winnerUserId String?
+  winnerName   String?
   createdAt    DateTime          @default(now())
-  entries      PromoEntry[]
+  members      GroupMember[]
 
   @@index([tournamentId])
+}
+
+// A player's seat in a group. A group winner also gets a fresh GroupMember row in the final group.
+model GroupMember {
+  id        String          @id @default(uuid())
+  groupId   String
+  group     TournamentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String
+  seat      Int
+  result    MemberResult    @default(PENDING)
+  createdAt DateTime        @default(now())
+
+  @@unique([groupId, userId])
+  @@index([userId])
 }
 
 // A player's vote for the tournament's start TIME (GMT slot). One vote per user; the most-voted
@@ -274,16 +307,16 @@ model PromoEntry {
   tournament   SponsorTournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   userId       String
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  // For INFLUENCER tournaments: which team the player joined, and whether they entered as the
-  // captain (influencer) — captains play with a special card everyone can recognise.
-  teamId       String?
-  team         TournamentTeam?   @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  isCaptain    Boolean           @default(false)
+  // Join order within this tournament (1-based). Drives the automatic sequential group assignment:
+  // entries 1..31 → group 1, 32..62 → group 2, and so on.
+  seq          Int               @default(0)
+  // Skills the player LOCKED IN at join time (before the start-time survey). These cannot be changed
+  // and are the loadout they play the whole tournament with. Up to 2 of: rewind|turbo|shield|nudge.
+  skills       String[]          @default([])
   joinedAt     DateTime          @default(now())
 
   @@unique([tournamentId, userId])
   @@index([userId])
-  @@index([teamId])
 }
 
 // A lightweight in-app notification (e.g. "Round 2 starts at ..."). Shown in the nav bell.
@@ -352,6 +385,28 @@ model PlatformConfig {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+// Arcade cosmetics/marketplace catalog (coins & gems shop shown on the Shop page). This is the
+// display catalog only — coins/gems economy is client-side for now; USDT purchases live in the
+// separate shop.service flow. Seeded from prisma/seed, extendable by admins over time.
+model ShopCatalogItem {
+  id          String   @id @default(uuid())
+  key         String   @unique // stable client key, e.g. "golden_emperor"
+  name        String
+  category    String   // "skins" | "frames" | "skills" | "vault"
+  rarity      String   // "Common" | "Epic" | "Mythic" | "Legendary"
+  price       Int      @default(0)
+  currency    String   @default("coins") // "coins" | "gems"
+  preview     String   @default("") // image path, tailwind classes, or a text/emoji badge
+  description String   @default("")
+  unlocked    Boolean  @default(false) // owned by default (free/starter items)
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category, active, sortOrder])
 }
 
 enum LedgerEntryType {
@@ -448,3 +503,111 @@ model IdempotencyKey {
   @@index([userId, endpoint])
 }
 
+
+// ---- Tournament Sponsor Campaign Studio ------------------------------------------------------
+// A co-branded "skin" for a sponsored tournament (1:1 with SponsorTournament). Holds the emergency
+// kill switches; the actual content lives in immutable revisions (TournamentCampaignVersion).
+model TournamentCampaign {
+  id            String   @id @default(uuid())
+  tournamentId  String   @unique
+  tournament    SponsorTournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  isPaused      Boolean  @default(false)
+  isCausePaused Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  versions      TournamentCampaignVersion[]
+  assets        TournamentCampaignAsset[]
+  events        TournamentCampaignEventAggregate[]
+}
+
+// One immutable revision. State machine: DRAFT -> IN_REVIEW -> APPROVED -> PUBLISHED -> ARCHIVED.
+model TournamentCampaignVersion {
+  id          String   @id @default(uuid())
+  campaignId  String
+  campaign    TournamentCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  revision    Int
+  status      String   @default("DRAFT") // DRAFT | IN_REVIEW | APPROVED | PUBLISHED | ARCHIVED
+  manifest    Json
+  createdBy   String   @default("")
+  createdAt   DateTime @default(now())
+  publishedAt DateTime?
+  approvedBy  String?
+  approvedAt  DateTime?
+  activateAt  DateTime?
+  expireAt    DateTime?
+  reviews     TournamentCampaignReview[]
+
+  @@unique([campaignId, revision])
+  @@index([campaignId, status])
+}
+
+// A single review decision in one of the two approval lanes (BRAND + SAFETY). Both must APPROVE.
+model TournamentCampaignReview {
+  id         String   @id @default(uuid())
+  versionId  String
+  version    TournamentCampaignVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  reviewerId String
+  lane       String   // BRAND | SAFETY
+  decision   String   // COMMENT | APPROVED | CHANGES_REQUESTED
+  comment    String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([versionId, createdAt])
+}
+
+// An uploaded media asset (logo / desktop bg / mobile bg), with an archive/supersede chain.
+model TournamentCampaignAsset {
+  id           String   @id @default(uuid())
+  campaignId   String
+  campaign     TournamentCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  kind         String   // LOGO | BACKGROUND_DESKTOP | BACKGROUND_MOBILE
+  url          String
+  storagePath  String   @default("")
+  originalName String   @default("")
+  mimeType     String   @default("")
+  mediaType    String   @default("image") // image | video
+  bytes        Int      @default(0)
+  createdBy    String   @default("")
+  supersedesId String?
+  archivedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([campaignId, kind, createdAt])
+}
+
+// Reusable campaign presets/templates (7 seeded presets + admin-saved custom ones).
+model TournamentCampaignTemplate {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  category    String   @default("")
+  badge       String   @default("")
+  description String   @default("")
+  manifest    Json
+  isPreset    Boolean  @default(false)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPreset, category])
+}
+
+// Privacy-safe telemetry rollup: one row per (revision, placement, device, eventType, day).
+model TournamentCampaignEventAggregate {
+  id           String   @id @default(uuid())
+  campaignId   String
+  campaign     TournamentCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  tournamentId String
+  revision     Int      @default(1)
+  placement    String
+  deviceClass  String
+  eventType    String
+  count        Int      @default(0)
+  totalSeconds Float    @default(0)
+  dateBucket   String   // YYYY-MM-DD (UTC)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([campaignId, revision, placement, deviceClass, eventType, dateBucket])
+  @@index([tournamentId, dateBucket])
+}

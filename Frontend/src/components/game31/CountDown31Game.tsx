@@ -87,7 +87,7 @@ export function CountDown31Game() {
             </motion.span>
             <div>
               <h1 className="font-title text-xl sm:text-2xl font-black text-amber-950 tracking-wide flex items-center gap-1.5 leading-none">
-                <span>COUNT DOWN</span>
+                <span>THIRTY ONE</span>
                 <span className="text-red-600 bg-red-100 px-1.5 py-0.5 rounded-lg border border-red-300">
                   31
                 </span>
@@ -180,7 +180,7 @@ export function CountDown31Game() {
 
       {/* Footer Info */}
       <footer className="w-full text-center text-xs font-title text-amber-950/60 mt-4 z-10">
-        <span>Count Down 31 • Land on 31 to trigger the Dizzy Cow Spin! 🐮💫</span>
+        <span>Thirty One 31 • Land on 31 to trigger the Dizzy Cow Spin! 🐮💫</span>
       </footer>
     </div>
   );

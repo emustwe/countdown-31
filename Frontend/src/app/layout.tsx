@@ -34,8 +34,8 @@ const cinzelDecorative = Cinzel_Decorative({
 });
 
 export const metadata: Metadata = {
-  title: "Count Down 31 — Arcade Cow Counting Game",
-  description: "Count Down 31 — A juicy, high-energy arcade cow counting game. Don't be the one to hit 31!",
+  title: "31 — Arcade Cow Counting Game",
+  description: "31 — A juicy, high-energy arcade cow counting game. Don't be the one to hit 31!",
 };
 
 // Runs before paint so the persisted light/dark choice and cached theme family are applied
@@ -55,7 +55,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="font-ui">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

@@ -11,6 +11,7 @@ import {
   Settings as SettingsIcon,
   ShoppingBag,
   Trophy,
+  User,
   UserPlus,
   WalletCards,
 } from "lucide-react";
@@ -18,8 +19,6 @@ import { useProfile } from "../../lib/hooks/useAuth";
 import { useAuthStore } from "../../stores/auth-store";
 import { useBalanceSocket } from "../../lib/hooks/useBalanceSocket";
 import { useNotifications, useMarkNotificationsRead } from "../../lib/hooks/useNotifications";
-import { FlipText } from "./FlipText";
-import { MobileBottomNav } from "./MobileBottomNav";
 
 // [key, EN label, KO label, Icon, path, disabled?]
 // Tournaments (/events) lists the public tournaments. Sponsorship is a coming-soon hub for people
@@ -131,14 +130,32 @@ function ProfileMenu({ initials, avatarUrl, name, email }: { initials: string; a
                 {email && <small>{email}</small>}
               </div>
             </div>
+            {/* Full navigation — the profile menu is the single, complete menu everywhere (matches the
+                in-arena menu), so mobile shows every destination the desktop does, in one place. */}
             <div className="profile-menu">
+              <button onClick={() => go("/home")}>
+                <HomeIcon size={17} /> Home
+              </button>
+              <button onClick={() => go("/avatar")}>
+                <User size={17} /> My Avatars
+              </button>
+              <button onClick={() => go("/events")}>
+                <Trophy size={17} /> Tournaments
+              </button>
+              <button onClick={() => go("/shop")}>
+                <ShoppingBag size={17} /> Shop
+              </button>
+              <button onClick={() => go("/sponsorship")}>
+                <Handshake size={17} /> Sponsorship
+              </button>
+              <button onClick={() => go("/wallet")}>
+                <WalletCards size={17} /> Wallet
+              </button>
               <button onClick={() => go("/history")}>
-                <HistoryIcon size={17} />
-                <FlipText intervalMs={5000} items={[<>History</>, <>기록</>]} />
+                <HistoryIcon size={17} /> History
               </button>
               <button onClick={() => go("/settings")}>
-                <SettingsIcon size={17} />
-                <FlipText intervalMs={5200} items={[<>Settings</>, <>설정</>]} />
+                <SettingsIcon size={17} /> Settings
               </button>
             </div>
             <div className="profile-notifs">
@@ -228,7 +245,6 @@ export function PageShell({ children, className = "", brandVa = false }: { child
     <div className={`app-shell ${className} ${brandVa ? "va-shell" : ""}`}>
       <TopNav activeKey={activeKey} authed={authed} initials={initials} avatarUrl={profile?.avatarUrl} name={name} email={email} brandVa={brandVa} />
       {children}
-      {pathname !== "/home" && <MobileBottomNav />}
       <footer><span>18+</span> Play responsibly. <b>Set your limits.</b></footer>
     </div>
   );

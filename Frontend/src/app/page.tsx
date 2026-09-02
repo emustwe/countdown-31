@@ -41,9 +41,9 @@ export default function RootLandingPage() {
       <div className="landing-orb landing-orb-two" />
 
       <header className="landing-nav">
-        <button className="landing-brand" onClick={() => router.push("/")} aria-label="Count Down 31 home">
+        <button className="landing-brand" onClick={() => router.push("/")} aria-label="Thirty One 31 home">
           <span className="landing-brand-mark">31</span>
-          <span><b>COUNT DOWN</b><small>The cow counting game</small></span>
+          <span><b>THIRTY ONE</b><small>The cow counting game</small></span>
         </button>
         <div className="landing-nav-actions">
           <button className="landing-icon-button" onClick={toggleSound} aria-label={soundEnabled ? "Turn sound off" : "Turn sound on"} title={soundEnabled ? "Sound on" : "Sound off"}>

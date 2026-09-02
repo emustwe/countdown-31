@@ -42,6 +42,8 @@ export interface GameConfig {
     subtitle: string;
     announcement: string;
     logoEmoji: string;
+    /** Uploaded/linked brand logo image (JPG/PNG/SVG/…). Shown in place of the "31" when set. */
+    logoUrl: string;
     themeFamily: GameThemeFamily;
   };
   arena: {
@@ -77,10 +79,11 @@ export interface GameConfig {
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   branding: {
-    gameTitle: "COUNT DOWN",
-    subtitle: "Live Battle Arena",
+    gameTitle: "THIRTY ONE",
+    subtitle: "Knockout Arena",
     announcement: "Tactical skills activated!",
-    logoEmoji: "🐮",
+    logoEmoji: "",
+    logoUrl: "",
     themeFamily: "monster",
   },
   arena: {
@@ -93,11 +96,11 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   gameplay: {
     turnSeconds: 7,
     defaultBotCount: 1,
-    botThinkMinMs: 900,
-    botThinkMaxMs: 2300,
+    botThinkMinMs: 1900,
+    botThinkMaxMs: 3400,
     allowClassic: true,
     allowSkills: true,
-    defaultMode: "skills",
+    defaultMode: "classic",
     guestPlayEnabled: true,
     guestNamePrompt: "Choose Your Name",
     maxGuestNameLength: 20,
@@ -220,9 +223,10 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     },
     {
       id: "cow",
-      label: "My Cow",
+      label: "My Avatars",
       path: "/avatar",
       icon: "cow",
+      // The avatar studio ("My Avatars") is a top-level menu entry (matches the designer's menu).
       enabled: true,
       requiresAuth: true,
       order: 1,
@@ -259,6 +263,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
       label: "My Profile",
       path: "/profile",
       icon: "profile",
+      // Top-level menu entry to match the designer's menu.
       enabled: true,
       requiresAuth: true,
       order: 5,
@@ -295,4 +300,18 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
 
 export function cloneGameConfig(config: GameConfig): GameConfig {
   return structuredClone(config);
+}
+
+/** A named, reusable SPONSOR THEME (Game Studio → tournament creation). Overrides a tournament game's
+ *  brand (name/logo/tagline) + arena backdrop. */
+export interface GameTheme {
+  id: string;
+  name: string;
+  gameTitle: string;
+  subtitle: string;
+  logoUrl: string;
+  backgroundImage: string;
+  overlayOpacity: number;
+  primaryColor: string;
+  secondaryColor: string;
 }

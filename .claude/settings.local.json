@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(echo \"==== 1. events/[id]/page.tsx ====\")",
+      "Read(//Users/emustwe/Desktop/31-Game-Frontend-and-Docs/Frontend/src/app/events/\\\\[id\\\\]/**)",
+      "Bash(echo \"EXIT:$?\")"
+    ]
+  }
+}

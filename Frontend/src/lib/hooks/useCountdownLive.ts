@@ -43,6 +43,12 @@ export interface LiveState {
   turnEndsAt: number | null;
   round: number;
   status: "waiting" | "playing" | "over";
+  // Server tournaments send a kickoff-wheel phase: turn 1 begins only after this ms (the wheel is
+  // spinning to pick who starts). null/absent = no spin phase (practice starts instantly).
+  spinEndsAt?: number | null;
+  // Server tournaments: on each elimination the WHOLE game freezes for the cow-dance until this ms
+  // (every player sees the cow centre-stage). null/absent = not dancing.
+  danceEndsAt?: number | null;
   winner: { name: string; color: string } | null;
   lastEliminated: { name: string; reason: LiveReason; note?: string } | null;
   taken: Record<number, string>;
@@ -50,6 +56,21 @@ export interface LiveState {
     skill: SkillType;
     userName: string;
     description: string;
+  } | null;
+  // Local practice/arena only: when set, the whole arena is FROZEN for the eliminated player's
+  // centre cow-dance. No turns process and no input is accepted until the dance ends (endDance()).
+  dancing?: {
+    id: string;
+    name: string;
+    reason: LiveReason;
+    note?: string;
+  } | null;
+  // Brief "reveal" beat: the numbers the CURRENT player just picked, shown highlighted (in their
+  // colour) on the picker tiles so everyone SEES the selection before the turn advances.
+  selecting?: {
+    playerId: string;
+    picks: number[];
+    color: string;
   } | null;
 }
 
@@ -83,9 +104,22 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
   const DEFAULT_PRACTICE_BOTS = 5;
   const PRACTICE_BOT_COUNT = Math.max(1, Math.min(100, opts?.botCount ?? DEFAULT_PRACTICE_BOTS));
   const humanSeatRef = useRef<{ name: string; cos?: JoinCosmetics; mode: GameMode; chosenSkills: SkillType[] } | null>(null);
+  // Tournament socket join requested before the socket finished connecting — emitted on "connect".
+  const pendingJoinRef = useRef<{ name: string; cos?: JoinCosmetics; mode: GameMode } | null>(null);
   const ambientModeRef = useRef<GameMode>(DEFAULT_GAME_CONFIG.gameplay.defaultMode);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const overHandledRef = useRef(false);
+  // Kickoff-wheel timing for the local test arena (real tournaments get their spin from the server):
+  // the pointer lands after WHEEL_MS, then the "X starts!" reveal holds for REVEAL_MS before turn 1.
+  const LOCAL_WHEEL_MS = 3600;
+  const LOCAL_REVEAL_MS = 1300;
+  // How long a CPU's picked numbers flash (highlighted in its colour) on the tiles before its turn
+  // advances — long enough that every player SEES the selection, short enough to keep play brisk.
+  const REVEAL_MS = 650;
+  // While a human's cow-dance is playing the arena is frozen; this holds the state to apply the
+  // moment the dance finishes (endDance()), so the game resumes from the exact same point.
+  const pendingResumeRef = useRef<LiveState | null>(null);
   const botCountRef = useRef(PRACTICE_BOT_COUNT);
   botCountRef.current = PRACTICE_BOT_COUNT;
 
@@ -103,6 +137,7 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
         if (
           !activeState ||
           activeState.status !== "playing" ||
+          activeState.dancing || // frozen for a cow-dance — no bot moves until it ends
           activeState.currentId !== currentP.id
         )
           return;
@@ -232,19 +267,30 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
           const currentIdx = survivingPlayers.findIndex((p) => p.id === currentP.id);
           const nextPlayer = survivingPlayers[(currentIdx + 1) % survivingPlayers.length]!;
 
-          const nextState: LiveState = {
-            ...activeState,
-            count: nextCount,
-            taken: nextTaken,
-            lastK: chosenK,
-            lastMove: moveInfo,
-            currentId: nextPlayer.id,
-            turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
-            lastSkillUsed: null,
+          const advance = () => {
+            const nextState: LiveState = {
+              ...activeState,
+              count: nextCount,
+              taken: nextTaken,
+              lastK: chosenK,
+              lastMove: moveInfo,
+              currentId: nextPlayer.id,
+              turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
+              lastSkillUsed: null,
+              selecting: null,
+            };
+            setState(nextState);
+            processNextTurn(nextState);
           };
 
-          setState(nextState);
-          processNextTurn(nextState);
+          // REVEAL: flash this player's picked numbers (in their colour) on the tiles for a beat so
+          // everyone sees the selection, THEN advance the turn.
+          setState({ ...activeState, selecting: { playerId: currentP.id, picks, color: currentP.color } });
+          setTimeout(() => {
+            const s = stateRef.current;
+            if (!s || s.status !== "playing" || s.dancing || s.currentId !== currentP.id) return;
+            advance();
+          }, REVEAL_MS);
         }
       },
       runtimeConfigRef.current.gameplay.botThinkMinMs +
@@ -255,61 +301,94 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
   }, []);
 
   // Player Elimination Handler
+  //
+  // The local practice/arena engine is ENDLESS — there is never a winner and the counter CONTINUES
+  // from where it was rather than restarting at 1 (it only resets to 0 on a completed lap — someone
+  // was forced to say 31). CPU blunderers AUTO-REJOIN (stay active, field never shrinks). A HUMAN
+  // blunderer instead stays OUT (eliminated) and must press REJOIN to re-enter — and their
+  // elimination FREEZES the whole arena for the centre cow-dance (state.dancing); endDance() applies
+  // the stored resume state when the dance video finishes. CPU blunders continue immediately.
   const eliminatePlayer = useCallback(
     (eliminatedId: string, reason: LiveReason, baseState: LiveState, note?: string) => {
       const eliminatedPlayer = baseState.players.find((p) => p.id === eliminatedId);
-      const updatedPlayers = baseState.players.map((p) =>
-        p.id === eliminatedId ? { ...p, eliminated: true } : p,
-      );
+      const isHuman = !!eliminatedPlayer && !eliminatedPlayer.cpu;
 
-      const surviving = updatedPlayers.filter((p) => !p.eliminated);
+      // CPUs auto-rejoin (stay active). A human stays eliminated until they press REJOIN.
+      const players = isHuman
+        ? baseState.players.map((p) => (p.id === eliminatedId ? { ...p, eliminated: true } : p))
+        : baseState.players;
 
-      if (surviving.length <= 1) {
-        const champ = surviving[0] ?? eliminatedPlayer;
-        const overState: LiveState = {
+      // Continue forward; only a completed lap (reached 31) starts a fresh count.
+      const completedLap = reason === "31" || baseState.count >= 31;
+      const contCount = completedLap ? 0 : baseState.count;
+      const contTaken = completedLap ? {} : baseState.taken;
+      const contLastK = completedLap ? null : baseState.lastK;
+
+      // Turn passes to the next STILL-ACTIVE player after the one who just blundered (wrapping).
+      const elimIdx = players.findIndex((p) => p.id === eliminatedId);
+      let nextPlayer = players.find((p) => !p.eliminated) ?? players[0]!;
+      for (let i = 1; i <= players.length; i++) {
+        const cand = players[(elimIdx + i) % players.length];
+        if (cand && !cand.eliminated) { nextPlayer = cand; break; }
+      }
+
+      const resumeState: LiveState = {
+        ...baseState,
+        count: contCount,
+        taken: contTaken,
+        lastK: contLastK,
+        lastMove: completedLap ? null : baseState.lastMove,
+        round: completedLap ? baseState.round + 1 : baseState.round,
+        players,
+        currentId: nextPlayer.id,
+        turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
+        status: "playing",
+        winner: null,
+        lastEliminated: eliminatedPlayer ? { name: eliminatedPlayer.name, reason, note } : null,
+        lastSkillUsed: null,
+        dancing: null,
+      };
+
+      // Classic PRACTICE freezes for a centre cow-dance on EVERY elimination — human OR CPU — so every
+      // player is celebrated the same way (the CPU still auto-rejoins afterwards via resumeState). The
+      // test arena (100 bots) and other modes keep the old behaviour: only a human elimination dances.
+      const danceEveryElim = roomId === "practice" && baseState.gameMode === "classic";
+      if ((isHuman || danceEveryElim) && eliminatedPlayer) {
+        // Freeze the arena and play the centre cow-dance. endDance() will apply resumeState (for a
+        // human they're now marked eliminated → REJOIN button; for a CPU they're already re-seated).
+        pendingResumeRef.current = resumeState;
+        setState({
           ...baseState,
-          players: updatedPlayers,
-          status: "over",
-          winner: champ ? { name: champ.name, color: champ.color } : null,
-          lastEliminated: eliminatedPlayer ? { name: eliminatedPlayer.name, reason, note } : null,
-        };
-        setState(overState);
-      } else {
-        const nextRound = baseState.round + 1;
-        // Turn passes to the next SURVIVING player after the one just eliminated (seating order,
-        // wrapping) — not back to player #1. (The eliminated player isn't in `surviving`, so the old
-        // findIndex returned -1 and always fell back to surviving[0], i.e. player #1 every time.)
-        const elimIdx = updatedPlayers.findIndex((p) => p.id === eliminatedId);
-        let nextPlayer = surviving[0]!;
-        for (let i = 1; i <= updatedPlayers.length; i++) {
-          const cand = updatedPlayers[(elimIdx + i) % updatedPlayers.length];
-          if (cand && !cand.eliminated) {
-            nextPlayer = cand;
-            break;
-          }
-        }
-
-        const nextRoundState: LiveState = {
-          ...baseState,
-          count: 0,
-          taken: {},
-          lastK: null,
-          lastMove: null,
-          round: nextRound,
-          players: updatedPlayers,
-          currentId: nextPlayer.id,
-          turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
-          status: "playing",
-          lastEliminated: eliminatedPlayer ? { name: eliminatedPlayer.name, reason, note } : null,
+          players,
+          turnEndsAt: null,
+          lastEliminated: { name: eliminatedPlayer.name, reason, note },
           lastSkillUsed: null,
-        };
-
-        setState(nextRoundState);
-        processNextTurn(nextRoundState);
+          dancing: { id: eliminatedId, name: eliminatedPlayer.name, reason, note },
+        });
+        // Do NOT advance — wait for endDance() when the dance video finishes.
+      } else {
+        // CPU blunder (non-classic-practice): auto-rejoin + continue immediately, no pause.
+        setState(resumeState);
+        processNextTurn(resumeState);
       }
     },
-    [processNextTurn],
+    [processNextTurn, roomId],
   );
+
+  // Called by the mascot when the centre cow-dance finishes: unfreeze and resume from the exact
+  // point captured at elimination time.
+  const endDance = useCallback(() => {
+    const resume = pendingResumeRef.current;
+    if (!resume) return;
+    pendingResumeRef.current = null;
+    const resumed: LiveState = {
+      ...resume,
+      turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
+      dancing: null,
+    };
+    setState(resumed);
+    processNextTurn(resumed);
+  }, [processNextTurn]);
 
   // Build + start a local practice game: always 5 CPU cows, plus the human if `seat` is provided.
   // With no seat it's a CPU-only ambient game (the 24/7 arena you drop into). If a CPU leads, the
@@ -378,6 +457,12 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
         currentId = bots[0]?.id ?? "cpu_daisy";
       }
 
+      // The always-open TEST arena kicks off with a spin wheel that picks a RANDOM starting cow —
+      // mirroring a real tournament's `spinEndsAt` kickoff. Practice starts instantly (no spin).
+      if (spinTimerRef.current) { clearTimeout(spinTimerRef.current); spinTimerRef.current = null; }
+      const spinEndsAt = forceLocalRef.current ? Date.now() + LOCAL_WHEEL_MS : null;
+      if (spinEndsAt) currentId = players[Math.floor(Math.random() * players.length)]!.id;
+
       const newState: LiveState = {
         mode: "practice",
         gameMode: mode,
@@ -386,9 +471,10 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
         currentId,
         lastK: null,
         lastMove: null,
-        turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
+        turnEndsAt: spinEndsAt ? null : Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
         round: 1,
         status: "playing",
+        spinEndsAt,
         winner: null,
         lastEliminated: null,
         taken: {},
@@ -397,8 +483,26 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
 
       setMyId("player_local");
       setState(newState);
-      // If a CPU leads (ambient game), start the bot turn chain now.
-      if (players.find((p) => p.id === currentId)?.cpu) processNextTurn(newState);
+
+      if (spinEndsAt) {
+        // Hold turn 1 until the wheel lands AND its "X starts!" reveal has been shown, then start the
+        // picked cow's turn (the game proceeds onward from them in seating order).
+        spinTimerRef.current = setTimeout(() => {
+          spinTimerRef.current = null;
+          const s = stateRef.current;
+          if (!s || s.status !== "playing") return;
+          const started: LiveState = {
+            ...s,
+            spinEndsAt: null,
+            turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
+          };
+          setState(started);
+          if (started.players.find((p) => p.id === started.currentId)?.cpu) processNextTurn(started);
+        }, LOCAL_WHEEL_MS + LOCAL_REVEAL_MS);
+      } else if (players.find((p) => p.id === currentId)?.cpu) {
+        // If a CPU leads (ambient game), start the bot turn chain now.
+        processNextTurn(newState);
+      }
     },
     [processNextTurn],
   );
@@ -455,8 +559,17 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
 
       socket.on("connect", () => {
         isLocalPracticeRef.current = false;
-        setMyId(socket?.id ?? null);
+        // Tournaments identify players by USER ID (their DB-seeded seat), so "me" is my user id — not
+        // the socket id — otherwise `currentId === myId` (and my turn / my defeat) would never match.
+        setMyId(getAuthState().user?.id ?? socket?.id ?? null);
         socket?.emit("watch", { roomId });
+        // If a join was requested before the socket was ready, send it now (fixes the race where a
+        // tournament auto-join fired before the websocket finished connecting → player never joined).
+        const pending = pendingJoinRef.current;
+        if (pending) {
+          pendingJoinRef.current = null;
+          socket?.emit("join", { roomId, name: pending.name, card: pending.cos?.card, avatar: pending.cos?.avatar, mode: pending.mode });
+        }
       });
 
       socket.on("state", (s: LiveState) => {
@@ -547,12 +660,71 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
         });
         return;
       }
+      // Socket exists but hasn't finished connecting yet — queue the join for the "connect" handler
+      // (a tournament room always has a socket; this avoids falling through to the local engine).
+      if (socketRef.current) {
+        pendingJoinRef.current = { name, cos, mode };
+        return;
+      }
 
-      // Seat the human so they're auto-re-added to every subsequent 24/7 game, then start now.
+      // Seat the human so they're auto-re-added to every subsequent 24/7 game.
       humanSeatRef.current = { name, cos, mode, chosenSkills };
+
+      // Classic and Skill are SEPARATE practice games. We only drop the human into a game already in
+      // progress when it's the SAME mode they're joining (mid-join, no restart) — and there we grant
+      // their chosen skills so they can actually use them. If they're joining a DIFFERENT mode (a
+      // mode switch), we start a fresh game in that mode instead.
+      const cur = stateRef.current;
+      const playerSkills: Record<SkillType, number> = { rewind: 0, turbo: 0, shield: 0, nudge: 0, double: 0 };
+      if (mode === "skills") chosenSkills.forEach((s) => { playerSkills[s] = 1; });
+
+      if (cur && cur.status === "playing" && cur.gameMode === mode) {
+        const already = cur.players.find((p) => p.id === "player_local");
+        if (already) {
+          // Rejoin after being eliminated: re-activate + refresh their equipped skills.
+          setState({
+            ...cur,
+            players: cur.players.map((p) =>
+              p.id === "player_local"
+                ? { ...p, name, eliminated: false, skills: playerSkills, equippedSkills: mode === "skills" ? chosenSkills : [] }
+                : p,
+            ),
+          });
+        } else {
+          const human: LivePlayer = {
+            id: "player_local",
+            name,
+            cpu: false,
+            color: "#5be348",
+            card: cos?.card,
+            avatar: cos?.avatar,
+            skills: playerSkills,
+            equippedSkills: mode === "skills" ? chosenSkills : [],
+            eliminated: false,
+          };
+          setState({ ...cur, players: [...cur.players, human] });
+        }
+        setMyId("player_local");
+        return;
+      }
+
+      // No matching game running (or a different mode) — start a fresh game in the chosen mode.
       startLocalGame(humanSeatRef.current);
     },
     [roomId, startLocalGame],
+  );
+
+  // Classic vs Skill are separate games: switching modes drops the human out of the current game and
+  // spins up a CPU-only ambient game in the new mode, so they must explicitly re-join it.
+  const leaveGame = useCallback(
+    (mode: GameMode) => {
+      if (socketRef.current?.connected) return; // server rooms aren't mode-switchable client-side
+      humanSeatRef.current = null;
+      ambientModeRef.current = mode;
+      startLocalGame(null);
+      setMyId("player_local");
+    },
+    [startLocalGame],
   );
 
   const arm = useCallback(() => {
@@ -576,7 +748,15 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
       }
 
       const cur = stateRef.current;
-      if (!cur || cur.status !== "playing" || picks.length === 0 || !myId || cur.currentId !== myId)
+      if (
+        !cur ||
+        cur.status !== "playing" ||
+        cur.dancing || // frozen for a cow-dance
+        cur.spinEndsAt != null || // kickoff wheel spinning / revealing the starter
+        picks.length === 0 ||
+        !myId ||
+        cur.currentId !== myId
+      )
         return;
 
       const currentCount = cur.count;
@@ -672,12 +852,23 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
     [myId, roomId, eliminatePlayer, processNextTurn],
   );
 
+  // Using a skill is a COMPLETE turn action: the player may pick numbers OR play a skill on their
+  // turn, not both. Every skill applies its effect and then passes the turn to the next player
+  // (so no numbers need to be submitted afterwards).
   const useSkill = useCallback(
     (skill: SkillType) => {
+      // Server tournament: skills are server-authoritative — emit and let the server apply + broadcast.
+      if (socketRef.current?.connected) {
+        socketRef.current.emit("useSkill", { roomId, skill });
+        return true;
+      }
+
       const cur = stateRef.current;
       if (
         !cur ||
         cur.status !== "playing" ||
+        cur.dancing || // frozen for a cow-dance
+        cur.spinEndsAt != null || // kickoff wheel spinning / revealing the starter
         cur.gameMode !== "skills" ||
         !myId ||
         cur.currentId !== myId
@@ -690,107 +881,56 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
       const available = player?.skills?.[skill] ?? 0;
       if (available <= 0) return false;
 
-      const updatedPlayers = cur.players.map((p) => {
-        if (p.id === myId && p.skills) {
-          return {
-            ...p,
-            skills: {
-              ...p.skills,
-              [skill]: 0,
-            },
-          };
-        }
-        return p;
-      });
+      const updatedPlayers = cur.players.map((p) =>
+        p.id === myId && p.skills ? { ...p, skills: { ...p.skills, [skill]: 0 } } : p,
+      );
 
+      // Apply the skill's effect to the board.
+      let newCount = cur.count;
+      const newTaken = { ...cur.taken };
+      let description = "";
       if (skill === "rewind") {
         soundManager.playSkillRewind();
-        const newCount = Math.max(0, cur.count - 2);
-        const newTaken = { ...cur.taken };
+        newCount = Math.max(0, cur.count - 2);
         delete newTaken[cur.count];
         delete newTaken[cur.count - 1];
-
-        const nextState: LiveState = {
-          ...cur,
-          count: newCount,
-          taken: newTaken,
-          players: updatedPlayers,
-          turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
-          lastSkillUsed: {
-            skill: "rewind",
-            userName: player?.name ?? "Player",
-            description: "Rewound the counter by -2! 🔄",
-          },
-        };
-        setState(nextState);
-        return true;
-      }
-
-      if (skill === "turbo") {
+        description = "Rewound the counter by -2! 🔄";
+      } else if (skill === "turbo") {
         soundManager.playSkillTurbo();
-        const newCount = Math.min(30, cur.count + 3);
-        const newTaken = { ...cur.taken };
-        for (let i = cur.count + 1; i <= newCount; i++) {
-          newTaken[i] = player?.color ?? "#5be348";
-        }
-
-        const nextState: LiveState = {
-          ...cur,
-          count: newCount,
-          taken: newTaken,
-          players: updatedPlayers,
-          turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
-          lastSkillUsed: {
-            skill: "turbo",
-            userName: player?.name ?? "Player",
-            description: "Turbo Leaped +3 steps forward! ⚡",
-          },
-        };
-        setState(nextState);
-        return true;
-      }
-
-      if (skill === "shield") {
+        newCount = Math.min(30, cur.count + 3);
+        for (let i = cur.count + 1; i <= newCount; i++) newTaken[i] = player?.color ?? "#5be348";
+        description = "Turbo Leaped +3 steps forward! ⚡";
+      } else if (skill === "shield") {
         soundManager.playSkillShield();
-        const nextState: LiveState = {
-          ...cur,
-          players: updatedPlayers,
-          turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
-          lastSkillUsed: {
-            skill: "shield",
-            userName: player?.name ?? "Player",
-            description: "Activated Divine Barrier Protection! 🛡️",
-          },
-        };
-        setState(nextState);
-        return true;
-      }
-
-      if (skill === "nudge") {
+        description = "Activated Divine Barrier Protection! 🛡️";
+      } else if (skill === "nudge") {
         soundManager.playClick();
-        const survivingPlayers = cur.players.filter((p) => !p.eliminated);
-        const currentIdx = survivingPlayers.findIndex((p) => p.id === myId);
-        const nextPlayer = survivingPlayers[(currentIdx + 1) % survivingPlayers.length]!;
-
-        const nextState: LiveState = {
-          ...cur,
-          players: updatedPlayers,
-          currentId: nextPlayer.id,
-          turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
-          lastSkillUsed: {
-            skill: "nudge",
-            userName: player?.name ?? "Player",
-            description: "Used Snooze to safely pass turn! ⏭️",
-          },
-        };
-        setState(nextState);
-        processNextTurn(nextState);
-        return true;
+        description = "Used Snooze to safely pass turn! ⏭️";
+      } else {
+        return false;
       }
 
-      return false;
+      // Every skill ends the turn — advance to the next player in seating order.
+      const survivingPlayers = cur.players.filter((p) => !p.eliminated);
+      const currentIdx = survivingPlayers.findIndex((p) => p.id === myId);
+      const nextPlayer =
+        survivingPlayers[(currentIdx + 1) % survivingPlayers.length] ?? survivingPlayers[0]!;
+
+      const nextState: LiveState = {
+        ...cur,
+        count: newCount,
+        taken: newTaken,
+        players: updatedPlayers,
+        lastK: null, // a skill isn't a digit-count move, so it carries no repeat constraint
+        currentId: nextPlayer.id,
+        turnEndsAt: Date.now() + runtimeConfigRef.current.gameplay.turnSeconds * 1000,
+        lastSkillUsed: { skill, userName: player?.name ?? "Player", description },
+      };
+      setState(nextState);
+      processNextTurn(nextState);
+      return true;
     },
-    [myId, processNextTurn],
+    [myId, roomId, processNextTurn],
   );
 
   const triggerDefeat = useCallback(
@@ -807,9 +947,11 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
     state,
     myId,
     join,
+    leaveGame,
     arm,
     submit,
     useSkill,
+    endDance,
     triggerDefeat,
   };
 }

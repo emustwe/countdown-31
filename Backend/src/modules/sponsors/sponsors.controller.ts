@@ -26,6 +26,7 @@ import {
   AssignSponsorSchema,
   JoinSchema,
   VoteTimeSchema,
+  ScheduleSchema,
   CosmeticsSchema,
 } from "./dto/write.dto";
 
@@ -91,6 +92,26 @@ export class AdminPromoController {
   @Post(":id/reject")
   reject(@Param("id") id: string) {
     return this.sponsors.setStatus(id, "REJECTED");
+  }
+  // Admin confirms the prize was paid → finished tournament drops off the public tournaments screen.
+  @Post(":id/prize-delivered")
+  prizeDelivered(@Param("id") id: string) {
+    return this.sponsors.markPrizeDelivered(id);
+  }
+  // GROUP tournaments: the group listing (each group + members + schedule).
+  @Get(":id/groups")
+  groups(@Param("id") id: string) {
+    return this.sponsors.getGroups(id);
+  }
+  // Draw the groups automatically from the entrants (run after entry closes).
+  @Post(":id/assign-groups")
+  assignGroups(@Param("id") id: string) {
+    return this.sponsors.assignGroups(id);
+  }
+  // Manually assign each stage group to a day.
+  @Post(":id/schedule")
+  schedule(@Param("id") id: string, @Body(new ZodValidationPipe(ScheduleSchema)) body: { schedule?: { groupId: string; day: number }[] }) {
+    return this.sponsors.scheduleGroups(id, body?.schedule ?? []);
   }
 }
 
@@ -181,6 +202,12 @@ export class PublicPromoController {
     // Public detail; joined-state is resolved on the authed variant below.
     return this.sponsors.getForUser(id, code, undefined);
   }
+  // Grand Starting Wheel data: the entrant roster + the SEALED (deterministic) draw result, so every
+  // spectator's kickoff wheel lands on the identical outcome. Public — the ceremony must always load.
+  @Get(":id/roster")
+  roster(@Param("id") id: string) {
+    return this.sponsors.getRoster(id);
+  }
   @UseGuards(JwtAuthGuard)
   @Get(":id/me")
   detailForMe(
@@ -192,8 +219,8 @@ export class PublicPromoController {
   }
   @UseGuards(JwtAuthGuard)
   @Post(":id/join")
-  join(@CurrentUser() user: AccessTokenPayload, @Param("id") id: string, @Body(new ZodValidationPipe(JoinSchema)) body: { joinCode?: string; teamCode?: string }) {
-    return this.sponsors.joinTournament(user.sub, id, { joinCode: body?.joinCode, teamCode: body?.teamCode });
+  join(@CurrentUser() user: AccessTokenPayload, @Param("id") id: string, @Body(new ZodValidationPipe(JoinSchema)) body: { joinCode?: string; skills?: string[] }) {
+    return this.sponsors.joinTournament(user.sub, id, { joinCode: body?.joinCode, skills: body?.skills });
   }
   @UseGuards(JwtAuthGuard)
   @Post(":id/vote-time")

@@ -27,7 +27,7 @@ export default function NewAdminLayout({ children }: { children: React.ReactNode
 
         {/* Admin Footer */}
         <footer className="relative z-20 text-center text-[11px] text-slate-500 font-medium py-4 mt-8 border-t border-slate-900">
-          <span>© 2026 Count Down 31 Platform · Master Administration Console</span>
+          <span>© 2026 Thirty One 31 Platform · Master Administration Console</span>
         </footer>
       </div>
     </AdminGuard>

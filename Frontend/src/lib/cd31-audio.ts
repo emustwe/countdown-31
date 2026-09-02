@@ -1,4 +1,4 @@
-// Tiny Web Audio helper for Count Down 31 — synthesizes short blips (no audio files needed).
+// Tiny Web Audio helper for Thirty One 31 — synthesizes short blips (no audio files needed).
 // A "tick" for the reel stepping through numbers, and a "select" blip when a number is picked.
 let ctx: AudioContext | null = null;
 

@@ -25,23 +25,15 @@ export interface SponsorTokenPayload {
 
 type Visibility = "PUBLIC" | "PRIVATE";
 
-export interface TeamInput {
-  name?: string;
-  captainName?: string;
-}
 export interface AdminCreatePromoInput {
   title?: string;
   description?: string;
   visibility?: string;
-  type?: string; // REGULAR | INFLUENCER
+  type?: string; // REGULAR | GROUP
+  durationDays?: number | string | null; // GROUP: total days incl. the final day
   startAt?: string | null;
   startDate?: string | null; // GMT date; time comes from user votes
   timeOptions?: string[]; // ["14:00","18:00"] GMT slots
-  teams?: TeamInput[]; // teams/captains (name + captain/influencer) when the tournament has influencers
-  hasInfluencers?: boolean; // whether named influencer-captains are featured (see schema note)
-  groupCount?: number | string; // GROUP: number of teams; REGULAR+influencers: number of influencers
-  minGroupPlayers?: number | string | null; // GROUP: players per group
-  maxGroupPlayers?: number | string | null;
   endAt?: string | null;
   prizePool?: string;
   winnerCount?: number | string;
@@ -49,19 +41,16 @@ export interface AdminCreatePromoInput {
   maxPlayers?: number | string | null;
   seekingSponsor?: boolean;
   sponsorId?: string | null;
+  themeId?: string | null;
 }
 export interface SponsorCreatePromoInput {
   title?: string;
   description?: string;
   type?: string;
+  durationDays?: number | string | null;
   startAt?: string | null;
   startDate?: string | null;
   timeOptions?: string[];
-  teams?: TeamInput[];
-  hasInfluencers?: boolean;
-  groupCount?: number | string;
-  minGroupPlayers?: number | string | null;
-  maxGroupPlayers?: number | string | null;
   endAt?: string | null;
   prizePool?: string;
   winnerCount?: number | string;
@@ -95,15 +84,17 @@ function genCode(prefix: string): string {
 }
 
 const USERNAME_RE = /^[a-z0-9._-]{3,30}$/;
-// Distinct team colours (up to 6 groups): blue, red, green, gold, purple, teal.
-const TEAM_COLORS = ["#5aa8ff", "#ff6b7f", "#5be348", "#f4b942", "#b48cff", "#38e0d0"];
-const MAX_GROUPS = TEAM_COLORS.length;
+// Exactly 31 players per group in a GROUP tournament (the last group may hold fewer).
+const GROUP_SIZE = 31;
 
-// Standard include for reading a promo tournament with its sponsor, entry count, and teams.
+// Standard include for reading a promo tournament with its sponsor, entry count, and group summary.
 const PROMO_INCLUDE = {
   sponsor: { select: { id: true, name: true } },
   _count: { select: { entries: true } },
-  teams: { include: { _count: { select: { entries: true } } } },
+  groups: {
+    orderBy: [{ isFinal: "asc" }, { index: "asc" }],
+    include: { _count: { select: { members: true } } },
+  },
 } satisfies Prisma.SponsorTournamentInclude;
 
 @Injectable()
@@ -292,8 +283,20 @@ export class SponsorsService {
   private parsePrize(v: string | undefined): string {
     return (v || "").trim().slice(0, 120);
   }
-  private parseType(v: string | undefined): "REGULAR" | "INFLUENCER" {
-    return v === "INFLUENCER" ? "INFLUENCER" : "REGULAR";
+  private parseType(v: string | undefined): "REGULAR" | "GROUP" {
+    return v === "GROUP" ? "GROUP" : "REGULAR";
+  }
+  /** GROUP tournament length in days (incl. the final). Null for non-group or when unset. */
+  private parseDurationDays(v: number | string | null | undefined): number | null {
+    if (v === undefined || v === null || v === "") return null;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 1) throw new BadRequestException("Duration must be a whole number of days ≥ 1");
+    return Math.min(n, 366);
+  }
+  /** Entry closes 24h before start for GROUP tournaments; REGULAR entry closes at startAt. */
+  private entryCloseAt(type: "REGULAR" | "GROUP", startAt: Date | null): Date | null {
+    if (!startAt) return null;
+    return type === "GROUP" ? new Date(startAt.getTime() - 24 * 60 * 60 * 1000) : startAt;
   }
   /** Validate a list of "HH:MM" GMT time slots (deduped, sorted, max 8). */
   private parseTimeOptions(v: string[] | undefined): string[] {
@@ -306,24 +309,6 @@ export class SponsorsService {
       if (set.size >= 8) break;
     }
     return [...set].sort();
-  }
-  /** Clamp the requested number of groups/influencers to [min..MAX_GROUPS]. Falls back to the number
-   * of team entries provided, else `min`. A GROUP tournament needs ≥2 groups; a REGULAR tournament
-   * that merely features influencers can have as few as 1. */
-  private parseGroupCount(count: number | string | undefined, teams: TeamInput[] | undefined, min = 2): number {
-    const n = Number(count);
-    const fromCount = Number.isFinite(n) && n > 0 ? Math.round(n) : Array.isArray(teams) ? teams.length : min;
-    return Math.max(min, Math.min(MAX_GROUPS, fromCount || min));
-  }
-  /** `count` teams (names + captain/influencer names) for an INFLUENCER tournament. */
-  private parseTeams(v: TeamInput[] | undefined, count: number): { name: string; captainName: string }[] {
-    const arr = Array.isArray(v) ? v : [];
-    const teams = arr.slice(0, count).map((t, i) => ({
-      name: (t?.name || "").trim().slice(0, 40) || `Team ${i + 1}`,
-      captainName: (t?.captainName || "").trim().slice(0, 60) || `Captain ${i + 1}`,
-    }));
-    while (teams.length < count) teams.push({ name: `Team ${teams.length + 1}`, captainName: `Captain ${teams.length + 1}` });
-    return teams;
   }
   /** Resolve the effective start datetime from the admin's GMT date + the winning time slot.
    *
@@ -350,13 +335,6 @@ export class SponsorsService {
     const [hh, mm] = (slot ?? "00:00").split(":").map((x) => Number(x));
     return new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(), hh || 0, mm || 0, 0, 0));
   }
-  private async uniqueTeamCode(field: "captainCode" | "memberCode", prefix: string): Promise<string> {
-    let code = genCode(prefix);
-    for (let i = 0; i < 6 && (await this.prisma.tournamentTeam.findUnique({ where: { [field]: code } as never })); i++) {
-      code = genCode(prefix);
-    }
-    return code;
-  }
   private async uniqueCode(prefix: string, field: "sponsorCode" | "joinCode"): Promise<string> {
     let code = genCode(prefix);
     for (let i = 0; i < 6 && (await this.prisma.sponsorTournament.findUnique({ where: { [field]: code } as never })); i++) {
@@ -374,27 +352,21 @@ export class SponsorsService {
     const max = this.parseCount(input.maxPlayers);
     if (min !== null && max !== null && max < min) throw new BadRequestException("Max players cannot be less than min players");
     const type = this.parseType(input.type);
-    const hasInfluencers = !!input.hasInfluencers;
-    // Teams (groups/captains) exist for any GROUP tournament, and for a REGULAR one that features
-    // named influencers.
-    const wantsTeams = type === "INFLUENCER" || hasInfluencers;
+    const durationDays = type === "GROUP" ? this.parseDurationDays(input.durationDays) : null;
     const startDate = this.parseDate(input.startDate);
     const timeOptions = this.parseTimeOptions(input.timeOptions);
-    // GROUP needs ≥2 groups; a REGULAR tournament with influencers can have as few as 1 (plain, no groups).
-    const groupCount = wantsTeams ? this.parseGroupCount(input.groupCount, input.teams, type === "INFLUENCER" ? 2 : 1) : 2;
+    const startAt = startDate ? this.computeStartAt(startDate, timeOptions, []) : this.parseDate(input.startAt);
     const data: Prisma.SponsorTournamentCreateInput = {
       title: this.reqTitle(input.title),
       description: (input.description ?? "").slice(0, 500),
       visibility,
       status: "APPROVED",
       type,
-      hasInfluencers,
-      groupCount,
-      minGroupPlayers: type === "INFLUENCER" ? this.parseCount(input.minGroupPlayers) : null,
-      maxGroupPlayers: type === "INFLUENCER" ? this.parseCount(input.maxGroupPlayers) : null,
+      durationDays,
       startDate,
       timeOptions,
-      startAt: startDate ? this.computeStartAt(startDate, timeOptions, []) : this.parseDate(input.startAt),
+      startAt,
+      entryClosesAt: this.entryCloseAt(type, startAt),
       endAt: this.parseDate(input.endAt),
       prizePool: this.parsePrize(input.prizePool),
       winnerCount: this.parseWinnerCount(input.winnerCount),
@@ -403,60 +375,39 @@ export class SponsorsService {
       // "With sponsor" but none assigned yet → the tournament is seeking a sponsor (shown on the
       // Tournaments page with a "needs sponsor" indicator). Applies to any visibility now.
       seekingSponsor: !!input.seekingSponsor && !input.sponsorId,
+      themeId: input.themeId ?? null,
       createdBy: "admin",
     };
-    // Private tournaments always get a sponsorCode (for a sponsor to claim later) + a joinCode.
-    if (visibility === "PRIVATE") {
-      data.sponsorCode = await this.uniqueCode("SPN", "sponsorCode");
-      data.joinCode = await this.uniqueCode("JOIN", "joinCode");
-    }
-    // A sponsor may be attached directly at creation, regardless of visibility.
+    // Private tournaments always get a joinCode. A sponsorCode (for a sponsor to CLAIM the tournament
+    // later) is generated for any tournament that's PRIVATE or is "finding a sponsor" (seekingSponsor)
+    // — regardless of visibility — so "Find Sponsor" public tournaments get a code too.
+    const wantsSponsorCode = visibility === "PRIVATE" || (!!input.seekingSponsor && !input.sponsorId);
+    if (visibility === "PRIVATE") data.joinCode = await this.uniqueCode("JOIN", "joinCode");
+    if (wantsSponsorCode) data.sponsorCode = await this.uniqueCode("SPN", "sponsorCode");
+    // A sponsor may be attached directly at creation ("Include Sponsor"), regardless of visibility.
     if (input.sponsorId) data.sponsor = { connect: { id: input.sponsorId } };
-    if (wantsTeams) data.teams = { create: await this.buildTeams(input.teams, groupCount) };
     const created = await this.prisma.sponsorTournament.create({ data, include: PROMO_INCLUDE });
     return this.serialize(created, { codes: true });
-  }
-
-  /** Build `count` teams for an influencer tournament. Each team gets a distinct colour and TWO
-   * codes: a captainCode (the influencer's special entry code) and a memberCode (shared with the
-   * captain's followers to join as players). */
-  private async buildTeams(input: TeamInput[] | undefined, count: number) {
-    const teams = this.parseTeams(input, count);
-    const out = [];
-    for (let i = 0; i < count; i++) {
-      out.push({
-        name: teams[i]!.name,
-        captainName: teams[i]!.captainName,
-        captainCode: await this.uniqueTeamCode("captainCode", "CAP"),
-        memberCode: await this.uniqueTeamCode("memberCode", "TEAM"),
-        color: TEAM_COLORS[i % TEAM_COLORS.length]!,
-      });
-    }
-    return out;
   }
 
   /** A sponsor creates a PUBLIC tournament; it starts PENDING until an admin approves it. */
   async createBySponsor(sponsorId: string, input: SponsorCreatePromoInput) {
     const type = this.parseType(input.type);
-    const hasInfluencers = !!input.hasInfluencers;
-    const wantsTeams = type === "INFLUENCER" || hasInfluencers;
+    const durationDays = type === "GROUP" ? this.parseDurationDays(input.durationDays) : null;
     const startDate = this.parseDate(input.startDate);
     const timeOptions = this.parseTimeOptions(input.timeOptions);
-    // GROUP needs ≥2 groups; a REGULAR tournament with influencers can have as few as 1 (plain, no groups).
-    const groupCount = wantsTeams ? this.parseGroupCount(input.groupCount, input.teams, type === "INFLUENCER" ? 2 : 1) : 2;
+    const startAt = startDate ? this.computeStartAt(startDate, timeOptions, []) : this.parseDate(input.startAt);
     const data: Prisma.SponsorTournamentCreateInput = {
       title: this.reqTitle(input.title),
       description: (input.description ?? "").slice(0, 500),
       visibility: "PUBLIC",
       status: "PENDING",
       type,
-      hasInfluencers,
-      groupCount,
-      minGroupPlayers: type === "INFLUENCER" ? this.parseCount(input.minGroupPlayers) : null,
-      maxGroupPlayers: type === "INFLUENCER" ? this.parseCount(input.maxGroupPlayers) : null,
+      durationDays,
       startDate,
       timeOptions,
-      startAt: startDate ? this.computeStartAt(startDate, timeOptions, []) : this.parseDate(input.startAt),
+      startAt,
+      entryClosesAt: this.entryCloseAt(type, startAt),
       endAt: this.parseDate(input.endAt),
       prizePool: this.parsePrize(input.prizePool),
       winnerCount: this.parseWinnerCount(input.winnerCount),
@@ -465,7 +416,6 @@ export class SponsorsService {
       createdBy: sponsorId,
       sponsor: { connect: { id: sponsorId } },
     };
-    if (wantsTeams) data.teams = { create: await this.buildTeams(input.teams, groupCount) };
     const created = await this.prisma.sponsorTournament.create({ data, include: PROMO_INCLUDE });
     return this.serialize(created, { codes: true });
   }
@@ -482,10 +432,12 @@ export class SponsorsService {
     if (patch.winnerCount !== undefined) data.winnerCount = this.parseWinnerCount(patch.winnerCount);
     if (patch.minPlayers !== undefined) data.minPlayers = this.parseCount(patch.minPlayers);
     if (patch.maxPlayers !== undefined) data.maxPlayers = this.parseCount(patch.maxPlayers);
-    if (patch.minGroupPlayers !== undefined) data.minGroupPlayers = this.parseCount(patch.minGroupPlayers);
-    if (patch.maxGroupPlayers !== undefined) data.maxGroupPlayers = this.parseCount(patch.maxGroupPlayers);
-    if (patch.hasInfluencers !== undefined) data.hasInfluencers = !!patch.hasInfluencers;
-    if (patch.seekingSponsor !== undefined) data.seekingSponsor = !!patch.seekingSponsor;
+    if (patch.durationDays !== undefined) data.durationDays = this.parseDurationDays(patch.durationDays);
+    if (patch.seekingSponsor !== undefined) {
+      data.seekingSponsor = !!patch.seekingSponsor;
+      // Switching a tournament to "finding a sponsor" mints a sponsor code if it doesn't have one yet.
+      if (patch.seekingSponsor && !existing.sponsorCode) data.sponsorCode = await this.uniqueCode("SPN", "sponsorCode");
+    }
     if (patch.startAt !== undefined) data.startAt = this.parseDate(patch.startAt);
     if (patch.endAt !== undefined) data.endAt = this.parseDate(patch.endAt);
     // Start date / time options: recompute the effective startAt from the (new) date + existing votes.
@@ -497,12 +449,21 @@ export class SponsorsService {
       const votes = await this.prisma.tournamentTimeVote.findMany({ where: { tournamentId: id }, select: { timeSlot: true } });
       data.startAt = this.computeStartAt(nextStartDate, nextTimeOptions, votes);
     }
+    // Whenever startAt changes, recompute the entry-close time (24h before for GROUP).
+    if (data.startAt !== undefined) {
+      const nextType = (patch.type !== undefined ? this.parseType(patch.type) : (existing.type as "REGULAR" | "GROUP"));
+      data.entryClosesAt = this.entryCloseAt(nextType, (data.startAt as Date | null) ?? null);
+    }
+    if (patch.type !== undefined) data.type = this.parseType(patch.type);
     if (patch.status !== undefined) {
       if (!["PENDING", "APPROVED", "REJECTED"].includes(patch.status)) throw new BadRequestException("Invalid status");
       data.status = patch.status as "PENDING" | "APPROVED" | "REJECTED";
     }
     if (patch.sponsorId !== undefined) {
       data.sponsor = patch.sponsorId ? { connect: { id: patch.sponsorId } } : { disconnect: true };
+    }
+    if (patch.themeId !== undefined) {
+      data.themeId = patch.themeId ?? null;
     }
     if (patch.visibility !== undefined) {
       const vis = this.parseVisibility(patch.visibility);
@@ -522,6 +483,31 @@ export class SponsorsService {
     this.audit.record("TOURNAMENT_DELETE", { detail: { tournamentId: id } });
   }
 
+  /** Record the champion when the FINAL match ends (idempotent — only the first result sticks). */
+  async recordTournamentWinner(id: string, winnerName: string): Promise<void> {
+    await this.prisma.sponsorTournament.updateMany({
+      where: { id, completedAt: null },
+      data: {
+        completedAt: new Date(),
+        endAt: new Date(),
+        winnerName: winnerName.slice(0, 120),
+      },
+    });
+  }
+
+  /** Admin confirms the prize was paid out → the finished tournament drops off the public screen. */
+  async markPrizeDelivered(id: string) {
+    const t = await this.prisma.sponsorTournament.findUnique({ where: { id } });
+    if (!t) throw new NotFoundException("Tournament not found");
+    const updated = await this.prisma.sponsorTournament.update({
+      where: { id },
+      data: { prizeDelivered: true },
+      include: PROMO_INCLUDE,
+    });
+    this.audit.record("TOURNAMENT_PRIZE_DELIVERED", { detail: { tournamentId: id } });
+    return this.serialize(updated, { codes: true });
+  }
+
   async setStatus(id: string, status: "APPROVED" | "REJECTED") {
     this.audit.record("TOURNAMENT_STATUS", { detail: { tournamentId: id, status } });
     return this.prisma.sponsorTournament.update({ where: { id }, data: { status } }).catch(() => {
@@ -539,21 +525,18 @@ export class SponsorsService {
     return rows.map((t) => this.serialize(t, { codes: true }));
   }
 
-  // A finished tournament stays on the Tournaments page for one hour after it starts, then drops off.
-  private static readonly LISTING_TTL_MS = 60 * 60 * 1000;
-
   /** Public — approved tournaments (PUBLIC and PRIVATE) for the user Tournaments page (no codes).
    * Private ones are listed so players can find them, but joining still needs the referral code.
-   * Tournaments whose start was more than an hour ago are hidden (considered finished). */
+   * Every approved tournament stays listed until the admin marks its prize delivered (or deletes it). */
   async listApproved() {
-    const cutoff = new Date(Date.now() - SponsorsService.LISTING_TTL_MS);
     const rows = await this.prisma.sponsorTournament.findMany({
       where: {
         status: "APPROVED",
-        // Private tournaments are code-gated (reached via their referral code), never publicly listed.
-        visibility: "PUBLIC",
-        // Not yet finished: either no start scheduled, or it started within the last hour.
-        OR: [{ startAt: null }, { startAt: { gte: cutoff } }],
+        // Every admin-posted APPROVED tournament is LISTED as soon as it's created and stays up until
+        // the admin marks the prize delivered (or deletes it) — we do NOT hide by start time.
+        // Finished ones remain visible with a "Watch winner" state. (Both PUBLIC and PRIVATE show;
+        // private just can't be JOINED without their referral code.)
+        prizeDelivered: false,
       },
       orderBy: { createdAt: "desc" },
       include: PROMO_INCLUDE,
@@ -601,11 +584,94 @@ export class SponsorsService {
     return {
       ...this.serialize(t, { codes: false }),
       joined: !!entry,
-      myTeamId: entry?.teamId ?? null,
-      myIsCaptain: entry?.isCaptain ?? false,
+      mySkills: entry?.skills ?? [],
       myTimeVote: myVote?.timeSlot ?? null,
+      // The caller's group placement (once groups are assigned), for the "You're in Group N" panel.
+      myGroup: userId ? await this.myGroupSummary(id, userId) : null,
       timeVotes: await this.tallyTimeVotes(id, (t.timeOptions as string[]) ?? []),
     };
+  }
+
+  // ---- Starting Wheel: roster + SEALED draw ---------------------------------------------------
+  /**
+   * Data for the kickoff "Grand Starting Wheel". Returns the tournament's entrants plus a draw
+   * result that is SEALED — deterministic from the tournament id — so every spectator's wheel lands
+   * on the exact same outcome and nobody can claim it was rigged. Large fields (>24) are shown as up
+   * to 31 groups → a name-reel of the winning group; small fields are one-slice-per-player.
+   */
+  async getRoster(id: string) {
+    const t = await this.prisma.sponsorTournament.findUnique({
+      where: { id },
+      select: { id: true, status: true },
+    });
+    if (!t || t.status !== "APPROVED") throw new NotFoundException("Tournament not found");
+
+    const entries = await this.prisma.promoEntry.findMany({
+      where: { tournamentId: id },
+      orderBy: { joinedAt: "asc" },
+      select: { userId: true, user: { select: { fullName: true, email: true } } },
+    });
+    const players = entries.map((e, i) => ({
+      id: e.userId,
+      name: e.user.fullName?.trim() || e.user.email.split("@")[0] || `Player ${i + 1}`,
+    }));
+
+    const total = players.length;
+    if (total === 0) {
+      return { mode: "simple" as const, total: 0, groupCount: 0, groupSizes: [], groupIndex: 0, reel: [], winnerSlot: 0, winner: null, hash: this.drawHash(id, -1) };
+    }
+
+    const winnerIndex = this.fnv1a(id) % total;
+    const winner = players[winnerIndex]!;
+    const mode: "grand" | "simple" = total > 24 ? "grand" : "simple";
+
+    if (mode === "simple") {
+      // One slice per player — the wheel lands directly on the spotlight cow.
+      return {
+        mode,
+        total,
+        groupCount: total,
+        groupSizes: players.map(() => 1),
+        groupIndex: winnerIndex,
+        reel: players,
+        winnerSlot: winnerIndex,
+        winner,
+        hash: this.drawHash(id, winnerIndex),
+      };
+    }
+
+    // Grand mode: round-robin bucketing into 31 groups (mirrors entry-order placement).
+    const groupCount = 31;
+    const groupSizes = new Array<number>(groupCount).fill(0);
+    for (let i = 0; i < total; i++) groupSizes[i % groupCount] = (groupSizes[i % groupCount] ?? 0) + 1;
+    const groupIndex = winnerIndex % groupCount;
+    const reel = players.filter((_, i) => i % groupCount === groupIndex);
+    const winnerSlot = Math.max(0, reel.findIndex((p) => p.id === winner.id));
+    return {
+      mode,
+      total,
+      groupCount,
+      groupSizes,
+      groupIndex,
+      reel,
+      winnerSlot,
+      winner,
+      hash: this.drawHash(id, winnerIndex),
+    };
+  }
+
+  /** FNV-1a hash → an unsigned 32-bit int; the sealed-draw seed. */
+  private fnv1a(s: string): number {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+  /** A short, human-showable hash of the sealed outcome (shown as the wheel's "fairness seal"). */
+  private drawHash(id: string, winnerIndex: number): string {
+    return "0x" + this.fnv1a(`${id}:${winnerIndex}`).toString(16).padStart(8, "0");
   }
 
   private async hasJoined(userId: string, tournamentId: string): Promise<boolean> {
@@ -615,46 +681,35 @@ export class SponsorsService {
     return !!e;
   }
 
-  /** Register a user into a tournament. INFLUENCER tournaments require a team captain code; PRIVATE
-   * ones require the joinCode. Entry closes at startAt. Idempotent — re-joining updates the team. */
-  async joinTournament(userId: string, id: string, opts: { joinCode?: string; teamCode?: string }) {
-    const t = await this.prisma.sponsorTournament.findUnique({ where: { id }, include: { teams: true } });
+  /** Register a user into a tournament. PRIVATE ones require the joinCode. Entry closes at
+   * entryClosesAt (GROUP: 24h before start; REGULAR: at start). Idempotent — re-joining updates the
+   * skill loadout. Each new entrant gets the next sequential `seq` (drives group assignment). */
+  async joinTournament(userId: string, id: string, opts: { joinCode?: string; skills?: string[] }) {
+    const t = await this.prisma.sponsorTournament.findUnique({ where: { id } });
     if (!t || t.status !== "APPROVED") throw new NotFoundException("Tournament not found");
 
-    // PRIVATE tournaments need the tournament referral (join) code. INFLUENCER tournaments need a
-    // team code (the group key). A PRIVATE INFLUENCER tournament requires BOTH keys.
+    // PRIVATE tournaments need the tournament referral (join) code.
     if (t.visibility === "PRIVATE") {
       const supplied = (opts.joinCode || "").trim().toUpperCase();
       if (supplied !== t.joinCode) throw new ForbiddenException("This tournament needs a valid referral code to join");
     }
-    let teamId: string | null = null;
-    let isCaptain = false;
-    if (t.type === "INFLUENCER") {
-      const supplied = (opts.teamCode || "").trim().toUpperCase();
-      // The captain's special code enters them AS the captain; the member code joins as a player.
-      const asCaptain = t.teams.find((tm) => tm.captainCode.toUpperCase() === supplied);
-      const asMember = t.teams.find((tm) => (tm.memberCode ?? "").toUpperCase() === supplied);
-      const team = asCaptain ?? asMember;
-      if (!team) throw new ForbiddenException("Enter a valid team code (captain or player code) to join");
-      teamId = team.id;
-      isCaptain = !!asCaptain;
-      if (isCaptain) {
-        // Only one captain seat per team.
-        const existingCaptain = await this.prisma.promoEntry.findFirst({
-          where: { tournamentId: id, teamId: team.id, isCaptain: true, NOT: { userId } },
-        });
-        if (existingCaptain) throw new ConflictException("This team already has a captain");
-      }
+    const closeAt = t.entryClosesAt ?? t.startAt;
+    if (closeAt && Date.now() >= closeAt.getTime()) {
+      throw new BadRequestException("Entry is closed for this tournament");
     }
-    if (t.startAt && Date.now() >= t.startAt.getTime()) {
-      throw new BadRequestException("Entry is closed — this tournament has already started");
+    if (t.groupsAssignedAt) {
+      throw new BadRequestException("Entry is closed — groups have already been drawn");
     }
-    await this.prisma.promoEntry.upsert({
-      where: { tournamentId_userId: { tournamentId: id, userId } },
-      create: { tournamentId: id, userId, teamId, isCaptain },
-      update: { teamId, isCaptain },
-    });
-    return { joined: true, teamId, isCaptain };
+    // Lock in the chosen skill loadout (0–2). Deduped + capped; can't be changed after joining.
+    const skills = Array.from(new Set(opts.skills ?? [])).slice(0, 2);
+    const existing = await this.prisma.promoEntry.findUnique({ where: { tournamentId_userId: { tournamentId: id, userId } } });
+    if (existing) {
+      await this.prisma.promoEntry.update({ where: { id: existing.id }, data: { skills } });
+      return { joined: true, seq: existing.seq, skills };
+    }
+    const seq = (await this.prisma.promoEntry.count({ where: { tournamentId: id } })) + 1;
+    await this.prisma.promoEntry.create({ data: { tournamentId: id, userId, seq, skills } });
+    return { joined: true, seq, skills };
   }
 
   // ---- Start-time voting (both tournament types) ----------------------------------------------
@@ -683,7 +738,12 @@ export class SponsorsService {
     });
     const votes = await this.prisma.tournamentTimeVote.findMany({ where: { tournamentId: id }, select: { timeSlot: true } });
     const startAt = this.computeStartAt(t.startDate, options, votes);
-    if (startAt) await this.prisma.sponsorTournament.update({ where: { id }, data: { startAt } });
+    if (startAt) {
+      await this.prisma.sponsorTournament.update({
+        where: { id },
+        data: { startAt, entryClosesAt: this.entryCloseAt(t.type as "REGULAR" | "GROUP", startAt) },
+      });
+    }
     return { myTimeVote: slot, startAt, timeVotes: await this.tallyTimeVotes(id, options) };
   }
 
@@ -697,19 +757,242 @@ export class SponsorsService {
     return rows.map((r) => ({ ...this.serialize(r.tournament, { codes: false }), joinedAt: r.joinedAt }));
   }
 
+  // ---- GROUP tournaments: assignment / scheduling / results -----------------------------------
+  /** Scheduled start for a given 1-based tournament day: day 1 = startAt, each later day + 24h. */
+  private dayScheduledAt(startAt: Date | null, day: number): Date | null {
+    if (!startAt) return null;
+    return new Date(startAt.getTime() + (day - 1) * 24 * 60 * 60 * 1000);
+  }
+
+  /**
+   * Automatically draw the groups for a GROUP tournament: entrants ordered by join `seq` are chunked
+   * into groups of 31 (the last group may hold fewer). A separate final group is created to collect
+   * every group winner — unless there is only ONE stage group, in which case that group IS the final.
+   * Idempotent-guarded (refuses if already drawn). Admin runs this after entry closes.
+   */
+  async assignGroups(id: string) {
+    const t = await this.prisma.sponsorTournament.findUnique({ where: { id } });
+    if (!t) throw new NotFoundException("Tournament not found");
+    if (t.type !== "GROUP") throw new BadRequestException("Only GROUP tournaments have groups");
+    if (t.groupsAssignedAt) throw new BadRequestException("Groups have already been drawn");
+    const durationDays = t.durationDays ?? 1;
+    const entries = await this.prisma.promoEntry.findMany({
+      where: { tournamentId: id },
+      orderBy: { seq: "asc" },
+      select: { userId: true },
+    });
+    if (entries.length < 2) throw new BadRequestException("Need at least 2 entrants to draw groups");
+    const stageCount = Math.ceil(entries.length / GROUP_SIZE);
+    const singleGroupIsFinal = stageCount === 1;
+
+    await this.prisma.$transaction(async (tx) => {
+      for (let g = 0; g < stageCount; g++) {
+        const slice = entries.slice(g * GROUP_SIZE, (g + 1) * GROUP_SIZE);
+        const group = await tx.tournamentGroup.create({
+          data: {
+            tournamentId: id,
+            index: g + 1,
+            isFinal: singleGroupIsFinal,
+            // A single group that IS the final plays on the last (only) day, scheduled immediately.
+            day: singleGroupIsFinal ? durationDays : null,
+            scheduledAt: singleGroupIsFinal ? this.dayScheduledAt(t.startAt, durationDays) : null,
+          },
+        });
+        await tx.groupMember.createMany({
+          data: slice.map((e, i) => ({ groupId: group.id, userId: e.userId, seat: i + 1 })),
+        });
+      }
+      if (!singleGroupIsFinal) {
+        // The final group is fixed to the last day; the group winners get seats as they qualify.
+        await tx.tournamentGroup.create({
+          data: {
+            tournamentId: id,
+            index: stageCount + 1,
+            isFinal: true,
+            day: durationDays,
+            scheduledAt: this.dayScheduledAt(t.startAt, durationDays),
+          },
+        });
+      }
+      await tx.sponsorTournament.update({ where: { id }, data: { groupsAssignedAt: new Date() } });
+    });
+    return this.getGroups(id);
+  }
+
+  /**
+   * Manual per-day scheduling: the admin assigns each STAGE group a day in 1..durationDays-1. The
+   * final group is fixed to the last day. Sets each group's scheduledAt from the tournament's start
+   * time on that day.
+   */
+  async scheduleGroups(id: string, schedule: { groupId: string; day: number }[]) {
+    const t = await this.prisma.sponsorTournament.findUnique({ where: { id } });
+    if (!t) throw new NotFoundException("Tournament not found");
+    if (t.type !== "GROUP") throw new BadRequestException("Only GROUP tournaments have groups");
+    if (!t.groupsAssignedAt) throw new BadRequestException("Draw the groups before scheduling them");
+    const durationDays = t.durationDays ?? 1;
+    const groups = await this.prisma.tournamentGroup.findMany({ where: { tournamentId: id } });
+    const stageGroups = groups.filter((g) => !g.isFinal);
+    const finalGroup = groups.find((g) => g.isFinal);
+    if (stageGroups.length && durationDays < 2) {
+      throw new BadRequestException("A group tournament with a separate final needs at least 2 days");
+    }
+    const maxStageDay = stageGroups.length ? durationDays - 1 : durationDays;
+    const map = new Map(schedule.map((s) => [s.groupId, s.day]));
+    for (const g of stageGroups) {
+      const day = map.get(g.id);
+      if (!day) throw new BadRequestException(`Group ${g.index} has not been assigned a day`);
+      if (day < 1 || day > maxStageDay) throw new BadRequestException(`Group ${g.index}'s day must be between 1 and ${maxStageDay}`);
+    }
+    await this.prisma.$transaction(async (tx) => {
+      for (const g of stageGroups) {
+        const day = map.get(g.id)!;
+        await tx.tournamentGroup.update({ where: { id: g.id }, data: { day, scheduledAt: this.dayScheduledAt(t.startAt, day) } });
+      }
+      if (finalGroup && (finalGroup.day !== durationDays || !finalGroup.scheduledAt)) {
+        await tx.tournamentGroup.update({
+          where: { id: finalGroup.id },
+          data: { day: durationDays, scheduledAt: this.dayScheduledAt(t.startAt, durationDays) },
+        });
+      }
+    });
+    return this.getGroups(id);
+  }
+
+  /** Full group listing for a tournament (admin view): each group with its members + schedule. */
+  async getGroups(id: string) {
+    const t = await this.prisma.sponsorTournament.findUnique({ where: { id } });
+    if (!t) throw new NotFoundException("Tournament not found");
+    const groups = await this.prisma.tournamentGroup.findMany({
+      where: { tournamentId: id },
+      orderBy: [{ isFinal: "asc" }, { index: "asc" }],
+      include: { members: { orderBy: { seat: "asc" } } },
+    });
+    const userIds = [...new Set(groups.flatMap((g) => g.members.map((m) => m.userId)))];
+    const users = userIds.length
+      ? await this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, fullName: true, email: true } })
+      : [];
+    const nameFor = new Map(users.map((u) => [u.id, u.fullName?.trim() || u.email.split("@")[0] || "Player"]));
+    return {
+      tournamentId: id,
+      type: t.type,
+      durationDays: t.durationDays,
+      entryClosesAt: t.entryClosesAt,
+      groupsAssignedAt: t.groupsAssignedAt,
+      groupSize: GROUP_SIZE,
+      groups: groups.map((g) => ({
+        id: g.id,
+        index: g.index,
+        isFinal: g.isFinal,
+        day: g.day,
+        scheduledAt: g.scheduledAt,
+        status: g.status,
+        winnerUserId: g.winnerUserId,
+        winnerName: g.winnerName,
+        members: g.members.map((m) => ({
+          userId: m.userId,
+          name: nameFor.get(m.userId) ?? "Player",
+          seat: m.seat,
+          result: m.result,
+        })),
+      })),
+    };
+  }
+
+  /** The caller's own group placement(s) — their stage group and, if they advanced, the final. */
+  private async myGroupSummary(id: string, userId: string) {
+    const mems = await this.prisma.groupMember.findMany({
+      where: { userId, group: { tournamentId: id } },
+      include: { group: true },
+    });
+    if (!mems.length) return null;
+    const toSummary = (m: (typeof mems)[number]) => ({
+      groupId: m.group.id,
+      index: m.group.index,
+      isFinal: m.group.isFinal,
+      day: m.group.day,
+      scheduledAt: m.group.scheduledAt,
+      status: m.group.status,
+      result: m.result,
+    });
+    const stage = mems.find((m) => !m.group.isFinal);
+    const final = mems.find((m) => m.group.isFinal);
+    return { stage: stage ? toSummary(stage) : null, final: final ? toSummary(final) : null };
+  }
+
+  /** Load a group's roster to seed the live game room (called by the socket gateway). */
+  async getGroupForRoom(tournamentId: string, groupId: string) {
+    const group = await this.prisma.tournamentGroup.findFirst({ where: { id: groupId, tournamentId } });
+    if (!group) return null;
+    const members = await this.prisma.groupMember.findMany({ where: { groupId }, orderBy: { seat: "asc" } });
+    const userIds = members.map((m) => m.userId);
+    const [entries, users] = await Promise.all([
+      this.prisma.promoEntry.findMany({ where: { tournamentId, userId: { in: userIds } }, select: { userId: true, skills: true } }),
+      this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, fullName: true, email: true, cosmeticsJson: true } }),
+    ]);
+    const skillsFor = new Map(entries.map((e) => [e.userId, e.skills]));
+    const userFor = new Map(users.map((u) => [u.id, u]));
+    return {
+      group: { id: group.id, isFinal: group.isFinal, status: group.status, scheduledAt: group.scheduledAt },
+      players: members.map((m) => {
+        const u = userFor.get(m.userId);
+        return {
+          userId: m.userId,
+          name: u?.fullName?.trim() || u?.email.split("@")[0] || "Player",
+          skills: skillsFor.get(m.userId) ?? [],
+          cosmetics: (u?.cosmeticsJson ?? {}) as Record<string, unknown>,
+        };
+      }),
+    };
+  }
+
+  /**
+   * Record a finished group's winner (called once by the gateway when a group room ends). Marks the
+   * winner ADVANCED and everyone else ELIMINATED, and either seats the winner into the final group
+   * or — if this WAS the final — records the tournament champion. Idempotent (skips a DONE group).
+   */
+  async recordGroupResult(groupId: string, winnerUserId: string, winnerName: string) {
+    const group = await this.prisma.tournamentGroup.findUnique({ where: { id: groupId } });
+    if (!group || group.status === "DONE") return;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tournamentGroup.update({
+        where: { id: groupId },
+        data: { status: "DONE", winnerUserId, winnerName: winnerName.slice(0, 120) },
+      });
+      await tx.groupMember.updateMany({ where: { groupId, userId: winnerUserId }, data: { result: "ADVANCED" } });
+      await tx.groupMember.updateMany({ where: { groupId, NOT: { userId: winnerUserId } }, data: { result: "ELIMINATED" } });
+      if (group.isFinal) {
+        await tx.sponsorTournament.updateMany({
+          where: { id: group.tournamentId, completedAt: null },
+          data: { completedAt: new Date(), endAt: new Date(), winnerName: winnerName.slice(0, 120) },
+        });
+      } else {
+        const finalGroup = await tx.tournamentGroup.findFirst({ where: { tournamentId: group.tournamentId, isFinal: true } });
+        if (finalGroup) {
+          const seat = (await tx.groupMember.count({ where: { groupId: finalGroup.id } })) + 1;
+          await tx.groupMember.upsert({
+            where: { groupId_userId: { groupId: finalGroup.id, userId: winnerUserId } },
+            create: { groupId: finalGroup.id, userId: winnerUserId, seat },
+            update: {},
+          });
+        }
+      }
+    });
+  }
+
   // ---- Serialization --------------------------------------------------------------------------
   private serialize(
     t: SponsorTournament & {
       sponsor?: { id: string; name: string } | null;
       _count?: { entries: number };
-      teams?: {
+      groups?: {
         id: string;
-        name: string;
-        captainName: string;
-        captainCode: string;
-        memberCode: string | null;
-        color: string;
-        _count?: { entries: number };
+        index: number;
+        isFinal: boolean;
+        day: number | null;
+        scheduledAt: Date | null;
+        status: string;
+        winnerName: string | null;
+        _count?: { members: number };
       }[];
     },
     opts: { codes: boolean },
@@ -721,12 +1004,11 @@ export class SponsorsService {
       visibility: t.visibility,
       status: t.status,
       type: t.type,
-      hasInfluencers: t.hasInfluencers,
-      groupCount: t.groupCount,
-      minGroupPlayers: t.minGroupPlayers,
-      maxGroupPlayers: t.maxGroupPlayers,
+      durationDays: t.durationDays,
       startAt: t.startAt,
       startDate: t.startDate,
+      entryClosesAt: t.entryClosesAt,
+      groupsAssignedAt: t.groupsAssignedAt,
       timeOptions: (t.timeOptions as string[]) ?? [],
       endAt: t.endAt,
       prizePool: t.prizePool,
@@ -735,17 +1017,26 @@ export class SponsorsService {
       maxPlayers: t.maxPlayers,
       seekingSponsor: t.seekingSponsor,
       sponsor: t.sponsor ? { id: t.sponsor.id, name: t.sponsor.name } : null,
-      teams: (t.teams ?? []).map((team) => ({
-        id: team.id,
-        name: team.name,
-        captainName: team.captainName,
-        color: team.color,
-        memberCount: team._count?.entries ?? 0,
-        ...(opts.codes ? { captainCode: team.captainCode, memberCode: team.memberCode } : {}),
+      themeId: t.themeId ?? null,
+      groups: (t.groups ?? []).map((g) => ({
+        id: g.id,
+        index: g.index,
+        isFinal: g.isFinal,
+        day: g.day,
+        scheduledAt: g.scheduledAt,
+        status: g.status,
+        winnerName: g.winnerName,
+        memberCount: g._count?.members ?? 0,
       })),
       createdBy: t.createdBy,
       createdAt: t.createdAt,
       entryCount: t._count?.entries ?? 0,
+      // Finish/prize lifecycle: a finished tournament is shown with its winner and a
+      // "Watch winner" state until the admin marks the prize delivered.
+      finished: !!t.completedAt,
+      completedAt: t.completedAt,
+      winnerName: t.winnerName,
+      prizeDelivered: t.prizeDelivered,
       ...(opts.codes ? { sponsorCode: t.sponsorCode, joinCode: t.joinCode } : {}),
     };
   }
@@ -755,7 +1046,8 @@ export class SponsorsService {
    * Shown publicly with participation details + prize (if set) — no codes. */
   async listSponsorshipOpportunities() {
     const rows = await this.prisma.sponsorTournament.findMany({
-      where: { visibility: "PRIVATE", seekingSponsor: true, sponsorId: null, status: "APPROVED" },
+      // Any tournament (PUBLIC or PRIVATE) in "Find Sponsor" mode with no sponsor assigned yet.
+      where: { seekingSponsor: true, sponsorId: null, status: "APPROVED" },
       orderBy: { createdAt: "desc" },
       include: { _count: { select: { entries: true } } },
     });

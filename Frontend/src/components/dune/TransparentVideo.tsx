@@ -9,6 +9,8 @@ interface TransparentVideoProps {
   width?: number;
   height?: number;
   audioEnabled?: boolean;
+  /** Playback speed multiplier (e.g. 1.35 for snappy animation) */
+  playbackRate?: number;
   /** When false (default) the clip plays through once and holds its last frame. */
   loop?: boolean;
   /** Drives one-shot playback: flip to true to play from frame 0; false pauses + resets to
@@ -29,12 +31,6 @@ const VERTEX_SHADER = `
   }
 `;
 
-/*
- * MP4 cannot store transparency. This shader builds a soft matte from the dark
- * studio background on every frame. Looking at nearby pixels keeps the cow's
- * black markings opaque when they sit beside its brighter fur, while isolated
- * near-black compression noise becomes fully transparent.
- */
 const FRAGMENT_SHADER = `
   precision mediump float;
   uniform sampler2D u_video;
@@ -47,22 +43,19 @@ const FRAGMENT_SHADER = `
 
   void main() {
     vec4 source = texture2D(u_video, v_texCoord);
-    float localLight = lightness(source.rgb);
-
-    for (int x = -2; x <= 2; x++) {
-      for (int y = -2; y <= 2; y++) {
-        vec2 offset = vec2(float(x), float(y)) * u_texel * 1.6;
-        localLight = max(localLight, lightness(texture2D(u_video, v_texCoord + offset).rgb));
-      }
-    }
-
     float ownLight = lightness(source.rgb);
-    float subjectMatte = smoothstep(0.055, 0.19, localLight);
-    float detailMatte = smoothstep(0.018, 0.09, ownLight);
-    float alpha = max(detailMatte, subjectMatte * 0.94);
 
-    /* Remove the last dark halo without clipping antialiased fur edges. */
-    alpha *= smoothstep(0.012, 0.055, ownLight + localLight * 0.18);
+    vec2 radius = u_texel * 2.8;
+    float localLight = ownLight;
+    localLight = max(localLight, lightness(texture2D(u_video, v_texCoord + vec2( radius.x, 0.0)).rgb));
+    localLight = max(localLight, lightness(texture2D(u_video, v_texCoord + vec2(-radius.x, 0.0)).rgb));
+    localLight = max(localLight, lightness(texture2D(u_video, v_texCoord + vec2(0.0,  radius.y)).rgb));
+    localLight = max(localLight, lightness(texture2D(u_video, v_texCoord + vec2(0.0, -radius.y)).rgb));
+
+    float subjectMatte = smoothstep(0.05, 0.18, localLight);
+    float detailMatte = smoothstep(0.015, 0.08, ownLight);
+    float alpha = max(detailMatte, subjectMatte * 0.95);
+    alpha *= smoothstep(0.01, 0.05, ownLight + localLight * 0.2);
 
     gl_FragColor = vec4(source.rgb, alpha);
   }
@@ -103,46 +96,42 @@ function createProgram(gl: WebGLRenderingContext) {
 export function TransparentVideo({
   src,
   className = "w-64 aspect-[9/16] sm:w-72",
-  width = 360,
-  height = 640,
+  width = 280,
+  height = 360,
   audioEnabled = true,
+  playbackRate = 1.0,
   loop = false,
   playing,
   onEnded,
 }: TransparentVideoProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const soundEnabled = useSettingsStore((state) => state.soundEnabled);
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
 
-  /* The video element stays visually hidden because WebGL draws its transparent
-     picture, but its original audio is allowed through when game sound is on. */
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     video.muted = !soundEnabled || !audioEnabled;
     video.volume = 0.85;
-  }, [audioEnabled, soundEnabled, src]);
+    video.playbackRate = playbackRate;
+  }, [audioEnabled, soundEnabled, src, playbackRate]);
 
-  /* Playback control keyed on `loop`:
-     - loop=true  → the clip plays continuously (the cow is always animating, e.g. on the side).
-     - loop=false → the clip restarts from frame 0 and plays through exactly ONCE (`onEnded` fires),
-       e.g. the full centre-stage performance on the local player's defeat.
-     Restart from 0 on every mode change so a centre performance always plays the FULL clip. */
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || playing !== undefined) return; // `playing` path (legacy) handled below
+    if (!video || playing !== undefined) return;
     video.loop = loop;
+    video.playbackRate = playbackRate;
     try {
       video.currentTime = 0;
     } catch {
-      /* seeking before metadata is loaded — ignored */
+      /* ignored */
     }
     video.play().catch(() => undefined);
-  }, [loop, playing]);
+  }, [loop, playing, playbackRate]);
 
-  /* Legacy one-shot control via `playing` (kept for any other callers). */
   useEffect(() => {
     const video = videoRef.current;
     if (!video || playing === undefined) return;
@@ -160,15 +149,17 @@ export function TransparentVideo({
   }, [playing]);
 
   useEffect(() => {
+    const container = containerRef.current;
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+    if (!container || !video || !canvas) return;
 
     const gl = canvas.getContext("webgl", {
       alpha: true,
-      antialias: true,
+      antialias: false,
       premultipliedAlpha: false,
       powerPreference: "high-performance",
+      preserveDrawingBuffer: false,
     });
     if (!gl) return;
 
@@ -181,7 +172,6 @@ export function TransparentVideo({
     if (!positionBuffer || !textureBuffer || !texture) return;
 
     gl.useProgram(program);
-    gl.viewport(0, 0, width, height);
     gl.clearColor(0, 0, 0, 0);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -205,37 +195,131 @@ export function TransparentVideo({
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.uniform1i(gl.getUniformLocation(program, "u_video"), 0);
-    gl.uniform2f(gl.getUniformLocation(program, "u_texel"), 1 / width, 1 / height);
+    const texelLocation = gl.getUniformLocation(program, "u_texel");
 
     let frameId = 0;
+    let videoFrameId = 0;
     let stopped = false;
+    let textureReady = false;
+    let isOnScreen = true;
+    let lastFallbackTime = -1;
 
-    const draw = () => {
-      if (stopped) return;
-      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-      }
-      frameId = requestAnimationFrame(draw);
+    const resizeDrawingBuffer = () => {
+      const bounds = canvas.getBoundingClientRect();
+      // Cap the render buffer resolution — the per-frame WebGL matte (5 texture taps) is the main
+      // cost, so 1.5x is plenty crisp for the cow while keeping the dance smooth on phones.
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      // CONTAIN the video's NATIVE aspect inside the element box so the cow is never stretched — the
+      // `object-contain` canvas then letterboxes it. (Previously the buffer took the container aspect,
+      // which squashed/stretched clips whose ratio ≠ the container's.)
+      const vw = video.videoWidth || width;
+      const vh = video.videoHeight || height;
+      const boxW = Math.max(2, (bounds.width || width) * dpr);
+      const boxH = Math.max(2, (bounds.height || height) * dpr);
+      const scale = Math.min(boxW / vw, boxH / vh) || 1;
+      const renderWidth = Math.max(2, Math.round(vw * scale));
+      const renderHeight = Math.max(2, Math.round(vh * scale));
+      if (canvas.width !== renderWidth) canvas.width = renderWidth;
+      if (canvas.height !== renderHeight) canvas.height = renderHeight;
+      gl.viewport(0, 0, renderWidth, renderHeight);
     };
 
-    if (playing === undefined || playing) video.play().catch(() => undefined);
-    draw();
+    const syncPlayback = () => {
+      const canPlay = isOnScreen && document.visibilityState === "visible";
+      const wantsPlayback = playing === undefined ? loop || !video.ended : playing;
+      if (canPlay && wantsPlayback) video.play().catch(() => undefined);
+      else video.pause();
+    };
+
+    const uploadAndDraw = () => {
+      if (stopped || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      if (textureReady) {
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
+      } else {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+        textureReady = true;
+      }
+      gl.uniform2f(
+        texelLocation,
+        1 / Math.max(1, video.videoWidth),
+        1 / Math.max(1, video.videoHeight),
+      );
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    };
+
+    const drawFallback = () => {
+      if (stopped) return;
+      if (!video.paused && video.currentTime !== lastFallbackTime) {
+        lastFallbackTime = video.currentTime;
+        uploadAndDraw();
+      }
+      frameId = requestAnimationFrame(drawFallback);
+    };
+
+    const videoWithFrames = video as unknown as {
+      requestVideoFrameCallback?: (callback: () => void) => number;
+      cancelVideoFrameCallback?: (handle: number) => void;
+    };
+    const scheduleVideoFrame = () => {
+      if (stopped || !videoWithFrames.requestVideoFrameCallback) return;
+      videoFrameId = videoWithFrames.requestVideoFrameCallback(() => {
+        uploadAndDraw();
+        scheduleVideoFrame();
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(resizeDrawingBuffer);
+    resizeObserver.observe(container);
+    const intersectionObserver = new IntersectionObserver(
+      ([entry]) => {
+        isOnScreen = entry?.isIntersecting ?? true;
+        syncPlayback();
+      },
+      { rootMargin: "80px" },
+    );
+    intersectionObserver.observe(container);
+    const handleVisibility = () => syncPlayback();
+    const handleFrameReady = () => uploadAndDraw();
+    const handleMeta = () => {
+      resizeDrawingBuffer();
+      uploadAndDraw();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    video.addEventListener("loadedmetadata", handleMeta);
+    video.addEventListener("loadeddata", handleFrameReady);
+    video.addEventListener("seeked", handleFrameReady);
+
+    resizeDrawingBuffer();
+    syncPlayback();
+    if (videoWithFrames.requestVideoFrameCallback) scheduleVideoFrame();
+    else drawFallback();
 
     return () => {
       stopped = true;
       cancelAnimationFrame(frameId);
+      if (videoFrameId && videoWithFrames.cancelVideoFrameCallback)
+        videoWithFrames.cancelVideoFrameCallback(videoFrameId);
+      resizeObserver.disconnect();
+      intersectionObserver.disconnect();
+      document.removeEventListener("visibilitychange", handleVisibility);
+      video.removeEventListener("loadedmetadata", handleMeta);
+      video.removeEventListener("loadeddata", handleFrameReady);
+      video.removeEventListener("seeked", handleFrameReady);
+      video.pause();
       gl.deleteTexture(texture);
       gl.deleteBuffer(positionBuffer);
       gl.deleteBuffer(textureBuffer);
       gl.deleteProgram(program);
     };
-  }, [src, width, height]);
+  }, [height, loop, playing, src, width]);
 
   return (
-    <div className={`relative flex items-center justify-center select-none pointer-events-none ${className}`}>
+    <div
+      ref={containerRef}
+      className={`transparent-video-shell relative flex items-center justify-center select-none pointer-events-none ${className}`}
+    >
       <video
         ref={videoRef}
         src={src}
@@ -246,14 +330,14 @@ export function TransparentVideo({
         playsInline
         preload="auto"
         aria-hidden="true"
-        className="absolute h-px w-px opacity-0"
+        className="absolute h-px w-px opacity-0 pointer-events-none"
       />
       <canvas
         ref={canvasRef}
         width={width}
         height={height}
-        aria-label="Animated defeated cow"
-        className="h-full w-full object-contain drop-shadow-[0_16px_22px_rgba(0,0,0,0.65)]"
+        aria-label="Animated cow"
+        className="h-full w-full object-contain pointer-events-none drop-shadow-[0_10px_20px_rgba(0,0,0,0.7)]"
       />
     </div>
   );

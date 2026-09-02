@@ -10,6 +10,11 @@ import type { GameConfig } from "../platform-config/game-config.schema";
 // the previous count, skipping, picking >3, or timing out — eliminates them.
 const TARGET = 31;
 const WHEEL_MS = 6500; // the kickoff wheel spins this long (for everyone at once) before turn 1
+// On each knockout elimination the WHOLE game freezes this long for the cow dance — set to the lose
+// clip's length (~8.0s) plus a hair of headroom. The client plays the clip ONCE (no loop), so the
+// freeze should match the clip: too long and the cow holds its last frame ("extra" seconds); too
+// short and the clip is cut off. Re-measure the clip (headless `<video>.duration`) if it changes.
+const DANCE_MS = 8150;
 const MIN_PLAYERS = 2;
 const MAX_ROOMS = 2000; // backstop against unbounded room creation from watch/join floods
 const BOT_REJOIN_MS = 3500;
@@ -32,17 +37,11 @@ const PALETTE = [
 export type LiveReason = "31" | "repeat" | "over3" | "skip" | "timeout" | "left";
 type Mode = "practice" | "knockout";
 
-interface Team {
-  name: string;
-  color: string;
-}
 interface Cosmetics {
   card?: Record<string, unknown>;
   avatar?: Record<string, string>;
-  team?: Team; // the player's own team (INFLUENCER tournaments)
-  teams?: Team[]; // the two team definitions (so CPU fillers can be split across them)
-  captain?: boolean; // this player is the team captain (influencer) — special card
   startAt?: number; // tournament start time (ms) — the game holds in a lobby until then
+  skills?: string[]; // the loadout the player LOCKED IN at join (0–2 skills), used all tournament
 }
 interface Player {
   id: string;
@@ -51,8 +50,8 @@ interface Player {
   color: string;
   card?: Record<string, unknown>;
   avatar?: Record<string, string>;
-  team?: Team;
-  captain?: boolean;
+  skills?: Record<string, number>; // remaining charges per skill (1 charge each for the tournament)
+  equippedSkills?: string[]; // the locked loadout (for display)
 }
 export interface LivePlayer {
   id: string;
@@ -61,8 +60,8 @@ export interface LivePlayer {
   color: string;
   card?: Record<string, unknown>;
   avatar?: Record<string, string>;
-  team?: Team;
-  captain?: boolean;
+  skills?: Record<string, number>;
+  equippedSkills?: string[];
 }
 export interface LiveState {
   mode: Mode;
@@ -73,13 +72,22 @@ export interface LiveState {
   turnEndsAt: number | null;
   round: number;
   status: "waiting" | "playing" | "over";
-  winner: { name: string; color: string; team?: Team } | null;
+  winner: { id: string; name: string; color: string } | null;
   lastEliminated: { name: string; reason: LiveReason } | null;
+  // The previous player's full move (all 1–3 numbers they took) so the next player sees exactly what
+  // was picked — not just a single "PREV" tile.
+  lastMove: { playerId: string; playerName: string; playerColor: string; picks: number[]; count: number } | null;
   taken: Record<number, string>; // number -> colour of the player who took it (this round)
-  teamStandings: { name: string; color: string; alive: number }[]; // per-team survivors (INFLUENCER)
   startsAt: number | null; // lobby: when the tournament begins (ms) — clients show a GMT countdown
   spinEndsAt: number | null; // kickoff wheel is spinning until this ms (turn 1 starts after)
+  danceEndsAt: number | null; // elimination cow-dance: whole game frozen for everyone until this ms
 }
+
+// What the room does once an elimination cow-dance finishes. `reset` = start a fresh count from 0 (a
+// new lap — only when someone was forced to say 31); otherwise the count CONTINUES from where it was.
+type PendingResume =
+  | { type: "round"; idx: number; reset: boolean }
+  | { type: "end"; winner: { id: string; name: string; color: string } | null };
 
 function isBot(id: string): boolean {
   return id.startsWith("bot:");
@@ -99,10 +107,12 @@ class Room {
   status: "waiting" | "playing" | "over" = "waiting";
   startAt: number | null = null; // tournament start (ms). Game holds in a lobby until then.
   spinEndsAt: number | null = null; // kickoff wheel spin phase (turn 1 arms after this)
-  winner: { name: string; color: string; team?: Team } | null = null;
+  danceEndsAt: number | null = null; // elimination cow-dance freeze (game resumes after this)
+  pendingResume: PendingResume | null = null; // what to do when the cow-dance ends
+  winner: { id: string; name: string; color: string } | null = null;
   lastEliminated: { name: string; reason: LiveReason } | null = null;
+  lastMove: { playerId: string; playerName: string; playerColor: string; picks: number[]; count: number } | null = null;
   taken: Record<number, string> = {};
-  teamDefs: Team[] = []; // the teams for an INFLUENCER tournament room
   // Knockout only: ids of players eliminated for good. They may keep watching but can never rejoin.
   eliminated: Set<string> = new Set();
 
@@ -131,22 +141,17 @@ class Room {
   private addBot(name: string, avatarVariantId?: string): void {
     const id = `bot:${name}`;
     if (this.players.some((p) => p.id === id)) return;
-    // In an influencer room, split CPU fillers evenly across the two teams.
-    const team = this.teamDefs.length
-      ? this.teamDefs[this.players.filter((p) => p.cpu).length % this.teamDefs.length]
-      : undefined;
     this.players.push({
       id,
       name,
       cpu: true,
       color: this.colorFor(this.players.length),
-      team,
       avatar: avatarVariantId ? { variantId: avatarVariantId } : undefined,
     });
   }
 
-  private makeWinner(p: Player | undefined): { name: string; color: string; team?: Team } | null {
-    return p ? { name: p.name, color: p.color, team: p.team } : null;
+  private makeWinner(p: Player | undefined): { id: string; name: string; color: string } | null {
+    return p ? { id: p.id, name: p.name, color: p.color } : null;
   }
 
   // CPU fillers exist ONLY in the always-on practice room. Real tournaments have no bots.
@@ -169,22 +174,26 @@ class Room {
       if (this.eliminated.has(id)) return;
       if (this.status === "over") return;
     }
-    // The first joiner carrying team definitions themes the room (and its CPU fillers). Supports any
-    // number of teams/groups (influencer tournaments may have 2..6).
-    if (cos?.teams && cos.teams.length >= 2 && this.teamDefs.length === 0)
-      this.teamDefs = cos.teams.slice();
     // The first joiner carrying a start time schedules the room — everyone waits in a lobby with a
     // GMT countdown until then, and the game begins for all players at the same moment.
     if (this.mode === "knockout" && cos?.startAt && this.startAt === null)
       this.startAt = cos.startAt;
+    // Build the player's skill inventory from their locked loadout (1 charge per equipped skill).
+    const equippedSkills = Array.from(new Set(cos?.skills ?? [])).slice(0, 2);
+    const skillCharges: Record<string, number> = {};
+    for (const s of equippedSkills) skillCharges[s] = 1;
+
     const existing = this.players.find((p) => p.id === id);
     if (existing) {
       existing.name = name;
       if (cos?.card) existing.card = cos.card;
       if (cos?.avatar) existing.avatar = cos.avatar;
-      if (cos?.team) existing.team = cos.team;
-      if (cos?.captain !== undefined) existing.captain = cos.captain;
       existing.color = this.colorFor(this.players.indexOf(existing), cos?.card);
+      // Only set the locked loadout the first time (it can't be changed after joining).
+      if (existing.equippedSkills === undefined && equippedSkills.length) {
+        existing.equippedSkills = equippedSkills;
+        existing.skills = skillCharges;
+      }
     } else {
       this.players.push({
         id,
@@ -193,17 +202,17 @@ class Room {
         color: this.colorFor(this.players.length, cos?.card),
         card: cos?.card,
         avatar: cos?.avatar,
-        team: cos?.team,
-        captain: cos?.captain,
+        equippedSkills,
+        skills: skillCharges,
       });
     }
     if (this.status !== "playing") {
       if (this.mode === "knockout") {
-        // Real tournament: REAL players only (no CPU fillers). Players wait in a LOBBY; the game
-        // begins only when the scheduled start time has arrived (tick() fires it for everyone at
-        // once). It never starts early, and never at all until a start time is scheduled.
-        const dueToStart = this.startAt !== null && Date.now() >= this.startAt;
-        if (dueToStart && this.players.length >= MIN_PLAYERS) this.beginRound(this.randomStart());
+        // Real tournament: the game is started by tick() ONLY — never here in join(). This matters
+        // because we seed the whole registered roster with several join() calls in a row; if join()
+        // could start the game it would fire as soon as the first 2 seats existed, dropping everyone
+        // seeded afterwards. tick() starts it once the full roster is in place and the start time has
+        // arrived (for everyone at once).
       } else {
         // Practice room: always-on, begins as soon as there's a field.
         if (this.players.length >= MIN_PLAYERS) this.beginRound(this.randomStart());
@@ -228,16 +237,9 @@ class Room {
       this.turnEndsAt = null;
       this.spinEndsAt = null;
       this.botActAt = null;
-    } else {
-      // If a departure leaves only one team standing, that team wins the knockout now.
-      const teamWin = this.mode === "knockout" ? this.soleRemainingTeam() : null;
-      if (teamWin) {
-        this.lastEliminated = { name: gone?.name ?? "Player", reason: "left" };
-        this.endKnockout({ name: teamWin.name, color: teamWin.color, team: teamWin });
-      } else if (wasCurrent) {
-        this.lastEliminated = { name: gone?.name ?? "Player", reason: "left" };
-        this.beginRound(idx);
-      }
+    } else if (wasCurrent) {
+      this.lastEliminated = { name: gone?.name ?? "Player", reason: "left" };
+      this.beginRound(idx);
     }
     this.onChange();
   }
@@ -269,9 +271,40 @@ class Room {
     const player = this.players.find((p) => p.id === id);
     const color = player?.color ?? PALETTE[0]!;
     for (const n of picks) this.taken[n] = color;
+    // Record the FULL move so the next player sees every number this player took (not just one).
+    this.lastMove = { playerId: id, playerName: player?.name ?? "Player", playerColor: color, picks, count: m };
     this.count = this.count + m;
     this.lastK = m;
     if (this.count >= TARGET) return this.eliminate(id, "31");
+    this.advanceTurn();
+    this.onChange();
+  }
+
+  /** Play a LOCKED skill on your turn. A skill IS your whole turn (you don't also submit numbers):
+   * it applies its effect and passes the turn. Each skill has a single charge for the tournament and
+   * is locked out once the count reaches the danger zone (>= 22). */
+  useSkill(id: string, skill: string): void {
+    if (this.status !== "playing" || id !== this.currentId) return;
+    if (this.spinEndsAt !== null || this.turnEndsAt === null) return; // not mid-turn (spin/lobby)
+    if (this.count >= 22) return; // skills lock in the danger zone
+    const player = this.players.find((p) => p.id === id);
+    if (!player?.skills || (player.skills[skill] ?? 0) <= 0) return;
+
+    player.skills = { ...player.skills, [skill]: 0 }; // consume the single charge
+
+    if (skill === "rewind") {
+      const newCount = Math.max(0, this.count - 2);
+      delete this.taken[this.count];
+      delete this.taken[this.count - 1];
+      this.count = newCount;
+    } else if (skill === "turbo") {
+      const newCount = Math.min(TARGET - 1, this.count + 3);
+      for (let n = this.count + 1; n <= newCount; n++) this.taken[n] = player.color;
+      this.count = newCount;
+    } // "shield" / "nudge" change nothing on the board — they simply pass the turn.
+
+    this.lastK = null; // a skill isn't a digit-count move, so it carries no repeat constraint
+    this.lastMove = null; // and it isn't a number pick, so there's no "PREV" tiles to show
     this.advanceTurn();
     this.onChange();
   }
@@ -288,6 +321,22 @@ class Room {
     ) {
       this.beginRound(this.randomStart());
       this.onChange();
+      return;
+    }
+    // Elimination cow-dance: the WHOLE game is frozen (every client shows the cow centre-stage, no
+    // timers run) until it ends; then apply the resume decided at elimination time.
+    if (this.danceEndsAt !== null) {
+      if (now >= this.danceEndsAt) {
+        this.danceEndsAt = null;
+        const r = this.pendingResume;
+        this.pendingResume = null;
+        if (r?.type === "end") this.endKnockout(r.winner);
+        else if (r?.type === "round") {
+          if (r.reset) this.beginRound(r.idx); // a completed lap (31) → fresh count from 0
+          else this.continueRound(r.idx); // continue the count from where it was
+        }
+        this.onChange();
+      }
       return;
     }
     if (this.status !== "playing" || !this.currentId) return;
@@ -331,10 +380,31 @@ class Room {
       : null;
   }
 
+  /** Continue the SAME count (no reset) after a non-31 elimination — the field just shrank. Keeps
+   * count/taken/lastK/lastMove and passes the turn to the next surviving player (the one now sitting
+   * at `starterIndex` after the eliminated player was spliced out). */
+  private continueRound(starterIndex: number): void {
+    if (this.players.length < MIN_PLAYERS) {
+      this.status = this.mode === "knockout" && this.players.length === 1 ? "over" : "waiting";
+      if (this.status === "over") this.winner = this.makeWinner(this.players[0]);
+      this.currentId = null;
+      this.turnEndsAt = null;
+      this.spinEndsAt = null;
+      this.botActAt = null;
+      return;
+    }
+    const idx = ((starterIndex % this.players.length) + this.players.length) % this.players.length;
+    this.currentId = this.players[idx]!.id;
+    this.status = "playing";
+    this.spinEndsAt = null;
+    this.armTurn();
+  }
+
   private beginRound(starterIndex: number): void {
     this.count = 0;
     this.lastK = null;
     this.taken = {};
+    this.lastMove = null;
     this.round += 1;
     if (this.players.length < MIN_PLAYERS) {
       this.status = this.mode === "knockout" && this.players.length === 1 ? "over" : "waiting";
@@ -386,48 +456,32 @@ class Room {
       this.beginRound(idx);
     } else {
       // Knockout: the player is OUT for good — the field shrinks. They may keep watching but can
-      // never rejoin.
+      // never rejoin. FIRST, freeze the WHOLE game for the elimination cow-dance (every player sees
+      // the cow centre-stage; no timers run). What happens after the dance is decided now and stored
+      // in `pendingResume`, then applied by tick() once `danceEndsAt` passes.
       this.eliminated.add(id);
-      const teamWin = this.soleRemainingTeam();
       if (this.players.length <= 1) {
-        // Last one standing wins.
-        this.endKnockout(this.makeWinner(this.players[0]));
-      } else if (teamWin) {
-        // Every remaining player belongs to the same team — no rival team survives, so that team
-        // wins now and the tournament stops even though several of its players are still in.
-        this.endKnockout({ name: teamWin.name, color: teamWin.color, team: teamWin });
+        this.pendingResume = { type: "end", winner: this.makeWinner(this.players[0]) };
       } else {
-        this.beginRound(idx);
+        // Only a "31" (someone forced to say 31) starts a fresh count; every other elimination
+        // (timeout / repeat / skip / over-3) CONTINUES the count from where it was.
+        this.pendingResume = { type: "round", idx, reset: reason === "31" || this.count >= TARGET };
       }
+      this.danceEndsAt = Date.now() + DANCE_MS;
+      this.currentId = null; // no active turn during the dance
+      this.turnEndsAt = null;
+      this.botActAt = null;
     }
     this.onChange();
   }
 
-  /** Knockout: if the room is a team battle and every surviving player is on the SAME team (no rival
-   * team has anyone left), return that team — it has won. Otherwise null. */
-  private soleRemainingTeam(): Team | null {
-    if (!this.teamDefs.length || this.players.length === 0) return null;
-    const first = this.players[0]!.team;
-    if (!first) return null;
-    return this.players.every((p) => p.team && p.team.name === first.name) ? first : null;
-  }
-
-  private endKnockout(winner: { name: string; color: string; team?: Team } | null): void {
+  private endKnockout(winner: { id: string; name: string; color: string } | null): void {
     this.status = "over";
     this.winner = winner;
     this.currentId = null;
     this.turnEndsAt = null;
     this.spinEndsAt = null;
     this.botActAt = null;
-  }
-
-  private teamStandings(): { name: string; color: string; alive: number }[] {
-    if (!this.teamDefs.length) return [];
-    return this.teamDefs.map((t) => ({
-      name: t.name,
-      color: t.color,
-      alive: this.players.filter((p) => p.team?.name === t.name).length,
-    }));
   }
 
   getState(): LiveState {
@@ -441,8 +495,8 @@ class Room {
         color: p.color,
         card: p.card,
         avatar: p.avatar,
-        team: p.team,
-        captain: p.captain,
+        skills: p.skills,
+        equippedSkills: p.equippedSkills,
       })),
       currentId: this.currentId,
       lastK: this.lastK,
@@ -451,10 +505,11 @@ class Room {
       status: this.status,
       winner: this.winner,
       lastEliminated: this.lastEliminated,
+      lastMove: this.lastMove,
       taken: this.taken,
-      teamStandings: this.teamStandings(),
       startsAt: this.startAt,
       spinEndsAt: this.spinEndsAt,
+      danceEndsAt: this.danceEndsAt,
     };
   }
 }
@@ -521,6 +576,9 @@ export class CountdownGameService implements OnModuleInit, OnModuleDestroy {
   }
   submit(roomId: string, socketId: string, picks: unknown): void {
     this.getRoom(roomId).submit(socketId, picks);
+  }
+  useSkill(roomId: string, socketId: string, skill: string): void {
+    this.getRoom(roomId).useSkill(socketId, skill);
   }
   arm(roomId: string, socketId: string): void {
     this.getRoom(roomId).arm(socketId);

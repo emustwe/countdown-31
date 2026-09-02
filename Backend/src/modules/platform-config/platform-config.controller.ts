@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Patch,
   Post,
   Req,
@@ -22,7 +24,7 @@ import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import type { AccessTokenPayload } from "../auth/token.types";
-import { GameConfigSchema, type GameConfig } from "./game-config.schema";
+import { GameConfigSchema, GameThemeSchema, type GameConfig, type GameTheme } from "./game-config.schema";
 import { PlatformConfigService } from "./platform-config.service";
 
 @Controller("game")
@@ -37,6 +39,12 @@ export class PublicGameConfigController {
   @Get("theme")
   getTheme() {
     return { themeFamily: this.config.getGameConfig().branding.themeFamily };
+  }
+
+  // Public list of saved sponsor themes (used by the tournament-creation theme picker + the game).
+  @Get("themes")
+  getThemes() {
+    return this.config.getThemes();
   }
 }
 
@@ -64,6 +72,20 @@ export class AdminGameConfigController {
     return this.config.resetGameConfig(user.sub);
   }
 
+  // Create/update a named sponsor theme (upsert by id). Returns the full themes list.
+  @Post("themes")
+  saveTheme(
+    @CurrentUser() user: AccessTokenPayload,
+    @Body(new ZodValidationPipe(GameThemeSchema)) body: GameTheme,
+  ) {
+    return this.config.saveTheme(body, user.sub);
+  }
+
+  @Delete("themes/:id")
+  deleteTheme(@CurrentUser() user: AccessTokenPayload, @Param("id") id: string) {
+    return this.config.deleteTheme(id, user.sub);
+  }
+
   @Post("assets/background")
   @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024 } }))
   async uploadBackground(
@@ -78,9 +100,11 @@ export class AdminGameConfigController {
       "image/png": ".png",
       "image/webp": ".webp",
       "image/gif": ".gif",
+      "image/svg+xml": ".svg",
+      "image/avif": ".avif",
     };
     const extension = extensions[file.mimetype];
-    if (!extension) throw new BadRequestException("Use a JPG, PNG, WebP, or GIF image");
+    if (!extension) throw new BadRequestException("Use a JPG, PNG, SVG, WebP, GIF or AVIF image");
 
     const directory = resolve(process.cwd(), "uploads", "game-config");
     await mkdir(directory, { recursive: true });

@@ -42,14 +42,14 @@ export const RULE_BOOK: RuleItem[] = [
   {
     titleEn: "Rule 6. Group Stage",
     titleKo: "Rule 6. 그룹 스테이지",
-    bodyEn: "Qualification rounds are played in groups, and only the designated number of players advance.",
-    bodyKo: "예선은 그룹별로 진행되며 각 그룹에서 정해진 인원만 다음 라운드로 진출합니다.",
+    bodyEn: "In group tournaments, entrants are automatically split into groups of 31 by join order. Each group plays its own knockout on its scheduled day, and only the single winner of each group advances to the final.",
+    bodyKo: "그룹 토너먼트에서는 참가 순서에 따라 31명씩 자동으로 그룹에 배정됩니다. 각 그룹은 지정된 날짜에 별도의 녹아웃 경기를 진행하며, 그룹별 최종 승자 1명만 결승에 진출합니다.",
   },
   {
     titleEn: "Rule 7. Final Round",
     titleKo: "Rule 7. 결승전",
-    bodyEn: "Qualified players compete in one final match to determine the overall rankings.",
-    bodyKo: "최종 진출자는 하나의 결승 라운드에서 경쟁하며 최종 순위가 결정됩니다.",
+    bodyEn: "All group winners meet in one final match on the last day of the tournament to crown the champion.",
+    bodyKo: "모든 그룹의 승자는 토너먼트 마지막 날 하나의 결승 경기에서 만나 최종 챔피언을 가립니다.",
   },
   {
     titleEn: "Rule 8. Prize Pool",

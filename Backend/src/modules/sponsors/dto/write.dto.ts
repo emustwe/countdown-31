@@ -10,31 +10,38 @@ const numeric = z.union([z.number(), z.string().max(20)]);
 const nullableNumeric = numeric.nullable();
 const looseDate = z.string().max(40).nullable(); // "YYYY-MM-DD" or ISO; parsed server-side
 
-const teamInput = z.object({ name: z.string().max(60).optional(), captainName: z.string().max(80).optional() });
-
 // ---- Promo tournaments ----
 const promoFields = {
   title: z.string().max(120).optional(),
   description: z.string().max(1000).optional(),
   visibility: z.enum(["PUBLIC", "PRIVATE"]).optional(),
-  type: z.enum(["REGULAR", "INFLUENCER"]).optional(),
+  // REGULAR = single knockout. GROUP = multi-day 31-per-group format.
+  type: z.enum(["REGULAR", "GROUP"]).optional(),
+  // GROUP only: total days incl. the final day (must be >= 2 for a separate final).
+  durationDays: nullableNumeric.optional(),
   startAt: looseDate.optional(),
   startDate: looseDate.optional(),
   timeOptions: z.array(hhmm).max(24).optional(),
-  teams: z.array(teamInput).max(8).optional(),
-  hasInfluencers: z.boolean().optional(),
-  groupCount: numeric.optional(),
-  minGroupPlayers: nullableNumeric.optional(),
-  maxGroupPlayers: nullableNumeric.optional(),
   prizePool: z.string().max(120).optional(),
   winnerCount: numeric.optional(),
   minPlayers: nullableNumeric.optional(),
   maxPlayers: nullableNumeric.optional(),
   seekingSponsor: z.boolean().optional(),
   sponsorId: z.string().max(64).nullable().optional(),
+  // Selected Game Studio sponsor theme (applied to this tournament's game). Null clears it.
+  themeId: z.string().max(64).nullable().optional(),
 };
 export const PromoCreateSchema = z.object({ ...promoFields, title: z.string().min(1).max(120) });
 export const PromoUpdateSchema = z.object({ ...promoFields, status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional() });
+
+// Manual per-day group scheduling: admin assigns each stage group a day (1..durationDays-1).
+export const ScheduleSchema = z
+  .object({
+    schedule: z
+      .array(z.object({ groupId: z.string().max(64), day: z.number().int().min(1).max(366) }))
+      .max(5000),
+  })
+  .strict();
 
 // ---- Sponsors ----
 export const SponsorCreateSchema = z.object({
@@ -69,7 +76,13 @@ export const AssignSponsorSchema = z.object({
 });
 
 // ---- Join / vote (user-facing, strict) ----
-export const JoinSchema = z.object({ joinCode: z.string().max(64).optional(), teamCode: z.string().max(64).optional() }).strict();
+export const JoinSchema = z
+  .object({
+    joinCode: z.string().max(64).optional(),
+    // Locked skill loadout chosen at join time (0–2 of the tactical skills).
+    skills: z.array(z.enum(["rewind", "turbo", "shield", "nudge", "double"])).max(2).optional(),
+  })
+  .strict();
 export const VoteTimeSchema = z.object({ slot: hhmm }).strict();
 
 // ---- Cosmetics (strict whitelist — no arbitrary keys persisted) ----

@@ -25,25 +25,52 @@ export default function SponsorshipPage() {
   const [showRules, setShowRules] = useState(false);
 
   // Form state for modal
+  const [sponsorName, setSponsorName] = useState("");
   const [email, setEmail] = useState("");
+  const [refCode, setRefCode] = useState("");
+  // For a generic sponsorship (no specific tournament picked): sponsor a NEW tournament, or an
+  // EXISTING one (which additionally needs that tournament's referral code).
+  const [sponsorMode, setSponsorMode] = useState<"new" | "existing">("new");
   const [message, setMessage] = useState("");
   const [formErr, setFormErr] = useState("");
   const [formOk, setFormOk] = useState(false);
 
+  function resetForm() {
+    setSponsorName("");
+    setEmail("");
+    setRefCode("");
+    setSponsorMode("new");
+    setMessage("");
+    setFormErr("");
+  }
+
   function requestEntry() {
     soundManager.playClick();
+    resetForm();
     if (accessToken) setContact({ type: "ENTRY" });
     else setGate(true);
   }
 
   function openSponsorInquiry(t?: PromoTournament) {
     soundManager.playClick();
+    resetForm();
     if (t) {
+      // Sponsoring a specific, already-listed tournament — it's identified by id, no code needed.
+      setSponsorMode("existing");
       setContact({ type: "SPONSORSHIP", tournamentId: t.id, title: t.title, ref: refOf(t.id) });
     } else {
       setContact({ type: "SPONSORSHIP" });
     }
   }
+
+  // Does the current form require a tournament referral code?
+  // - ENTRY into a private tournament always needs the code.
+  // - Sponsoring an EXISTING (not specifically-picked) tournament needs the code.
+  const needsRefCode =
+    !!contact &&
+    (contact.type === "ENTRY" || (contact.type === "SPONSORSHIP" && !contact.tournamentId && sponsorMode === "existing"));
+  // Sponsors always identify themselves with a company/sponsor name.
+  const needsSponsorName = !!contact && contact.type === "SPONSORSHIP";
 
   async function handleSubmitInquiry(e: React.FormEvent) {
     e.preventDefault();
@@ -55,18 +82,28 @@ export default function SponsorshipPage() {
       setFormErr("Please provide an email address.");
       return;
     }
+    if (needsSponsorName && !sponsorName.trim()) {
+      setFormErr("Please provide your company / sponsor name.");
+      return;
+    }
+    if (needsRefCode && !refCode.trim()) {
+      setFormErr("Please enter the tournament referral code.");
+      return;
+    }
     try {
       await createInquiry.mutateAsync({
         type: contact.type,
         tournamentId: contact.tournamentId,
+        tournamentRef: needsRefCode ? refCode.trim().toUpperCase() : undefined,
         email: em,
+        name: needsSponsorName ? sponsorName.trim() : undefined,
         message: message.trim() || undefined,
       });
       setFormOk(true);
       setTimeout(() => {
         setFormOk(false);
         setContact(null);
-        setMessage("");
+        resetForm();
       }, 2500);
     } catch (err) {
       setFormErr(err instanceof Error ? err.message : "Failed to send inquiry.");
@@ -236,6 +273,50 @@ export default function SponsorshipPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmitInquiry} className="flex flex-col gap-3">
+                {/* Generic sponsorship: choose a brand-new tournament or an existing one. */}
+                {contact.type === "SPONSORSHIP" && !contact.tournamentId && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-title font-bold text-slate-300">What would you like to sponsor?</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSponsorMode("new")}
+                        className={`py-2.5 rounded-xl border-2 font-title font-black text-xs transition-all cursor-pointer ${
+                          sponsorMode === "new"
+                            ? "bg-amber-400/20 border-amber-400 text-amber-300"
+                            : "bg-black/50 border-slate-700 text-slate-300 hover:border-amber-400/50"
+                        }`}
+                      >
+                        NEW SPONSOR TOURNAMENT
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSponsorMode("existing")}
+                        className={`py-2.5 rounded-xl border-2 font-title font-black text-xs transition-all cursor-pointer ${
+                          sponsorMode === "existing"
+                            ? "bg-amber-400/20 border-amber-400 text-amber-300"
+                            : "bg-black/50 border-slate-700 text-slate-300 hover:border-amber-400/50"
+                        }`}
+                      >
+                        EXISTING TOURNAMENT
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {needsSponsorName && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-title font-bold text-slate-300">Company / Sponsor Name:</label>
+                    <input
+                      required
+                      value={sponsorName}
+                      onChange={(e) => setSponsorName(e.target.value)}
+                      placeholder="e.g. Pasture Labs Inc."
+                      className="px-4 py-2.5 rounded-xl bg-black/70 border border-slate-700 text-white font-title text-sm focus:border-amber-400 outline-none"
+                    />
+                  </div>
+                )}
+
                 {!profile?.email && (
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-title font-bold text-slate-300">Your Email Address:</label>
@@ -246,6 +327,20 @@ export default function SponsorshipPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
                       className="px-4 py-2.5 rounded-xl bg-black/70 border border-slate-700 text-white font-title text-sm focus:border-amber-400 outline-none"
+                    />
+                  </div>
+                )}
+
+                {needsRefCode && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-title font-bold text-slate-300">Tournament Referral Code:</label>
+                    <input
+                      required
+                      value={refCode}
+                      onChange={(e) => setRefCode(e.target.value)}
+                      placeholder="e.g. JOIN-XXXXXXXX"
+                      autoCapitalize="characters"
+                      className="px-4 py-2.5 rounded-xl bg-black/70 border border-slate-700 text-white font-title text-sm focus:border-amber-400 outline-none tracking-wider"
                     />
                   </div>
                 )}

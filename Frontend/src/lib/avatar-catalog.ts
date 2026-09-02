@@ -60,6 +60,24 @@ const CHARACTER_DETAILS: Record<AvatarCharacterId, Omit<AvatarCharacter, "id" | 
   moss: { name: "Moss", tagline: "Forest guardian", accent: "from-lime-300 to-emerald-600" },
 };
 
+// Where the layered "Styling" glasses sit on each cow's face, as a % of the rendered MasterAvatar
+// box: x/y = eye-line centre, w = glasses width, rot = tilt. Champion is tuned precisely; the others
+// are best-effort (the glasses accessory is currently intended for Champion).
+export interface FaceAnchor {
+  x: number;
+  y: number;
+  w: number;
+  rot?: number;
+}
+export const EYE_ANCHOR: Record<AvatarCharacterId, FaceAnchor> = {
+  champion: { x: 47.5, y: 37.5, w: 27 },
+  daisy: { x: 47.5, y: 34, w: 26 },
+  rusty: { x: 48, y: 37, w: 26 },
+  nova: { x: 46.5, y: 34, w: 26 },
+  luna: { x: 48, y: 33, w: 26 },
+  moss: { x: 47, y: 33, w: 26 },
+};
+
 function isAvatarCharacterId(value: unknown): value is AvatarCharacterId {
   return typeof value === "string" && AVATAR_CHARACTER_IDS.includes(value as AvatarCharacterId);
 }

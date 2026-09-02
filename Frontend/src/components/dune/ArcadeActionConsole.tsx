@@ -186,14 +186,14 @@ export function ArcadeActionConsole({
               key={card.type}
               animate={
                 isBeingThrown
-                  ? { y: -80, opacity: 0, scale: 1.15, rotate: -5 }
+                  ? { y: -120, opacity: 0, scale: 1.25, rotate: -8 }
                   : { y: 0, opacity: 1, scale: 1, rotate: 0 }
               }
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              whileHover={canPlay ? { y: -6, scale: 1.02 } : {}}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              whileHover={canPlay ? { y: -8, scale: 1.05, rotateY: 5 } : {}}
               onClick={() => canPlay && handlePlayCard(card.type)}
               data-sound="none"
-              className={`arcade-skill-card relative flex min-h-[190px] select-none flex-col justify-between rounded-3xl border-2 p-3.5 transition-all sm:min-h-[210px] sm:p-4 ${
+              className={`arcade-skill-card relative flex min-h-[190px] select-none flex-col justify-between rounded-3xl border-2 p-3.5 transition-all sm:min-h-[210px] sm:p-4 overflow-hidden ${
                 card.cardGradient
               } ${
                 canPlay
@@ -201,6 +201,11 @@ export function ArcadeActionConsole({
                   : "border-slate-800 opacity-50 grayscale cursor-not-allowed"
               }`}
             >
+              {/* Dynamic Holographic Foil Shimmer when ready */}
+              {canPlay && (
+                <div className="absolute inset-0 anim-holo-shimmer opacity-20 pointer-events-none z-10" />
+              )}
+
               {/* Card Header */}
               <div className="flex items-center justify-between mb-1.5">
                 <span

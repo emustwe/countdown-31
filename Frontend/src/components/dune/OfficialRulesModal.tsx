@@ -89,7 +89,7 @@ export function OfficialRulesModal({ isOpen, onClose }: OfficialRulesModalProps)
                   OFFICIAL GAME RULES
                 </h2>
                 <span className="text-[11px] font-title font-semibold text-emerald-300/80 uppercase tracking-widest">
-                  Count Down 31 Tournament Code
+                  Thirty One 31 Tournament Code
                 </span>
               </div>
             </div>

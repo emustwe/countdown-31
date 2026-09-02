@@ -13,7 +13,10 @@ export const GameConfigSchema = z
         gameTitle: shortText,
         subtitle: z.string().trim().max(100),
         announcement: z.string().trim().max(140),
-        logoEmoji: z.string().trim().min(1).max(8),
+        // Optional — a sponsor may set a logo/emoji or leave it blank (name-only brand).
+        logoEmoji: z.string().trim().max(8),
+        // Uploaded/linked brand logo image URL (JPG/PNG/SVG/…). Blank = show the "31" mark.
+        logoUrl: z.string().trim().max(2000),
         themeFamily: z.enum(["monster", "desert"]),
       })
       .strict(),
@@ -144,10 +147,11 @@ export type GameConfig = z.infer<typeof GameConfigSchema>;
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   branding: {
-    gameTitle: "COUNT DOWN",
-    subtitle: "Live Battle Arena",
+    gameTitle: "THIRTY ONE",
+    subtitle: "Knockout Arena",
     announcement: "Tactical skills activated!",
-    logoEmoji: "🐮",
+    logoEmoji: "",
+    logoUrl: "",
     themeFamily: "monster",
   },
   arena: {
@@ -287,7 +291,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     },
     {
       id: "cow",
-      label: "My Cow",
+      label: "My Avatars",
       path: "/avatar",
       icon: "cow",
       enabled: true,
@@ -359,3 +363,23 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     },
   ],
 };
+
+/* ---------------------------------------------------------------- game themes
+ * A named, reusable SPONSOR THEME — created in the Game Studio, picked at tournament creation. It
+ * overrides the tournament game's brand (name/logo/tagline) and arena backdrop. Stored as a JSON
+ * array under the `themes` platform-config key. */
+export const GameThemeSchema = z
+  .object({
+    id: z.string().trim().min(1).max(64),
+    name: z.string().trim().min(1).max(80),
+    gameTitle: z.string().trim().max(60),
+    subtitle: z.string().trim().max(100),
+    logoUrl: z.string().trim().max(2000),
+    backgroundImage: z.string().trim().max(2000),
+    overlayOpacity: z.number().min(0).max(0.9),
+    primaryColor: z.string().trim().max(9),
+    secondaryColor: z.string().trim().max(9),
+  })
+  .strict();
+export const GameThemesSchema = z.array(GameThemeSchema).max(200);
+export type GameTheme = z.infer<typeof GameThemeSchema>;

@@ -1,16 +1,18 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Check,
   CheckCircle2,
-  ChevronRight,
   Clock,
   Copy,
-  Crown,
+  Layers,
   Lock,
+  Megaphone,
   Pencil,
   Plus,
+  Sparkles,
   Trash2,
   Trophy,
   Unlock,
@@ -23,32 +25,30 @@ import {
   useUpdatePromo,
   useDeletePromo,
   useSetPromoStatus,
+  useMarkPrizeDelivered,
+  useSetupSponsorDemo,
   useSponsors,
   type PromoTournament,
   type PromoType,
   type Visibility,
 } from "../../../lib/hooks/useSponsors";
+import { useGameThemes } from "../../../lib/hooks/useGameConfig";
 import { soundManager } from "../../../lib/soundManager";
 
-const TEAM_COLORS = ["#5aa8ff", "#ff6b7f", "#5be348", "#f4b942", "#b48cff", "#38e0d0"];
-const MAX_GROUPS = TEAM_COLORS.length;
 const QUICK_SLOTS = ["12:00", "15:00", "18:00", "20:00", "22:00"];
+const GROUP_SIZE = 31;
 
-interface TeamForm {
-  name: string;
-  captainName: string;
-}
 interface FormState {
   title: string;
   description: string;
   visibility: Visibility;
+  // Sponsor inclusion (for both PUBLIC and PRIVATE): none = house; include = pick an existing sponsor;
+  // find = generate a sponsor code + list on the Sponsorship page so sponsors can contact the admin.
+  sponsorMode: "none" | "include" | "find";
   sponsorId: string;
+  themeId: string;
   type: PromoType;
-  hasInfluencers: boolean;
-  groupCount: number;
-  teams: TeamForm[];
-  minGroupPlayers: string;
-  maxGroupPlayers: string;
+  durationDays: string; // GROUP only
   startDate: string;
   timeOptions: string[];
   prizePool: string;
@@ -61,16 +61,11 @@ const EMPTY: FormState = {
   title: "",
   description: "",
   visibility: "PUBLIC",
+  sponsorMode: "none",
   sponsorId: "",
+  themeId: "",
   type: "REGULAR",
-  hasInfluencers: false,
-  groupCount: 2,
-  teams: [
-    { name: "", captainName: "" },
-    { name: "", captainName: "" },
-  ],
-  minGroupPlayers: "",
-  maxGroupPlayers: "",
+  durationDays: "7",
   startDate: "",
   timeOptions: [],
   prizePool: "",
@@ -82,14 +77,9 @@ const EMPTY: FormState = {
 function toDateInput(iso: string | null): string {
   return iso ? iso.slice(0, 10) : "";
 }
-function fmtDate(iso: string | null): string {
+function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }) + " GMT";
-}
-function resizeTeams(teams: TeamForm[], n: number): TeamForm[] {
-  const out = teams.slice(0, n);
-  while (out.length < n) out.push({ name: "", captainName: "" });
-  return out;
 }
 
 const inputCls = "w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2.5 px-3.5 text-sm text-white outline-none transition-colors";
@@ -98,9 +88,12 @@ const labelCls = "text-[11px] font-title font-bold text-slate-300";
 export default function TournamentAdminPage() {
   const { data: promos } = useAdminPromoTournaments();
   const { data: sponsors } = useSponsors();
+  const { data: themes } = useGameThemes();
   const create = useCreatePromo();
   const update = useUpdatePromo();
   const del = useDeletePromo();
+  const markDelivered = useMarkPrizeDelivered();
+  const sponsorDemo = useSetupSponsorDemo();
   const setStatus = useSetPromoStatus();
 
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -108,30 +101,15 @@ export default function TournamentAdminPage() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState("");
   const [slotDraft, setSlotDraft] = useState("");
-  const [createdCodes, setCreatedCodes] = useState<{ title: string; hasInfluencers: boolean; teams: { name: string; captainName: string; captainCode: string; memberCode: string }[] } | null>(null);
 
-  const isGroup = form.type === "INFLUENCER";
-  const showCaptains = form.hasInfluencers; // captain/influencer name fields + captain codes
-  const wantsTeams = isGroup || form.hasInfluencers;
+  const isGroup = form.type === "GROUP";
 
   function set<K extends keyof FormState>(k: K, v: FormState[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
-  function setTeam(i: number, patch: Partial<TeamForm>) {
-    setForm((f) => ({ ...f, teams: f.teams.map((t, idx) => (idx === i ? { ...t, ...patch } : t)) }));
-  }
   function setType(next: PromoType) {
     soundManager.playClick();
     setForm((f) => ({ ...f, type: next }));
-  }
-  function setGroupCount(n: number) {
-    const minTeams = form.type === "INFLUENCER" ? 2 : 1;
-    const clamped = Math.max(minTeams, Math.min(MAX_GROUPS, n));
-    setForm((f) => ({ ...f, groupCount: clamped, teams: resizeTeams(f.teams, clamped) }));
-  }
-  function setHasInfluencers(v: boolean) {
-    soundManager.playClick();
-    setForm((f) => (v && f.type === "REGULAR" ? { ...f, hasInfluencers: true, groupCount: 1, teams: resizeTeams(f.teams, 1) } : { ...f, hasInfluencers: v }));
   }
   function addSlot(value?: string) {
     const v = (value ?? slotDraft).trim();
@@ -146,18 +124,15 @@ export default function TournamentAdminPage() {
   function startEdit(t: PromoTournament) {
     soundManager.playClick();
     setEditingId(t.id);
-    const gc = Math.max(1, Math.min(MAX_GROUPS, t.groupCount || 2));
     setForm({
       title: t.title,
       description: t.description,
       visibility: t.visibility,
+      sponsorMode: t.sponsor ? "include" : t.seekingSponsor ? "find" : "none",
       sponsorId: t.sponsor?.id ?? "",
+      themeId: t.themeId ?? "",
       type: t.type ?? "REGULAR",
-      hasInfluencers: !!t.hasInfluencers,
-      groupCount: gc,
-      teams: resizeTeams((t.teams ?? []).map((tm) => ({ name: tm.name, captainName: tm.captainName })), gc),
-      minGroupPlayers: t.minGroupPlayers != null ? String(t.minGroupPlayers) : "",
-      maxGroupPlayers: t.maxGroupPlayers != null ? String(t.maxGroupPlayers) : "",
+      durationDays: t.durationDays != null ? String(t.durationDays) : "7",
       startDate: toDateInput(t.startDate),
       timeOptions: [...(t.timeOptions ?? [])],
       prizePool: t.prizePool,
@@ -181,12 +156,8 @@ export default function TournamentAdminPage() {
     soundManager.playClick();
     setError("");
     if (!form.title.trim()) return;
-    if (showCaptains && form.teams.some((t) => !t.captainName.trim())) {
-      setError("Every influencer needs a name.");
-      return;
-    }
-    if (isGroup && form.teams.some((t) => !t.name.trim())) {
-      setError("Every group needs a name.");
+    if (isGroup && (Number(form.durationDays) || 0) < 2) {
+      setError("A group tournament needs at least 2 days (group stage + a final day).");
       return;
     }
     const body = {
@@ -194,41 +165,22 @@ export default function TournamentAdminPage() {
       description: form.description.trim(),
       visibility: form.visibility,
       type: form.type,
-      hasInfluencers: form.hasInfluencers,
+      durationDays: isGroup ? Number(form.durationDays) || null : null,
       startDate: form.startDate || null,
       timeOptions: form.timeOptions,
       prizePool: form.prizePool.trim(),
       winnerCount: isGroup ? 1 : Number(form.winnerCount) || 1,
       minPlayers: form.minPlayers === "" ? null : Number(form.minPlayers),
       maxPlayers: form.maxPlayers === "" ? null : Number(form.maxPlayers),
-      sponsorId: form.visibility === "PRIVATE" ? null : form.sponsorId || null,
-      seekingSponsor: false,
-      ...(wantsTeams
-        ? {
-            groupCount: form.groupCount,
-            teams: form.teams.map((t) => ({ name: t.name.trim(), captainName: t.captainName.trim() })),
-            ...(isGroup
-              ? {
-                  minGroupPlayers: form.minGroupPlayers === "" ? null : Number(form.minGroupPlayers),
-                  maxGroupPlayers: form.maxGroupPlayers === "" ? null : Number(form.maxGroupPlayers),
-                }
-              : {}),
-          }
-        : {}),
+      // Include Sponsor → attach the chosen existing sponsor. Find Sponsor → seek one (code generated,
+      // listed on the Sponsorship page for sponsors to contact us). Works for PUBLIC and PRIVATE.
+      sponsorId: form.sponsorMode === "include" ? form.sponsorId || null : null,
+      themeId: form.themeId || null,
+      seekingSponsor: form.sponsorMode === "find",
     };
     try {
       if (editingId) await update.mutateAsync({ id: editingId, ...body });
-      else {
-        const createdTitle = form.title.trim();
-        const created = await create.mutateAsync(body);
-        if (wantsTeams && created.teams?.length) {
-          setCreatedCodes({
-            title: createdTitle,
-            hasInfluencers: form.hasInfluencers,
-            teams: created.teams.map((t) => ({ name: t.name, captainName: t.captainName, captainCode: t.captainCode ?? "", memberCode: t.memberCode ?? "" })),
-          });
-        }
-      }
+      else await create.mutateAsync(body);
       soundManager.playVictory();
       cancelEdit();
     } catch (err) {
@@ -255,32 +207,10 @@ export default function TournamentAdminPage() {
         <div>
           <div className="flex items-center gap-2 text-[10px] font-title font-black text-amber-400 tracking-widest uppercase"><Trophy size={13} /><span>EVENT OPERATIONS</span></div>
           <h1 className="font-title font-black text-2xl sm:text-3xl text-white tracking-wide mt-0.5">Tournaments Manager</h1>
-          <p className="text-xs text-slate-400 mt-1">Create Regular knockouts and Group (team) tournaments, with players voting the GMT start time.</p>
+          <p className="text-xs text-slate-400 mt-1">Create Regular knockouts and multi-day Group tournaments (players auto-split into groups of 31), with players voting the GMT start time.</p>
         </div>
         <span className="px-3.5 py-1.5 rounded-xl bg-black/60 border border-amber-400/40 text-amber-300 font-title font-bold text-xs">{list.length} Total</span>
       </div>
-
-      {/* Post-create code reveal */}
-      {createdCodes && (
-        <div className="rounded-3xl bg-gradient-to-b from-[#18281e]/98 to-[#060c08] border-2 border-amber-400/70 p-5 sm:p-6 shadow-xl flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-title font-black text-lg text-amber-300">{createdCodes.hasInfluencers ? "Invite codes" : "Group codes"} — {createdCodes.title}</h2>
-            <button onClick={() => setCreatedCodes(null)} className="px-3 py-1.5 rounded-xl bg-black/60 border border-slate-700 hover:border-amber-400 text-slate-300 text-xs font-title font-bold flex items-center gap-1.5 cursor-pointer"><X size={14} /> Done</button>
-          </div>
-          <p className="text-xs text-slate-400">{createdCodes.hasInfluencers ? "Give each influencer their code (special card); they share the player code with followers." : "Share each group's player code with the players who should join it."}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {createdCodes.teams.map((t, i) => (
-              <div key={i} className="p-3 rounded-2xl bg-black/60 border border-slate-800 flex flex-col gap-2">
-                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: TEAM_COLORS[i % TEAM_COLORS.length] }} /><b className="text-sm text-white">{t.name}</b>{createdCodes.hasInfluencers && t.captainName && <span className="text-xs text-slate-400">· {t.captainName}</span>}</div>
-                {createdCodes.hasInfluencers && (
-                  <button onClick={() => copyCode(t.captainCode, `cc-${i}`)} className="text-left px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-amber-400 text-[11px] font-mono text-amber-300 flex items-center gap-1.5 cursor-pointer"><Crown size={11} /> Influencer: {t.captainCode} {copied === `cc-${i}` ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}</button>
-                )}
-                <button onClick={() => copyCode(t.memberCode, `mc-${i}`)} className="text-left px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-amber-400 text-[11px] font-mono text-cyan-300 flex items-center gap-1.5 cursor-pointer"><Users size={11} /> Player: {t.memberCode} {copied === `mc-${i}` ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Create / Edit form */}
       <div className="rounded-3xl bg-gradient-to-b from-[#18281e]/98 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/70 p-6 sm:p-8 shadow-2xl flex flex-col gap-5">
@@ -296,11 +226,11 @@ export default function TournamentAdminPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button type="button" onClick={() => setType("REGULAR")} className={`p-4 rounded-2xl border-2 text-left flex items-start gap-3 transition-all cursor-pointer ${!isGroup ? "border-amber-400 bg-amber-400/10" : "border-slate-700 bg-black/50 hover:border-slate-500"}`}>
             <Trophy size={20} className="text-amber-300 mt-0.5" />
-            <span><b className="block font-title font-black text-white text-sm">Regular tournament</b><small className="text-xs text-slate-400">A standard knockout — last player standing wins.</small></span>
+            <span><b className="block font-title font-black text-white text-sm">Regular tournament</b><small className="text-xs text-slate-400">A single knockout — one pool plays down to the last player standing.</small></span>
           </button>
-          <button type="button" onClick={() => setType("INFLUENCER")} className={`p-4 rounded-2xl border-2 text-left flex items-start gap-3 transition-all cursor-pointer ${isGroup ? "border-amber-400 bg-amber-400/10" : "border-slate-700 bg-black/50 hover:border-slate-500"}`}>
-            <Users size={20} className="text-amber-300 mt-0.5" />
-            <span><b className="block font-title font-black text-white text-sm">Group tournament</b><small className="text-xs text-slate-400">Players split into groups; last one standing wins for their group.</small></span>
+          <button type="button" onClick={() => setType("GROUP")} className={`p-4 rounded-2xl border-2 text-left flex items-start gap-3 transition-all cursor-pointer ${isGroup ? "border-amber-400 bg-amber-400/10" : "border-slate-700 bg-black/50 hover:border-slate-500"}`}>
+            <Layers size={20} className="text-amber-300 mt-0.5" />
+            <span><b className="block font-title font-black text-white text-sm">Group tournament</b><small className="text-xs text-slate-400">Multi-day: entrants auto-split into groups of 31; each group's winner advances to a final.</small></span>
           </button>
         </div>
 
@@ -323,69 +253,59 @@ export default function TournamentAdminPage() {
             </div>
           </div>
 
-          {/* Influencers toggle (both types) */}
+          {/* Sponsor inclusion — works for BOTH public and private tournaments. */}
           <div className="flex flex-col gap-1">
-            <span className={labelCls}>Influencers</span>
-            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-black/80 border border-slate-700">
-              <button type="button" onClick={() => setHasInfluencers(true)} className={`py-1.5 rounded-lg font-title font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer ${form.hasInfluencers ? "bg-gradient-to-r from-amber-400 to-amber-600 text-slate-950" : "text-slate-400 hover:text-white"}`}><Crown size={13} /> Included</button>
-              <button type="button" onClick={() => setHasInfluencers(false)} className={`py-1.5 rounded-lg font-title font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer ${!form.hasInfluencers ? "bg-gradient-to-r from-slate-500 to-slate-700 text-white" : "text-slate-400 hover:text-white"}`}><X size={13} /> Not included</button>
-            </div>
-          </div>
-
-          {/* Sponsor (public only) */}
-          {form.visibility === "PUBLIC" ? (
-            <label className="flex flex-col gap-1">
-              <span className={labelCls}>Sponsor (optional)</span>
-              <select value={form.sponsorId} onChange={(e) => set("sponsorId", e.target.value)} className={inputCls}>
-                <option value="">House tournament</option>
+            <span className={labelCls}>Sponsor</span>
+            <select value={form.sponsorMode} onChange={(e) => set("sponsorMode", e.target.value as FormState["sponsorMode"])} className={inputCls}>
+              <option value="none">House tournament (no sponsor)</option>
+              <option value="include">Include sponsor — pick an existing one</option>
+              <option value="find">Find sponsor — generate a code &amp; list it</option>
+            </select>
+            {form.sponsorMode === "include" && (
+              <select value={form.sponsorId} onChange={(e) => set("sponsorId", e.target.value)} className={`${inputCls} mt-1`}>
+                <option value="">Select a sponsor…</option>
                 {(sponsors ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
-            </label>
-          ) : (
-            <div className="flex flex-col gap-1 justify-center"><span className={labelCls}>Sponsor</span><p className="text-[11px] text-amber-300/80 bg-black/50 p-2 rounded-xl border border-amber-500/20">A sponsor + join code are generated on save.</p></div>
-          )}
+            )}
+            {form.sponsorMode === "find" && (
+              <p className="text-[11px] text-amber-300/80 bg-black/50 p-2 rounded-xl border border-amber-500/20 mt-1">
+                A sponsor code is generated on save, and the tournament is listed on the Sponsorship page so sponsors can contact you to claim it.
+              </p>
+            )}
+          </div>
 
-          {/* Group: number of groups + per-group sizes */}
+          {/* Sponsor THEME — a Game Studio theme applied to THIS tournament's game. */}
+          <div className="flex flex-col gap-1">
+            <span className={labelCls}>Theme (brand look)</span>
+            <select value={form.themeId} onChange={(e) => set("themeId", e.target.value)} className={inputCls}>
+              <option value="">Default — 31 Thirty One</option>
+              {(themes ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}{t.gameTitle ? ` — ${t.gameTitle}` : ""}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Pick a sponsor theme, or manage them in <b className="text-amber-300">Game Studio → My themes</b>.
+            </p>
+          </div>
+
+          {/* Group: duration + how the format works */}
           {isGroup && (
             <>
               <label className="flex flex-col gap-1">
-                <span className={labelCls}>Number of groups</span>
-                <select value={form.groupCount} onChange={(e) => setGroupCount(Number(e.target.value))} className={inputCls}>
-                  {Array.from({ length: MAX_GROUPS - 1 }, (_, i) => i + 2).map((n) => <option key={n} value={n}>{n} groups</option>)}
-                </select>
+                <span className={labelCls}>Duration (days, incl. final)</span>
+                <input type="number" min={2} max={60} value={form.durationDays} onChange={(e) => set("durationDays", e.target.value)} placeholder="e.g. 7" className={inputCls} />
               </label>
-              <label className="flex flex-col gap-1"><span className={labelCls}>Min players / group</span><input type="number" min={0} value={form.minGroupPlayers} onChange={(e) => set("minGroupPlayers", e.target.value)} placeholder="e.g. 5" className={inputCls} /></label>
-              <label className="flex flex-col gap-1"><span className={labelCls}>Max players / group</span><input type="number" min={0} value={form.maxGroupPlayers} onChange={(e) => set("maxGroupPlayers", e.target.value)} placeholder="e.g. 20" className={inputCls} /></label>
+              <div className="sm:col-span-2 lg:col-span-2 flex items-center">
+                <p className="text-[11px] text-amber-200/90 bg-black/50 p-2.5 rounded-xl border border-amber-500/20 leading-relaxed">
+                  Entrants are automatically split into <b>groups of {GROUP_SIZE}</b> by join order. <b>Entry closes 24h before the start.</b> After it closes, open the tournament's <b>Groups</b> page to assign each group to a day. Every group eliminates down to <b>one winner</b>, and all winners meet in the <b>final on the last day</b>.
+                </p>
+              </div>
             </>
           )}
 
-          {/* Regular + influencers: number of influencers */}
-          {!isGroup && form.hasInfluencers && (
-            <label className="flex flex-col gap-1">
-              <span className={labelCls}>Number of influencers</span>
-              <select value={form.groupCount} onChange={(e) => setGroupCount(Number(e.target.value))} className={inputCls}>
-                {Array.from({ length: MAX_GROUPS }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n} influencer{n > 1 ? "s" : ""}</option>)}
-              </select>
-            </label>
-          )}
-
-          {/* Team / influencer name inputs */}
-          {wantsTeams && (
-            <div className="sm:col-span-2 lg:col-span-3 flex flex-col gap-2">
-              <span className={labelCls}>{isGroup ? (showCaptains ? "Groups & influencer-captains" : "Group names") : "Featured influencers"}</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {form.teams.map((tm, i) => (
-                  <div key={i} className="p-3 rounded-2xl bg-black/60 border border-slate-800 flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full shrink-0" style={{ background: TEAM_COLORS[i % TEAM_COLORS.length] }} />
-                    {isGroup && <input value={tm.name} onChange={(e) => setTeam(i, { name: e.target.value })} placeholder={`Group ${i + 1} name`} className="flex-1 bg-transparent border-b border-slate-700 focus:border-amber-400 text-sm text-white outline-none py-1" />}
-                    {showCaptains && <input value={tm.captainName} onChange={(e) => setTeam(i, { captainName: e.target.value })} placeholder={isGroup ? "Captain" : `Influencer ${i + 1}`} className="flex-1 bg-transparent border-b border-slate-700 focus:border-amber-400 text-sm text-white outline-none py-1" />}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Start date (GMT) + prize */}
+          {/* Start date (GMT) + prize + winners (regular only) */}
           <label className="flex flex-col gap-1"><span className={labelCls}>Start date (GMT)</span><input type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} className={inputCls} /></label>
           <label className="flex flex-col gap-1"><span className={labelCls}>Prize pool</span><input value={form.prizePool} onChange={(e) => set("prizePool", e.target.value)} placeholder="e.g. 5,000 USDT" className={inputCls} /></label>
           {!isGroup && <label className="flex flex-col gap-1"><span className={labelCls}>Winners</span><input type="number" min={1} value={form.winnerCount} onChange={(e) => set("winnerCount", e.target.value)} className={inputCls} /></label>}
@@ -406,13 +326,9 @@ export default function TournamentAdminPage() {
             </div>
           </div>
 
-          {/* Regular: player range */}
-          {!isGroup && (
-            <>
-              <label className="flex flex-col gap-1"><span className={labelCls}>Min players</span><input type="number" min={0} value={form.minPlayers} onChange={(e) => set("minPlayers", e.target.value)} placeholder="e.g. 10" className={inputCls} /></label>
-              <label className="flex flex-col gap-1"><span className={labelCls}>Max players</span><input type="number" min={0} value={form.maxPlayers} onChange={(e) => set("maxPlayers", e.target.value)} placeholder="e.g. 500" className={inputCls} /></label>
-            </>
-          )}
+          {/* Player range (both types). For GROUP this is the whole field (min ≥ 2). */}
+          <label className="flex flex-col gap-1"><span className={labelCls}>Min players</span><input type="number" min={0} value={form.minPlayers} onChange={(e) => set("minPlayers", e.target.value)} placeholder="e.g. 31" className={inputCls} /></label>
+          <label className="flex flex-col gap-1"><span className={labelCls}>Max players</span><input type="number" min={0} value={form.maxPlayers} onChange={(e) => set("maxPlayers", e.target.value)} placeholder="e.g. 3131" className={inputCls} /></label>
 
           {error && <div className="sm:col-span-2 lg:col-span-3 text-xs text-rose-400 font-bold">{error}</div>}
 
@@ -426,43 +342,70 @@ export default function TournamentAdminPage() {
 
       {/* Roster */}
       <div className="rounded-3xl bg-gradient-to-b from-[#18281e]/98 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/70 p-6 sm:p-8 shadow-xl flex flex-col gap-4">
-        <div className="flex items-center justify-between pb-3 border-b border-amber-500/30">
+        <div className="flex items-center justify-between pb-3 border-b border-amber-500/30 gap-3 flex-wrap">
           <h2 className="font-title font-black text-xl text-white">All tournaments</h2>
-          <span className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-300"><Trophy size={16} /></span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { soundManager.playClick(); sponsorDemo.mutate(); }}
+              disabled={sponsorDemo.isPending}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-title font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-40 shadow"
+              title="Build a complete sponsor-branded demo tournament with a published campaign"
+            >
+              <Sparkles size={13} /> {sponsorDemo.isPending ? "Building…" : "Build sponsor demo"}
+            </button>
+            <span className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-300"><Trophy size={16} /></span>
+          </div>
         </div>
+        {sponsorDemo.isSuccess && sponsorDemo.data && (
+          <div className="rounded-2xl border border-fuchsia-400/40 bg-fuchsia-500/10 p-3 text-xs text-fuchsia-100 flex flex-wrap items-center gap-2">
+            <CheckCircle2 size={14} className="text-fuchsia-300" /> Demo ready: <b>{sponsorDemo.data.tournament.title}</b> · sponsor <b>{sponsorDemo.data.sponsor.username}</b> / <code className="font-mono text-fuchsia-200">{sponsorDemo.data.sponsor.password}</code>
+            <Link href={`/admin/tournament/${sponsorDemo.data.tournament.id}/campaign`} className="ml-auto px-2.5 py-1 rounded-lg bg-fuchsia-500/30 border border-fuchsia-400/50 font-title font-bold flex items-center gap-1 cursor-pointer"><Megaphone size={12} /> Open studio</Link>
+          </div>
+        )}
         {list.length === 0 ? (
           <div className="py-12 text-center text-slate-500 font-title font-bold text-xs">No tournaments yet — create your first above.</div>
         ) : (
           <div className="flex flex-col gap-3">
-            {list.map((t) => (
+            {list.map((t) => {
+              const entryClosed = !!t.entryClosesAt && Date.now() >= new Date(t.entryClosesAt).getTime();
+              return (
               <div key={t.id} className="p-4 sm:p-5 rounded-2xl bg-black/60 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:border-amber-400/50 transition-colors">
                 <div className="flex flex-col gap-1.5 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-title font-black text-base text-white">{t.title}</span>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-title font-black uppercase bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center gap-1">{t.type === "INFLUENCER" ? <><Users size={10} /> Group</> : <><Trophy size={10} /> Regular</>}</span>
-                    {t.hasInfluencers && <span className="px-2 py-0.5 rounded-full text-[9px] font-title font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1"><Crown size={10} /> Influencers</span>}
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-title font-black uppercase bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center gap-1">{t.type === "GROUP" ? <><Layers size={10} /> Group</> : <><Trophy size={10} /> Regular</>}</span>
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-title font-black uppercase flex items-center gap-1 ${t.visibility === "PRIVATE" ? "bg-amber-500/20 text-amber-300 border border-amber-500/40" : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"}`}>{t.visibility === "PRIVATE" ? <Lock size={10} /> : <Unlock size={10} />} {t.visibility}</span>
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-title font-black uppercase ${t.status === "APPROVED" ? "bg-emerald-500 text-slate-950" : t.status === "PENDING" ? "bg-amber-500 text-slate-950" : "bg-slate-700 text-white"}`}>{t.status}</span>
+                    {t.type === "GROUP" && (t.groups?.length ?? 0) > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-title font-black uppercase bg-indigo-500/20 text-indigo-200 border border-indigo-400/40 flex items-center gap-1"><Layers size={10} /> {t.groups.filter((g) => !g.isFinal).length} groups + final</span>
+                    )}
+                    {t.finished && !t.prizeDelivered && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-title font-black uppercase bg-fuchsia-500/25 text-fuchsia-200 border border-fuchsia-400/40 flex items-center gap-1 animate-pulse">
+                        <Trophy size={10} /> Finished · prize pending
+                      </span>
+                    )}
+                    {t.finished && t.prizeDelivered && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-title font-black uppercase bg-emerald-600/30 text-emerald-200 border border-emerald-400/40 flex items-center gap-1">
+                        <CheckCircle2 size={10} /> Prize delivered
+                      </span>
+                    )}
                   </div>
+                  {t.finished && (
+                    <div className="flex items-center gap-1.5 text-xs font-title font-bold text-fuchsia-300">
+                      <Trophy size={12} className="text-yellow-400 fill-yellow-400" />
+                      <span>Champion: {t.winnerName ?? "—"}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-3 flex-wrap text-xs text-slate-400">
                     <span>{t.sponsor ? `Sponsor: ${t.sponsor.name}` : "House"}</span><span>·</span>
                     <span className="text-emerald-400 font-bold">Prize: {t.prizePool || "—"}</span><span>·</span>
-                    {t.type === "INFLUENCER" ? <span>{t.groupCount} groups</span> : <span>{t.winnerCount} winner(s)</span>}<span>·</span>
+                    {t.type === "GROUP" ? <span>{t.durationDays ?? "?"}-day event</span> : <span>{t.winnerCount} winner(s)</span>}<span>·</span>
                     <span>Start: {fmtDate(t.startAt)}</span>
+                    {t.type === "GROUP" && t.entryClosesAt && <><span>·</span><span className={entryClosed ? "text-rose-300" : "text-amber-300"}>Entry {entryClosed ? "closed" : "closes"}: {fmtDate(t.entryClosesAt)}</span></>}
                     {t.timeOptions?.length > 0 && <><span>·</span><span className="text-amber-300">Vote: {t.timeOptions.join(", ")} GMT</span></>}<span>·</span>
                     <span className="text-amber-300">{t.entryCount} joined</span>
                   </div>
-                  {(t.teams?.length ?? 0) > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {t.teams.map((tm) => (
-                        <span key={tm.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[10px]">
-                          <span className="w-2 h-2 rounded-full" style={{ background: tm.color }} /><span className="text-slate-300">{tm.name} ({tm.memberCount})</span>
-                          {t.hasInfluencers && <button onClick={() => copyCode(tm.captainCode ?? "", `cc-${tm.id}`)} className="font-mono text-amber-300 flex items-center gap-1 cursor-pointer"><Crown size={10} /> {tm.captainCode} {copied === `cc-${tm.id}` ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} />}</button>}
-                          <button onClick={() => copyCode(tm.memberCode ?? "", `mc-${tm.id}`)} className="font-mono text-cyan-300 flex items-center gap-1 cursor-pointer"><Users size={10} /> {tm.memberCode} {copied === `mc-${tm.id}` ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} />}</button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
                   {t.visibility === "PRIVATE" && (
                     <div className="flex items-center gap-2 mt-1">
                       <button onClick={() => copyCode(t.sponsorCode ?? "", `s-${t.id}`)} className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-amber-400 text-[10px] font-mono text-amber-300 flex items-center gap-1.5 cursor-pointer"><span>Sponsor: {t.sponsorCode}</span>{copied === `s-${t.id}` ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}</button>
@@ -477,11 +420,18 @@ export default function TournamentAdminPage() {
                       <button onClick={() => { soundManager.playClick(); setStatus.mutate({ id: t.id, action: "reject" }); }} className="px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/50 text-rose-300 font-title font-bold text-xs"><X size={13} /></button>
                     </>
                   )}
+                  {t.finished && !t.prizeDelivered && (
+                    <button onClick={() => { soundManager.playClick(); markDelivered.mutate(t.id); }} disabled={markDelivered.isPending} className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-title font-bold text-xs flex items-center gap-1 cursor-pointer disabled:opacity-40 shadow" title="Confirm the prize was paid → removes it from the tournaments screen"><CheckCircle2 size={13} /> Prize delivered</button>
+                  )}
+                  {t.type === "GROUP" && (
+                    <Link href={`/admin/tournament/${t.id}/groups`} onClick={() => soundManager.playClick()} className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-title font-bold text-xs flex items-center gap-1 cursor-pointer shadow" title="Draw & schedule the groups"><Layers size={13} /> Groups</Link>
+                  )}
+                  <Link href={`/admin/tournament/${t.id}/campaign`} onClick={() => soundManager.playClick()} className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-fuchsia-500/90 to-purple-600/90 text-white font-title font-bold text-xs flex items-center gap-1 cursor-pointer shadow" title="Sponsor Campaign & Cause Studio"><Megaphone size={13} /> Studio</Link>
                   <button onClick={() => startEdit(t)} className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-title font-bold text-xs flex items-center gap-1 cursor-pointer"><Pencil size={13} /> Edit</button>
                   <button onClick={() => { soundManager.playClick(); del.mutate(t.id); }} className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-300 font-title font-bold text-xs flex items-center gap-1 cursor-pointer"><Trash2 size={13} /> Delete</button>
                 </div>
               </div>
-            ))}
+            );})}
           </div>
         )}
       </div>

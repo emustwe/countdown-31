@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../api-client";
-import { cloneGameConfig, DEFAULT_GAME_CONFIG, type GameConfig } from "../game-config";
+import { cloneGameConfig, DEFAULT_GAME_CONFIG, type GameConfig, type GameTheme } from "../game-config";
 import { apiBaseUrl } from "../runtime-host";
 import { useAuthStore } from "../../stores/auth-store";
 
@@ -11,6 +11,9 @@ export function useGameConfig() {
     queryKey: ["game", "config"],
     queryFn: () => apiRequest<GameConfig>("/game/config", { auth: false }),
     initialData: cloneGameConfig(DEFAULT_GAME_CONFIG),
+    // Always refetch on mount so a fresh browser reflects PUBLISHED config (branding, etc.) — with
+    // initialData alone, staleTime suppressed the mount fetch and the header kept the default brand.
+    refetchOnMount: "always",
     staleTime: 15_000,
     refetchInterval: 30_000,
   });
@@ -59,5 +62,34 @@ export function useUploadGameBackground() {
       }
       return result.url;
     },
+  });
+}
+
+// --- Sponsor themes (Game Studio registry, picked at tournament creation) -----------------------
+export function useGameThemes() {
+  return useQuery({
+    queryKey: ["game", "themes"],
+    queryFn: () => apiRequest<GameTheme[]>("/game/themes", { auth: false }),
+    initialData: [] as GameTheme[],
+    refetchOnMount: "always",
+    staleTime: 10_000,
+  });
+}
+
+export function useSaveGameTheme() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (theme: GameTheme) =>
+      apiRequest<GameTheme[]>("/admin/config/themes", { method: "POST", body: theme }),
+    onSuccess: (themes) => queryClient.setQueryData(["game", "themes"], themes),
+  });
+}
+
+export function useDeleteGameTheme() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiRequest<GameTheme[]>(`/admin/config/themes/${id}`, { method: "DELETE" }),
+    onSuccess: (themes) => queryClient.setQueryData(["game", "themes"], themes),
   });
 }

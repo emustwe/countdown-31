@@ -40,3 +40,13 @@ COUNTDOWN31_GAME_MASTER_CONTEXT.md
 Frontend/AVATAR_CUSTOMIZATION_AI_PROMPTS.md
 Frontend/COUNTDOWN31_GAME_MASTER_CONTEXT.md
 Frontend/public/brands/va/README.md
+
+# Secrets & local env (never commit) — added to protect during broad commits
+.env
+Backend/.env
+*.env.designer
+Backend/.env.designer
+Frontend/.env.designer
+
+# Oversized design-source dump (7GB+) — back up separately, not in git
+/VA_Theme_Files/

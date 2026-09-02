@@ -45,7 +45,7 @@ export function RulesModal31({ isOpen, onClose }: RulesModal31Props) {
             </div>
             <div>
               <h2 className="font-title text-2xl sm:text-3xl font-black text-amber-950 leading-tight">
-                How To Play Count Down 31
+                How To Play Thirty One 31
               </h2>
               <p className="text-xs font-title font-bold text-amber-900/70">
                 The ultimate battle of bovine wits!

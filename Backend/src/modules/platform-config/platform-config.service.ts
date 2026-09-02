@@ -2,7 +2,13 @@ import { Injectable, type OnModuleInit } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { AuditService } from "../../common/audit/audit.service";
-import { DEFAULT_GAME_CONFIG, GameConfigSchema, type GameConfig } from "./game-config.schema";
+import {
+  DEFAULT_GAME_CONFIG,
+  GameConfigSchema,
+  GameThemesSchema,
+  type GameConfig,
+  type GameTheme,
+} from "./game-config.schema";
 
 @Injectable()
 export class PlatformConfigService implements OnModuleInit {
@@ -49,5 +55,40 @@ export class PlatformConfigService implements OnModuleInit {
   async resetGameConfig(actor: string): Promise<GameConfig> {
     this.audit.record("ADMIN_GAME_CONFIG_RESET", { actor });
     return this.setGameConfig(structuredClone(DEFAULT_GAME_CONFIG), actor);
+  }
+
+  // --- Sponsor themes (named, reusable; picked at tournament creation) ---------------------------
+  async getThemes(): Promise<GameTheme[]> {
+    const row = await this.prisma.platformConfig.findUnique({ where: { key: "themes" } });
+    const parsed = GameThemesSchema.safeParse(row?.value);
+    return parsed.success ? parsed.data : [];
+  }
+
+  async getTheme(id: string): Promise<GameTheme | null> {
+    return (await this.getThemes()).find((theme) => theme.id === id) ?? null;
+  }
+
+  private async writeThemes(themes: GameTheme[]): Promise<GameTheme[]> {
+    await this.prisma.platformConfig.upsert({
+      where: { key: "themes" },
+      create: { key: "themes", value: themes as Prisma.InputJsonValue },
+      update: { value: themes as Prisma.InputJsonValue },
+    });
+    return themes;
+  }
+
+  async saveTheme(theme: GameTheme, actor: string): Promise<GameTheme[]> {
+    const themes = await this.getThemes();
+    const index = themes.findIndex((t) => t.id === theme.id);
+    if (index >= 0) themes[index] = theme;
+    else themes.push(theme);
+    this.audit.record("ADMIN_GAME_THEME_SAVED", { actor, detail: { id: theme.id, name: theme.name } });
+    return this.writeThemes(themes);
+  }
+
+  async deleteTheme(id: string, actor: string): Promise<GameTheme[]> {
+    const themes = (await this.getThemes()).filter((t) => t.id !== id);
+    this.audit.record("ADMIN_GAME_THEME_DELETED", { actor, detail: { id } });
+    return this.writeThemes(themes);
   }
 }

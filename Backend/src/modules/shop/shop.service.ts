@@ -20,6 +20,25 @@ export class ShopService {
     private readonly balanceGateway: BalanceGateway,
   ) {}
 
+  /** Public arcade marketplace catalog (coins & gems shop). Active items, display-ordered. */
+  async getCatalog() {
+    const items = await this.prisma.shopCatalogItem.findMany({
+      where: { active: true },
+      orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
+    });
+    return items.map((i) => ({
+      id: i.key,
+      name: i.name,
+      category: i.category,
+      rarity: i.rarity,
+      price: i.price,
+      currency: i.currency,
+      preview: i.preview,
+      description: i.description,
+      unlocked: i.unlocked,
+    }));
+  }
+
   /** Find (or create) the treasury wallet that receives shop payments. */
   private async ensureTreasuryWalletId(): Promise<string> {
     if (this.treasuryWalletId) return this.treasuryWalletId;

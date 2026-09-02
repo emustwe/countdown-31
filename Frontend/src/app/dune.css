@@ -132,13 +132,71 @@ h3 {
   z-index: 24;
 }
 
+/* ---- Platform brand wordmark (the "THIRTY ONE" name beside the 31 shield) ---- */
+.brand-wordmark {
+  font-size: 34px;
+  line-height: 0.86;
+  letter-spacing: 0.015em;
+  background: linear-gradient(180deg, #fff7dc 0%, #ffd873 42%, #f59e0b 74%, #b45309 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 5px rgba(245, 158, 11, 0.45)) drop-shadow(0 1px 0 rgba(0, 0, 0, 0.5));
+  white-space: nowrap;
+}
+.brand-tagline {
+  margin-top: 5px;
+  font: 800 11px var(--font-lilita, inherit);
+  letter-spacing: 0.36em;
+  text-transform: uppercase;
+  color: #fcd34d;
+  opacity: 0.92;
+  white-space: nowrap;
+}
+.brand-shine {
+  position: absolute;
+  top: 0;
+  left: -45%;
+  width: 34%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+  transform: skewX(-18deg);
+  pointer-events: none;
+  animation: brand-shine 4.8s ease-in-out infinite;
+}
+@keyframes brand-shine {
+  0%, 100% { left: -45%; }
+  55% { left: 135%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-shine { animation: none; opacity: 0; }
+}
+
 /* The defeat cow quietly loops in its corner. If this client is eliminated,
    the same stage travels beneath the reel and grows into the result moment. */
 .defeat-cow-layer {
   position: fixed;
   inset: 0;
-  z-index: 23;
+  /* Above the centre action button (z-30), the mobile stats (z-50) and the cylinder, so the
+     eliminated cow performs centre-stage IN FRONT of the board — never tucked under a button. */
+  z-index: 90;
   pointer-events: none;
+}
+
+/* Low-opacity focus scrim behind the centre-stage cow performance (keeps the board faintly visible). */
+.defeat-cow-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 8, 5, 0.42);
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
+  pointer-events: none;
+  animation: defeat-scrim-in 320ms ease both;
+}
+@keyframes defeat-scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .defeat-cow-stage {
@@ -159,13 +217,16 @@ h3 {
     transform 900ms cubic-bezier(.2, .8, .2, 1);
 }
 
+/* The eliminated cow performs FULLY CENTRED on screen (both axes) — desktop and mobile alike — so it
+   is the clear focus over the dimmed board, never tucked toward a corner or the bottom edge. */
 .defeat-cow-stage.is-local-defeat {
   left: 50%;
-  bottom: 155px;
-  width: 158px;
-  height: 281px;
+  top: 50%;
+  bottom: auto;
+  width: 190px;
+  height: 338px;
   opacity: 1;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   z-index: 4;
 }
 
@@ -280,9 +341,11 @@ h3 {
   }
 
   .defeat-cow-stage.is-local-defeat {
-    bottom: 145px;
-    width: 110px;
-    height: 196px;
+    top: 50%;
+    bottom: auto;
+    width: 132px;
+    height: 235px;
+    transform: translate(-50%, -50%);
   }
 
 }
@@ -330,9 +393,11 @@ h3 {
 
   .defeat-cow-stage.is-local-defeat {
     left: 50%;
-    bottom: 145px;
+    top: 50%;
+    bottom: auto;
     width: 120px;
     height: 213px;
+    transform: translate(-50%, -50%);
   }
 }
 .content {
@@ -1861,12 +1926,14 @@ h3 {
   right: 0;
   z-index: 61;
   width: min(320px, 92vw);
+  max-height: min(560px, calc(100vh - 80px));
   border-radius: 16px;
   border: 1px solid var(--border);
   background: var(--glass);
   backdrop-filter: blur(18px);
   box-shadow: var(--shadow);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .profile-head {
   display: flex;
@@ -2141,6 +2208,931 @@ h3 {
 @media (min-width: 768px) and (max-width: 900px) {
   .arcade-arena-header.is-game-header .arcade-mode-selector {
     transform: scale(.55);
+  }
+}
+.tournament-game-page { position: fixed; inset: 0; z-index: 250; }
+.tournament-game-back {
+  position: fixed;
+  top: 72px;
+  left: 12px;
+  z-index: 90;
+  padding: 8px 11px !important;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, .72) !important;
+  font-size: 10px !important;
+  backdrop-filter: blur(10px);
+}
+.arena-viewport.has-tournament-campaign {
+  background-image:
+    linear-gradient(rgba(3, 9, 6, var(--campaign-overlay)), rgba(3, 9, 6, var(--campaign-overlay))),
+    var(--campaign-bg-desktop);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* Tournament sponsor layer: deliberately occupies only established dead zones. It never accepts
+   clicks and sits below gameplay/result overlays. Practice mode never renders this component. */
+.tournament-sponsor-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  font-family: var(--numeric);
+}
+.tournament-sponsor-disclosure {
+  display: none;
+  position: absolute;
+  top: 118px;
+  left: 50%;
+  translate: -50% 0;
+  padding: 5px 12px;
+  border: 1px solid color-mix(in srgb, var(--sponsor-accent) 55%, transparent);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .75);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+}
+.tournament-sponsor-disclosure strong { color: var(--sponsor-accent); }
+.tournament-sponsor-logo {
+  position: absolute;
+  left: clamp(18px, 3vw, 52px);
+  bottom: 72px;
+  display: none;
+  width: 116px;
+  aspect-ratio: 1;
+  place-items: center;
+  padding: 12px;
+  border: 2px solid var(--sponsor-accent);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(10,10,10,.95), rgba(0,0,0,.82));
+  color: var(--sponsor-primary);
+  text-align: center;
+  box-shadow: 0 14px 35px rgba(0,0,0,.65), 0 0 22px color-mix(in srgb, var(--sponsor-accent) 25%, transparent);
+  transform-style: preserve-3d;
+}
+.tournament-sponsor-logo.show-desktop { display: grid; }
+.tournament-sponsor-logo span { font-size: 15px; font-weight: 900; line-height: 1; letter-spacing: -.02em; }
+.tournament-sponsor-logo-media { width: 100%; height: 66%; object-fit: contain; }
+.tournament-sponsor-logo small { margin-top: -25px; color: color-mix(in srgb, var(--sponsor-primary) 60%, transparent); font-size: 6px; font-weight: 800; letter-spacing: .11em; }
+.tournament-sponsor-story {
+  position: absolute;
+  right: auto;
+  bottom: 72px;
+  left: 50%;
+  width: min(280px, 20vw);
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--sponsor-accent) 55%, transparent);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(7,13,9,.94), rgba(0,0,0,.88));
+  box-shadow: 0 14px 35px rgba(0,0,0,.65);
+  translate: -50% 0;
+}
+.tournament-sponsor-story small { display: block; color: var(--sponsor-accent); font-size: 8px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.tournament-sponsor-story strong { display: block; margin-top: 5px; color: var(--sponsor-primary); font-size: 17px; line-height: 1.05; }
+.tournament-sponsor-story p { margin: 6px 0 0; color: rgba(255,255,255,.72); font-size: 10px; line-height: 1.4; }
+
+/* Campaign header: separate themed sponsor card (e.g. Moomorrow Black Card) */
+.tournament-sponsor-card {
+  min-width: clamp(160px, 20vw, 320px);
+  height: clamp(42px, 4.8vw, 56px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #181c19 0%, #0d100e 50%, #060807 100%);
+  border: 2.5px solid #fbbf24;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.9), 0 0 25px rgba(245, 158, 11, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(12px);
+}
+.tournament-header-brand {
+  min-width: clamp(340px, 35vw, 520px);
+  justify-content: center;
+  padding-block: 7px !important;
+  overflow: visible;
+}
+.tournament-header-cow {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  overflow: visible;
+  filter: drop-shadow(0 5px 7px rgba(0,0,0,.78));
+}
+.tournament-header-cow video,
+.tournament-header-cow canvas { width: 100%; height: 100%; object-fit: contain; }
+
+.tournament-header-cow-mobile {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  overflow: visible;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,.78));
+}
+.tournament-header-cow-mobile video,
+.tournament-header-cow-mobile canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.tournament-header-sponsor {
+  display: grid;
+  width: min(225px, 19vw);
+  height: 48px;
+  flex: 0 1 auto;
+  place-items: center;
+  color: var(--sponsor-primary, #fff7d6);
+  transform-style: preserve-3d;
+}
+.tournament-header-sponsor img,
+.tournament-header-sponsor video { width: 100%; height: 100%; object-fit: contain; }
+.tournament-header-sponsor span {
+  max-width: 100%;
+  overflow: hidden;
+  color: white;
+  font: 950 clamp(18px, 2.1vw, 31px)/.9 var(--font-fredoka);
+  letter-spacing: -.035em;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-shadow: 0 3px 7px rgba(0,0,0,.85), 0 0 16px color-mix(in srgb, var(--sponsor-accent, #fbbf24) 45%, transparent);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tournament-header-action {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid #fbbf24;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #1f2b23, #07100b);
+  color: #fcd34d;
+  box-shadow: 0 4px 12px rgba(0,0,0,.62), inset 0 1px 2px rgba(255,255,255,.22);
+  transition: transform .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+.tournament-header-action:hover { transform: scale(1.05); }
+.tournament-header-action.is-skills { border-color: #a855f7; color: #e9d5ff; box-shadow: 0 4px 12px rgba(0,0,0,.62), 0 0 15px rgba(168,85,247,.38); }
+.tournament-header-action.is-classic { color: #fcd34d; }
+.tournament-header-action.is-cause { border-color: #fb7185; color: #fda4af; }
+.tournament-header-action.is-cause.is-open { background: linear-gradient(180deg,#9f1239,#4c0519); color: white; box-shadow: 0 0 20px rgba(251,113,133,.5); }
+.tournament-cause-popover {
+  position: absolute;
+  top: 58px;
+  right: 0;
+  z-index: 210;
+  width: min(330px, calc(100vw - 20px));
+  padding: 16px;
+  border: 1px solid rgba(253,164,175,.75);
+  border-radius: 21px;
+  background: linear-gradient(145deg,rgba(53,8,23,.98),rgba(3,9,6,.98));
+  color: white;
+  box-shadow: 0 22px 55px rgba(0,0,0,.82), 0 0 28px rgba(251,113,133,.16);
+  font-family: var(--font-fredoka);
+}
+.tournament-cause-popover > small { display: block; padding-right: 24px; color: #fda4af; font-size: 9px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+.tournament-cause-popover > strong { display: block; margin-top: 4px; padding-right: 24px; font-size: 18px; line-height: 1.05; }
+.tournament-cause-popover > span { display: block; margin-top: 5px; color: #fdba74; font-size: 10px; font-weight: 800; }
+.tournament-cause-popover > p { margin: 8px 0; color: rgba(255,255,255,.74); font-size: 10px; line-height: 1.4; }
+.tournament-cause-popover > a { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 9px; padding: 8px 10px; border-radius: 11px; background: linear-gradient(90deg,#fb7185,#f59e0b); color: #21070d; font-size: 9px; font-weight: 900; text-decoration: none; }
+.tournament-cause-popover > em { display: block; margin-top: 5px; color: rgba(255,255,255,.42); font-size: 7px; font-style: normal; text-align: center; }
+.tournament-cause-close { position: absolute; top: 10px; right: 10px; display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; background: rgba(0,0,0,.32); color: white; }
+.tournament-cause-card {
+  position: absolute;
+  right: auto;
+  bottom: 72px;
+  left: 50%;
+  width: min(310px, 23vw);
+  max-height: min(190px, 25vh);
+  overflow-y: auto;
+  padding: 13px;
+  border: 1px solid rgba(253, 164, 175, .72);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(43, 8, 19, .96), rgba(2, 7, 5, .94));
+  box-shadow: 0 14px 38px rgba(0,0,0,.7), 0 0 24px rgba(251,113,133,.14);
+  pointer-events: auto;
+  translate: -50% 0;
+}
+.tournament-cause-card small { display: block; color: #fda4af; font-size: 8px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+.tournament-cause-card strong { display: block; margin-top: 3px; color: #fff; font-size: 15px; line-height: 1.05; }
+.tournament-cause-card > span { display: block; margin-top: 4px; color: #fdba74; font-size: 8px; font-weight: 800; }
+.tournament-cause-card p { margin: 5px 0; color: rgba(255,255,255,.72); font-size: 8px; line-height: 1.3; }
+.tournament-cause-progress > div { height: 6px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.1); }
+.tournament-cause-progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#fb7185,#fbbf24); box-shadow: 0 0 12px rgba(251,113,133,.45); }
+.tournament-cause-progress b { display: block; margin-top: 4px; color: #fff; font-size: 8px; }
+.tournament-cause-card a { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 6px; padding: 6px 9px; border-radius: 10px; background: linear-gradient(90deg,#fb7185,#f59e0b); color: #21070d; font-size: 8px; font-weight: 900; text-decoration: none; }
+.tournament-cause-card a:hover { filter: brightness(1.12); }
+.tournament-cause-card em { display: block; margin-top: 3px; color: rgba(255,255,255,.4); font-size: 6px; font-style: normal; text-align: center; }
+.sponsor-motion-float { animation: sponsor-float 3.2s ease-in-out infinite; }
+.sponsor-motion-turntable { animation: sponsor-turntable 4.8s ease-in-out infinite; }
+.sponsor-motion-pulse { animation: sponsor-pulse 2.2s ease-in-out infinite; }
+@keyframes sponsor-float { 50% { transform: translateY(-10px); } }
+@keyframes sponsor-turntable { 0%, 100% { transform: perspective(500px) rotateY(-14deg); } 50% { transform: perspective(500px) rotateY(14deg); } }
+@keyframes sponsor-pulse { 50% { scale: 1.06; filter: brightness(1.18); } }
+
+@media (max-width: 1180px) {
+  .arena-viewport.has-tournament-campaign { background-image: linear-gradient(rgba(3, 9, 6, var(--campaign-overlay)), rgba(3, 9, 6, var(--campaign-overlay))), var(--campaign-bg-mobile); }
+  .tournament-sponsor-disclosure { top: 78px; display: block; font-size: 8px; }
+  .tournament-sponsor-logo.show-desktop { display: none; }
+  .tournament-sponsor-logo.show-mobile {
+    right: auto;
+    bottom: calc(92px + env(safe-area-inset-bottom));
+    left: 10px;
+    display: grid;
+    width: 72px;
+    border-radius: 17px;
+    padding: 8px;
+  }
+  .tournament-sponsor-logo span { font-size: 10px; }
+  .tournament-sponsor-logo small { display: none; }
+  .tournament-sponsor-story { display: none; }
+  .tournament-cause-card {
+    right: 8px;
+    bottom: calc(92px + env(safe-area-inset-bottom));
+    left: 90px;
+    width: auto;
+    max-height: none;
+    padding: 9px 10px;
+    border-radius: 15px;
+    overflow: visible;
+    translate: 0 0;
+  }
+  .tournament-cause-card small,
+  .tournament-cause-card > span,
+  .tournament-cause-card p,
+  .tournament-cause-card em { display: none; }
+  .tournament-cause-card strong { margin: 0; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+  .tournament-cause-progress { margin-top: 6px; }
+  .tournament-cause-card a { position: absolute; right: 6px; bottom: 6px; width: auto; margin: 0; padding: 5px 7px; font-size: 7px; }
+  .tournament-cause-card:has(a) .tournament-cause-progress { margin-right: 76px; }
+  .tournament-header-brand { min-width: 245px; padding-inline: 14px !important; }
+  .tournament-header-cow { width: 48px; height: 48px; }
+  .tournament-header-sponsor { width: 125px; height: 38px; }
+  .tournament-header-sponsor span { font-size: 19px; }
+  .tournament-header-action { width: 44px; height: 44px; }
+  .arcade-arena-header.is-game-header .arcade-brand:has(.tournament-header-brand) { top: 8px; transform: none; }
+}
+
+.arena-roster-scroll {
+  scrollbar-color: rgba(52, 211, 153, .8) rgba(15, 23, 42, .72);
+  scrollbar-width: thin;
+}
+.arena-roster-scroll::-webkit-scrollbar { width: 7px; }
+.arena-roster-scroll::-webkit-scrollbar-track { border-radius: 99px; background: rgba(15, 23, 42, .72); }
+.arena-roster-scroll::-webkit-scrollbar-thumb { border: 1px solid rgba(3, 10, 7, .9); border-radius: 99px; background: linear-gradient(#34d399, #0891b2); }
+.arena-roster-scroll:focus-visible { outline: 2px solid #34d399; outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tournament-sponsor-logo { animation: none !important; }
+}
+
+/* Dedicated responsive app shell ---------------------------------------
+ * Desktop and touch layouts are separate compositions. Mobile-only class names keep legacy
+ * desktop responsive rules from leaking into the touch shell. */
+.mobile-app-header,
+.mobile-arena-shell {
+  display: none;
+}
+
+@media (min-width: 1181px) {
+  .desktop-app-header {
+    display: flex !important;
+  }
+
+  .desktop-arena-layout {
+    display: grid !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .desktop-app-header,
+  .desktop-arena-layout {
+    display: none !important;
+  }
+
+  .mobile-app-header {
+    position: relative;
+    z-index: 70;
+    display: flex;
+    width: 100%;
+    height: 60px;
+    flex: 0 0 60px;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    padding-top: max(6px, env(safe-area-inset-top));
+  }
+
+  .mobile-header-brand {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    min-width: 224px;
+    height: 50px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 17px;
+    border: 2px solid #fbbf24;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #351303, #7c3104 52%, #351303);
+    box-shadow: 0 7px 18px rgb(0 0 0 / .5), inset 0 1px rgb(255 255 255 / .2);
+    color: white;
+    font: 950 21px/1 var(--font-fredoka);
+    letter-spacing: .045em;
+    white-space: nowrap;
+  }
+
+  .mobile-header-brand b {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border: 2px solid white;
+    border-radius: 10px;
+    background: linear-gradient(#fcd34d, #f59e0b);
+    color: #3b1702;
+    font-size: 15px;
+    box-shadow: 0 0 12px rgb(251 191 36 / .7);
+  }
+
+  .mobile-header-actions {
+    position: absolute;
+    right: 10px;
+    left: 10px;
+    display: flex;
+    justify-content: space-between;
+    gap: 7px;
+    pointer-events: none;
+  }
+
+  .mobile-header-actions button {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid rgb(251 191 36 / .7);
+    border-radius: 50%;
+    background: rgb(5 16 10 / .92);
+    color: #fcd34d;
+    box-shadow: 0 5px 15px rgb(0 0 0 / .45);
+    pointer-events: auto;
+  }
+
+  .mobile-header-actions.is-single button {
+    margin-left: auto;
+  }
+
+  .mobile-arena-shell {
+    display: grid;
+    min-height: 0;
+    flex: 1 1 auto;
+    grid-template-rows: auto auto auto auto;
+    align-content: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 850px;
+    margin: 0 auto;
+    overflow-y: auto;
+    padding: 2px 4px max(86px, calc(76px + env(safe-area-inset-bottom)));
+  }
+
+  .mobile-arena-shell > section {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .mobile-arena-board {
+    min-height: 0;
+  }
+
+  .mobile-number-deck-stack {
+    display: grid;
+    width: min(100%, 300px);
+    gap: 9px;
+    margin: 0 auto;
+  }
+
+  .mobile-number-deck {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid rgb(245 158 11 / .65);
+    border-radius: 15px;
+    background: rgb(3 10 7 / .96);
+    box-shadow: 0 12px 25px rgb(0 0 0 / .55), 0 0 18px rgb(245 158 11 / .14);
+  }
+
+  .mobile-number-deck.is-history {
+    width: 92%;
+    margin: 0 auto;
+    transform: scale(.98);
+    border-color: rgb(120 113 108 / .35);
+    background: rgb(3 8 5 / .86);
+    box-shadow: 0 7px 16px rgb(0 0 0 / .42);
+  }
+
+  .mobile-number-deck.is-history .mobile-deck-rim {
+    opacity: .48;
+    filter: saturate(.35);
+  }
+
+  .mobile-number-deck.is-action {
+    border-color: rgb(52 211 153 / .72);
+    box-shadow: 0 12px 25px rgb(0 0 0 / .55), 0 0 18px rgb(52 211 153 / .2);
+  }
+
+  .mobile-deck-rim {
+    height: 9px;
+    background:
+      radial-gradient(circle, #fde68a 0 1px, #78350f 1.5px 2.5px, transparent 3px) 3px 50% / 26px 8px repeat-x,
+      linear-gradient(90deg, #b45309, #fbbf24 50%, #b45309);
+  }
+
+  .mobile-deck-rim.is-bottom {
+    transform: rotate(180deg);
+  }
+
+  .mobile-deck-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    padding: 6px 8px;
+  }
+
+  .mobile-number-card {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    height: 110px;
+    place-items: center;
+    border: 1px solid rgb(120 53 15 / .7);
+    border-radius: 13px;
+    background: linear-gradient(180deg, #101811, #030604);
+    color: #647067;
+    box-shadow: inset 0 0 14px rgb(0 0 0 / .7);
+  }
+
+  .mobile-number-card strong {
+    font: 950 29px/1 var(--font-fredoka);
+  }
+
+  .mobile-number-card.is-playable {
+    border-color: rgb(16 185 129 / .6);
+    color: #34d399;
+    box-shadow: inset 0 0 14px rgb(16 185 129 / .08), 0 0 9px rgb(16 185 129 / .16);
+  }
+
+  .mobile-number-card.is-previous {
+    color: #fbbf24;
+  }
+
+  .mobile-number-card.is-previous.was-played {
+    border-color: rgb(251 191 36 / .82);
+    background: linear-gradient(180deg, #3b2005, #100a02);
+    box-shadow: inset 0 0 14px rgb(251 191 36 / .12), 0 0 10px rgb(251 191 36 / .2);
+  }
+
+  .mobile-number-deck.is-history .mobile-number-card {
+    height: 90px;
+    border-color: rgb(120 113 108 / .38);
+    background: linear-gradient(180deg, #111612, #050706);
+    color: #b7ab7a;
+    box-shadow: inset 0 0 12px rgb(0 0 0 / .7);
+  }
+
+  .mobile-number-deck.is-history .mobile-number-card:not(.was-played) {
+    opacity: .48;
+    filter: saturate(.35) brightness(.72);
+  }
+
+  .mobile-number-deck.is-history .mobile-number-card strong {
+    font-size: 23px;
+  }
+
+  .mobile-number-deck.is-history .mobile-number-card.was-played {
+    z-index: 2;
+    border: 2px solid #fcd34d;
+    background: linear-gradient(180deg, #6b3a05, #211302);
+    color: #fff7c2;
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: inset 0 0 18px rgb(251 191 36 / .22), 0 0 0 2px rgb(251 191 36 / .16), 0 0 18px rgb(251 191 36 / .72);
+    text-shadow: 0 0 10px rgb(251 191 36 / .85);
+  }
+
+  .mobile-number-deck.is-history .mobile-number-card.was-played .mobile-number-badge {
+    top: 5px;
+    width: 19px;
+    height: 19px;
+    min-height: 0;
+    border-radius: 50%;
+    background: #fcd34d;
+    color: #351a03;
+    box-shadow: 0 0 10px rgb(251 191 36 / .8);
+  }
+
+  .mobile-number-card.is-bomb {
+    border-color: rgb(244 63 94 / .65);
+    color: #fb7185;
+  }
+
+  .mobile-number-card.is-selected {
+    border-color: #6ee7b7;
+    background: linear-gradient(180deg, #065f46, #022c22);
+    color: #d1fae5;
+    transform: translateY(-2px);
+    box-shadow: 0 0 16px rgb(52 211 153 / .65), inset 0 0 16px rgb(52 211 153 / .18);
+  }
+
+  .mobile-number-badge {
+    position: absolute;
+    top: 5px;
+    display: grid;
+    min-height: 13px;
+    place-items: center;
+  }
+
+  .mobile-number-card small {
+    position: absolute;
+    bottom: 4px;
+    color: #a7f3d0;
+    font: 900 7px/1 var(--font-fredoka);
+    text-transform: uppercase;
+  }
+
+  .mobile-arena-action {
+    display: grid;
+    min-height: 44px;
+    place-items: center;
+  }
+
+  .mobile-turn-action {
+    display: grid;
+    width: min(100%, 440px);
+    min-height: 42px;
+    place-items: center;
+  }
+
+  .mobile-confirm-move,
+  .mobile-turn-status,
+  .mobile-join-game {
+    display: flex;
+    width: 100%;
+    min-height: 42px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid rgb(52 211 153 / .75);
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgb(6 78 59 / .96), rgb(2 14 9 / .96));
+    color: #d1fae5;
+    font: 900 12px/1 var(--font-fredoka);
+    letter-spacing: .05em;
+    box-shadow: 0 8px 20px rgb(0 0 0 / .45);
+  }
+
+  .mobile-confirm-move {
+    background: linear-gradient(135deg, #34d399, #10b981);
+    color: #022c22;
+  }
+
+  .mobile-turn-status b,
+  .mobile-confirm-move b {
+    margin-left: auto;
+    margin-right: 11px;
+    color: #fcd34d;
+  }
+
+  .mobile-turn-status svg,
+  .mobile-confirm-move svg {
+    margin-left: 11px;
+  }
+
+  .mobile-turn-status.is-low {
+    border-color: #fb7185;
+    color: #fecdd3;
+  }
+
+  .mobile-join-game {
+    width: auto;
+    min-width: 170px;
+    padding: 0 22px;
+    border-color: #fbbf24;
+    background: linear-gradient(#fcd34d, #f59e0b);
+    color: #431407;
+  }
+
+  .mobile-arena-players {
+    display: block;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .mobile-arena-players > * {
+    min-width: 0;
+    min-height: 0 !important;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .mobile-battle-strip {
+    position: relative;
+    display: grid;
+    width: min(100%, 620px);
+    grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+    grid-template-rows: 172px 41px;
+    gap: 5px 7px;
+    margin: 0 auto;
+  }
+
+  .mobile-player-pod {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 7px;
+    border: 1px solid rgb(251 191 36 / .48);
+    border-radius: 18px;
+    background: linear-gradient(145deg, rgb(15 38 26 / .96), rgb(3 11 7 / .98));
+    color: white;
+    box-shadow: 0 8px 18px rgb(0 0 0 / .48);
+  }
+
+  .mobile-player-pod.is-rival {
+    grid-column: 3;
+    border-color: rgb(192 132 252 / .55);
+    background: linear-gradient(145deg, rgb(35 20 48 / .96), rgb(10 6 17 / .98));
+  }
+
+  .mobile-player-pod.is-turn {
+    border-color: #34d399;
+    box-shadow: 0 0 17px rgb(52 211 153 / .35), 0 8px 18px rgb(0 0 0 / .5);
+  }
+
+  .mobile-pod-label {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 4px;
+    color: #fcd34d;
+    font: 900 9px/1 var(--font-fredoka);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .mobile-player-pod.is-rival .mobile-pod-label {
+    color: #d8b4fe;
+  }
+
+  .mobile-pod-avatar {
+    display: grid;
+    width: 108px;
+    height: 108px;
+    place-items: center;
+    overflow: hidden;
+    border: 2px solid #fbbf24;
+    border-radius: 21px;
+    background: rgb(6 20 13 / .95);
+    color: #fbbf24;
+  }
+
+  .mobile-player-pod.is-rival .mobile-pod-avatar {
+    border-color: #c084fc;
+  }
+
+  .mobile-player-pod strong {
+    min-width: 0;
+    overflow: hidden;
+    max-width: 100%;
+    align-self: center;
+    color: white;
+    font: 900 13px/1.05 var(--font-fredoka);
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-versus {
+    z-index: 2;
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border: 2px solid #fbbf24;
+    border-radius: 50%;
+    background: #160a02;
+    color: #fde68a;
+    font: 950 12px/1 var(--font-fredoka);
+    box-shadow: 0 0 15px rgb(251 191 36 / .45);
+  }
+
+  .mobile-skill-rail {
+    display: grid;
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .mobile-skill-rail.is-rival {
+    grid-column: 3;
+  }
+
+  .mobile-skill-rail button,
+  .mobile-skill-rail > div {
+    display: flex;
+    min-width: 0;
+    min-height: 37px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 5px;
+    border: 1px solid rgb(34 211 238 / .55);
+    border-radius: 11px;
+    background: rgb(6 35 48 / .94);
+    color: #67e8f9;
+    font: 900 8px/1 var(--font-fredoka);
+  }
+
+  .mobile-skill-rail.is-rival > div {
+    border-color: rgb(52 211 153 / .45);
+    background: rgb(4 47 34 / .86);
+    color: #6ee7b7;
+  }
+
+  .mobile-skill-rail button:disabled {
+    opacity: .43;
+  }
+
+  .mobile-skill-rail small {
+    color: #fcd34d;
+    font-size: 7px;
+  }
+
+  .mobile-arena-modes {
+    display: grid;
+    place-items: center;
+  }
+
+  .mobile-mode-switch {
+    display: grid;
+    width: min(100%, 360px);
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid rgb(251 191 36 / .5);
+    border-radius: 15px;
+    background: rgb(2 10 6 / .92);
+  }
+
+  .mobile-mode-switch button {
+    display: flex;
+    min-height: 35px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 11px;
+    color: #94a3b8;
+    font: 900 11px/1 var(--font-fredoka);
+  }
+
+  .mobile-mode-switch button.active {
+    background: #fbbf24;
+    color: #3b1702;
+  }
+
+  .mobile-mode-switch button.active.skills {
+    background: linear-gradient(135deg, #a855f7, #6366f1);
+    color: white;
+  }
+}
+
+@media (max-width: 560px) {
+  .mobile-app-header {
+    height: 60px;
+    flex-basis: 60px;
+    justify-content: center;
+    padding-inline: 7px;
+  }
+
+  .mobile-header-brand {
+    min-width: 205px;
+    height: 48px;
+    padding-inline: 14px;
+    font-size: 19px;
+  }
+
+  .mobile-header-brand b {
+    width: 27px;
+    height: 27px;
+    font-size: 13px;
+  }
+
+  .mobile-header-actions {
+    right: 7px;
+    left: 7px;
+  }
+
+  .mobile-header-actions button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .mobile-arena-shell {
+    gap: 8px;
+  }
+
+  .mobile-arena-players > * {
+    min-height: 0 !important;
+  }
+
+  .mobile-battle-strip {
+    grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+    grid-template-rows: 154px 39px;
+    column-gap: 4px;
+  }
+
+  .mobile-player-pod {
+    padding: 7px 5px;
+  }
+
+  .mobile-pod-avatar {
+    width: 90px;
+    height: 90px;
+    border-radius: 18px;
+  }
+
+  .mobile-versus {
+    width: 32px;
+    height: 32px;
+    font-size: 9px;
+  }
+
+  .mobile-number-card {
+    height: 104px;
+  }
+
+  .mobile-player-pod strong {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 1180px) and (max-height: 700px) {
+  .mobile-app-header {
+    height: 50px;
+    flex-basis: 50px;
+  }
+
+  .mobile-header-brand {
+    height: 39px;
+    font-size: 16px;
+  }
+
+  .mobile-arena-shell {
+    gap: 4px;
+  }
+
+  .mobile-number-deck-stack {
+    width: min(100%, 230px);
+    gap: 5px;
+  }
+
+  .mobile-number-card {
+    height: 56px;
+  }
+
+  .mobile-number-deck.is-history .mobile-number-card {
+    height: 34px;
+  }
+
+  .mobile-battle-strip {
+    grid-template-rows: 96px 31px;
+  }
+
+  .mobile-pod-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 13px;
+  }
+
+  .mobile-player-pod {
+    gap: 2px;
+    padding-block: 4px;
+  }
+
+  .mobile-skill-rail button,
+  .mobile-skill-rail > div {
+    min-height: 29px;
   }
 }
 
@@ -7882,6 +8874,10 @@ button.mini:hover { filter: brightness(1.06); }
   display: none;
 }
 
+.mobile-nav-landscape-only {
+  display: none !important;
+}
+
 @media (max-width: 1180px) {
   .arcade-arena-header.is-game-header .arcade-mode-selector {
     transform: scale(.82);
@@ -7890,7 +8886,7 @@ button.mini:hover { filter: brightness(1.06); }
 
   .mobile-bottom-nav {
     position: fixed;
-    z-index: 180;
+    z-index: 9999;
     left: 50%;
     bottom: max(8px, env(safe-area-inset-bottom));
     display: grid;
@@ -7977,8 +8973,66 @@ button.mini:hover { filter: brightness(1.06); }
 
   .mobile-nav-profile.active .mobile-nav-icon {
     border-color: #34d399;
+    border-color: #34d399;
     box-shadow: 0 0 0 4px rgb(4 12 8 / .96), 0 0 24px rgb(52 211 153 / .55);
   }
+
+  .mobile-more-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 181;
+    border: 0;
+    background: rgba(0,0,0,.52);
+    backdrop-filter: blur(3px);
+  }
+
+  .mobile-arena-shell {
+    display: grid;
+    min-height: 0;
+    flex: 1 1 auto;
+    grid-template-rows: auto auto auto auto;
+    align-content: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 850px;
+    margin: 0 auto;
+    overflow-y: auto;
+    padding: 2px 4px max(86px, calc(76px + env(safe-area-inset-bottom)));
+  }
+
+  .mobile-arena-shell > section {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .mobile-more-menu {
+    position: fixed;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: calc(88px + env(safe-area-inset-bottom));
+    z-index: 182;
+    display: grid;
+    width: min(300px, calc(100vw - 20px));
+    gap: 8px;
+    padding: 13px;
+    transform-origin: right bottom;
+    border: 1px solid rgba(251,191,36,.62);
+    border-radius: 21px;
+    background: linear-gradient(155deg,rgba(22,39,29,.99),rgba(3,10,7,.99));
+    box-shadow: 0 22px 55px rgba(0,0,0,.8), 0 0 22px rgba(251,191,36,.13);
+    color: white;
+    font-family: var(--font-fredoka);
+  }
+  .mobile-more-heading { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 7px; }
+  .mobile-more-heading div { display: grid; }
+  .mobile-more-heading small { color: #34d399; font-size: 8px; font-weight: 900; letter-spacing: .13em; }
+  .mobile-more-heading strong { font-size: 20px; line-height: 1; }
+  .mobile-more-heading button { display: grid; width: 31px; height: 31px; place-items: center; border: 1px solid rgba(255,255,255,.13); border-radius: 50%; background: rgba(0,0,0,.28); color: #d1d5db; }
+  .mobile-more-menu > button { display: flex; align-items: center; gap: 11px; width: 100%; padding: 11px; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; background: rgba(255,255,255,.045); color: white; text-align: left; }
+  .mobile-more-menu > button > span { display: grid; width: 39px; height: 39px; flex: 0 0 auto; place-items: center; border-radius: 12px; background: rgba(251,191,36,.1); color: #fbbf24; }
+  .mobile-more-menu > button > div { display: grid; gap: 2px; }
+  .mobile-more-menu > button strong { font-size: 13px; }
+  .mobile-more-menu > button small { color: #8ca298; font-size: 9px; }
 
   .topnav {
     display: none !important;
@@ -8000,7 +9054,10 @@ button.mini:hover { filter: brightness(1.06); }
     transform-origin: top center;
   }
 
-  .arcade-arena-header .arcade-profile-trigger {
+  /* Only the ARENA hides the header profile trigger (the portal MobileArenaOverlay replaces it there).
+     Every OTHER page keeps its top-right profile menu on mobile — it is the single mobile nav now that
+     the bottom bar is gone. */
+  .mobile-landscape-game .arcade-profile-trigger {
     display: none;
   }
 
@@ -8037,7 +9094,9 @@ button.mini:hover { filter: brightness(1.06); }
   }
 
   .practice-page .defeat-cow-stage.is-local-defeat {
-    bottom: calc(218px + env(safe-area-inset-bottom));
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, -50%);
   }
 }
 
@@ -8067,10 +9126,144 @@ button.mini:hover { filter: brightness(1.06); }
     height: 51px;
   }
 
+  .arcade-arena-header {
+    height: 86px !important;
+    padding-inline: 10px !important;
+  }
+
   .arcade-arena-header.is-page-header .arcade-brand {
     transform: scale(.52);
   }
+
+  .arcade-arena-header .tournament-sponsor-card {
+    min-width: 0;
+    max-width: calc(100vw - 150px);
+    height: 38px;
+    padding: 4px 10px !important;
+  }
+  .arcade-arena-header .tournament-header-brand {
+    min-width: 0;
+    max-width: calc(100vw - 140px);
+    padding: 6px 10px !important;
+    gap: 6px !important;
+  }
+  .tournament-header-sponsor {
+    width: auto;
+    max-width: calc(100vw - 205px);
+    height: 32px;
+  }
+  .tournament-header-sponsor span {
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+  }
+  .arcade-arena-header .tournament-header-brand > div:last-child {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    margin-right: -2px;
+  }
+  .arcade-arena-header .tournament-header-brand > div:last-child span {
+    font-size: 15px;
+  }
+  .tournament-header-action,
+  .arcade-arena-header .arcade-sound-trigger {
+    width: 38px;
+    height: 38px;
+  }
+  .arcade-header-actions {
+    gap: 5px !important;
+    margin-left: 4px !important;
+  }
+  .arcade-mode-selector {
+    margin-right: 4px !important;
+  }
+  .tournament-cause-popover {
+    position: fixed;
+    top: 62px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: calc(100vw - 16px);
+    padding: 14px;
+    z-index: 250;
+  }
 }
+
+@media (min-width: 768px) and (max-width: 900px) {
+  .arcade-arena-header.is-game-header .arcade-mode-selector {
+    transform: scale(.55);
+  }
+}
+
+/* ===== Tournament time-vote + lobby (restored) ===== */
+.edc-countdown {
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+  padding: 15px; border-radius: 12px; background: rgba(90,170,255,0.1); border: 1px solid rgba(90,170,255,0.28);
+  color: #9fd0ff; font-weight: 700; font-size: 14px;
+}
+.edc-countdown b { color: var(--text); font: 800 16px var(--numeric, monospace); }
+.edc-countdown span { color: var(--muted); font-weight: 600; font-size: 12px; }
+
+/* Tournament-type badge on event cards */
+.event-type-badge {
+  display: inline-flex; align-items: center; gap: 4px; width: fit-content;
+  font: 800 9px var(--numeric, monospace); letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 6px;
+}
+.event-type-badge.regular { background: rgba(244,185,66,0.16); color: var(--gold2); }
+.event-type-badge.influencer { background: rgba(255,107,127,0.16); color: #ff9db0; }
+.event-type-badge.private { background: rgba(200,120,255,0.16); color: #cf9bff; }
+.event-type-badge.seeking { background: rgba(244,185,66,0.18); color: var(--gold2); }
+.event-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.edc-sponsor.needs { color: var(--gold2); }
+
+/* Time-vote panel (event detail) */
+.edc-timevote {
+  border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px;
+  background: rgba(255,255,255,0.02); display: grid; gap: 12px;
+}
+.etv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.etv-head span { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; font-weight: 700; }
+.etv-head b { color: var(--gold2); font-size: 14px; }
+.etv-bars { display: grid; gap: 8px; }
+.etv-bar { display: grid; grid-template-columns: 90px 1fr 28px; align-items: center; gap: 10px; }
+.etv-slot { font: 700 12px var(--numeric, monospace); color: var(--text); }
+.etv-slot em { color: var(--gold2); font-style: normal; font-size: 10px; }
+.etv-track { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.etv-track i { display: block; height: 100%; background: linear-gradient(90deg, #5aa8ff, #7db8ff); border-radius: 999px; transition: width 0.3s ease; }
+.etv-bar.mine .etv-track i { background: linear-gradient(90deg, var(--gold1, #f6c25a), var(--gold2, #e0952e)); }
+.etv-count { text-align: right; font: 700 12px var(--numeric, monospace); color: var(--muted); }
+
+/* Teams panel (influencer battle) — 2..6 teams */
+.edc-teams-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--muted); font-size: 12.5px; font-weight: 700; }
+.edc-teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.edc-team {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--tc) 45%, var(--border));
+  background: color-mix(in srgb, var(--tc) 10%, transparent);
+}
+.edc-team.mine { border-color: var(--tc); box-shadow: 0 0 0 1px var(--tc) inset; }
+.edc-team-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--tc); box-shadow: 0 0 8px var(--tc); flex-shrink: 0; }
+.edc-team-body { display: grid; gap: 1px; flex: 1; min-width: 0; }
+.edc-team-body b { font-size: 14px; }
+.edc-team-body span { font-size: 11.5px; color: var(--muted); }
+.edc-team-count { display: inline-flex; align-items: center; gap: 4px; font: 700 13px var(--numeric, monospace); color: var(--tc); }
+.edc-team-you { position: absolute; top: 8px; right: 10px; font: 800 8px var(--numeric, monospace); letter-spacing: 0.08em; color: var(--tc); }
+
+/* Team invite-code input */
+.edc-teamcode { display: grid; gap: 6px; margin-bottom: 12px; }
+.edc-teamcode span { font-size: 12px; font-weight: 700; color: var(--muted); }
+.edc-teamcode input {
+  padding: 11px 13px; border-radius: 10px; border: 1px solid var(--border);
+  background: rgba(0,0,0,0.2); color: var(--text); font-size: 14px; letter-spacing: 0.04em;
+}
+.edc-teamcode input:focus { outline: none; border-color: var(--gold2); }
+
+/* Start-time survey popup */
+.vote-gate p b { color: var(--text); }
+.vote-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin: 6px 0 14px; width: 100%; }
 
 @media (min-width: 768px) and (max-width: 900px) {
   .arcade-arena-header.is-game-header .arcade-mode-selector {
@@ -8156,3 +9349,1157 @@ button.mini:hover { filter: brightness(1.06); }
 .vote-option.on { background: rgba(244,185,66,0.18); color: var(--gold2); border-color: var(--gold2); }
 .vote-option.on small { color: var(--gold2); }
 
+/* =========================================================================
+ * CINEMATIC GAME ARENA ANIMATIONS (GPU-ACCELERATED)
+ * ========================================================================= */
+
+@keyframes floatBreathing {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.02);
+  }
+}
+
+@keyframes combatPulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4), inset 0 0 10px rgba(245, 158, 11, 0.2);
+    border-color: rgba(245, 158, 11, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 45px rgba(245, 158, 11, 0.9), inset 0 0 20px rgba(245, 158, 11, 0.6);
+    border-color: rgba(255, 220, 100, 1);
+  }
+}
+
+@keyframes emeraldCombatPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(52, 211, 153, 0.4), inset 0 0 10px rgba(52, 211, 153, 0.2);
+    border-color: rgba(52, 211, 153, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 45px rgba(52, 211, 153, 0.9), inset 0 0 20px rgba(52, 211, 153, 0.6);
+    border-color: rgba(110, 231, 183, 1);
+  }
+}
+
+@keyframes holographicShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes dangerEmberFlicker {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6)) brightness(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.9)) brightness(1.25);
+  }
+}
+
+.anim-avatar-float {
+  animation: floatBreathing 3.6s ease-in-out infinite;
+}
+
+.anim-combat-halo {
+  animation: combatPulseGlow 2s ease-in-out infinite;
+}
+
+.anim-emerald-halo {
+  animation: emeraldCombatPulse 2s ease-in-out infinite;
+}
+
+.anim-holo-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: holographicShimmer 3s linear infinite;
+}
+
+.anim-danger-ember {
+  animation: dangerEmberFlicker 1.8s ease-in-out infinite;
+}
+
+/* Isolate transparent video compositing so its per-frame canvas updates do not invalidate the
+ * surrounding arena. The animation and shader stay unchanged; only repaint scope is constrained. */
+.transparent-video-shell {
+  contain: layout paint style;
+  isolation: isolate;
+}
+
+.transparent-video-shell canvas {
+  width: auto !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 9 / 16;
+  object-fit: contain;
+  flex: 0 1 auto;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ============================================================================
+ * MOBILE LANDSCAPE ARENA
+ * A dedicated, non-scrolling game shell: local player left, cards center and
+ * rival right. Portrait phones receive the rotate prompt from MobileLandscape.
+ * Desktop composition above 1180px is intentionally untouched.
+ * ========================================================================== */
+/* In the arena on mobile the bottom nav is removed — navigation lives in the top-right profile menu
+   (same as desktop). The header's mobile mode-picker also hides (mode switching stays in the dock). */
+body:has(.mobile-landscape-game) .mobile-bottom-nav,
+body:has(.mobile-landscape-game) .app-shell > footer {
+  display: none !important;
+}
+.mobile-landscape-game .mobile-mode-picker {
+  display: none !important;
+}
+
+/* Mobile: centre the elimination cow VERTICALLY so it (and its stars above) always fit the short
+   landscape screen — the desktop `bottom:218px` pushed it and the stars off the top. */
+@media (max-width: 1180px) and (orientation: landscape) {
+  .defeat-cow-stage.is-local-defeat,
+  .practice-page .defeat-cow-stage.is-local-defeat {
+    top: 50% !important;
+    bottom: auto !important;
+    left: 50% !important;
+    height: min(58vh, 200px) !important;
+    width: min(33vw, 116px) !important;
+    transform: translate(-50%, -50%) !important;
+  }
+}
+
+/* MOBILE ONLY: the top-right portal MENU replaces the header's profile trigger (so they don't
+   overlap) — but it is styled to look IDENTICAL to the desktop profile button, and the music/sound
+   icons keep their FULL desktop size, so the three icons match desktop exactly on mobile too.
+   Scoped to <=1180px so the DESKTOP header keeps its own profile trigger. */
+@media (max-width: 1180px) {
+  .mobile-landscape-game .arcade-profile-trigger {
+    display: none !important;
+  }
+  .mobile-landscape-game .arcade-header-actions {
+    gap: 8px !important;
+    padding-right: 54px !important; /* leave room for the fixed profile-style menu button at the far right */
+  }
+  /* Keep the music/sound icons perfectly circular on mobile — never let the flex row squish them into
+     ovals (fixed square size + aspect ratio, no shrink). */
+  .mobile-landscape-game .arcade-bgm-trigger,
+  .mobile-landscape-game .arcade-sound-trigger {
+    flex: 0 0 auto !important;
+    aspect-ratio: 1 / 1 !important;
+    width: 44px !important;
+    height: 44px !important;
+  }
+}
+
+@media (max-width: 1180px) and (orientation: portrait) {
+  body:has(.mobile-landscape-game) .mobile-bottom-nav,
+  body:has(.mobile-landscape-game) .app-shell > footer {
+    display: none !important;
+  }
+
+  /* AUTO-LANDSCAPE: a phone held in portrait is rotated into landscape automatically (no "please
+     rotate" prompt). We rotate the whole game stage 90° and size it to the viewport's height×width.
+     Fixed overlays (mascot, timer cow, wheel, winner) live INSIDE .arena-viewport, so a transform on
+     it becomes their containing block and they rotate correctly with the stage. */
+  html:has(.mobile-landscape-game),
+  body:has(.mobile-landscape-game) {
+    overflow: hidden !important;
+    overscroll-behavior: none;
+  }
+  .mobile-landscape-game.arena-viewport {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vh;
+    height: 100vw;
+    transform-origin: top left;
+    transform: rotate(90deg) translateY(-100vw);
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 1180px) and (orientation: landscape) {
+  body:has(.mobile-landscape-game .defeat-cow-result) .mobile-bottom-nav,
+  body:has(.mobile-landscape-game .skill-loadout-overlay) .mobile-bottom-nav,
+  body:has(.mobile-landscape-game .cd31-gate-overlay) .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  .skill-loadout-overlay {
+    padding: 6px !important;
+  }
+
+  .skill-loadout-card {
+    max-height: calc(100dvh - 12px) !important;
+    gap: 8px !important;
+    padding: 12px !important;
+  }
+
+  .mobile-landscape-game:has(.spectating-controls) .mobile-turn-action {
+    visibility: hidden;
+  }
+
+  .spectating-controls {
+    bottom: max(55px, calc(52px + env(safe-area-inset-bottom))) !important;
+  }
+
+  html:has(.mobile-landscape-game),
+  body:has(.mobile-landscape-game) {
+    width: 100%;
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .app-shell > footer {
+    display: none !important;
+  }
+
+  .mobile-bottom-nav {
+    position: fixed !important;
+    z-index: 9999 !important;
+    left: 50% !important;
+    bottom: max(3px, env(safe-area-inset-bottom)) !important;
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    align-items: center !important;
+    width: min(700px, calc(100vw - 110px)) !important;
+    height: 47px !important;
+    padding: 3px 5px !important;
+    border-radius: 16px !important;
+    translate: -50% 0 !important;
+    border: 1px solid rgb(251 191 36 / .55) !important;
+    background:
+      radial-gradient(circle at 50% 0%, rgb(52 211 153 / .13), transparent 37%),
+      linear-gradient(180deg, rgb(17 31 23 / .97), rgb(3 10 7 / .98)) !important;
+    box-shadow: 0 14px 40px rgb(0 0 0 / .7), inset 0 1px rgb(255 255 255 / .08) !important;
+    backdrop-filter: blur(20px) saturate(1.25) !important;
+  }
+
+  .mobile-nav-item,
+  .mobile-nav-profile {
+    min-height: 34px !important;
+    flex-direction: row !important;
+    gap: 4px !important;
+    margin-top: 0 !important;
+    padding: 2px 4px !important;
+    border-radius: 11px !important;
+    font-size: 6.5px !important;
+  }
+
+  .mobile-nav-landscape-only {
+    display: flex !important;
+  }
+
+  .mobile-nav-portrait-only {
+    display: none !important;
+  }
+
+  .mobile-nav-icon,
+  .mobile-nav-profile .mobile-nav-icon {
+    width: 23px !important;
+    height: 23px !important;
+    margin: 0 !important;
+    border-width: 1px !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+
+  .mobile-nav-profile .mobile-nav-icon {
+    width: 38px !important;
+    height: 38px !important;
+    margin-top: -14px !important;
+    border-width: 2px !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 0 3px rgb(4 12 8 / .94), 0 0 16px rgb(251 191 36 / .45) !important;
+  }
+
+  .mobile-more-menu {
+    right: 8px !important;
+    bottom: calc(55px + env(safe-area-inset-bottom)) !important;
+    width: min(270px, calc(100vw - 16px)) !important;
+    max-height: calc(100dvh - 58px) !important;
+    overflow-y: auto !important;
+  }
+
+  .app-shell:has(.mobile-landscape-game),
+  .app-shell:has(.mobile-landscape-game) .page-main,
+  .app-shell:has(.mobile-landscape-game) .cd31-page,
+  .mobile-landscape-game.arena-viewport {
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 !important;
+  }
+
+  .mobile-landscape-game.has-tournament-campaign {
+    background-position: center !important;
+    background-size: cover !important;
+  }
+
+  .mobile-landscape-game .arcade-arena-header.is-game-header {
+    position: relative;
+    z-index: 80;
+    width: 100%;
+    height: 47px !important;
+    min-height: 47px;
+    flex: 0 0 47px;
+    padding: 3px max(7px, env(safe-area-inset-right)) 3px max(7px, env(safe-area-inset-left)) !important;
+  }
+
+  .mobile-landscape-game .desktop-mode-switch {
+    display: none !important;
+  }
+
+  .mobile-landscape-game .mobile-mode-picker {
+    display: block !important;
+  }
+
+  .mobile-landscape-game .mobile-mode-picker > button,
+  .mobile-landscape-game .arcade-arena-header .arcade-sound-trigger,
+  .mobile-landscape-game .tournament-header-action {
+    width: 36px;
+    height: 36px;
+  }
+
+  .mobile-landscape-game .arcade-arena-header.is-game-header .arcade-brand,
+  .mobile-landscape-game .arcade-arena-header.is-game-header .arcade-brand:has(.tournament-header-brand) {
+    top: 2px !important;
+    left: 50% !important;
+    right: auto !important;
+    translate: 0 !important;
+    transform: translateX(-50%) !important;
+    transform-origin: top center;
+  }
+
+  .mobile-landscape-game .standard-game-marquee {
+    width: auto;
+    height: auto;
+    gap: 6px !important;
+    padding: 3px 9px !important;
+    border-radius: 14px !important;
+  }
+
+  /* Show the platform NAME on mobile too (single line), so the brand reads big and clear. */
+  .mobile-landscape-game .standard-game-name {
+    display: flex !important;
+  }
+
+  .mobile-landscape-game .standard-game-badge {
+    width: 44px !important;
+    height: 40px !important;
+    margin: 0 !important;
+    border-radius: 12px !important;
+  }
+
+  .mobile-landscape-game .standard-game-badge span {
+    font-size: 28px !important;
+  }
+
+  .mobile-landscape-game .brand-wordmark {
+    font-size: 19px !important;
+  }
+
+  .mobile-landscape-game .brand-tagline {
+    display: none !important;
+  }
+
+  .mobile-landscape-game .arcade-arena-header.is-game-header .arcade-mode-selector {
+    position: absolute;
+    top: 5px;
+    left: max(7px, env(safe-area-inset-left));
+    z-index: 2;
+    transform: none !important;
+  }
+
+  .mobile-landscape-game .arcade-arena-header.is-game-header .arcade-header-actions {
+    position: absolute;
+    top: 5px;
+    right: max(7px, env(safe-area-inset-right));
+    gap: 5px !important;
+  }
+
+  .mobile-landscape-game .mobile-arena-shell {
+    position: relative;
+    display: grid !important;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(125px, 20vw) minmax(240px, 1fr) minmax(125px, 20vw);
+    grid-template-rows: minmax(0, 1fr) 36px;
+    gap: 4px 8px;
+    align-content: stretch;
+    margin: 0;
+    overflow: hidden;
+    padding: 3px max(8px, env(safe-area-inset-right)) max(56px, calc(52px + env(safe-area-inset-bottom))) max(8px, env(safe-area-inset-left));
+  }
+
+  .mobile-landscape-game .mobile-arena-shell > section {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .mobile-landscape-game .mobile-arena-board {
+    z-index: 7;
+    display: flex;
+    min-height: 0;
+    grid-column: 2;
+    grid-row: 1;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-landscape-game .mobile-web-cylinder {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-landscape-game .mobile-web-cylinder > div {
+    max-width: 100%;
+  }
+
+  .mobile-landscape-game .mobile-number-deck-stack {
+    width: min(100%, 520px);
+    gap: clamp(4px, 1.2vh, 8px);
+    margin: 0 auto;
+  }
+
+  .mobile-landscape-game .mobile-number-deck {
+    border-radius: 14px;
+  }
+
+  .mobile-landscape-game .mobile-number-deck.is-history {
+    width: 82%;
+    opacity: .68;
+    filter: saturate(.55);
+  }
+
+  .mobile-landscape-game .mobile-deck-rim {
+    height: 6px;
+  }
+
+  .mobile-landscape-game .mobile-deck-cards {
+    gap: clamp(4px, .8vw, 8px);
+    padding: clamp(4px, 1vh, 7px);
+  }
+
+  .mobile-landscape-game .mobile-number-card {
+    height: clamp(60px, 20vh, 100px);
+  }
+
+  .mobile-landscape-game .mobile-number-deck.is-history .mobile-number-card {
+    height: clamp(42px, 13vh, 64px);
+  }
+
+  .mobile-landscape-game .mobile-number-card strong {
+    font-size: clamp(23px, 6vh, 38px);
+  }
+
+  .mobile-landscape-game .mobile-number-deck.is-history .mobile-number-card strong {
+    font-size: clamp(17px, 4.5vh, 27px);
+  }
+
+  .mobile-landscape-game .mobile-arena-action {
+    z-index: 8;
+    display: flex;
+    min-height: 0;
+    grid-column: 2;
+    grid-row: 2;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-landscape-game .mobile-turn-action {
+    width: min(100%, 520px);
+    min-height: 35px;
+    margin: 0;
+  }
+
+  .mobile-landscape-game .mobile-confirm-move,
+  .mobile-landscape-game .mobile-turn-status,
+  .mobile-landscape-game .mobile-join-game {
+    min-height: 35px;
+    padding-block: 5px;
+  }
+
+  .mobile-landscape-game .mobile-arena-players {
+    position: absolute;
+    z-index: 5;
+    inset: 0 0 54px;
+    display: block;
+    min-height: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .mobile-landscape-game .mobile-battle-strip {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    grid-template-columns: minmax(125px, 20vw) minmax(240px, 1fr) minmax(125px, 20vw);
+    grid-template-rows: minmax(0, 1fr) 36px;
+    gap: 4px 8px;
+    margin: 0;
+  }
+
+  .mobile-landscape-game .mobile-player-pod {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    align-self: center !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    pointer-events: auto;
+  }
+
+  .mobile-landscape-game .mobile-player-pod.is-you {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .mobile-landscape-game .mobile-player-pod.is-rival {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .mobile-landscape-game .mobile-pod-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    gap: 3px;
+  }
+
+  .mobile-landscape-game .mobile-pod-avatar {
+    width: clamp(105px, 32vh, 138px) !important;
+    height: clamp(105px, 32vh, 138px) !important;
+    max-width: 100% !important;
+    border-radius: clamp(18px, 4.5vh, 26px) !important;
+    overflow: visible !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.85)) !important;
+  }
+
+  .mobile-landscape-game .mobile-join-avatar-box {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: clamp(18px, 4.5vh, 26px) !important;
+    border: 2.5px dashed rgba(251, 191, 36, 0.85) !important;
+    background: rgba(6, 20, 13, 0.75) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.2), 0 6px 20px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .mobile-landscape-game .mobile-player-pod.is-turn .mobile-pod-avatar {
+    filter: drop-shadow(0 0 16px rgba(251, 191, 36, 0.85)) drop-shadow(0 8px 20px rgba(0, 0, 0, 0.7));
+    transform: scale(1.03);
+    transition: all 0.25s ease-out;
+  }
+
+  .mobile-landscape-game .mobile-player-name {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: clamp(11px, 2.5vh, 14px);
+    font-weight: 900;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #fff;
+    line-height: 1.2;
+  }
+
+  .mobile-landscape-game .mobile-pod-label {
+    font-size: clamp(8px, 1.8vh, 10px);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(0, 0, 0, 0.65);
+    padding: 2px 8px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .mobile-landscape-game .mobile-versus {
+    display: none;
+  }
+
+  .mobile-landscape-game .mobile-skill-rail {
+    z-index: 8;
+    width: 100%;
+    max-width: clamp(105px, 32vh, 138px) !important;
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-top: 3px;
+    pointer-events: auto;
+  }
+
+  .mobile-landscape-game .mobile-skill-rail button,
+  .mobile-landscape-game .mobile-skill-rail > div {
+    flex: 1;
+    min-height: 30px !important;
+    padding: 0 6px !important;
+    border-radius: 8px !important;
+    font-size: clamp(8px, 1.8vh, 10px) !important;
+    font-weight: 800 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: rgba(0, 0, 0, 0.8) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .mobile-landscape-game .mobile-skill-rail button,
+  .mobile-landscape-game .mobile-skill-rail > div {
+    flex: 1;
+    min-height: 26px;
+    padding: 0 4px;
+    border-radius: 7px;
+    font-size: clamp(7px, 1.6vh, 9px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2.5px;
+    background: rgba(0, 0, 0, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+
+  .mobile-landscape-game .mobile-arena-modes {
+    display: none;
+  }
+
+  .mobile-landscape-game .mobile-stats-trigger {
+    display: flex !important;
+    top: max(6px, env(safe-area-inset-top));
+    right: max(104px, calc(98px + env(safe-area-inset-right)));
+    bottom: auto !important;
+    z-index: 95;
+  }
+
+  .mobile-landscape-game .mobile-stats-trigger button {
+    min-height: 34px;
+    padding: 5px 9px;
+    font-size: 9px;
+  }
+
+  .mobile-stats-modal {
+    padding: 8px;
+  }
+
+  .mobile-stats-modal .mobile-stats-card {
+    max-width: min(560px, calc(100vw - 24px));
+    max-height: calc(100dvh - 18px);
+    gap: 8px;
+    overflow-y: auto;
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .mobile-landscape-game .tournament-sponsor-disclosure {
+    top: 44px;
+    font-size: 6px;
+  }
+
+  .mobile-landscape-game .tournament-sponsor-logo.show-mobile,
+  .mobile-landscape-game .tournament-cause-card {
+    display: none;
+  }
+
+  .mobile-landscape-game .tournament-cause-popover {
+    position: fixed;
+    top: 45px;
+    right: max(6px, env(safe-area-inset-right));
+    left: auto;
+    width: min(330px, 44vw);
+    max-width: calc(100vw - 12px);
+    max-height: calc(100dvh - 52px);
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  .mobile-landscape-game .defeat-cow-stage.is-idle {
+    top: auto !important;
+    bottom: max(6px, env(safe-area-inset-bottom)) !important;
+    left: max(6px, env(safe-area-inset-left)) !important;
+    width: 48px !important;
+    height: 80px !important;
+    opacity: 0.9 !important;
+    z-index: 35 !important;
+    pointer-events: none !important;
+  }
+
+  .defeat-cow-result {
+    display: grid !important;
+    grid-template-columns: minmax(150px, 1fr) minmax(130px, 22vw) minmax(150px, 1fr);
+    grid-template-rows: 1fr;
+    gap: 12px;
+    padding: 10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left)) !important;
+    overflow: hidden !important;
+  }
+
+  .defeat-cow-result-copy {
+    grid-column: 1;
+    margin: 0 !important;
+  }
+
+  .defeat-cow-result-copy h2 {
+    font-size: clamp(20px, 4vw, 36px) !important;
+  }
+
+  .defeat-cow-result-stars {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    margin: 0 !important;
+    transform: translateX(-50%);
+  }
+
+  .defeat-cow-result-video {
+    grid-column: 2;
+    width: min(22vw, 190px) !important;
+    max-height: 82dvh !important;
+  }
+
+  .defeat-cow-result-actions {
+    grid-column: 3;
+    flex-direction: column !important;
+    margin: 0 !important;
+  }
+
+  .defeat-cow-result-actions button {
+    width: min(100%, 210px);
+    padding: 10px 14px !important;
+    font-size: 12px !important;
+  }
+}
+
+@media (max-width: 760px) and (orientation: landscape),
+  (max-width: 1180px) and (orientation: landscape) and (max-height: 430px) {
+  .mobile-landscape-game .arcade-arena-header.is-game-header {
+    height: 43px !important;
+    min-height: 43px;
+    flex-basis: 43px;
+  }
+
+  .mobile-landscape-game .arcade-arena-header.is-game-header .arcade-brand,
+  .mobile-landscape-game .arcade-arena-header.is-game-header .arcade-brand:has(.tournament-header-brand) {
+    transform: translateX(-50%) !important;
+  }
+
+  .mobile-landscape-game .mobile-mode-picker > button,
+  .mobile-landscape-game .arcade-arena-header .arcade-sound-trigger,
+  .mobile-landscape-game .tournament-header-action {
+    width: 33px;
+    height: 33px;
+  }
+
+  .mobile-landscape-game .mobile-arena-shell,
+  .mobile-landscape-game .mobile-battle-strip {
+    grid-template-columns: minmax(104px, 22vw) minmax(245px, 1fr) minmax(104px, 22vw);
+    grid-template-rows: minmax(0, 1fr) 35px;
+    gap: 3px 7px;
+  }
+
+  .mobile-landscape-game .mobile-number-card {
+    height: clamp(48px, 18vh, 70px);
+  }
+
+  .mobile-landscape-game .mobile-number-deck.is-history .mobile-number-card {
+    height: clamp(34px, 11vh, 47px);
+  }
+
+  .mobile-landscape-game .mobile-pod-avatar {
+    width: clamp(54px, 18vh, 78px);
+    height: clamp(54px, 18vh, 78px);
+  }
+
+  .mobile-landscape-game .mobile-player-pod {
+    height: min(100%, 176px);
+    border-radius: 14px;
+  }
+
+  .mobile-landscape-game .mobile-skill-rail button,
+  .mobile-landscape-game .mobile-skill-rail > div {
+    min-height: 31px;
+  }
+
+  .mobile-landscape-game .mobile-confirm-move,
+  .mobile-landscape-game .mobile-turn-status,
+  .mobile-landscape-game .mobile-join-game {
+    min-height: 32px;
+  }
+}
+
+/* ==========================================================================
+   7-to-1 Cowntdown Cow Mascot Video (Bottom-Right)
+   ========================================================================== */
+.cowntdown-cow-stage {
+  position: fixed;
+  bottom: 24px;
+  right: 28px;
+  width: 125px;
+  height: 125px;
+  pointer-events: none;
+  z-index: 35;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.75));
+  mix-blend-mode: screen;
+}
+
+@media (max-width: 1180px) and (orientation: landscape) {
+  .mobile-landscape-game .cowntdown-cow-stage {
+    bottom: max(6px, calc(4px + env(safe-area-inset-bottom)));
+    right: max(6px, calc(4px + env(safe-area-inset-right)));
+    width: clamp(80px, 24vh, 120px);
+    height: clamp(80px, 24vh, 120px);
+  }
+}
+
+/* ==========================================================================
+   Global Mobile Landscape Optimization Across All Pages
+   ========================================================================== */
+@media (max-width: 1180px) and (orientation: landscape) {
+  /* Global page shell padding to comfortably clear the bottom nav */
+  .page-main,
+  .app-shell > main,
+  .cd31-page {
+    padding-bottom: max(68px, calc(64px + env(safe-area-inset-bottom))) !important;
+    overflow-y: auto !important;
+    max-height: 100dvh !important;
+  }
+
+  /* 1. Landing Page (Root /) Landscape 2-Column Grid */
+  .landing-playground {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow-y: auto !important;
+    padding: 6px max(12px, env(safe-area-inset-right)) max(65px, calc(60px + env(safe-area-inset-bottom))) max(12px, env(safe-area-inset-left)) !important;
+  }
+
+  .landing-nav {
+    padding: 4px 12px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .landing-brand {
+    gap: 8px !important;
+  }
+
+  .landing-brand-mark {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 16px !important;
+  }
+
+  .landing-brand span b {
+    font-size: 14px !important;
+  }
+
+  .landing-brand span small {
+    display: none !important;
+  }
+
+  .landing-main {
+    display: grid !important;
+    grid-template-columns: 1.15fr 0.85fr !important;
+    gap: 14px !important;
+    align-items: center !important;
+    max-width: 900px !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+  }
+
+  .landing-copy h1 {
+    font-size: clamp(20px, 4.5vh, 26px) !important;
+    line-height: 1.15 !important;
+    margin: 4px 0 !important;
+  }
+
+  .landing-kicker {
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .landing-lede {
+    font-size: 11px !important;
+    margin-bottom: 8px !important;
+    line-height: 1.3 !important;
+  }
+
+  .landing-actions {
+    display: flex !important;
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .landing-play {
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+    border-radius: 12px !important;
+  }
+
+  .landing-how {
+    padding: 8px 14px !important;
+    font-size: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .landing-steps {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4px !important;
+    margin-top: 6px !important;
+  }
+
+  .landing-steps > div {
+    padding: 4px 6px !important;
+    border-radius: 10px !important;
+    gap: 5px !important;
+  }
+
+  .landing-steps > div span {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 10px !important;
+  }
+
+  .landing-steps > div b {
+    font-size: 10px !important;
+  }
+
+  .landing-steps > div small {
+    font-size: 8px !important;
+    line-height: 1.1 !important;
+  }
+
+  .landing-mascot-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .landing-speech {
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+  }
+
+  .landing-mascot-card {
+    height: clamp(140px, 42vh, 190px) !important;
+    width: 100% !important;
+    max-width: 280px !important;
+    border-radius: 16px !important;
+  }
+
+  .landing-mascot-name {
+    padding: 4px 8px !important;
+  }
+
+  .landing-mascot-name span {
+    font-size: 9px !important;
+  }
+
+  .landing-mascot-name b {
+    font-size: 12px !important;
+  }
+
+  .landing-safe {
+    font-size: 9px !important;
+  }
+
+  /* 2. My Avatars Page (/avatar) Landscape 2-Column Split */
+  .avatar-page-layout,
+  main:has(.avatar-customizer) {
+    display: grid !important;
+    grid-template-columns: minmax(220px, 35%) 1fr !important;
+    gap: 12px !important;
+    align-items: start !important;
+    padding: 8px max(12px, env(safe-area-inset-right)) !important;
+  }
+
+  /* 3. Shop Page (/shop) Landscape Multi-Column Grid */
+  .shop-grid,
+  .catalog-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .shop-card,
+  .item-card {
+    padding: 6px 8px !important;
+    border-radius: 14px !important;
+  }
+
+  /* 4. Tournaments (/events) Landscape Multi-Column Grid */
+  .events-grid,
+  .tournament-list {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  /* 5. Wallet Page (/wallet) Landscape 2-Column Split */
+  .wallet-container,
+  main:has(.wallet-card) {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    align-items: start !important;
+  }
+
+  /* 6. Settings Page (/settings) Landscape 2-Column Grid */
+  .settings-container,
+  main:has(.settings-group) {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    align-items: start !important;
+  }
+
+  /* 7. History Page (/history) Landscape 2-Column Grid */
+  .history-container,
+  main:has(.history-card) {
+    display: grid !important;
+    grid-template-columns: 0.85fr 1.15fr !important;
+    gap: 12px !important;
+    align-items: start !important;
+  }
+}
+
+/* ============================================================================
+   CONSISTENT MOBILE HEADER (added 2026-08-31)
+   Every NON-ARENA page (`.is-page-header`) renders its platform brand and the
+   music / sound / profile icons IDENTICALLY to the practice-arena header —
+   same sizes, gaps and top alignment — so the header never changes page to page.
+   ============================================================================ */
+@media (max-width: 1180px) {
+  .arcade-arena-header.is-page-header,
+  .friendly-page .arcade-arena-header.is-page-header {
+    height: 58px !important;
+    min-height: 58px !important;
+    padding: 4px 10px !important;
+    align-items: flex-start !important;
+  }
+
+  /* Brand: compact 31 badge + THIRTY ONE wordmark (tagline hidden), centred at top. */
+  .arcade-arena-header.is-page-header .arcade-brand {
+    top: 5px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    transform-origin: top center;
+  }
+  .arcade-arena-header.is-page-header .standard-game-marquee {
+    gap: 6px !important;
+    padding: 3px 9px !important;
+    border-radius: 14px !important;
+  }
+  .arcade-arena-header.is-page-header .standard-game-badge {
+    width: 44px !important;
+    height: 40px !important;
+    border-radius: 12px !important;
+  }
+  .arcade-arena-header.is-page-header .standard-game-badge span {
+    font-size: 28px !important;
+  }
+  .arcade-arena-header.is-page-header .standard-game-name {
+    display: flex !important;
+  }
+  .arcade-arena-header.is-page-header .brand-wordmark {
+    font-size: 19px !important;
+  }
+  .arcade-arena-header.is-page-header .brand-tagline {
+    display: none !important;
+  }
+
+  /* Icons: 44px circles, 8px gap, TOP aligned (matches the arena exactly). */
+  .arcade-arena-header.is-page-header .arcade-header-actions {
+    gap: 8px !important;
+    padding-top: 4px !important;
+    align-items: flex-start !important;
+  }
+  .arcade-arena-header.is-page-header .arcade-bgm-trigger,
+  .arcade-arena-header.is-page-header .arcade-sound-trigger,
+  .arcade-arena-header.is-page-header .arcade-profile-trigger {
+    width: 44px !important;
+    height: 44px !important;
+    flex: 0 0 auto !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+}
+
+/* Pull the non-arena page header toward the top edge so its brand + icons align vertically with the
+   arena's (which is full-bleed). Content pages inset the header by their page padding (~24px). */
+@media (max-width: 1180px) {
+  .arcade-arena-header.is-page-header {
+    margin-top: -18px !important;
+    position: relative;
+    z-index: 40;
+  }
+}
+@media (max-width: 640px) {
+  .arcade-arena-header.is-page-header {
+    margin-top: -6px !important;
+  }
+}
+
+/* Narrow PORTRAIT phones: the header can't fit the wordmark + 3 icons without overlap (the arena
+   never hits this because it is always landscape). Show just the 31 badge there. */
+@media (max-width: 560px) {
+  .arcade-arena-header.is-page-header .standard-game-name {
+    display: none !important;
+  }
+}
+
+/* A TOURNAMENT arena has no mode toggle, so its header is `.is-page-header` — but it is still the
+   ARENA (inside `.mobile-landscape-game`). The content-page header overrides above (compact height,
+   -18px pull-up, top alignment) must NOT apply there, or the brand + music/sound icons get pulled up
+   off the top edge while the fixed profile button stays put. Reset them so the tournament arena
+   header aligns exactly like the practice arena. */
+@media (max-width: 1180px) {
+  .mobile-landscape-game .arcade-arena-header.is-page-header {
+    margin-top: 0 !important;
+    height: 43px !important;
+    min-height: 43px !important;
+    padding: 4px 6px !important;
+    align-items: flex-start !important;
+  }
+  .mobile-landscape-game .arcade-arena-header.is-page-header .arcade-brand {
+    top: 2px !important;
+  }
+  .mobile-landscape-game .arcade-arena-header.is-page-header .arcade-header-actions {
+    padding-top: 4px !important;
+  }
+}

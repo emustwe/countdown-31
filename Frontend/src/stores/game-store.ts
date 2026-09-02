@@ -112,7 +112,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   screenShake: false,
   speechBubble: {
     speaker: "opponent",
-    text: "Welcome to Count Down 31! Don't hit 31 or you spin out! 🐮",
+    text: "Welcome to Thirty One 31! Don't hit 31 or you spin out! 🐮",
   },
   playerEmotion: "confident",
   opponentEmotion: "confident",

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { type AvatarConfig } from "../../stores/avatar-customization-store";
-import { getAvatarVariant, isAvatarVariantId } from "../../lib/avatar-catalog";
+import { EYE_ANCHOR, getAvatarVariant, isAvatarVariantId } from "../../lib/avatar-catalog";
 import { getAvatarBackground, getAvatarFrame } from "../../lib/avatar-decorations";
 
 interface MasterAvatarProps {
@@ -14,6 +14,9 @@ interface MasterAvatarProps {
   showRarity?: boolean;
   rarityText?: string;
   rarityColor?: string;
+  /** Studio preview override for the styling glasses. If undefined, uses `config.stylingGlasses`
+   *  (so an EQUIPPED avatar shows the glasses everywhere it's rendered — e.g. the in-game card). */
+  glasses?: boolean;
 }
 
 export function MasterAvatar({
@@ -25,8 +28,10 @@ export function MasterAvatar({
   showRarity = false,
   rarityText = "Mythic",
   rarityColor = "#f59e0b",
+  glasses,
 }: MasterAvatarProps) {
   const skinId = config?.skinId ?? "base_bull";
+  const showGlasses = glasses !== undefined ? glasses : !!config?.stylingGlasses;
   const bgId = config?.backgroundId ?? "emerald";
   const frameId = config?.frameId ?? "mythic_gold";
   const hasGlasses = config?.hasGlasses ?? true;
@@ -58,6 +63,26 @@ export function MasterAvatar({
           className="absolute inset-[6%] w-[88%] h-[88%] rounded-[18%] object-cover pointer-events-none shadow-[0_0_18px_rgba(0,0,0,.35)]"
         />
       )}
+
+      {/* Styling: glasses layered onto the cow's EYES (per-character anchor). */}
+      {showGlasses && catalogVariant && (() => {
+        const a = EYE_ANCHOR[catalogVariant.characterId];
+        return (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src="/assets/styling/glasses-aviator.png"
+            alt="Glasses"
+            className="absolute z-[5] pointer-events-none object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,0.55)]"
+            style={{
+              left: `${a.x}%`,
+              top: `${a.y}%`,
+              width: `${a.w}%`,
+              transform: `translate(-50%, -50%) rotate(${a.rot ?? 0}deg)`,
+            }}
+          />
+        );
+      })()}
+
       {isPlainBull && !catalogVariant && (
         // eslint-disable-next-line @next/next/no-img-element
         <img

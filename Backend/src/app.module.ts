@@ -15,6 +15,7 @@ import { WalletModule } from "./modules/wallet/wallet.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { CountdownModule } from "./modules/countdown/countdown.module";
 import { SponsorsModule } from "./modules/sponsors/sponsors.module";
+import { TournamentCampaignModule } from "./modules/campaigns/tournament-campaign.module";
 import { ShopModule } from "./modules/shop/shop.module";
 import { PlatformConfigModule } from "./modules/platform-config/platform-config.module";
 
@@ -35,6 +36,7 @@ import { PlatformConfigModule } from "./modules/platform-config/platform-config.
     PlatformConfigModule,
     CountdownModule,
     SponsorsModule,
+    TournamentCampaignModule,
     ShopModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

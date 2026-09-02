@@ -15,19 +15,22 @@ export interface SponsorRow {
 
 export type Visibility = "PUBLIC" | "PRIVATE";
 export type PromoStatus = "PENDING" | "APPROVED" | "REJECTED";
-// REGULAR = individual knockout. INFLUENCER = the "Group" format (players split into groups/teams).
-export type PromoType = "REGULAR" | "INFLUENCER";
+// REGULAR = a plain single knockout. GROUP = the multi-day 31-per-group format.
+export type PromoType = "REGULAR" | "GROUP";
+export type GroupStatus = "PENDING" | "PLAYING" | "DONE";
+export type MemberResult = "PENDING" | "ADVANCED" | "ELIMINATED";
 
-// A team/group in a GROUP tournament (or a featured influencer in a REGULAR one). captainCode/
-// memberCode are only returned to the admin/sponsor who owns the tournament.
-export interface PromoTeam {
+// A group summary carried on the tournament (once groups are drawn). The full member roster is
+// fetched separately (useTournamentGroups) for the admin scheduling panel.
+export interface GroupSummary {
   id: string;
-  name: string;
-  captainName: string;
-  color: string;
+  index: number;
+  isFinal: boolean;
+  day: number | null;
+  scheduledAt: string | null;
+  status: GroupStatus;
+  winnerName: string | null;
   memberCount: number;
-  captainCode?: string;
-  memberCode?: string;
 }
 
 export interface PromoTournament {
@@ -37,19 +40,19 @@ export interface PromoTournament {
   visibility: Visibility;
   status: PromoStatus;
   type: PromoType;
-  hasInfluencers: boolean; // named influencer-captains featured (both types)
-  groupCount: number; // GROUP: number of groups; REGULAR+influencers: number of influencers
-  minGroupPlayers: number | null;
-  maxGroupPlayers: number | null;
-  teams: PromoTeam[];
+  durationDays: number | null; // GROUP: total days incl. the final day
+  groups: GroupSummary[];
   startAt: string | null;
   endAt: string | null;
+  entryClosesAt?: string | null; // GROUP: 24h before start
+  groupsAssignedAt?: string | null; // set once the admin has drawn the groups
   prizePool: string;
   winnerCount: number;
   minPlayers: number | null;
   maxPlayers: number | null;
   seekingSponsor: boolean;
   sponsor: { id?: string; name: string } | null;
+  themeId?: string | null;
   createdBy: string;
   createdAt: string;
   entryCount: number;
@@ -58,6 +61,54 @@ export interface PromoTournament {
   // Admin-chosen GMT calendar date + the GMT "HH:MM" slots players vote among for the start time.
   startDate: string | null;
   timeOptions: string[];
+  // Finish / prize lifecycle: a finished tournament stays listed with its winner and a "Watch
+  // winner" state until the admin marks the prize delivered.
+  finished?: boolean;
+  completedAt?: string | null;
+  winnerName?: string | null;
+  prizeDelivered?: boolean;
+}
+
+// ---- GROUP tournament: full group roster (admin scheduling panel) ----------------------------
+export interface GroupMemberRow {
+  userId: string;
+  name: string;
+  seat: number;
+  result: MemberResult;
+}
+export interface TournamentGroup {
+  id: string;
+  index: number;
+  isFinal: boolean;
+  day: number | null;
+  scheduledAt: string | null;
+  status: GroupStatus;
+  winnerUserId: string | null;
+  winnerName: string | null;
+  members: GroupMemberRow[];
+}
+export interface GroupsResponse {
+  tournamentId: string;
+  type: PromoType;
+  durationDays: number | null;
+  entryClosesAt: string | null;
+  groupsAssignedAt: string | null;
+  groupSize: number;
+  groups: TournamentGroup[];
+}
+// The signed-in player's own placement (their stage group + final if they advanced).
+export interface MyGroupPlacement {
+  groupId: string;
+  index: number;
+  isFinal: boolean;
+  day: number | null;
+  scheduledAt: string | null;
+  status: GroupStatus;
+  result: MemberResult;
+}
+export interface MyGroup {
+  stage: MyGroupPlacement | null;
+  final: MyGroupPlacement | null;
 }
 
 // One GMT start-time slot with its running vote tally.
@@ -81,11 +132,7 @@ export interface PromoInput {
   description?: string;
   visibility?: Visibility;
   type?: PromoType;
-  hasInfluencers?: boolean;
-  groupCount?: number;
-  teams?: { name?: string; captainName?: string }[];
-  minGroupPlayers?: number | null;
-  maxGroupPlayers?: number | null;
+  durationDays?: number | null; // GROUP: total days incl. the final
   startDate?: string | null; // GMT calendar date
   timeOptions?: string[]; // GMT "HH:MM" slots to vote on
   startAt?: string | null;
@@ -96,6 +143,7 @@ export interface PromoInput {
   maxPlayers?: number | null;
   seekingSponsor?: boolean;
   sponsorId?: string | null;
+  themeId?: string | null;
   status?: PromoStatus;
 }
 
@@ -182,6 +230,15 @@ export function useSetPromoStatus() {
     onSuccess: () => invalidatePromos(qc),
   });
 }
+// Admin confirms a finished tournament's prize was paid out → it drops off the public screen.
+export function useMarkPrizeDelivered() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiRequest<PromoTournament>(`/admin/promo-tournaments/${id}/prize-delivered`, { method: "POST" }),
+    onSuccess: () => invalidatePromos(qc),
+  });
+}
 
 // ---- Public + user: promo tournaments -------------------------------------------------------
 export function usePublicPromoTournaments() {
@@ -195,7 +252,39 @@ export function useRedeemJoinCode() {
 export interface PromoDetail extends PromoTournament {
   joined?: boolean;
   myTimeVote?: string | null; // the slot this user voted for
+  mySkills?: string[]; // the skill loadout this user LOCKED IN at join (cannot be changed)
+  myGroup?: MyGroup | null; // the player's own group placement (GROUP tournaments)
   timeVotes?: TimeVoteTally[]; // running tally across all voters
+}
+
+// ---- GROUP tournaments: admin assign / schedule + roster ------------------------------------
+export function useTournamentGroups(id: string, enabled = true) {
+  return useQuery({
+    queryKey: ["tournament-groups", id],
+    queryFn: () => apiRequest<GroupsResponse>(`/admin/promo-tournaments/${id}/groups`),
+    enabled: enabled && !!id,
+  });
+}
+export function useAssignGroups() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiRequest<GroupsResponse>(`/admin/promo-tournaments/${id}/assign-groups`, { method: "POST" }),
+    onSuccess: (_r, id) => {
+      qc.invalidateQueries({ queryKey: ["tournament-groups", id] });
+      qc.invalidateQueries({ queryKey: ["admin-promos"] });
+    },
+  });
+}
+export function useScheduleGroups() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, schedule }: { id: string; schedule: { groupId: string; day: number }[] }) =>
+      apiRequest<GroupsResponse>(`/admin/promo-tournaments/${id}/schedule`, { method: "POST", body: { schedule } }),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: ["tournament-groups", v.id] });
+      qc.invalidateQueries({ queryKey: ["admin-promos"] });
+    },
+  });
 }
 
 /** A joined player votes for the tournament's GMT start time; the most-voted slot resolves startAt. */
@@ -223,11 +312,50 @@ export function usePromoDetail(id: string, opts: { code?: string; authed: boolea
     retry: false,
   });
 }
+// ---- Sponsor campaign demo (admin one-click) ------------------------------------------------
+export interface SponsorDemoSetup {
+  sponsor: { id: string; name: string; username: string; password: string };
+  tournament: { id: string; title: string };
+  revision: number;
+}
+export function useSetupSponsorDemo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiRequest<SponsorDemoSetup>("/admin/promo-tournaments/demo/setup", { method: "POST" }),
+    onSuccess: () => {
+      invalidatePromos(qc);
+      qc.invalidateQueries({ queryKey: ["admin-sponsors"] });
+    },
+  });
+}
+
+// ---- Grand Starting Wheel -------------------------------------------------------------------
+// The entrant roster + the SEALED (deterministic) draw the kickoff wheel animates toward.
+export interface WheelRoster {
+  mode: "grand" | "simple";
+  total: number;
+  groupCount: number;
+  groupSizes: number[];
+  groupIndex: number;
+  reel: { id: string; name: string }[];
+  winnerSlot: number;
+  winner: { id: string; name: string } | null;
+  hash: string;
+}
+export function usePromoRoster(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["promo-roster", id],
+    queryFn: () => apiRequest<WheelRoster>(`/promo-tournaments/${id}/roster`, { auth: false }),
+    enabled: enabled && !!id,
+    staleTime: 60_000,
+    retry: false,
+  });
+}
 export function useJoinPromo() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, joinCode }: { id: string; joinCode?: string }) =>
-      apiRequest<{ joined: boolean }>(`/promo-tournaments/${id}/join`, { method: "POST", body: { joinCode } }),
+    mutationFn: ({ id, joinCode, skills }: { id: string; joinCode?: string; skills?: string[] }) =>
+      apiRequest<{ joined: boolean }>(`/promo-tournaments/${id}/join`, { method: "POST", body: { joinCode, skills } }),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: ["promo-detail", v.id] });
       qc.invalidateQueries({ queryKey: ["my-joined-promos"] });

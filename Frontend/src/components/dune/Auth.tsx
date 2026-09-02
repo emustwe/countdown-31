@@ -85,7 +85,7 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
           </div>
           <div>
             <h1 className="font-title font-black text-base sm:text-lg tracking-wider text-amber-300 drop-shadow">
-              COUNT DOWN 31
+              THIRTY ONE 31
             </h1>
             <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest -mt-0.5">
               Live Battle Arena
@@ -321,7 +321,7 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
 
       {/* Footer */}
       <footer className="relative z-20 text-center text-[11px] text-slate-500 font-medium py-2">
-        <span>© 2026 Count Down 31 Arena · Live Socket Engine & Web3 Wallet</span>
+        <span>© 2026 Thirty One 31 Arena · Live Socket Engine & Web3 Wallet</span>
       </footer>
     </div>
   );

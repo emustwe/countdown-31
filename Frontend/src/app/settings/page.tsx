@@ -2,9 +2,10 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, Volume2, Sparkles, User, Check, Save, LogOut, Camera } from "lucide-react";
+import { Settings, Volume2, Sparkles, User, Check, Save, LogOut, Camera, IdCard } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
+import { ProfilePanel } from "../../components/dune/ProfilePanel";
 import { AuthGuard } from "../../components/AuthGuard";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useProfile, useLogout, useUpdateProfile } from "../../lib/hooks/useAuth";
@@ -293,6 +294,17 @@ function SettingsContent() {
             <span>SIGN OUT OF ACCOUNT</span>
           </button>
         </div>
+      </div>
+
+      {/* My Profile — the full player card, embedded here as a section. */}
+      <div className="w-full flex flex-col gap-4">
+        <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+          <IdCard size={18} className="text-amber-400" />
+          <span className="font-title font-black text-sm text-amber-300 uppercase tracking-wider">
+            MY PROFILE
+          </span>
+        </div>
+        <ProfilePanel />
       </div>
     </>
   );
