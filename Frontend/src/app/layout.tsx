@@ -34,8 +34,8 @@ const cinzelDecorative = Cinzel_Decorative({
 });
 
 export const metadata: Metadata = {
-  title: "31 — Arcade Cow Counting Game",
-  description: "31 — A juicy, high-energy arcade cow counting game. Don't be the one to hit 31!",
+  title: "Vera 31 — Arcade Cow Counting Game",
+  description: "Vera 31 — A juicy, high-energy arcade cow counting game. Don't be the one to hit 31!",
 };
 
 // Runs before paint so the persisted light/dark choice and cached theme family are applied

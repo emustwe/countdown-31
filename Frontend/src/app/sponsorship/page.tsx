@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Handshake, Ticket, Trophy, Sparkles, Building2, CheckCircle2, Send, Mail, ShieldCheck, Users, X } from "lucide-react";
+import { Handshake, Ticket, Trophy, Building2, CheckCircle2, Send, Mail, ShieldCheck, Users, X } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { AuthGate } from "../../components/AuthGate";
@@ -128,26 +128,9 @@ export default function SponsorshipPage() {
 
       {/* Main Sponsorship Hub - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
       <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-6">
-        {/* Top Hero Banner */}
-        <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 shadow-xl">
-              <Handshake size={32} />
-            </div>
-            <div>
-              <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1">
-                <Sparkles size={12} className="text-yellow-400" />
-                <span>SUPPORT A GAME</span>
-              </span>
-              <h1 className="font-title font-black text-3xl sm:text-5xl text-white tracking-tight mt-0.5">
-                SPONSOR A GAME
-              </h1>
-              <p className="text-xs text-slate-300 mt-1 max-w-lg">
-                Sponsor a tournament, get co-branded custom assets, or request access to high-stakes private invitationals.
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* The "SPONSOR A GAME" hero banner was removed — it ate a band of vertical space and the two
+            CTAs below already say what the page does. The heading stays for screen readers. */}
+        <h1 className="sr-only">Sponsor a game</h1>
 
         {/* Two Primary Interactive CTAs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

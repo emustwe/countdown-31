@@ -4,13 +4,38 @@ import { useEffect } from "react";
 
 /**
  * Auto-landscape for phones. On devices that support it (Android Chrome) it locks the screen
- * orientation to landscape so the OS rotates the game. Where the browser can't rotate on its own
- * (iOS Safari has no orientation-lock API), CSS forces the arena into landscape by rotating the
- * `.mobile-landscape-game` stage 90° (see dune.css `@media (orientation: portrait)`). Either way the
- * player is dropped straight into landscape — there is NO "please rotate your device" prompt.
- * Renders nothing.
+ * orientation to landscape so the OS rotates the game and the player is dropped straight in. Where the
+ * browser can't lock (iOS Safari has no orientation-lock API), we do NOT fake it with a CSS rotation —
+ * the arena's measured arc-board layout is only valid in a real, un-rotated landscape viewport, and
+ * rotating the container 90° breaks that math. Instead, in portrait a full-screen "rotate your phone"
+ * prompt (`.rotate-to-play` in CountDown31 / dune.css) covers the arena until the device is turned to
+ * true landscape, where it renders exactly as on desktop / manual landscape. Renders nothing.
  */
 export function MobileLandscape() {
+  // TRUE visible height. iOS Safari in landscape overlays a top tab bar / bottom toolbar that
+  // `100dvh` doesn't reliably subtract, so the bottom of the arena gets clipped (~5%). visualViewport
+  // reports the actually-visible area (chrome excluded), so we mirror it into `--app-vh` and size the
+  // arena from that instead of dvh. Falls back to innerHeight where visualViewport is unavailable.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const setVH = () => {
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      document.documentElement.style.setProperty("--app-vh", `${Math.round(h)}px`);
+    };
+    setVH();
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", setVH);
+    vv?.addEventListener("scroll", setVH);
+    window.addEventListener("resize", setVH);
+    window.addEventListener("orientationchange", setVH);
+    return () => {
+      vv?.removeEventListener("resize", setVH);
+      vv?.removeEventListener("scroll", setVH);
+      window.removeEventListener("resize", setVH);
+      window.removeEventListener("orientationchange", setVH);
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 

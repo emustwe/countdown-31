@@ -278,7 +278,7 @@ export default function TournamentAdminPage() {
           <div className="flex flex-col gap-1">
             <span className={labelCls}>Theme (brand look)</span>
             <select value={form.themeId} onChange={(e) => set("themeId", e.target.value)} className={inputCls}>
-              <option value="">Default — 31 Thirty One</option>
+              <option value="">Default — Vera 31</option>
               {(themes ?? []).map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}{t.gameTitle ? ` — ${t.gameTitle}` : ""}
@@ -299,7 +299,7 @@ export default function TournamentAdminPage() {
               </label>
               <div className="sm:col-span-2 lg:col-span-2 flex items-center">
                 <p className="text-[11px] text-amber-200/90 bg-black/50 p-2.5 rounded-xl border border-amber-500/20 leading-relaxed">
-                  Entrants are automatically split into <b>groups of {GROUP_SIZE}</b> by join order. <b>Entry closes 24h before the start.</b> After it closes, open the tournament's <b>Groups</b> page to assign each group to a day. Every group eliminates down to <b>one winner</b>, and all winners meet in the <b>final on the last day</b>.
+                  Entrants are automatically split into <b>groups of {GROUP_SIZE}</b> by join order. <b>Entry closes 24h before the start.</b> After it closes, drawing the groups <b>auto-schedules them evenly across the days</b>. Every group eliminates down to <b>one winner</b>, and all winners meet in the <b>final on the last day</b>.
                 </p>
               </div>
             </>

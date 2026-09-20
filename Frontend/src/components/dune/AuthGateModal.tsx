@@ -95,7 +95,7 @@ export function AuthGateModal({
             </div>
             <div className="flex items-center gap-2.5 text-xs text-emerald-200">
               <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
-              <span>Deposit & withdraw USDT cryptocurrency</span>
+              <span>Unlock every cosmetic — completely free</span>
             </div>
             <div className="flex items-center gap-2.5 text-xs text-amber-200">
               <Sparkles size={14} className="text-yellow-400 shrink-0" />

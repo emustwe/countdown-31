@@ -9,6 +9,7 @@ import { ArcadeHeader } from "../../../components/dune/ArcadeHeader";
 import { OfficialRulesModal } from "../../../components/dune/OfficialRulesModal";
 import { CountDown31 } from "../../../components/dune/CountDown31";
 import { StartingWheel } from "../../../components/dune/StartingWheel";
+import { TournamentLobby } from "../../../components/dune/TournamentLobby";
 import { ArenaLoading } from "../../../components/dune/ArenaLoading";
 import { SkillLoadoutModal } from "../../../components/dune/SkillLoadoutModal";
 import type { SkillType } from "../../../lib/hooks/useCountdownLive";
@@ -18,14 +19,6 @@ import { useAuthStore } from "../../../stores/auth-store";
 import { soundManager } from "../../../lib/soundManager";
 import { resolveCampaignAssetUrl, useActiveTournamentCampaign } from "../../../lib/hooks/useTournamentCampaign";
 import { useGameThemes } from "../../../lib/hooks/useGameConfig";
-
-const SKILL_LABELS: Record<string, string> = {
-  rewind: "Step Back (-2)",
-  turbo: "Jump Ahead (+3)",
-  shield: "Safety Shield",
-  nudge: "Skip Turn",
-  double: "Double Trouble",
-};
 
 function fmtGmtDate(iso: string | null): string {
   if (!iso) return "TBA";
@@ -99,8 +92,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // The group the player should enter next: their stage group while it's still live, otherwise the
   // final (either because they advanced, or because a single-group tournament's group IS the final).
   const activeGroup = isGroup ? (myStage && myStage.status !== "DONE" ? myStage : (myFinal ?? myStage)) : null;
-  const eliminatedInStage = isGroup && myStage?.status === "DONE" && myStage?.result === "ELIMINATED" && !myFinal;
-  const groupPlayable = !isGroup || (!!activeGroup && activeGroup.status !== "DONE");
+  // A knocked-out member is out whether or not the group has formally finished — eliminations are now
+  // persisted mid-game, so route on their OWN result, not the group's status. This is what stops a
+  // returning eliminated player from being revived into a fresh game after a server restart.
+  const eliminatedInStage = isGroup && myStage?.result === "ELIMINATED" && !myFinal;
+  const eliminatedInFinal = isGroup && myFinal?.result === "ELIMINATED";
+  // A knocked-out participant → spectator/status lobby (can watch the whole event, can't enter a game).
+  const isEliminated = !!t?.joined && (eliminatedInStage || eliminatedInFinal);
+  const groupPlayable = (!isGroup || (!!activeGroup && activeGroup.status !== "DONE")) && !isEliminated;
 
   const hasTimeVote = (t?.timeOptions?.length ?? 0) > 0;
   // For REGULAR: the shared tournament room at startAt. For GROUP: the player's active group room at
@@ -152,8 +151,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // takes over (see the `showWheel` render branch below); when it finishes it drops the player into
   // the arena. No "Enter the game" button.
 
-  // Step 1 of joining: validate, then open the skill picker. You LOCK IN your loadout here, BEFORE
-  // the start-time survey — it can't be changed afterwards and is what you play the whole tournament.
+  // Joining: validate, then register directly. Tournaments are now CLASSIC (no skill loadout), so
+  // there is no skill-picker step — we register with no skills and go straight to the time survey.
   function onJoin() {
     setError("");
     if (!authed) {
@@ -164,10 +163,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       setError("Enter the tournament referral code to enter this private tournament.");
       return;
     }
-    setShowSkillPicker(true);
+    void confirmJoinWithSkills([]);
   }
 
-  // Step 2: skills chosen → register with the locked loadout, then show the start-time survey.
+  // Register with the (empty) loadout, then show the start-time survey.
   async function confirmJoinWithSkills(skills: SkillType[]) {
     setShowSkillPicker(false);
     setError("");
@@ -224,8 +223,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     return <ArenaLoading title="Entering the arena" subtitle="Seating players & syncing the pasture…" />;
   }
 
-  // In-game view: full-screen arcade, old nav hidden (only after the tournament has started).
-  if (t && playing && canEnter) {
+  // In-game view: full-screen arcade. Once you're in an active session (`playing`), stay here even
+  // after being eliminated — the arena becomes watch-only so you can spectate the rest of the live
+  // match (`canEnter` is only required to ENTER, above, so a reload while eliminated won't revive you).
+  if (t && playing) {
     return (
       <PageShell className="practice-page relative">
         <PastureAmbiance />
@@ -233,6 +234,57 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           <CountDown31 roomId={roomId} testArena={isTest} theme={tournamentTheme} />
         </main>
       </PageShell>
+    );
+  }
+
+  // Full-screen SPECTATOR lobby: a knocked-out participant can still open the tournament and watch the
+  // whole event unfold (day/group/player progress) — but cannot enter a game.
+  if (t && isEliminated) {
+    return (
+      <TournamentLobby
+        title={t.title}
+        isPrivate={isPrivate}
+        isGroup={isGroup}
+        group={null}
+        winnerCount={t.winnerCount}
+        entryCount={t.entryCount}
+        enterMs={0}
+        now={now}
+        schedule={isGroup ? t.schedule : null}
+        myDay={isGroup ? (myStage?.day ?? null) : null}
+        progress={isGroup ? t.progress : null}
+        eliminated
+        eliminatedGroup={myStage?.index ?? null}
+        accent={campaign?.theme.secondaryColor ?? "#fbbf24"}
+        backgroundImage={resolveCampaignAssetUrl(campaign?.theme.backgroundImage) ?? tournamentTheme?.backgroundImage ?? null}
+        lobby={tournamentTheme?.lobby ?? null}
+        onBack={() => router.push("/events")}
+      />
+    );
+  }
+
+  // Full-screen LOBBY: a joined player waiting for a resolved start time (or scheduled group match).
+  // Replaces the old "You're in — Starts in…" card. It just counts down; when the clock hits zero the
+  // effects above take over (the wheel for REGULAR, or straight into the group arena for GROUP).
+  if (t && t.joined && !isTest && !canEnter && groupPlayable && !eliminatedInStage && enterMs != null) {
+    return (
+      <TournamentLobby
+        title={t.title}
+        isPrivate={isPrivate}
+        isGroup={isGroup}
+        group={isGroup ? activeGroup : null}
+        winnerCount={t.winnerCount}
+        entryCount={t.entryCount}
+        enterMs={enterMs}
+        now={now}
+        schedule={isGroup ? t.schedule : null}
+        myDay={isGroup ? (activeGroup?.day ?? null) : null}
+        progress={isGroup ? t.progress : null}
+        accent={campaign?.theme.secondaryColor ?? "#fbbf24"}
+        backgroundImage={resolveCampaignAssetUrl(campaign?.theme.backgroundImage) ?? tournamentTheme?.backgroundImage ?? null}
+        lobby={tournamentTheme?.lobby ?? null}
+        onBack={() => router.push("/events")}
+      />
     );
   }
 
@@ -395,21 +447,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   )
                 )}
 
-                {/* Locked skill loadout — chosen at join, cannot be changed. */}
-                <div className="rounded-2xl border border-amber-400/30 bg-black/40 p-3 flex flex-col gap-1.5">
-                  <span className="text-[10px] font-title font-bold text-amber-300/80 uppercase tracking-widest flex items-center gap-1"><Lock size={11} /> Your locked skills</span>
-                  {(t.mySkills?.length ?? 0) > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {t.mySkills!.map((s) => (
-                        <span key={s} className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-400/40 text-amber-200 font-title font-black text-[11px]">
-                          {SKILL_LABELS[s] ?? s}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-slate-400">No skills equipped for this tournament.</span>
-                  )}
-                </div>
                 {canEnter ? (
                   <div className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400/90 via-yellow-500/90 to-amber-400/90 text-slate-950 font-title font-black text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.6)] flex items-center justify-center gap-2">
                     <Trophy size={18} /> Entering the arena{isGroup ? "…" : " — the wheel is spinning…"}
@@ -463,7 +500,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             )}
             {error && <div className="text-xs text-rose-400 font-bold">{error}</div>}
 
-            <p className="text-[11px] text-slate-500 text-center">Knockout Thirty One 31 — every elimination shrinks the field until one winner remains. The game opens for everyone at the GMT start time.</p>
+            <p className="text-[11px] text-slate-500 text-center">Knockout Vera 31 — every elimination shrinks the field until one winner remains. The game opens for everyone at the GMT start time.</p>
           </div>
         )}
       </main>

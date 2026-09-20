@@ -1,0 +1,25 @@
+# TLS-terminating reverse proxy for Thirty One 31 (production).
+# Caddy auto-provisions + renews a real Let's Encrypt certificate for your domain, so the app is
+# served over HTTPS and the refresh cookie's `secure` flag (set when NODE_ENV=production) works.
+#
+# Usage:  brew install caddy  (or apt)  ;  edit the domain below  ;  caddy run --config Caddyfile
+# Point your DNS A/AAAA record at this host first.
+
+thirtyone.example.com {
+    encode zstd gzip
+
+    # API — the NestJS backend on :4000. Adjust the path prefix to match how the frontend calls it.
+    handle /api/* {
+        reverse_proxy 127.0.0.1:4000
+    }
+
+    # WebSocket (countdown game gateway) + everything else → the Next.js frontend on :3000.
+    handle {
+        reverse_proxy 127.0.0.1:3000
+    }
+}
+
+# If you serve the API on its own subdomain instead, use a second block:
+# api.thirtyone.example.com {
+#     reverse_proxy 127.0.0.1:4000
+# }

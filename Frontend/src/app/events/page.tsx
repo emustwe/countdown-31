@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trophy, KeyRound, Swords, Users, Clock, Award, Sparkles, Flame, ShieldAlert, ArrowRight } from "lucide-react";
+import { Trophy, KeyRound, Swords, Users, Clock, Award, Sparkles, ShieldAlert, ArrowRight } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { AuthGate } from "../../components/AuthGate";
@@ -51,33 +51,16 @@ export default function TournamentsHubPage() {
 
       {/* Main Tournaments Hub - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
       <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-6">
-        {/* Top Hero Banner */}
-        <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 shadow-xl">
-              <Trophy size={32} />
-            </div>
-            <div>
-              <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1">
-                <Flame size={12} className="text-rose-400 fill-rose-400" />
-                <span>PLAY TOGETHER</span>
-              </span>
-              <h1 className="font-title font-black text-3xl sm:text-5xl text-white tracking-tight mt-0.5">
-                TOURNAMENTS
-              </h1>
-              <p className="text-xs text-slate-300 mt-1 max-w-lg">
-                Pick a game below. Private tournaments show a lock — open one to join with its code.
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* The big "TOURNAMENTS" hero banner was removed — it ate a whole screenful on phones and said
+            nothing the "TOURNAMENTS TO JOIN" strip below doesn't. The page heading stays for screen readers. */}
+        <h1 className="sr-only">Tournaments</h1>
 
         {/* Live Tournaments Grid */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
             <span className="font-title font-black text-base text-amber-300 uppercase tracking-widest flex items-center gap-2">
               <Swords size={18} className="text-yellow-400" />
-              <span>GAMES TO JOIN</span>
+              <span>TOURNAMENTS TO JOIN</span>
             </span>
             <span className="text-xs font-title font-bold text-slate-400">
               {list.length} Arenas

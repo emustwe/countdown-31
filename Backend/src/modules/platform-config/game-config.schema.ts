@@ -147,7 +147,7 @@ export type GameConfig = z.infer<typeof GameConfigSchema>;
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   branding: {
-    gameTitle: "THIRTY ONE",
+    gameTitle: "VERA 31",
     subtitle: "Knockout Arena",
     announcement: "Tactical skills activated!",
     logoEmoji: "",
@@ -326,15 +326,6 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
       order: 4,
     },
     {
-      id: "profile",
-      label: "My Profile",
-      path: "/profile",
-      icon: "profile",
-      enabled: true,
-      requiresAuth: true,
-      order: 5,
-    },
-    {
       id: "wallet",
       label: "Wallet",
       path: "/wallet",
@@ -368,6 +359,39 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
  * A named, reusable SPONSOR THEME — created in the Game Studio, picked at tournament creation. It
  * overrides the tournament game's brand (name/logo/tagline) and arena backdrop. Stored as a JSON
  * array under the `themes` platform-config key. */
+/** In-arena AD SURFACES for a sponsor theme: which brand placements are switched on and how they
+ *  look. Optional so themes saved before this existed keep validating (the client fills defaults). */
+export const ThemeAdsSchema = z
+  .object({
+    // Where the brand marquee (logo or wordmark) sits in the arena.
+    placement: z.enum(["topLeft", "topCenter", "topRight"]),
+    // The sponsor's mark ghosted onto the number-board felt.
+    boardWatermark: z.boolean(),
+    boardWatermarkOpacity: z.number().min(0).max(0.6),
+    // Optional custom artwork that replaces the board felt / the roster banner. Empty = use the brand.
+    boardImage: z.string().trim().max(2000),
+    rosterBanner: z.boolean(),
+    rosterBannerImage: z.string().trim().max(2000),
+    // Look of the board, its number tiles, and the arena list.
+    boardStyle: z.enum(["felt", "slate", "midnight", "brand"]),
+    tileStyle: z.enum(["classic", "flat", "outline", "solid"]),
+    rosterStyle: z.enum(["default", "glass", "solid", "brand"]),
+    // Extra ad inventory: the marquee slots the logo/name isn't using.
+    bannerCenterImage: z.string().trim().max(2000),
+    bannerOppositeImage: z.string().trim().max(2000),
+  })
+  .strict();
+
+/** Simple LOBBY-screen customisation. Optional for backward compatibility. */
+export const ThemeLobbySchema = z
+  .object({
+    backgroundImage: z.string().trim().max(2000),
+    overlayOpacity: z.number().min(0).max(0.9),
+    notice: z.string().trim().max(160),
+    bannerImage: z.string().trim().max(2000),
+  })
+  .strict();
+
 export const GameThemeSchema = z
   .object({
     id: z.string().trim().min(1).max(64),
@@ -379,6 +403,8 @@ export const GameThemeSchema = z
     overlayOpacity: z.number().min(0).max(0.9),
     primaryColor: z.string().trim().max(9),
     secondaryColor: z.string().trim().max(9),
+    ads: ThemeAdsSchema.optional(),
+    lobby: ThemeLobbySchema.optional(),
   })
   .strict();
 export const GameThemesSchema = z.array(GameThemeSchema).max(200);

@@ -4,11 +4,9 @@ import { usePathname } from "next/navigation";
 import { AuthGuard } from "./AuthGuard";
 
 const ACCOUNT_ROUTES = [
-  "/profile",
   "/avatar",
   "/avatar-styles",
   "/shop",
-  "/wallet",
   "/history",
   "/settings",
   "/events",

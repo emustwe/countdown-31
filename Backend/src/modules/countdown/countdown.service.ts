@@ -267,7 +267,13 @@ class Room {
     const consecutive = picks.every((v, i) => v === this.count + 1 + i);
     if (!consecutive) return this.eliminate(id, "skip");
     if (m > 3) return this.eliminate(id, "over3");
-    if (this.lastK !== null && m === this.lastK) return this.eliminate(id, "repeat");
+    // Reaching 31 IS the losing move ("say 31"), and it takes precedence over the repeat rule: a
+    // player trapped at the top (e.g. count 30 when the previous move was also a single number) must
+    // still be able to say 31 to end the lap. Without this, that forced move was mis-flagged as
+    // "repeat" — which CONTINUES the count instead of resetting it — so the game got stuck at 30 with
+    // every player repeat-eliminated in turn and the lap never finishing.
+    const reaches31 = this.count + m >= TARGET;
+    if (!reaches31 && this.lastK !== null && m === this.lastK) return this.eliminate(id, "repeat");
     const player = this.players.find((p) => p.id === id);
     const color = player?.color ?? PALETTE[0]!;
     for (const n of picks) this.taken[n] = color;
@@ -569,6 +575,13 @@ export class CountdownGameService implements OnModuleInit, OnModuleDestroy {
 
   getState(roomId: string): LiveState {
     return this.getRoom(roomId).getState();
+  }
+
+  /** Tournament (knockout) rooms only: the userIds eliminated so far. The gateway persists these to
+   * the DB so a returning eliminated player is recognised as out even if the in-memory room is gone. */
+  eliminatedIds(roomId: string): string[] {
+    const room = this.rooms.get(roomId);
+    return room && room.mode === "knockout" ? [...room.eliminated] : [];
   }
 
   join(roomId: string, socketId: string, name: string, cos?: Cosmetics): void {

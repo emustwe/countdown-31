@@ -588,6 +588,10 @@ export class SponsorsService {
       myTimeVote: myVote?.timeSlot ?? null,
       // The caller's group placement (once groups are assigned), for the "You're in Group N" panel.
       myGroup: userId ? await this.myGroupSummary(id, userId) : null,
+      // Day-by-day schedule (GROUP only, once groups are drawn) for the lobby breakdown.
+      schedule: t.type === "GROUP" ? await this.groupSchedule(id, t.startAt) : null,
+      // Live progress dashboard (GROUP only) — day/group/player counts for the spectator lobby.
+      progress: t.type === "GROUP" ? await this.tournamentProgress(id, t.startAt, t.durationDays) : null,
       timeVotes: await this.tallyTimeVotes(id, (t.timeOptions as string[]) ?? []),
     };
   }
@@ -623,7 +627,10 @@ export class SponsorsService {
 
     const winnerIndex = this.fnv1a(id) % total;
     const winner = players[winnerIndex]!;
-    const mode: "grand" | "simple" = total > 24 ? "grand" : "simple";
+    // One slice per player stays readable up to ~40 slices (the canvas only labels when slices <= 40),
+    // and the grand group-wheel only makes sense once groups hold several cows each. Below that a
+    // 31-group split just yields nonsense "1p" groups, so keep small fields on the simple name wheel.
+    const mode: "grand" | "simple" = total > 40 ? "grand" : "simple";
 
     if (mode === "simple") {
       // One slice per player — the wheel lands directly on the spotlight cow.
@@ -765,6 +772,98 @@ export class SponsorsService {
   }
 
   /**
+   * Auto-distribute `stageCount` groups as evenly as possible across the group-stage days (day
+   * 1..durationDays-1); the final always plays on the last day. Returns a 0-based array where
+   * `days[i]` is the 1-based day the i-th stage group plays. Example: 100 groups over a 7-day event
+   * (6 stage days) → days 1-4 hold 17 groups, days 5-6 hold 16 (17×4 + 16×2 = 100), final on day 7.
+   * If there are more stage days than groups, groups take the earliest days (one per day). If there
+   * is only one stage day (durationDays = 2), every group plays on day 1.
+   */
+  private distributeGroupDays(stageCount: number, durationDays: number): number[] {
+    const stageDays = Math.max(1, durationDays - 1);
+    const base = Math.floor(stageCount / stageDays);
+    const rem = stageCount % stageDays;
+    const days: number[] = [];
+    for (let d = 1; d <= stageDays; d++) {
+      const count = base + (d <= rem ? 1 : 0); // the first `rem` days carry one extra group
+      for (let k = 0; k < count; k++) days.push(d);
+    }
+    return days; // length === stageCount
+  }
+
+  /**
+   * Per-day schedule summary for the lobby / admin plan: one row per used day with its scheduled GMT
+   * time, how many groups play that day, and how many cows. The FINAL day reports the number of
+   * finalists EXPECTED (= number of stage groups, since each sends one winner), so the lobby can say
+   * "Final — 100 winners" before any group has actually finished.
+   */
+  private async groupSchedule(id: string, startAt: Date | null) {
+    const groups = await this.prisma.tournamentGroup.findMany({
+      where: { tournamentId: id },
+      include: { _count: { select: { members: true } } },
+    });
+    if (!groups.length) return [];
+    const stageGroupCount = groups.filter((g) => !g.isFinal).length;
+    const byDay = new Map<number, { day: number; scheduledAt: Date | null; isFinal: boolean; groupCount: number; playerCount: number }>();
+    for (const g of groups) {
+      if (g.day == null) continue;
+      const row = byDay.get(g.day) ?? { day: g.day, scheduledAt: g.scheduledAt ?? this.dayScheduledAt(startAt, g.day), isFinal: false, groupCount: 0, playerCount: 0 };
+      row.groupCount += 1;
+      // Final day: show the expected finalist count (one winner per stage group). A single-group
+      // tournament whose only group IS the final just uses that group's own member count.
+      row.playerCount += g.isFinal && stageGroupCount > 0 ? stageGroupCount : g._count.members;
+      row.isFinal = row.isFinal || g.isFinal;
+      byDay.set(g.day, row);
+    }
+    return [...byDay.values()].sort((a, b) => a.day - b.day);
+  }
+
+  /**
+   * Live tournament progress (GROUP only) for the spectator dashboard shown on the lobby — so a
+   * participant (including one already knocked out) can watch how the whole event is unfolding: which
+   * day is running, days done/remaining, groups done/remaining/running-now, and how many cows are
+   * still alive vs eliminated. Returns null for REGULAR or before groups are drawn.
+   */
+  private async tournamentProgress(id: string, startAt: Date | null, durationDaysRaw: number | null) {
+    const durationDays = durationDaysRaw ?? 1;
+    const [groups, members, playersTotal] = await Promise.all([
+      this.prisma.tournamentGroup.findMany({ where: { tournamentId: id } }),
+      this.prisma.groupMember.findMany({ where: { group: { tournamentId: id } }, select: { userId: true, result: true } }),
+      this.prisma.promoEntry.count({ where: { tournamentId: id } }),
+    ]);
+    if (!groups.length) return null;
+    const now = Date.now();
+    const startMs = startAt ? startAt.getTime() : now;
+    const started = startAt ? now >= startMs : false;
+    let currentDay = startAt ? Math.floor((now - startMs) / 86_400_000) + 1 : 1;
+    currentDay = Math.max(1, Math.min(durationDays, currentDay));
+
+    const groupsTotal = groups.length;
+    const groupsDone = groups.filter((g) => g.status === "DONE").length;
+    const finalGroup = groups.find((g) => g.isFinal);
+    const eliminatedIds = new Set(members.filter((m) => m.result === "ELIMINATED").map((m) => m.userId));
+    const playersEliminated = eliminatedIds.size;
+    // "Running now" = groups scheduled for the current day that haven't finished (or explicitly PLAYING).
+    const running = groups
+      .filter((g) => g.status === "PLAYING" || (started && g.status !== "DONE" && g.day === currentDay))
+      .map((g) => ({ index: g.index, isFinal: g.isFinal, day: g.day, status: g.status }))
+      .sort((a, b) => a.index - b.index);
+
+    return {
+      started,
+      durationDays,
+      currentDay,
+      daysDone: Math.max(0, currentDay - 1),
+      daysRemaining: Math.max(0, durationDays - currentDay),
+      groups: { total: groupsTotal, done: groupsDone, remaining: groupsTotal - groupsDone, runningNow: running.length },
+      players: { total: playersTotal, eliminated: playersEliminated, remaining: Math.max(0, playersTotal - playersEliminated) },
+      running,
+      finalDone: finalGroup?.status === "DONE",
+      champion: finalGroup?.status === "DONE" ? finalGroup.winnerName ?? null : null,
+    };
+  }
+
+  /**
    * Automatically draw the groups for a GROUP tournament: entrants ordered by join `seq` are chunked
    * into groups of 31 (the last group may hold fewer). A separate final group is created to collect
    * every group winner — unless there is only ONE stage group, in which case that group IS the final.
@@ -784,18 +883,21 @@ export class SponsorsService {
     if (entries.length < 2) throw new BadRequestException("Need at least 2 entrants to draw groups");
     const stageCount = Math.ceil(entries.length / GROUP_SIZE);
     const singleGroupIsFinal = stageCount === 1;
+    // Auto-distribute the stage groups evenly across the group-stage days (final is the last day).
+    const stageDay = singleGroupIsFinal ? [] : this.distributeGroupDays(stageCount, durationDays);
 
     await this.prisma.$transaction(async (tx) => {
       for (let g = 0; g < stageCount; g++) {
         const slice = entries.slice(g * GROUP_SIZE, (g + 1) * GROUP_SIZE);
+        // A single group that IS the final plays on the last day; otherwise use the auto-assigned day.
+        const day = singleGroupIsFinal ? durationDays : stageDay[g]!;
         const group = await tx.tournamentGroup.create({
           data: {
             tournamentId: id,
             index: g + 1,
             isFinal: singleGroupIsFinal,
-            // A single group that IS the final plays on the last (only) day, scheduled immediately.
-            day: singleGroupIsFinal ? durationDays : null,
-            scheduledAt: singleGroupIsFinal ? this.dayScheduledAt(t.startAt, durationDays) : null,
+            day,
+            scheduledAt: this.dayScheduledAt(t.startAt, day),
           },
         });
         await tx.groupMember.createMany({
@@ -879,6 +981,7 @@ export class SponsorsService {
       entryClosesAt: t.entryClosesAt,
       groupsAssignedAt: t.groupsAssignedAt,
       groupSize: GROUP_SIZE,
+      schedule: await this.groupSchedule(id, t.startAt),
       groups: groups.map((g) => ({
         id: g.id,
         index: g.index,
@@ -923,7 +1026,9 @@ export class SponsorsService {
   async getGroupForRoom(tournamentId: string, groupId: string) {
     const group = await this.prisma.tournamentGroup.findFirst({ where: { id: groupId, tournamentId } });
     if (!group) return null;
-    const members = await this.prisma.groupMember.findMany({ where: { groupId }, orderBy: { seat: "asc" } });
+    // Exclude already-ELIMINATED members: if the room is (re-)seeded after a restart, only the
+    // survivors return to play — knocked-out players (and bots) are not revived into the game.
+    const members = await this.prisma.groupMember.findMany({ where: { groupId, result: { not: "ELIMINATED" } }, orderBy: { seat: "asc" } });
     const userIds = members.map((m) => m.userId);
     const [entries, users] = await Promise.all([
       this.prisma.promoEntry.findMany({ where: { tournamentId, userId: { in: userIds } }, select: { userId: true, skills: true } }),

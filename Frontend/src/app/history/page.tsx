@@ -1,11 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { History as HistoryIcon, Trophy, Flame, Swords, Calendar, Award, RotateCcw, ArrowRight } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
-import { soundManager } from "../../lib/soundManager";
-import { useRouter } from "next/navigation";
 
 const PAST_BATTLES = [
   { id: "b1", result: "VICTORY", opponent: "Daisy Cow 🌸", countReached: 30, myMoves: "18 ➔ 20 ➔ 23 ➔ 26 ➔ 30", date: "Today, 4:10 PM", trophies: "+45 🏆", coins: "+150 🪙", mode: "Skill Mode" },
@@ -16,7 +13,6 @@ const PAST_BATTLES = [
 ];
 
 export default function HistoryPage() {
-  const router = useRouter();
   const [showRules, setShowRules] = useState(false);
 
   return (
@@ -35,37 +31,10 @@ export default function HistoryPage() {
 
       {/* Main History Arena - WITH DEDICATED TOP CLEARANCE (Zero Overlap) */}
       <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-6">
-        {/* Top Hero Banner */}
-        <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 shadow-xl">
-              <HistoryIcon size={32} />
-            </div>
-            <div>
-              <span className="text-[10px] font-title font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1">
-                <Trophy size={12} className="text-yellow-400 fill-yellow-400" />
-                <span>YOUR RECENT GAMES</span>
-              </span>
-              <h1 className="font-title font-black text-3xl sm:text-5xl text-white tracking-tight mt-0.5">
-                PAST GAMES
-              </h1>
-              <p className="text-xs text-slate-300 mt-1 max-w-lg">
-                See your wins, scores, and rewards.
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              soundManager.playClick();
-              router.push("/home");
-            }}
-            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-green-500 text-slate-950 font-title font-black text-sm shadow-[0_0_15px_rgba(52,211,153,0.7)] hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 cursor-pointer shrink-0"
-          >
-              <span>PLAY AGAIN</span>
-            <ArrowRight size={16} />
-          </button>
-        </div>
+        {/* The "PAST GAMES" hero banner — title, blurb and the PLAY AGAIN button — was removed; it ate
+            a band of vertical space above the battle list. Home is in the arcade header. The heading
+            stays for screen readers. */}
+        <h1 className="sr-only">Past games</h1>
 
         {/* Battles List */}
         <div className="flex flex-col gap-3">
@@ -92,6 +61,17 @@ export default function HistoryPage() {
                     </h3>
                     <span className="text-[10px] font-title font-bold text-amber-300 bg-black/60 px-2 py-0.5 rounded border border-amber-400/40">
                       {battle.mode}
+                    </span>
+                    {/* The outcome summary the Settings match-history card used to show ("Conquered 31",
+                        "Hit 31 Bomb"). countReached was already in the data but never rendered. */}
+                    <span
+                      className={`text-[10px] font-title font-bold px-2 py-0.5 rounded border ${
+                        battle.countReached >= 31
+                          ? "text-rose-300 bg-rose-950/60 border-rose-400/40"
+                          : "text-slate-300 bg-black/60 border-white/15"
+                      }`}
+                    >
+                      {battle.countReached >= 31 ? "Hit 31 💣" : `Reached ${battle.countReached}`}
                     </span>
                   </div>
                   <span className="text-xs text-slate-400 mt-0.5">

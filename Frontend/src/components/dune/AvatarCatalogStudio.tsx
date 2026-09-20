@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronLeft, Glasses, HatGlasses, ShieldCheck, Sparkles, Lock, ShoppingBag, X } from "lucide-react";
+import { Check, ShieldCheck, Sparkles, Lock, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -21,19 +21,21 @@ import { soundManager } from "../../lib/soundManager";
 import { useAvatarStore } from "../../stores/avatar-customization-store";
 import { MasterAvatar } from "./MasterAvatar";
 
-// Character base prices in Shop
+// Characters and accessories are no longer sold — they left the Shop and are picked straight from
+// this page, so every one of them is free. Kept as price maps (rather than deleting the lock checks)
+// because backgrounds and frames below still price-gate the same way.
 const CHARACTER_PRICES: Record<AvatarCharacterId, number> = {
   champion: 0,
-  daisy: 4.99,
-  rusty: 4.99,
-  nova: 5.99,
-  luna: 5.99,
-  moss: 4.99,
+  daisy: 0,
+  rusty: 0,
+  nova: 0,
+  luna: 0,
+  moss: 0,
 };
 
 const ACCESSORY_PRICES = {
-  glasses: 1.99,
-  hat: 2.99,
+  glasses: 0,
+  hat: 0,
 };
 
 const BACKGROUND_PRICES: Record<AvatarBackgroundId, number> = {
@@ -157,16 +159,6 @@ export function AvatarCatalogStudio() {
     soundManager.playCardSelect();
   }
 
-  function changeAccessory(kind: "hat" | "glasses") {
-    const next = resolveAvatarVariant(
-      preview.characterId,
-      kind === "hat" ? !selection.hasHat : selection.hasHat,
-      kind === "glasses" ? !selection.hasGlasses : selection.hasGlasses,
-    );
-    setPreviewId(next.id);
-    soundManager.playToggle(kind === "hat" ? !selection.hasHat : !selection.hasGlasses);
-  }
-
   function equip() {
     if (hasLockedItems) return;
     setVariant(preview.id);
@@ -190,42 +182,11 @@ export function AvatarCatalogStudio() {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-1 py-3 text-white sm:px-5 sm:py-6">
-      {/* Top Navigation & Info Header */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-3xl border border-amber-300/30 bg-black/70 p-3.5 backdrop-blur-xl sm:p-4 shadow-xl">
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
-          <Link
-            href="/home"
-            onClick={() => soundManager.playNavigate()}
-            className="flex min-h-11 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-4 font-title text-sm font-black transition hover:bg-white/10 active:scale-95 cursor-pointer"
-          >
-            <ChevronLeft size={19} /> Back
-          </Link>
-          <div className="text-left sm:hidden">
-            <h1 className="font-title text-lg font-black text-amber-300">My Avatars</h1>
-            <p className="text-[10px] font-semibold text-white/65">Equip & Manage Wardrobe</p>
-          </div>
-        </div>
-
-        {/* Center Title (Desktop) */}
-        <div className="hidden sm:block text-center">
-          <h1 className="font-title text-xl sm:text-2xl font-black text-amber-300 tracking-wide">
-            My Avatars
-          </h1>
-          <p className="text-xs font-semibold text-slate-300">
-            Equip your unlocked styles · Unlock premium items in the Arcade Shop
-          </p>
-        </div>
-
-        {/* Shop Button Shortcut */}
-        <Link
-          href="/shop"
-          onClick={() => soundManager.playNavigate()}
-          className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-title font-black text-xs sm:text-sm shadow-[0_0_15px_rgba(245,158,11,0.4)] hover:brightness-110 active:scale-95 transition-all cursor-pointer"
-        >
-          <ShoppingBag size={16} />
-          <span>VISIT SHOP</span>
-        </Link>
-      </div>
+      {/* The whole top bar — "My Avatars" title, Back and VISIT SHOP — was removed; it ate a band of
+          vertical space above the mirror. Home and Shop are both in the arcade header's menu, and a
+          locked look still links straight to the shop from the action button below. The heading is
+          kept for screen readers only. */}
+      <h1 className="sr-only">My Avatars</h1>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,.95fr)]">
         {/* Left: 3D Mirror Live Avatar Preview */}
@@ -290,7 +251,7 @@ export function AvatarCatalogStudio() {
         <section className="flex flex-col gap-4 rounded-[2rem] border border-white/10 bg-black/70 p-4 shadow-2xl backdrop-blur-xl sm:p-6">
           {/* Step 1: Character Selector */}
           <div>
-            <h2 className="font-title text-lg font-black text-amber-300">1. Pick a character</h2>
+            <h2 className="font-title text-lg font-black text-amber-300">Pick a character</h2>
           </div>
 
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6" aria-label="Avatar characters">
@@ -335,41 +296,9 @@ export function AvatarCatalogStudio() {
             })}
           </div>
 
-          {/* Step 2: Accessories Selector (Equip / Unequip on/off toggle) */}
-          <h2 className="font-title text-lg font-black text-amber-300">2. Accessories (Equip / Unequip)</h2>
-
-          <div className="grid grid-cols-2 gap-3">
-            <AccessoryButton
-              active={selection.hasGlasses}
-              icon={<Glasses size={28} />}
-              label="Glasses"
-              isUnlocked={isGlassesUnlocked}
-              onClick={() => changeAccessory("glasses")}
-            />
-            <AccessoryButton
-              active={selection.hasHat}
-              icon={<HatGlasses size={28} />}
-              label="Cowboy hat"
-              isUnlocked={isHatUnlocked}
-              onClick={() => changeAccessory("hat")}
-            />
-          </div>
-
-          {/* Styling: a wearable glasses OVERLAY layered onto the cow's eyes (equippable + shows on
-              the in-game player card). Distinct from the catalog "Glasses" variant above. */}
-          <h2 className="font-title text-lg font-black text-amber-300">Styling</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <AccessoryButton
-              active={previewGlasses}
-              icon={<Glasses size={28} />}
-              label="Cool Glasses"
-              isUnlocked={true}
-              onClick={() => {
-                soundManager.playToggle(!previewGlasses);
-                setPreviewGlasses((v) => !v);
-              }}
-            />
-          </div>
+          {/* The "Accessories (Equip / Unequip)" toggles and the "Styling" overlay toggle were both
+              removed: the style grid below already offers every hat/glasses combination as a single
+              tap, so the toggles were a second, slower route to the same variants. */}
 
           {/* Style Variants Grid */}
           <div className="grid grid-cols-4 gap-2" aria-label={`${preview.characterLabel} styles`}>
@@ -459,11 +388,11 @@ export function AvatarCatalogStudio() {
         </section>
       </div>
 
-      {/* Step 3: Finish Backgrounds & 3D Frames (Equip / Unequip) */}
+      {/* Finish: Backgrounds & 3D Frames (Equip / Unequip) */}
       <section className="rounded-[2rem] border border-white/10 bg-black/70 p-4 shadow-2xl backdrop-blur-xl sm:p-6">
         <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <h2 className="font-title text-xl font-black text-amber-300">3. Backgrounds & 3D Frames (Equip / Unequip)</h2>
+            <h2 className="font-title text-xl font-black text-amber-300">Backgrounds &amp; 3D Frames (Equip / Unequip)</h2>
             <p className="text-xs text-slate-400">Tap an equipped background or frame to unequip it</p>
           </div>
           <div className="grid grid-cols-2 rounded-2xl bg-white/5 p-1">
@@ -620,45 +549,3 @@ function DecorationButton({
   );
 }
 
-function AccessoryButton({
-  active,
-  icon,
-  label,
-  isUnlocked,
-  onClick,
-}: {
-  active: boolean;
-  icon: React.ReactNode;
-  label: string;
-  isUnlocked: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`relative flex min-h-28 flex-col items-center justify-center gap-2 rounded-3xl border-2 font-title font-black transition hover:-translate-y-1 active:scale-95 cursor-pointer ${
-        active
-          ? "border-emerald-400 bg-emerald-400/15 text-emerald-300 shadow-[0_0_22px_rgba(52,211,153,.25)]"
-          : "border-white/10 bg-white/5 text-white/70 hover:border-white/25"
-      }`}
-    >
-      {active ? (
-        <span className="absolute right-2 top-2 rounded-full bg-emerald-400 p-1 text-slate-950 shadow">
-          <Check size={13} strokeWidth={4} />
-        </span>
-      ) : null}
-      {!isUnlocked && (
-        <span className="absolute left-2 top-2 rounded-full bg-black/80 border border-amber-400/40 px-2 py-0.5 text-[9px] font-title font-bold text-amber-300 flex items-center gap-1">
-          <Lock size={10} /> LOCKED
-        </span>
-      )}
-      {icon}
-      <span>{label}</span>
-      <span className={`text-[10px] uppercase font-bold tracking-wide ${active ? "text-emerald-400" : "opacity-60"}`}>
-        {active ? "Equipped" : "Unequipped"}
-      </span>
-    </button>
-  );
-}

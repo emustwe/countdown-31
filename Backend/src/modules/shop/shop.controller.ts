@@ -8,8 +8,8 @@ import { ShopService } from "./shop.service";
 
 const PurchaseSchema = z.object({ itemKey: z.string().min(1).max(80) }).strict();
 
-// Signed-in player's shop: what they own + the flat item price + their balance, and the purchase
-// endpoint (charges 0.5 USDT to the treasury and grants the item). The catalog listing is public.
+// Signed-in player's shop: what they own, plus a free "claim" endpoint that grants an item. The
+// catalog listing is public. Everything is free — there is no currency or balance.
 @Controller("shop")
 export class ShopController {
   constructor(private readonly shop: ShopService) {}

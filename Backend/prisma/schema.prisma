@@ -25,10 +25,6 @@ model User {
   passwordHash  String
   role          Role           @default(PLAYER)
   status        UserStatus     @default(ACTIVE)
-  // System accounts (e.g. the treasury) hold balances but are NOT real people: they can never be
-  // logged into, reset, or listed in admin user surfaces. Keeps a money-holding account from being
-  // a login/takeover target.
-  isSystem      Boolean        @default(false)
   // Bumped on logout-all / password reset / ban so every outstanding access token minted with an
   // older value is rejected immediately, without waiting for the 15-minute expiry.
   tokenVersion  Int            @default(0)
@@ -47,26 +43,10 @@ model User {
   cosmeticsOwned Json          @default("[]")
   createdAt         DateTime          @default(now())
   refreshTokens     RefreshToken[]
-  wallet            Wallet?
   notifications     Notification[]
-  cryptoTransfers   CryptoTransfer[]
   promoEntries      PromoEntry[]
   passwordResets    PasswordReset[]
-  depositBindings   DepositBinding[]
   emailVerifications EmailVerification[]
-}
-
-// Binds an external Solana source address to exactly one user. A deposit is credited ONLY to the
-// user the sending address is bound to (first-claim-wins, locked by the @unique), which stops one
-// user from claiming an on-chain transfer that another user actually sent.
-model DepositBinding {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  address   String   @unique
-  createdAt DateTime @default(now())
-
-  @@index([userId])
 }
 
 // DB-backed (distributed) failed-login tracker. Replaces the old in-memory Map so a temporary
@@ -409,99 +389,6 @@ model ShopCatalogItem {
   @@index([category, active, sortOrder])
 }
 
-enum LedgerEntryType {
-  DEPOSIT
-  WITHDRAWAL
-  BET_STAKE
-  BET_WIN
-  JACKPOT_WIN
-  ADJUSTMENT
-  TOURNAMENT_ENTRY
-  TOURNAMENT_PRIZE
-  TOURNAMENT_REFUND
-  SHOP_PURCHASE
-  SHOP_REVENUE
-}
-
-// The wallet's cachedBalance is a read-optimized projection, never the source of truth.
-// The source of truth is the sum of this wallet's LedgerEntry rows, which are append-only
-// (no updates, no deletes) — every money movement is a permanent, auditable record.
-model Wallet {
-  id            String        @id @default(uuid())
-  userId        String        @unique
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  currency      String        @default("USDT")
-  cachedBalance BigInt        @default(0)
-  version       Int           @default(0)
-  updatedAt     DateTime      @updatedAt
-  ledgerEntries LedgerEntry[]
-}
-
-enum CryptoDirection {
-  DEPOSIT
-  WITHDRAWAL
-}
-
-enum CryptoTransferStatus {
-  PENDING
-  COMPLETED
-  FAILED
-}
-
-// A record of an on/off-ramp movement between a player's in-app USDT wallet and the
-// Solana chain. Today the on-chain settlement is stubbed (instant mock: created COMPLETED
-// with a mock txSignature), but this row is the durable seam — when the real Solana/USDT
-// integration lands it fills in the true signature and drives status PENDING -> COMPLETED.
-// The paired LedgerEntry references this row via refType="CRYPTO_TRANSFER", refId=id.
-model CryptoTransfer {
-  id              String               @id @default(uuid())
-  userId          String
-  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  direction       CryptoDirection
-  amount          BigInt               // USDT base units (6 dp; 1_000_000 = 1 USDT)
-  asset           String               @default("USDT")
-  network         String               @default("SOLANA")
-  // Withdrawals: the player's external destination address. Deposits: the platform
-  // deposit address the player sent to.
-  address         String
-  destinationType String               @default("SOLANA") // reserved for a future "BANK" off-ramp
-  txSignature     String?              // on-chain signature (mock placeholder for now)
-  status          CryptoTransferStatus @default(COMPLETED)
-  createdAt       DateTime             @default(now())
-
-  @@index([userId, createdAt])
-}
-
-model LedgerEntry {
-  id        String          @id @default(uuid())
-  walletId  String
-  // onDelete: Cascade here is purely to let test fixtures clean up a whole user's data in
-  // one delete — the app itself never deletes a User (only bans), so this never fires
-  // against a real ledger. If a user-deletion flow is added later, use anonymization
-  // instead of cascade delete to keep the audit trail intact.
-  wallet    Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  amount    BigInt
-  type      LedgerEntryType
-  refType   String?
-  refId     String?
-  createdAt DateTime        @default(now())
-
-  @@index([walletId, createdAt])
-}
-
-// Guards money-moving endpoints (deposit/withdraw/spin) against duplicate charges from
-// client retries: the same key always returns the original stored response, never
-// re-executes the movement.
-model IdempotencyKey {
-  key          String   @id
-  userId       String
-  endpoint     String
-  requestHash  String
-  responseJson Json
-  createdAt    DateTime @default(now())
-
-  @@index([userId, endpoint])
-}
 
 
 // ---- Tournament Sponsor Campaign Studio ------------------------------------------------------

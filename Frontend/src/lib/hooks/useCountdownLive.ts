@@ -12,6 +12,16 @@ export type LiveReason = "31" | "repeat" | "over3" | "skip" | "timeout" | "left"
 export type SkillType = "rewind" | "turbo" | "shield" | "nudge" | "double";
 export type GameMode = "classic" | "skills";
 
+/** How many numbers the countdown cow's clip counts down through (it shows 7 … 1). */
+export const COW_COUNT_SPAN = 7;
+/** Practice turn length: two passes of the cow's 7-count — a full 7→1, then 7→2. */
+export const PRACTICE_TURN_SECONDS = 13;
+/** Practice always runs on the built-in defaults, with its own longer turn timer. */
+const PRACTICE_GAME_CONFIG = {
+  ...DEFAULT_GAME_CONFIG,
+  gameplay: { ...DEFAULT_GAME_CONFIG.gameplay, turnSeconds: PRACTICE_TURN_SECONDS },
+};
+
 export interface LivePlayer {
   id: string;
   name: string;
@@ -64,6 +74,14 @@ export interface LiveState {
     name: string;
     reason: LiveReason;
     note?: string;
+    // Extra info the cinematic ELIMINATION sequence needs: the player's avatar + colour + seat, and
+    // whether this elimination completed the round (31 → count resets) so the dancing cow can play
+    // ONLY at round completion (not on every elimination).
+    roundDone?: boolean;
+    color?: string;
+    avatar?: Record<string, string>;
+    seat?: number;
+    remaining?: number;
   } | null;
   // Brief "reveal" beat: the numbers the CURRENT player just picked, shown highlighted (in their
   // colour) on the picker tiles so everyone SEES the selection before the turn advances.
@@ -83,7 +101,10 @@ export interface JoinCosmetics {
 export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; botCount?: number }) {
   const { data: gameConfig } = useGameConfig();
   const isTournament = roomId !== "practice";
-  const activeConfig = isTournament ? (gameConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG;
+  // PRACTICE gets a longer turn than a live tournament: the countdown cow runs its 7-count TWICE —
+  // a full 7→1, then a second pass that reaches 7→2 before the turn expires — which is 13 seconds.
+  // Tournaments keep whatever turn length is configured for them (the server is authoritative there).
+  const activeConfig = isTournament ? (gameConfig ?? DEFAULT_GAME_CONFIG) : PRACTICE_GAME_CONFIG;
   const runtimeConfigRef = useRef(activeConfig);
   runtimeConfigRef.current = activeConfig;
   const [state, setState] = useState<LiveState | null>(null);
@@ -224,8 +245,10 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
           }
         }
 
-        // Check Rule #6 Repeat Elimination
-        if (forbiddenK !== null && chosenK === forbiddenK) {
+        // Check Rule #6 Repeat Elimination — but reaching 31 IS the losing move and takes precedence:
+        // a player forced to say 31 (e.g. count 30 after a prior single number) must end the lap via
+        // the "31" path below, not be mis-flagged "repeat" (which would leave the count stuck at 30).
+        if (currentCount + chosenK < 31 && forbiddenK !== null && chosenK === forbiddenK) {
           soundManager.playBlunder();
           eliminatePlayer(currentP.id, "repeat", activeState, "Repeated previous count!");
           return;
@@ -263,13 +286,17 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
             "Hit 31 💣",
           );
         } else {
-          const survivingPlayers = activeState.players.filter((p) => !p.eliminated);
-          const currentIdx = survivingPlayers.findIndex((p) => p.id === currentP.id);
-          const nextPlayer = survivingPlayers[(currentIdx + 1) % survivingPlayers.length]!;
-
           const advance = () => {
+            // Re-read the LIVE state instead of spreading the snapshot this turn started from. A
+            // human can press PLAY at any moment during the think + reveal window (~2.5–4s per bot
+            // turn); spreading the stale `activeState` here would silently wipe them back out of
+            // `players`, which is why a join sometimes appeared to do nothing and needed 2–3 clicks.
+            const live = stateRef.current ?? activeState;
+            const survivingPlayers = live.players.filter((p) => !p.eliminated);
+            const currentIdx = survivingPlayers.findIndex((p) => p.id === currentP.id);
+            const nextPlayer = survivingPlayers[(currentIdx + 1) % survivingPlayers.length] ?? currentP;
             const nextState: LiveState = {
-              ...activeState,
+              ...live,
               count: nextCount,
               taken: nextTaken,
               lastK: chosenK,
@@ -284,8 +311,9 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
           };
 
           // REVEAL: flash this player's picked numbers (in their colour) on the tiles for a beat so
-          // everyone sees the selection, THEN advance the turn.
-          setState({ ...activeState, selecting: { playerId: currentP.id, picks, color: currentP.color } });
+          // everyone sees the selection, THEN advance the turn. Merge onto the live state (not the
+          // snapshot) for the same reason as above.
+          setState((s) => ({ ...(s ?? activeState), selecting: { playerId: currentP.id, picks, color: currentP.color } }));
           setTimeout(() => {
             const s = stateRef.current;
             if (!s || s.status !== "playing" || s.dancing || s.currentId !== currentP.id) return;
@@ -363,7 +391,17 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
           turnEndsAt: null,
           lastEliminated: { name: eliminatedPlayer.name, reason, note },
           lastSkillUsed: null,
-          dancing: { id: eliminatedId, name: eliminatedPlayer.name, reason, note },
+          dancing: {
+            id: eliminatedId,
+            name: eliminatedPlayer.name,
+            reason,
+            note,
+            roundDone: completedLap,
+            color: eliminatedPlayer.color,
+            avatar: eliminatedPlayer.avatar,
+            seat: baseState.players.findIndex((p) => p.id === eliminatedId) + 1,
+            remaining: players.filter((p) => !p.eliminated).length,
+          },
         });
         // Do NOT advance — wait for endDance() when the dance video finishes.
       } else {
@@ -702,7 +740,13 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
             equippedSkills: mode === "skills" ? chosenSkills : [],
             eliminated: false,
           };
-          setState({ ...cur, players: [...cur.players, human] });
+          // Seat the newcomer directly AFTER whoever is playing right now, so their first turn comes
+          // on the very next move. Appending them to the END of the field instead meant waiting out a
+          // full lap of CPU cows (5 cows x ~2.5-4s each = ~20s) before they could touch the board.
+          const seated = [...cur.players];
+          const turnIdx = seated.findIndex((p) => p.id === cur.currentId);
+          seated.splice(turnIdx >= 0 ? turnIdx + 1 : seated.length, 0, human);
+          setState({ ...cur, players: seated });
         }
         setMyId("player_local");
         return;
@@ -953,5 +997,7 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
     useSkill,
     endDance,
     triggerDefeat,
+    /** The turn length actually in force for this room (practice runs longer than a tournament). */
+    turnSeconds: activeConfig.gameplay.turnSeconds,
   };
 }

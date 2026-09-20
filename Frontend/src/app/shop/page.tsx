@@ -1,20 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { ShoppingBag, Check, Lock, Wallet, Sparkles, ArrowRight, User, RotateCcw, Zap, Shield, Moon, Clock, Flame } from "lucide-react";
-import Link from "next/link";
+import { Check, Sparkles, Clock, Flame } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { AuthGateModal } from "../../components/dune/AuthGateModal";
 import { useAuthStore } from "../../stores/auth-store";
-import { useWallet } from "../../lib/hooks/useWallet";
-import { formatUsdt } from "../../lib/money";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
 import { soundManager } from "../../lib/soundManager";
-import { AVATAR_CHARACTERS } from "../../lib/avatar-catalog";
 import { AVATAR_BACKGROUNDS, AVATAR_FRAMES, getAvatarFrame, type AvatarBackgroundId, type AvatarFrameId } from "../../lib/avatar-decorations";
 
-type ShopTab = "avatars" | "accessories" | "backgrounds" | "frames" | "skills";
+// Characters and accessories left the shop — they are free and chosen straight from My Avatars,
+// so the shop is now cosmetics-for-the-card only.
+type ShopTab = "backgrounds" | "frames";
 
 interface ShopItem {
   id: string;
@@ -23,124 +21,13 @@ interface ShopItem {
   rarity: "Common" | "Epic" | "Mythic" | "Legendary";
   priceUsdt: number;
   preview: string;
-  previewType: "image" | "bg" | "frame" | "skill";
+  previewType: "bg" | "frame";
   description: string;
   frameSkinId?: AvatarFrameId;
-  skillDetails?: {
-    icon: string;
-    gradient: string;
-    badge: string;
-    stat: string;
-    accent: string;
-  };
 }
 
 const SHOP_ITEMS: ShopItem[] = [
-  // 1. Avatars & Characters (Verified Working WebP / PNG Renders)
-  {
-    id: "champion",
-    name: "Champion The Hero",
-    category: "avatars",
-    rarity: "Common",
-    priceUsdt: 0,
-    preview: "/assets/avatar-catalog/cow-v1/renders/cow_v1_base.webp",
-    previewType: "image",
-    description: "The legendary original pasture counting hero. Included free for all players!",
-  },
-  {
-    id: "daisy",
-    name: "Daisy Kind Farm Star",
-    category: "avatars",
-    rarity: "Epic",
-    priceUsdt: 4.99,
-    preview: "/assets/avatar-catalog/cow-v1/renders/daisy_v1_base_static_v1.webp",
-    previewType: "image",
-    description: "Beloved sweet pasture cow with sparkling meadow spirit and kind eyes.",
-  },
-  {
-    id: "rusty",
-    name: "Rusty Highland Brawler",
-    category: "avatars",
-    rarity: "Epic",
-    priceUsdt: 4.99,
-    preview: "/assets/avatar-catalog/cow-v1/renders/rusty_v1_base_static_v1.webp",
-    previewType: "image",
-    description: "Fierce highland bull with weathered horns and relentless battle grit.",
-  },
-  {
-    id: "nova",
-    name: "Nova Cosmic Explorer",
-    category: "avatars",
-    rarity: "Legendary",
-    priceUsdt: 5.99,
-    preview: "/assets/avatar-catalog/cow-v1/renders/nova_v1_base_static_v1.webp",
-    previewType: "image",
-    description: "Intergalactic space voyager with shimmering starry aura and cyber armor.",
-  },
-  {
-    id: "luna",
-    name: "Luna Celestial Seeker",
-    category: "avatars",
-    rarity: "Legendary",
-    priceUsdt: 5.99,
-    preview: "/assets/avatar-catalog/cow-v1/renders/luna_v1_base_static_v1.webp",
-    previewType: "image",
-    description: "Mystic moonlit navigator with celestial glowing purple fur.",
-  },
-  {
-    id: "moss",
-    name: "Moss Forest Guardian",
-    category: "avatars",
-    rarity: "Epic",
-    priceUsdt: 4.99,
-    preview: "/assets/avatar-catalog/cow-v1/renders/moss_v1_base_static_v1.webp",
-    previewType: "image",
-    description: "Ancient woodland protector with overgrown emerald moss and leaf vitality.",
-  },
-  {
-    id: "golden_emperor",
-    name: "Golden Emperor Bull",
-    category: "avatars",
-    rarity: "Mythic",
-    priceUsdt: 14.99,
-    preview: "/assets/Avatar1.png",
-    previewType: "image",
-    description: "Supreme monarch bull forged with pure 24K pasture gold radiance.",
-  },
-  {
-    id: "barnaby",
-    name: "Barnaby Pasture Captain",
-    category: "avatars",
-    rarity: "Epic",
-    priceUsdt: 7.99,
-    preview: "/assets/barnaby/barnaby-field.jpg",
-    previewType: "image",
-    description: "The fearless mascot captain of the 31 counting arena with athletic prowess.",
-  },
-
-  // 2. Accessories (Rendered on High-Res Cow Avatar Visuals)
-  {
-    id: "accessory_glasses",
-    name: "Tactical Aviators & Shades",
-    category: "accessories",
-    rarity: "Epic",
-    priceUsdt: 1.99,
-    preview: "/assets/avatar-catalog/cow-v1/renders/cow_v1_glasses_static_v2.webp",
-    previewType: "image",
-    description: "Gold-rimmed tactical shades that equip onto any character avatar in My Avatars.",
-  },
-  {
-    id: "accessory_hat",
-    name: "Pasture Cowboy Hat",
-    category: "accessories",
-    rarity: "Epic",
-    priceUsdt: 2.99,
-    preview: "/assets/avatar-catalog/cow-v1/renders/cow_v1_cowboy_static_v2.webp",
-    previewType: "image",
-    description: "Authentic brown leather rancher hat for true 31 arena showdown legends.",
-  },
-
-  // 3. Backgrounds (Vibrant Gradient Cosmic, Forest & Arcade Worlds)
+  // 1. Backgrounds (Vibrant Gradient Cosmic, Forest & Arcade Worlds)
   {
     id: "emerald",
     name: "Emerald Pasture",
@@ -292,7 +179,7 @@ const SHOP_ITEMS: ShopItem[] = [
     description: "Full spectrum holographic rainbow pulse with arcade shine.",
   },
 
-  // 4. 3D Frames (Live Frame Showcase with Avatar Preview)
+  // 2. 3D Frames (Live Frame Showcase with Avatar Preview)
   {
     id: "mythic_gold",
     name: "Sovereign Gold Crest",
@@ -447,94 +334,18 @@ const SHOP_ITEMS: ShopItem[] = [
     frameSkinId: "shadow_onyx",
     description: "Stealth obsidian armor frame with matte black beveling.",
   },
-
-  // 5. 3D Tactical Skills (Epic 3D Game Power Cards)
-  {
-    id: "skill_rewind",
-    name: "Chrono Rewind Pack (x5)",
-    category: "skills",
-    rarity: "Epic",
-    priceUsdt: 1.99,
-    preview: "",
-    previewType: "skill",
-    description: "Rewinds live counter by 2 digits during high-stakes countdown showdowns.",
-    skillDetails: {
-      icon: "rewind",
-      gradient: "from-amber-500/30 via-yellow-600/20 to-black",
-      badge: "TIME WARP",
-      stat: "-2 STEPS",
-      accent: "border-amber-400 text-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.5)]",
-    },
-  },
-  {
-    id: "skill_turbo",
-    name: "Turbo Leap Pack (x5)",
-    category: "skills",
-    rarity: "Epic",
-    priceUsdt: 1.99,
-    preview: "",
-    previewType: "skill",
-    description: "Instantly leaps forward +3 numbers in a lightning surge to outmaneuver rivals.",
-    skillDetails: {
-      icon: "zap",
-      gradient: "from-cyan-500/30 via-blue-600/20 to-black",
-      badge: "SPEED BURST",
-      stat: "+3 LEAP",
-      accent: "border-cyan-400 text-cyan-300 shadow-[0_0_25px_rgba(34,211,238,0.5)]",
-    },
-  },
-  {
-    id: "skill_shield",
-    name: "Bovine Barrier (x5)",
-    category: "skills",
-    rarity: "Legendary",
-    priceUsdt: 2.99,
-    preview: "",
-    previewType: "skill",
-    description: "Summons a Divine Crystal Aegis granting 1-turn absolute blunder immunity.",
-    skillDetails: {
-      icon: "shield",
-      gradient: "from-emerald-500/30 via-teal-600/20 to-black",
-      badge: "DIVINE AEGIS",
-      stat: "1-TURN IMMUNITY",
-      accent: "border-emerald-400 text-emerald-300 shadow-[0_0_25px_rgba(52,211,153,0.5)]",
-    },
-  },
-  {
-    id: "skill_snooze",
-    name: "Pasture Snooze (x5)",
-    category: "skills",
-    rarity: "Legendary",
-    priceUsdt: 2.99,
-    preview: "",
-    previewType: "skill",
-    description: "Slumbers peacefully under the stars, safely skipping your turn without counting.",
-    skillDetails: {
-      icon: "moon",
-      gradient: "from-purple-500/30 via-indigo-600/20 to-black",
-      badge: "DREAM PASS",
-      stat: "SAFE SKIP",
-      accent: "border-purple-400 text-purple-300 shadow-[0_0_25px_rgba(168,85,247,0.5)]",
-    },
-  },
 ];
 
 export default function ShopPage() {
-  const [tab, setTab] = useState<ShopTab>("avatars");
+  const [tab, setTab] = useState<ShopTab>("backgrounds");
   const [showRules, setShowRules] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
   const accessToken = useAuthStore((s) => s.accessToken);
 
-  const { data: walletData } = useWallet();
-  const balanceRaw = walletData?.balance ?? "0";
-  const formattedUsdt = formatUsdt(balanceRaw);
-
   const unlockedItemIds = useAvatarStore((s) => s.unlockedItemIds) || [];
   const unlockItem = useAvatarStore((s) => s.unlockItem);
-  const skinId = useAvatarStore((s) => s.skinId);
   const frameId = useAvatarStore((s) => s.frameId);
   const backgroundId = useAvatarStore((s) => s.backgroundId);
-  const setSkin = useAvatarStore((s) => s.setSkin);
   const setFrame = useAvatarStore((s) => s.setFrame);
   const setBackground = useAvatarStore((s) => s.setBackground);
 
@@ -549,11 +360,7 @@ export default function ShopPage() {
 
     if (isOwned) {
       soundManager.playEquip();
-      if (item.category === "avatars") {
-        if (item.id === "golden_emperor" || item.id === "base_bull" || item.id === "barnaby") {
-          setSkin(item.id as AvatarConfig["skinId"]);
-        }
-      } else if (item.category === "backgrounds") {
+      if (item.category === "backgrounds") {
         setBackground(item.id as AvatarConfig["backgroundId"]);
       } else if (item.category === "frames") {
         setFrame(item.id as AvatarConfig["frameId"]);
@@ -561,7 +368,7 @@ export default function ShopPage() {
       return;
     }
 
-    // Purchase with USDT
+    // Everything is free — claim (unlock) instantly.
     soundManager.playCoin();
     unlockItem(item.id);
   }
@@ -584,54 +391,16 @@ export default function ShopPage() {
 
       {/* Main Shop Arena */}
       <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 mt-8 sm:mt-12 md:mt-14 mb-6 flex flex-col gap-5">
-        {/* Top Shop Banner: Live USDT Vault & Wardrobe Link */}
-        <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 shadow">
-              <ShoppingBag size={24} />
-            </div>
-            <div>
-              <h1 className="font-title font-black text-2xl sm:text-3xl text-amber-300 tracking-wide">
-                ARCADE BAZAAR
-              </h1>
-              <p className="text-xs text-slate-300">
-                Unlock characters, accessories, 3D frames & backgrounds to equip in My Avatars!
-              </p>
-            </div>
-          </div>
-
-          {/* Action Buttons: Balance & My Avatars Shortcut */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-black/80 border border-emerald-400/80 shadow-[0_0_20px_rgba(52,211,153,0.3)]">
-              <Wallet size={18} className="text-emerald-400" />
-              <div className="flex flex-col">
-                <span className="text-[9px] font-title font-bold text-slate-400 leading-tight">YOUR USDT BALANCE</span>
-                <span className="font-title font-black text-sm sm:text-base text-emerald-300 leading-tight">
-                  {formattedUsdt}
-                </span>
-              </div>
-            </div>
-
-            <Link
-              href="/avatar"
-              onClick={() => soundManager.playNavigate()}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-title font-black text-xs sm:text-sm shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
-            >
-              <User size={16} />
-              <span>MY AVATARS</span>
-              <ArrowRight size={14} />
-            </Link>
-          </div>
-        </div>
+        {/* The "ARCADE BAZAAR" banner — title, blurb and the MY AVATARS shortcut — was removed; it ate
+            a band of vertical space above the category tabs. My Avatars is in the arcade header's
+            menu. The heading stays for screen readers. */}
+        <h1 className="sr-only">Arcade Bazaar</h1>
 
         {/* Category Navigation Tabs */}
         <div className="w-full flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
           {[
-            { key: "avatars", label: "👑 AVATARS" },
-            { key: "accessories", label: "🎩 ACCESSORIES" },
             { key: "backgrounds", label: "🌄 BACKGROUNDS" },
             { key: "frames", label: "🖼️ 3D FRAMES" },
-            { key: "skills", label: "🔮 SKILLS" },
           ].map((t) => (
             <button
               key={t.key}
@@ -656,7 +425,6 @@ export default function ShopPage() {
           {items.map((item) => {
             const isOwned = item.priceUsdt === 0 || unlockedItemIds.includes(item.id);
             const isEquipped =
-              (item.category === "avatars" && skinId === item.id) ||
               (item.category === "backgrounds" && backgroundId === item.id) ||
               (item.category === "frames" && frameId === item.id);
 
@@ -693,20 +461,14 @@ export default function ShopPage() {
                     </span>
                   ) : (
                     <span className="text-[10px] font-title font-bold text-amber-300/90 bg-black/60 px-2 py-0.5 rounded-lg border border-amber-400/30 flex items-center gap-1">
-                      <Lock size={10} /> ${item.priceUsdt.toFixed(2)} USDT
+                      <Sparkles size={10} /> FREE
                     </span>
                   )}
                 </div>
 
                 {/* Preview Box with High-Fidelity Renders */}
                 <div className="w-full h-32 sm:h-36 rounded-2xl bg-black/70 border border-white/10 flex items-center justify-center relative overflow-hidden my-2 shadow-inner">
-                  {item.previewType === "image" ? (
-                    <img
-                      src={item.preview}
-                      alt={item.name}
-                      className="h-28 sm:h-32 object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.8)] transition-transform duration-300 hover:scale-110"
-                    />
-                  ) : item.previewType === "bg" ? (
+                  {item.previewType === "bg" ? (
                     <div className="relative w-24 h-24 rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center border border-white/20">
                       <div className={`absolute inset-0 bg-gradient-to-br ${item.preview}`} />
                       <div className="relative z-10 w-16 h-16 rounded-xl bg-black/30 backdrop-blur-xs flex items-center justify-center border border-white/10">
@@ -735,20 +497,6 @@ export default function ShopPage() {
                         <div className={`absolute inset-0 z-10 rounded-2xl pointer-events-none ${frameSkin.className}`} />
                       )}
                     </div>
-                  ) : item.previewType === "skill" && item.skillDetails ? (
-                    /* 3D Glowing Skill Card Orb */
-                    <div className={`w-full h-full bg-gradient-to-br ${item.skillDetails.gradient} p-3 flex flex-col items-center justify-center relative`}>
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.15)_0%,transparent_70%)]" />
-                      <div className={`w-14 h-14 rounded-2xl border-2 bg-black/80 flex items-center justify-center relative z-10 mb-1.5 ${item.skillDetails.accent}`}>
-                        {item.skillDetails.icon === "rewind" && <RotateCcw size={28} className="animate-spin-slow" />}
-                        {item.skillDetails.icon === "zap" && <Zap size={28} className="fill-cyan-300 animate-pulse" />}
-                        {item.skillDetails.icon === "shield" && <Shield size={28} className="fill-emerald-300" />}
-                        {item.skillDetails.icon === "moon" && <Moon size={28} className="fill-purple-300" />}
-                      </div>
-                      <span className="relative z-10 font-title font-black text-xs tracking-wider text-white bg-black/60 px-2.5 py-0.5 rounded-full border border-white/20">
-                        {item.skillDetails.stat}
-                      </span>
-                    </div>
                   ) : null}
                 </div>
 
@@ -776,7 +524,7 @@ export default function ShopPage() {
                     <span className="flex items-center gap-1.5"><Sparkles size={14} /> UNLOCKED · EQUIP</span>
                   ) : (
                     <span className="flex items-center gap-1.5">
-                      <Lock size={14} /> UNLOCK FOR ${item.priceUsdt.toFixed(2)} USDT
+                      <Sparkles size={14} /> CLAIM · FREE
                     </span>
                   )}
                 </button>
@@ -794,7 +542,7 @@ export default function ShopPage() {
         isOpen={showAuthGate}
         onClose={() => setShowAuthGate(false)}
         title="Marketplace Account Required"
-        description="Sign in or create an account to unlock rare avatars, frames, and tactical power packs with USDT!"
+        description="Sign in or create a free account to unlock rare avatars, frames, and tactical power packs — everything's free!"
         featureName="the Marketplace"
         redirectTo="/shop"
       />

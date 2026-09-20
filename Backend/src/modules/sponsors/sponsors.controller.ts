@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
@@ -146,6 +147,9 @@ export class AdminInquiriesController {
 export class SponsorController {
   constructor(private readonly sponsors: SponsorsService) {}
 
+  // Per-IP throttle on the public credential endpoint (mirrors /auth/login = 30/min); the existing
+  // per-username account lockout is unchanged. Legit logins are far under this rate.
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post("login")
   login(@Body(new ZodValidationPipe(SponsorLoginSchema)) body: { username?: string; password?: string }) {
     return this.sponsors.login(body?.username ?? "", body?.password ?? "");
@@ -238,6 +242,8 @@ export class PublicSponsorshipController {
   opportunities() {
     return this.sponsors.listSponsorshipOpportunities();
   }
+  // Anonymous write — throttle to curb contact-form spam. 10/min is far above any human use.
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("inquiries")
   createInquiry(@Body(new ZodValidationPipe(InquiryCreateSchema)) body: InquiryInput) {
     return this.sponsors.createInquiry(body ?? {});

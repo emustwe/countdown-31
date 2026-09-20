@@ -24,7 +24,6 @@ export function useSpin() {
     mutationFn: (input: { totalBet: string; idempotencyKey: string }) =>
       apiRequest<SpinApiResponse>("/game/spin", { method: "POST", body: input }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wallet"] });
       queryClient.invalidateQueries({ queryKey: ["me"] });
     },
   });

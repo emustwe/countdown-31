@@ -16,6 +16,11 @@ interface TransparentVideoProps {
   /** Drives one-shot playback: flip to true to play from frame 0; false pauses + resets to
    * frame 0 (an idle pose). Undefined keeps the legacy autoplay behavior. */
   playing?: boolean;
+  /** Bump this to replay the clip from frame 0 WITHOUT remounting. Re-keying the component instead
+   * would tear down and rebuild the whole WebGL pipeline (context, shaders, texture, observers) and
+   * re-decode the clip — which stutters, and can exhaust the browser's WebGL context budget so other
+   * cows on screen stop rendering. A seek costs nothing by comparison. */
+  restartKey?: string | number;
   /** Fired once when a non-looping clip finishes. */
   onEnded?: () => void;
 }
@@ -102,6 +107,7 @@ export function TransparentVideo({
   playbackRate = 1.0,
   loop = false,
   playing,
+  restartKey,
   onEnded,
 }: TransparentVideoProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -147,6 +153,19 @@ export function TransparentVideo({
       }
     }
   }, [playing]);
+
+  // Replay from frame 0 in place (see `restartKey`) — deliberately NOT part of the WebGL setup
+  // effect below, so the context and texture survive untouched.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || restartKey === undefined) return;
+    try {
+      video.currentTime = 0;
+    } catch {
+      /* ignored */
+    }
+    video.play().catch(() => undefined);
+  }, [restartKey]);
 
   useEffect(() => {
     const container = containerRef.current;

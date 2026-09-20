@@ -11,7 +11,6 @@ import { AccountSecurityModule } from "./common/account-security/account-securit
 import { RetentionModule } from "./common/retention/retention.module";
 import { RequestIdMiddleware } from "./common/middleware/request-id.middleware";
 import { AuthModule } from "./modules/auth/auth.module";
-import { WalletModule } from "./modules/wallet/wallet.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { CountdownModule } from "./modules/countdown/countdown.module";
 import { SponsorsModule } from "./modules/sponsors/sponsors.module";
@@ -31,7 +30,6 @@ import { PlatformConfigModule } from "./modules/platform-config/platform-config.
     AccountSecurityModule,
     RetentionModule,
     AuthModule,
-    WalletModule,
     NotificationsModule,
     PlatformConfigModule,
     CountdownModule,

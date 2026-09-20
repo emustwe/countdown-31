@@ -141,19 +141,9 @@ export function BarnabyMascot({
           className="h-full w-full aspect-[9/16]"
         />
 
-        {dancing && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.65 }}
-            className="defeat-cow-message"
-          >
-            {/* The server dance shows on EVERY player's screen, so only say "YOU'RE OUT" to the player
-                who was actually eliminated; everyone else sees who's out. */}
-            <strong>{status === "over" ? "ROUND OVER" : isLocalDefeat ? "YOU'RE OUT" : "ELIMINATED"}</strong>
-            <span>{resultText}</span>
-          </motion.div>
-        )}
+        {/* The dancing cow now plays ONLY at round completion (the round-transition celebration), so
+            it no longer carries an elimination readout — the per-elimination "who's out + why"
+            cinematic is owned by EliminationSequence. The cow just dances here. */}
       </div>
 
       {status === "over" && (

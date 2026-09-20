@@ -27,9 +27,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
   async validate(payload: AccessTokenPayload): Promise<AccessTokenPayload> {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { status: true, tokenVersion: true, isSystem: true },
+      select: { status: true, tokenVersion: true },
     });
-    if (!user || user.isSystem || user.status === "BANNED") {
+    if (!user || user.status === "BANNED") {
       throw new UnauthorizedException("Session is no longer valid");
     }
     if (typeof payload.ver === "number" && payload.ver !== user.tokenVersion) {

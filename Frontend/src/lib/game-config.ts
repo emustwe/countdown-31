@@ -3,7 +3,7 @@ import type { GameMode, SkillType } from "./hooks/useCountdownLive";
 export type GameThemeFamily = "monster" | "desert";
 export type BotDifficulty = "easy" | "normal" | "hard";
 export type MenuIconId =
-  "home" | "cow" | "trophy" | "shop" | "profile" | "wallet" | "history" | "settings" | "sponsor";
+  "home" | "cow" | "trophy" | "shop" | "profile" | "history" | "settings" | "sponsor";
 
 export interface AdminSkillConfig {
   id: SkillType;
@@ -79,7 +79,7 @@ export interface GameConfig {
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   branding: {
-    gameTitle: "THIRTY ONE",
+    gameTitle: "VERA 31",
     subtitle: "Knockout Arena",
     announcement: "Tactical skills activated!",
     logoEmoji: "",
@@ -259,25 +259,6 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
       order: 4,
     },
     {
-      id: "profile",
-      label: "My Profile",
-      path: "/profile",
-      icon: "profile",
-      // Top-level menu entry to match the designer's menu.
-      enabled: true,
-      requiresAuth: true,
-      order: 5,
-    },
-    {
-      id: "wallet",
-      label: "Wallet",
-      path: "/wallet",
-      icon: "wallet",
-      enabled: true,
-      requiresAuth: true,
-      order: 6,
-    },
-    {
       id: "history",
       label: "Past Games",
       path: "/history",
@@ -304,6 +285,56 @@ export function cloneGameConfig(config: GameConfig): GameConfig {
 
 /** A named, reusable SPONSOR THEME (Game Studio → tournament creation). Overrides a tournament game's
  *  brand (name/logo/tagline) + arena backdrop. */
+/** In-arena AD SURFACES for a sponsor theme — which brand placements are on and how they look. */
+export type BoardStyle = "felt" | "slate" | "midnight" | "brand";
+export type TileStyle = "classic" | "flat" | "outline" | "solid";
+export type RosterStyle = "default" | "glass" | "solid" | "brand";
+
+export interface ThemeAds {
+  placement: "topLeft" | "topCenter" | "topRight";
+  boardWatermark: boolean;
+  boardWatermarkOpacity: number;
+  boardImage: string; // custom artwork replacing the board felt ("" = brand-tinted default)
+  rosterBanner: boolean;
+  rosterBannerImage: string; // custom banner art ("" = use the logo / brand name)
+  // Look of the board, its number tiles, and the arena list.
+  boardStyle: BoardStyle;
+  tileStyle: TileStyle;
+  rosterStyle: RosterStyle;
+  // Extra ad inventory: the two marquee slots the logo/name ISN'T using (centre + opposite side).
+  bannerCenterImage: string;
+  bannerOppositeImage: string;
+}
+
+export const DEFAULT_THEME_ADS: ThemeAds = {
+  placement: "topLeft",
+  boardWatermark: true,
+  boardWatermarkOpacity: 0.14,
+  boardImage: "",
+  rosterBanner: true,
+  rosterBannerImage: "",
+  boardStyle: "felt",
+  tileStyle: "classic",
+  rosterStyle: "default",
+  bannerCenterImage: "",
+  bannerOppositeImage: "",
+};
+
+/** Simple LOBBY-screen customisation (the waiting/countdown page before a match). */
+export interface ThemeLobby {
+  backgroundImage: string;
+  overlayOpacity: number;
+  notice: string;      // a short announcement line shown to waiting players
+  bannerImage: string; // sponsor ad banner on the lobby
+}
+
+export const DEFAULT_THEME_LOBBY: ThemeLobby = {
+  backgroundImage: "",
+  overlayOpacity: 0.45,
+  notice: "",
+  bannerImage: "",
+};
+
 export interface GameTheme {
   id: string;
   name: string;
@@ -314,4 +345,6 @@ export interface GameTheme {
   overlayOpacity: number;
   primaryColor: string;
   secondaryColor: string;
+  lobby?: ThemeLobby; // optional: lobby-screen customisation
+  ads?: ThemeAds; // optional: themes saved before ad surfaces existed fall back to DEFAULT_THEME_ADS
 }

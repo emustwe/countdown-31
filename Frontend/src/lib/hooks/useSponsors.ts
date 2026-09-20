@@ -87,6 +87,27 @@ export interface TournamentGroup {
   winnerName: string | null;
   members: GroupMemberRow[];
 }
+// One day of a GROUP tournament's auto-computed schedule (for the lobby + admin plan).
+export interface DaySchedule {
+  day: number;
+  scheduledAt: string | null;
+  isFinal: boolean;
+  groupCount: number;
+  playerCount: number;
+}
+// Live tournament progress (GROUP) for the spectator dashboard on the lobby.
+export interface TournamentProgress {
+  started: boolean;
+  durationDays: number;
+  currentDay: number;
+  daysDone: number;
+  daysRemaining: number;
+  groups: { total: number; done: number; remaining: number; runningNow: number };
+  players: { total: number; eliminated: number; remaining: number };
+  running: { index: number; isFinal: boolean; day: number | null; status: GroupStatus }[];
+  finalDone: boolean;
+  champion: string | null;
+}
 export interface GroupsResponse {
   tournamentId: string;
   type: PromoType;
@@ -94,6 +115,7 @@ export interface GroupsResponse {
   entryClosesAt: string | null;
   groupsAssignedAt: string | null;
   groupSize: number;
+  schedule: DaySchedule[];
   groups: TournamentGroup[];
 }
 // The signed-in player's own placement (their stage group + final if they advanced).
@@ -254,6 +276,8 @@ export interface PromoDetail extends PromoTournament {
   myTimeVote?: string | null; // the slot this user voted for
   mySkills?: string[]; // the skill loadout this user LOCKED IN at join (cannot be changed)
   myGroup?: MyGroup | null; // the player's own group placement (GROUP tournaments)
+  schedule?: DaySchedule[] | null; // day-by-day group schedule (GROUP tournaments, once drawn)
+  progress?: TournamentProgress | null; // live progress dashboard (GROUP tournaments)
   timeVotes?: TimeVoteTally[]; // running tally across all voters
 }
 

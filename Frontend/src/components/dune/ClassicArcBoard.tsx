@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Crown, Sparkles, Send, Play, Flame, Users, Dice5, RotateCcw, Zap, Shield, Moon } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Crown, Sparkles, Send, Flame, Users, RotateCcw, Zap, Shield, Moon } from "lucide-react";
+import { useSettledResize } from "../../lib/hooks/useSettledResize";
+import { ArenaRoster } from "./ArenaRoster";
 import { MasterAvatar } from "./MasterAvatar";
-import { CowntdownTimerCow } from "./CowntdownTimerCow";
+import { NumberBoard } from "./NumberBoard";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
 import type { LivePlayer, LastMoveInfo, SkillType, GameMode } from "../../lib/hooks/useCountdownLive";
 
@@ -42,12 +44,36 @@ const C = {
   mute: "#8A8071",
 };
 
+
+// Stage-y of the number board's TOP edge = the arena roster's head. The parent pins the roster
+// overlay at ROSTER_TOP * boardScale, so the board and the roster line up exactly on every screen.
+export const ROSTER_TOP = 44;
+// Shared height (stage units) of BOTH the number board and the arena roster, so they line up top AND
+// bottom (same height). Sized as tall as possible while still leaving room for the compact number
+// picker below the board within the stage.
+export const ARENA_H = 494;
+
 /* ---------------------------------------------------------------- geometry */
 const STAGE_W = 1240;
 const STAGE_H = 680;
+// The ARENA roster now lives INSIDE the stage (right of the board), so the whole arc + board + roster
+// composition fit-scales and centres as ONE unit — balanced on every aspect ratio (no shove-right on
+// wide phone-landscape, no overlap on square windows). CONTENT_W spans the board's right edge
+// (BOARD_X + BOARD_W) + gap + roster width + a small right margin.
+const BOARD_X = 560; // number board left (nudged right of the arc)
+const BOARD_W = 520;
+// Gap board→roster (wider = roster sits further right). Kept in step with BOARD_X so CONTENT_W — and
+// therefore the fit scale AND the roster's screen position — stay put when the board is nudged right.
+const BOARD_ROSTER_GAP = 45;
+const ROSTER_X = BOARD_X + BOARD_W + BOARD_ROSTER_GAP;
+const ROSTER_W = 300;
+const CONTENT_W = ROSTER_X + ROSTER_W + 18;
 const ARC_RADIUS = 430; // bigger = flatter curve
 const ARC_STEP_DEG = 19; // angular gap between two neighbouring players
-const ARC_APEX_X = 46; // where the current player sits (left edge inset)
+// Where the current player sits (left edge inset). Big enough that the apex avatar (140 stage px wide,
+// so it reaches ARC_APEX_X - 70) clears the screen-left PLAY button, which is aligned under the "31"
+// badge and vertically centred on the page.
+const ARC_APEX_X = 126;
 
 const CX = ARC_APEX_X + ARC_RADIUS;
 const CY = STAGE_H / 2;
@@ -163,7 +189,7 @@ function ArcNode({
         willChange: "left, top, width, height",
       }}
     >
-      {active && <span className="cab-ring" style={{ width: size + 24, height: size + 24 }} />}
+      {active && <span className="cab-ring" style={{ width: size + 8, height: size + 8 }} />}
       <div
         style={{
           width: "100%",
@@ -280,7 +306,6 @@ interface ClassicArcBoardProps {
   onJoin: () => void;
   // Countdown timer cow (pinned to the number board's corner while it's your turn).
   timerActive: boolean;
-  secondsLeft: number;
   turnKey: string | number | null;
   // Skills mode: the same arc board, plus the player's equipped skills as turn actions.
   gameMode: GameMode;
@@ -291,6 +316,17 @@ interface ClassicArcBoardProps {
   // Live reveal of the CURRENT (non-local) player's picked numbers, highlighted in their colour so
   // everyone sees the selection as it happens.
   selecting?: { playerId: string; picks: number[]; color: string } | null;
+  // Reports the board's fit scale up to the parent, so it can render the ARENA roster as a screen-edge
+  // overlay scaled to match the board (hugs the right edge on every size, never overlaps the board).
+  onScale?: (scale: number) => void;
+  // Extra rightward offset (stage units) for the number board group, set by the parent so the board
+  // sits right next to the arena roster on every screen (0 on desktop, larger on letterboxed mobile).
+  shiftX?: number;
+  // AD SURFACES (optional) — a sponsor theme's brand marks for the board felt + the arena list.
+  // Omitted → the board and roster render exactly as before.
+  boardBrand?: { logoUrl?: string; name?: string; color?: string; watermark?: boolean; watermarkOpacity?: number; boardImage?: string } | null;
+  rosterSponsor?: { logoUrl?: string; name?: string; color?: string; bannerImage?: string } | null;
+  rosterStyle?: "default" | "glass" | "solid" | "brand";
 }
 
 /* ------------------------------------------------------------------ stage */
@@ -311,30 +347,56 @@ export function ClassicArcBoard({
   showJoin,
   onJoin,
   timerActive,
-  secondsLeft,
   turnKey,
   gameMode,
   onSkill,
   skillsLocked,
   spectatorMessage,
   selecting,
+  onScale,
+  shiftX = 0,
+  boardBrand = null,
+  rosterSponsor = null,
+  rosterStyle = "default",
 }: ClassicArcBoardProps) {
   const skillsMode = gameMode === "skills";
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
+  // Rightward nudge (screen px) applied to the whole composition on phone-landscape, so it doesn't sit
+  // a touch left of centre. Clamped to the available side margin so the roster can never spill off the
+  // right edge (0 on square windows that fill the width, and 0 on desktop).
+  const [shift, setShift] = useState(0);
   const localCfg = useAvatarStore();
 
-  // Fit the fixed-design stage into whatever space the arena gives us (width AND height).
-  useEffect(() => {
-    const fit = () => {
-      const w = wrapRef.current?.clientWidth ?? STAGE_W;
-      const h = wrapRef.current?.clientHeight ?? STAGE_H;
-      setScale(Math.min(w / STAGE_W, h / STAGE_H, 1.05));
-    };
-    fit();
-    window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
-  }, []);
+  // Fit the fixed-design stage into whatever space the arena gives us (width AND height). Runs only
+  // once the viewport has SETTLED after a resize / orientation burst — mobile auto-rotation fires a
+  // flurry of transient sizes, and re-fitting on each one makes the board scale (and the overlays
+  // that mirror it) blink. useSettledResize waits for the size to hold steady, then fits once.
+  const fit = useCallback(() => {
+    const w = wrapRef.current?.clientWidth ?? CONTENT_W;
+    const h = wrapRef.current?.clientHeight ?? STAGE_H;
+    const s = Math.min(w / CONTENT_W, h / STAGE_H, 1.05);
+    setScale(s);
+    onScale?.(s);
+    // Nudge the whole composition right so the arc clears the left-edge PLAY button (and the board +
+    // roster sit a touch further right). Clamped so the roster never spills off the right edge.
+    const margin = (w - CONTENT_W * s) / 2; // cab-fit side margin
+    const isPhoneLandscape =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(max-width: 1180px) and (orientation: landscape)").matches;
+    if (isPhoneLandscape) {
+      setShift(Math.max(0, Math.min(60, margin - 8)));
+    } else {
+      // Desktop: clamp to the REAL room to the viewport's right edge (cab-fit is inset from it), so the
+      // composition can move far enough right for the arc's apex avatar to clear the PLAY button.
+      const cabLeft = wrapRef.current?.getBoundingClientRect().left ?? 0;
+      const compRight = cabLeft + (w + CONTENT_W * s) / 2; // centred composition's right edge
+      const vw = typeof window !== "undefined" ? window.innerWidth : w;
+      const rightRoom = vw - compRight - 8; // keep a small breathing gap at the right edge
+      setShift(Math.max(0, Math.min(72, rightRoom)));
+    }
+  }, [onScale]);
+  useSettledResize(fit, wrapRef);
 
   // Turn order: surviving players in seating order. Seat number = original roster index + 1.
   const seatOf = useMemo(() => {
@@ -380,17 +442,8 @@ export function ClassicArcBoard({
   // The local player's equipped skills (skills mode only) — rendered as turn actions in the picker.
   const mySkills: SkillType[] = skillsMode ? myPlayer?.equippedSkills ?? [] : [];
 
-  // The claimed numbers live on the 8×4 board below; the most-recent one is spotlit.
-  const maxClaimed = useMemo(() => {
-    const keys = Object.keys(taken)
-      .map(Number)
-      .filter((n) => n >= 1 && n <= 31);
-    return keys.length ? Math.max(...keys) : 0;
-  }, [taken]);
-
   // The three next numbers the active player may claim (consecutive from the total).
   const tiles = [count + 1, count + 2, count + 3];
-  const isSelected = (num: number) => selectedCards.includes(num);
 
   return (
     <div ref={wrapRef} className="cab-fit">
@@ -405,7 +458,7 @@ export function ClassicArcBoard({
         .cab-tile{position:relative;display:grid;place-items:center;border-radius:18px;font-weight:900;font-variant-numeric:tabular-nums;cursor:pointer;user-select:none;transition:transform .12s ease, box-shadow .2s ease, background .2s ease;border:2px solid}
         .cab-tile:active{transform:scale(.95)}
         .cab-tile[disabled]{cursor:not-allowed;opacity:.35;filter:grayscale(.6)}
-        .cab-submit{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:16px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;border:none;color:#062012;background:linear-gradient(90deg,#34d399,#22c55e,#34d399);box-shadow:0 0 25px rgba(52,211,153,.55);transition:filter .15s, transform .1s}
+        .cab-submit{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;border-radius:14px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;border:none;color:#062012;background:linear-gradient(90deg,#34d399,#22c55e,#34d399);box-shadow:0 0 25px rgba(52,211,153,.55);transition:filter .15s, transform .1s}
         .cab-submit:hover{filter:brightness(1.08)}
         .cab-submit:active{transform:scale(.98)}
         .cab-submit[disabled]{opacity:.4;filter:grayscale(.5);cursor:not-allowed;box-shadow:none}
@@ -427,8 +480,8 @@ export function ClassicArcBoard({
           box-shadow:0 22px 46px rgba(0,0,0,.6), inset 0 0 40px rgba(0,0,0,.55), inset 0 2px 0 rgba(255,231,179,.18)}
         .cab-numboard::before{content:"";position:absolute;inset:6px;border-radius:18px;border:1px solid rgba(245,209,134,.16);pointer-events:none}
         .cab-rivet{position:absolute;width:7px;height:7px;border-radius:999px;background:radial-gradient(circle at 35% 30%,#ffe6a8,#8a5a16 70%,#3a2508);box-shadow:0 1px 2px rgba(0,0,0,.6)}
-        .cab-numgrid{position:relative;display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
-        .cab-numcell{position:relative;aspect-ratio:1/1;display:grid;place-items:center;border-radius:12px;font-weight:900;font-variant-numeric:tabular-nums;font-size:27px;border:1.5px solid;overflow:hidden;transition:background .3s,color .3s,box-shadow .3s,transform .3s}
+        .cab-numgrid{position:relative;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(4,1fr);gap:10px;flex:1;min-height:0}
+        .cab-numcell{position:relative;display:grid;place-items:center;border-radius:16px;font-weight:900;font-variant-numeric:tabular-nums;font-size:36px;border:1.5px solid;overflow:hidden;transition:background .3s,color .3s,box-shadow .3s,transform .3s}
         .cab-numcell::after{content:"";position:absolute;inset:0 0 55% 0;background:linear-gradient(180deg,rgba(255,255,255,.14),transparent);pointer-events:none}
         .cab-numcell.is-claimed{transform:translateY(-1px)}
         .cab-roster-row{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:12px;border:1px solid transparent;transition:background .2s,border-color .2s;flex:none}
@@ -442,10 +495,12 @@ export function ClassicArcBoard({
         @keyframes cab-spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
         @keyframes cab-fade{from{opacity:0;transform:translateY(-50%) translateX(-8px)}to{opacity:1;transform:translateY(-50%) translateX(0)}}
         @keyframes cab-pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,165,36,.5)}50%{box-shadow:0 0 0 6px rgba(245,165,36,0)}}
+        @keyframes cab-turn-arrow{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+        @media (prefers-reduced-motion: reduce){[style*="cab-turn-arrow"]{animation:none!important}}
         @media (prefers-reduced-motion: reduce){.cab-ring,.cab-card{animation:none}}
       `}</style>
 
-      <div style={{ position: "relative", width: STAGE_W, height: STAGE_H, transform: `scale(${scale})`, transformOrigin: "center center", flex: "none" }}>
+      <div style={{ position: "relative", width: CONTENT_W, height: STAGE_H, transform: `translateX(${shift}px) scale(${scale})`, transformOrigin: "center center", flex: "none" }}>
         <Rail />
 
         {/* Player rail */}
@@ -477,208 +532,75 @@ export function ClassicArcBoard({
           />
         )}
 
-        {/* ---- Centre zone: running total + themed number board ---- */}
+        {/* ---- Centre zone: themed number board ---- */}
 
-        {/* Running total. */}
-        <div style={{ position: "absolute", left: 468, top: 26, width: 430, textAlign: "center" }}>
-          <div style={{ fontSize: 12, letterSpacing: ".2em", textTransform: "uppercase", fontWeight: 800, color: C.mute, marginBottom: 2 }}>
-            Running total
-          </div>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 10 }}>
-            <span className="cab-total" style={{ fontSize: 82, color: count >= 28 ? C.ember : C.goldSoft }}>{count}</span>
-            <span className="cab-total" style={{ fontSize: 38, color: C.mute }}>/ 31</span>
-          </div>
-        </div>
+        {/* ---- The NUMBER BOARD — enlarged to fill the open centre (the roster is now a right-edge
+             overlay). Its TOP (stage y = ROSTER_TOP) is aligned with the arena roster's head, which the
+             parent pins at ROSTER_TOP*scale — so the two panels line up exactly on every screen. ---- */}
+        <div style={{ position: "absolute", left: BOARD_X + shiftX, top: ROSTER_TOP, width: BOARD_W, height: ARENA_H }}>
 
-        {/* ---- Board + roster row: the number board and the live player list share the SAME top and
-             height (align-items:stretch), so the roster is exactly aligned with the board and sits to
-             its far right. The roster scrolls internally when there are more players than fit. ---- */}
-        <div style={{ position: "absolute", left: 468, right: 24, top: 156, height: 266, display: "flex", alignItems: "stretch", justifyContent: "space-between", gap: 18 }}>
-
-        {/* The NUMBER BOARD — 1…31 on a felt-green baize under a double brass frame. Claimed numbers
-            light up in the taker's colour (most recent spotlit); 31 is the danger 💣 cell. */}
-        <div className="cab-numboard" style={{ width: 430, flex: "none" }}>
-          <span className="cab-rivet" style={{ top: 11, left: 11 }} />
-          <span className="cab-rivet" style={{ top: 11, right: 11 }} />
-          <span className="cab-rivet" style={{ bottom: 11, left: 11 }} />
-          <span className="cab-rivet" style={{ bottom: 11, right: 11 }} />
-          <div className="cab-panel-title" style={{ marginBottom: 11, display: "flex", alignItems: "center", gap: 6, color: "#ffe9be" }}>
-            <Dice5 size={14} style={{ color: C.gold }} /> Number board
-          </div>
-          <div className="cab-numgrid">
-            {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => {
-              const color = taken[n];
-              const claimedCell = !!color;
-              const latest = n === maxClaimed;
-              const bomb = n === 31;
-              return (
-                <span
-                  key={n}
-                  className={`cab-numcell ${claimedCell ? "is-claimed" : ""}`}
-                  style={{
-                    color: latest ? "#150a06" : claimedCell ? "#fff" : bomb ? "#ff9a8f" : "rgba(233,209,160,.5)",
-                    background: latest
-                      ? `linear-gradient(160deg,#fff6,${color})`
-                      : claimedCell
-                        ? `linear-gradient(160deg,${color}66,${color}30)`
-                        : bomb
-                          ? "linear-gradient(160deg,rgba(120,26,22,.55),rgba(38,8,8,.6))"
-                          : "linear-gradient(160deg,rgba(10,26,19,.65),rgba(4,12,9,.8))",
-                    borderColor: claimedCell ? `${color}` : bomb ? "rgba(242,86,75,.45)" : "rgba(245,209,134,.14)",
-                    boxShadow: latest
-                      ? `0 0 18px ${color}, 0 0 0 2px ${color}88`
-                      : claimedCell
-                        ? `0 2px 8px ${color}55, inset 0 1px 0 rgba(255,255,255,.25)`
-                        : "inset 0 2px 6px rgba(0,0,0,.55)",
-                    animation: latest ? "cab-pulse 1.6s ease-in-out infinite" : "none",
-                  }}
-                >
-                  {n}
-                  {bomb && !claimedCell && (
-                    <span style={{ position: "absolute", bottom: 1, right: 3, fontSize: 10, opacity: 0.85 }}>💣</span>
-                  )}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ---- Live player list (arena roster) — FIXED height (never grows with more players); the
-             list scrolls. Aligned with the number board. ---- */}
-        <div className="cab-panel" style={{ width: 268, height: "100%", flex: "none", padding: "12px 11px", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-          <div className="cab-panel-title" style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 6, flex: "none" }}>
-            <Users size={13} style={{ color: C.gold }} /> Arena · {queue.length}/{players.length}
-          </div>
-          <div className="cab-roster-list" style={{ display: "flex", flexDirection: "column", gap: 5, overflowY: "auto", flex: 1, minHeight: 0, paddingRight: 3 }}>
-            {players.map((pl) => {
-              const isCur = pl.id === currentId && !pl.eliminated;
-              const isMe = pl.id === myId;
-              return (
-                <div
-                  key={pl.id}
-                  className="cab-roster-row"
-                  style={{
-                    background: isCur ? "rgba(245,165,36,.16)" : "rgba(0,0,0,.35)",
-                    borderColor: isCur ? "rgba(245,165,36,.6)" : "rgba(255,255,255,.05)",
-                  }}
-                >
-                  <span
-                    style={{
-                      minWidth: 22,
-                      height: 22,
-                      display: "grid",
-                      placeItems: "center",
-                      borderRadius: 7,
-                      fontFamily: "ui-monospace,Menlo,monospace",
-                      fontWeight: 800,
-                      fontSize: 11,
-                      color: isCur ? "#1b1206" : C.goldSoft,
-                      background: isCur ? C.gold : "rgba(8,7,5,.8)",
-                      border: `1px solid ${isCur ? C.goldSoft : "rgba(245,165,36,.3)"}`,
-                    }}
-                  >
-                    {seatOf.get(pl.id)}
-                  </span>
-                  <span
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      fontSize: 13,
-                      fontWeight: 800,
-                      color: pl.eliminated ? C.mute : isCur ? "#FFE9BE" : C.bone,
-                      textDecoration: pl.eliminated ? "line-through" : "none",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {pl.name}
-                    {isMe && <span style={{ color: C.cyan, fontWeight: 900 }}> · you</span>}
-                  </span>
-                  <span style={{ width: 8, height: 8, borderRadius: 999, flex: "none", background: pl.eliminated ? "#4b5563" : isCur ? C.gold : "#34d399", boxShadow: isCur ? `0 0 8px ${C.gold}` : "none" }} />
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* The serpentine TRACK board — 1…31 threaded by a ribbon with a hopping cow token, heat ramp,
+            trap diamonds and a 31 doom cell. It fills the ARENA_H height so it lines up with the arena
+            roster top and bottom. Picks are claimed by tapping the glowing tiles on the board. */}
+        <NumberBoard
+          brand={boardBrand}
+          total={count}
+          taken={taken}
+          picks={myTurn && count < 31 ? tiles.filter((n) => n <= 31 && !taken[n]) : []}
+          highlight={
+            myTurn
+              ? selectedCards
+              : selecting && selecting.playerId === currentId
+                ? selecting.picks
+                : []
+          }
+          onSelect={onToggleCard}
+          myTurn={myTurn}
+          ticker={
+            spectatorMessage ??
+            (myTurn
+              ? "Tap the glowing tiles — claim 1, 2 or 3."
+              : currentPlayer && status === "playing"
+                ? `${currentPlayer.name} is choosing…`
+                : "")
+          }
+        />
 
         </div>
-        {/* ---- end board + roster row ---- */}
+        {/* ---- end number board row ---- */}
 
-        {/* Countdown timer cow — pinned to the number board's TOP-RIGHT CORNER (inside the scaled
-            stage, so it lands in the exact same spot on desktop and mobile). Perches just above the
-            corner so it never covers the counting numbers. */}
-        <div style={{ position: "absolute", left: 738, top: 2, width: 172, height: 168, zIndex: 60, pointerEvents: "none" }}>
-          <CowntdownTimerCow anchored active={timerActive} isMyTurn={myTurn} secondsLeft={secondsLeft} turnKey={turnKey} />
+        {/* ---- ARENA roster — a fixed part of the composition, a gap to the RIGHT of the board, so the
+             whole arc + board + roster group scales and centres as one unit on every screen. ---- */}
+        <div style={{ position: "absolute", left: ROSTER_X, top: ROSTER_TOP, width: ROSTER_W, height: ARENA_H }}>
+          <ArenaRoster
+            players={players}
+            currentId={currentId}
+            myId={myId}
+            status={status as "waiting" | "playing" | "over"}
+            style={{ width: "100%", height: "100%", pointerEvents: "auto" }}
+            sponsor={rosterSponsor}
+            rosterStyle={rosterStyle}
+          />
         </div>
+
+        {/* Countdown timer cow is now rendered by the parent (CountDown31) as an OVERLAY above the
+            board's top-right, OUTSIDE the clipped board area, so it can rise above the board with its
+            head fully visible instead of being cut off by the board boundary. */}
 
         {/* Number picker / waiting state / join. */}
-        <div style={{ position: "absolute", left: 468, top: 452, width: 430 }}>
+        <div style={{ position: "absolute", left: BOARD_X + shiftX, top: ROSTER_TOP + ARENA_H + 12, width: BOARD_W }}>
           {showJoin ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-              <button type="button" className="cab-join" onClick={onJoin} aria-label={amInAlive ? "Rejoin" : "Join the game"}>
-                <Play size={52} style={{ fill: "#1b1206", transform: "translateX(3px)" }} strokeWidth={2.5} />
-              </button>
-              <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase", color: C.goldSoft }}>
-                Tap to take a seat
-              </span>
-            </div>
+            /* Play/"Tap to take a seat" button removed for now — it will be re-added elsewhere. */
+            null
           ) : currentPlayer && status === "playing" ? (
             <>
-              {/* Turn header — always shows WHOSE turn it is + their remaining seconds, so every player
-                  sees the live turn. */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: skillsMode ? 8 : 12 }}>
-                {myTurn ? <Sparkles size={16} style={{ color: C.gold }} /> : <Crown size={16} style={{ color: C.gold }} />}
-                <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 900, letterSpacing: ".06em", textTransform: "uppercase", color: C.bone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {myTurn ? (skillsMode ? "Your turn — claim numbers or use a skill" : "Your turn — claim 1, 2, or 3") : `${currentPlayer.name} is choosing…`}
-                </span>
-                {secondsLeft > 0 && (
-                  <span style={{ fontSize: 15, fontWeight: 900, fontVariantNumeric: "tabular-nums", color: secondsLeft <= 3 ? C.ember : C.goldSoft }}>{secondsLeft}s</span>
-                )}
-              </div>
+              {/* The turn header (whose turn + remaining seconds) was removed — the TurnIndicator
+                  overlay now announces the turn (cyan "YOUR TURN" sweep + frame breathe + panic
+                  timer), and the board ticker already shows "X is choosing…", so this strip below
+                  the board is redundant. Only the submit bar remains on your turn. */}
 
-              {/* The three claimable numbers — ALWAYS visible (every turn). Interactive on your own turn;
-                  read-only on everyone else's so all players see the numbers in play. */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: skillsMode ? 10 : 14 }}>
-                {tiles.map((num) => {
-                  const overshoot = num > 31;
-                  const selected = myTurn && isSelected(num);
-                  // Live reveal: the CURRENT (other) player's picks, lit in THEIR colour so everyone
-                  // sees the same selection feedback the local player gets in gold.
-                  const revealHit =
-                    !myTurn && !!selecting && selecting.playerId === currentId && selecting.picks.includes(num);
-                  const rc = revealHit ? selecting!.color : null;
-                  return (
-                    <button
-                      key={num}
-                      type="button"
-                      disabled={!myTurn || overshoot}
-                      onClick={myTurn ? () => onToggleCard(num) : undefined}
-                      className="cab-tile"
-                      aria-pressed={selected || revealHit}
-                      style={{
-                        height: skillsMode ? 82 : 100,
-                        fontSize: skillsMode ? 34 : 40,
-                        color: selected ? "#0b0906" : revealHit ? "#0b0906" : num >= 31 ? C.ember : C.bone,
-                        background: selected
-                          ? "linear-gradient(160deg,#FFD98A,#F5A524)"
-                          : revealHit
-                            ? `linear-gradient(160deg, ${rc}, ${rc})`
-                            : myTurn
-                              ? "linear-gradient(160deg,rgba(40,33,18,.95),rgba(12,10,6,.95))"
-                              : "linear-gradient(160deg,rgba(26,22,12,.82),rgba(8,7,4,.88))",
-                        borderColor: selected ? C.goldSoft : revealHit ? rc! : myTurn ? "rgba(245,165,36,.3)" : "rgba(245,165,36,.15)",
-                        boxShadow: selected ? "0 12px 30px rgba(245,165,36,.45)" : revealHit ? `0 12px 30px ${rc}66` : "none",
-                        cursor: myTurn ? "pointer" : "default",
-                        opacity: overshoot ? 0.4 : 1,
-                      }}
-                    >
-                      {num}
-                    </button>
-                  );
-                })}
-              </div>
-
+              {/* Claimable numbers are chosen by tapping the glowing tiles ON the board above; here we
+                  keep only the submit bar (your turn) or the live status line (others' turns). */}
               {myTurn ? (
                 <>
                   <button type="button" className="cab-submit" disabled={selectedCards.length === 0} onClick={onConfirmMove}>

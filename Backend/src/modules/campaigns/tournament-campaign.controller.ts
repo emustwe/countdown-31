@@ -5,7 +5,7 @@ import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import type { AccessTokenPayload } from "../auth/token.types";
-import { TournamentCampaignService, type UploadedCampaignFile } from "./tournament-campaign.service";
+import { TournamentCampaignService, CAMPAIGN_UPLOAD_MAX_BYTES, type UploadedCampaignFile } from "./tournament-campaign.service";
 
 // Public (no guard): the play screen reads the active campaign + posts telemetry.
 @Controller("promo-tournaments")
@@ -46,7 +46,9 @@ export class AdminCampaignController {
   }
 
   @Post(":id/campaign/assets/:kind")
-  @UseInterceptors(FileInterceptor("file"))
+  // Cap the upload at the interceptor so an oversized file is rejected BEFORE being buffered fully
+  // into memory (the service still enforces the same limit). Same threshold → success path unchanged.
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: CAMPAIGN_UPLOAD_MAX_BYTES } }))
   uploadAsset(
     @Param("id") id: string,
     @Param("kind") kind: string,

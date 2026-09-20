@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
@@ -15,7 +15,6 @@ import {
   Sparkles,
   Dices,
   User,
-  Wallet,
   ShoppingBag,
   Settings,
   LogIn,
@@ -23,6 +22,7 @@ import {
   ChevronRight,
   Trophy,
   ShieldAlert,
+  Building2,
   HeartHandshake,
   ExternalLink,
   Check,
@@ -36,8 +36,6 @@ import {
 import { useSettingsStore } from "../../stores/settings-store";
 import { useAuthStore } from "../../stores/auth-store";
 import { useLogout, useProfile } from "../../lib/hooks/useAuth";
-import { useWallet } from "../../lib/hooks/useWallet";
-import { formatUsdt } from "../../lib/money";
 import { soundManager } from "../../lib/soundManager";
 import { type GameMode } from "../../lib/hooks/useCountdownLive";
 import { useAvatarStore } from "../../stores/avatar-customization-store";
@@ -65,6 +63,39 @@ interface ArcadeHeaderProps {
   campaignRevision?: number;
 }
 
+/**
+ * The page-name plate shown in the header's centre slot. Every page gets the SAME fixed-size box in
+ * the SAME place (centred, level with the "31" badge and the right-hand icons), so it reads as one
+ * piece of platform furniture rather than per-page decoration. Longest-path-first so "/events/abc"
+ * resolves to the tournament label, not the list one.
+ */
+const PAGE_TITLES: [string, string][] = [
+  ["/avatar-styles", "Avatar Styles"],
+  ["/avatar", "My Avatars"],
+  ["/events/", "Tournament"],
+  ["/events", "Tournaments"],
+  ["/sponsorship", "Sponsorship"],
+  ["/sponsor", "Sponsor Portal"],
+  ["/history", "Past Games"],
+  ["/settings", "Settings"],
+  ["/shop", "Shop"],
+  ["/admin", "Admin"],
+  ["/game", "Arena"],
+  // "/home" is deliberately absent: the play arena needs no page name, so it gets no plate.
+];
+
+function pageTitleFor(pathname: string | null): string {
+  if (!pathname) return "";
+  for (const [prefix, label] of PAGE_TITLES) {
+    if (pathname === prefix || pathname.startsWith(prefix)) return label;
+  }
+  // The arena (home) and the root carry no plate.
+  if (pathname === "/" || pathname === "/home" || pathname.startsWith("/home/")) return "";
+  // Unmapped route: title-case its first segment so a new page still gets a sensible plate.
+  const seg = pathname.split("/").filter(Boolean)[0];
+  return seg ? seg.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "";
+}
+
 export function ArcadeHeader({
   onOpenRules,
   gameMode = "skills",
@@ -78,6 +109,7 @@ export function ArcadeHeader({
   campaignRevision,
 }: ArcadeHeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
   const toggleSoundStore = useSettingsStore((s) => s.toggleSound);
   const bgmEnabled = useSettingsStore((s) => s.bgmEnabled);
@@ -112,7 +144,6 @@ export function ArcadeHeader({
   const logoutMutation = useLogout();
 
   const { data: profile } = useProfile();
-  const { data: wallet } = useWallet();
 
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showCause, setShowCause] = useState(false);
@@ -152,6 +183,17 @@ export function ArcadeHeader({
   // because they are skills-only; they still pass onToggleMode, so we must not OR it in here.)
   const hasCampaign = Boolean(campaign);
   const canToggle = showModeToggle && !hasCampaign;
+  // Practice arena = not a tournament and not a sponsor campaign. Practice is CLASSIC-only (no mode
+  // toggle); its platform mark is a compact "31" badge in the top-left slot (no centered wordmark).
+  const isPractice = !isTournament && !hasCampaign;
+  // A tournament carries CUSTOM branding when a sponsor theme sets a logo or a non-default title.
+  const hasCustomBrand =
+    Boolean(config.branding.logoUrl) ||
+    (!!config.branding.gameTitle && config.branding.gameTitle.trim().toUpperCase() !== "VERA 31");
+  // Show the compact "31" mark (top-left, no centred wordmark) for practice AND plain tournaments.
+  // Sponsor-themed tournaments (custom logo/name) and campaigns keep their full centred branding.
+  const showSmallBrand = !hasCampaign && (isPractice || !hasCustomBrand);
+  const pageTitle = pageTitleFor(pathname);
   const campaignCause = campaign?.cause?.enabled && !causePaused ? campaign.cause : null;
   const campaignLogoUrl = resolveCampaignAssetUrl(campaign?.logoTile.mediaUrl);
 
@@ -215,7 +257,6 @@ export function ArcadeHeader({
 
   const displayName = profile?.fullName || user?.fullName || "Player";
   const userInitials = displayName.slice(0, 2).toUpperCase();
-  const balanceDisplay = wallet ? formatUsdt(wallet.balance) : "0.00 USDT";
   const menuIcons: Record<MenuIconId, typeof Home> = {
     home: Home,
     cow: Crown,
@@ -223,7 +264,6 @@ export function ArcadeHeader({
     sponsor: Handshake,
     shop: ShoppingBag,
     profile: User,
-    wallet: Wallet,
     history: HistoryIcon,
     settings: Settings,
   };
@@ -235,124 +275,25 @@ export function ArcadeHeader({
     <header
       className={`arcade-arena-header ${canToggle || hasCampaign ? "is-game-header" : "is-page-header"} relative z-30 flex h-20 w-full shrink-0 select-none items-start justify-between px-2 sm:px-8 pb-1 pt-1.5 sm:h-36`}
     >
-      {/* Left Slot: Mode Selector (Desktop Arena) OR Single Heart Cause Button (Tournament) */}
+      {/* Left Slot: Platform "31" badge (Practice Arena) OR Single Heart Cause Button (Tournament) */}
       <div className="arcade-mode-selector flex items-center gap-1.5 sm:gap-2 z-20 pt-0.5 sm:pt-1">
-        {/* Mode Selector - ONLY rendered on Game Arena page */}
-        {canToggle && (
-          <>
-            {/* Desktop Mode Selector Toggle Pill */}
-            <div className="desktop-mode-switch hidden sm:flex items-center bg-black/75 border border-amber-400/50 rounded-2xl p-1 shadow-lg backdrop-blur-md">
-              <button
-                type="button"
-                onClick={() => {
-                  soundManager.playClick();
-                  onToggleMode?.("classic");
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-title font-black transition-all cursor-pointer ${
-                  gameMode === "classic"
-                    ? "bg-amber-400 text-slate-950 shadow-[0_0_12px_rgba(245,158,11,0.8)] scale-102"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                <Dices size={14} />
-                <span>CLASSIC</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  soundManager.playClick();
-                  onToggleMode?.("skills");
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-title font-black transition-all cursor-pointer ${
-                  gameMode === "skills"
-                    ? "bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-[0_0_14px_rgba(168,85,247,0.8)] scale-102"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                <Sparkles size={14} className="text-yellow-300 fill-yellow-300 animate-pulse" />
-                <span>SKILL MODE</span>
-              </button>
-            </div>
-
-            {/* Mobile Top-Left Mode Selector Icon Button & Dropdown */}
-            <div ref={mobileModeMenuRef} className="mobile-mode-picker relative sm:hidden">
-              <button
-                type="button"
-                onClick={() => {
-                  soundManager.playClick();
-                  setShowMobileModeMenu(!showMobileModeMenu);
-                }}
-                className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-md ${
-                  gameMode === "skills"
-                    ? "bg-purple-950/90 border-purple-400 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.4)]"
-                    : "bg-black/85 border-amber-400/80 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
-                }`}
-                title={`Game Mode: ${gameMode === "skills" ? "Tactical Skills" : "Classic 31"}`}
-                aria-label="Toggle game mode selector"
-              >
-                {gameMode === "skills" ? (
-                  <Sparkles size={17} className="text-yellow-300 fill-yellow-300" />
-                ) : (
-                  <Dices size={17} className="text-amber-400" />
-                )}
-              </button>
-
-              <AnimatePresence>
-                {showMobileModeMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8, scale: 0.94 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.94 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute left-0 top-11 z-50 flex flex-col gap-1 p-1.5 bg-black/95 backdrop-blur-xl border-2 border-amber-400/80 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.95)] min-w-[155px]"
-                  >
-                    <span className="text-[9px] font-title font-bold text-slate-400 px-2 py-0.5 uppercase tracking-wider">
-                      GAME MODE
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        soundManager.playClick();
-                        onToggleMode?.("classic");
-                        setShowMobileModeMenu(false);
-                      }}
-                      className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-title font-black transition-all cursor-pointer ${
-                        gameMode === "classic"
-                          ? "bg-amber-400 text-slate-950 shadow-[0_0_10px_rgba(245,158,11,0.8)]"
-                          : "bg-white/5 text-slate-300 hover:bg-white/10"
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <Dices size={14} />
-                        <span>Classic 31</span>
-                      </div>
-                      {gameMode === "classic" && <Check size={12} strokeWidth={3} />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        soundManager.playClick();
-                        onToggleMode?.("skills");
-                        setShowMobileModeMenu(false);
-                      }}
-                      className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-title font-black transition-all cursor-pointer ${
-                        gameMode === "skills"
-                          ? "bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-[0_0_12px_rgba(168,85,247,0.8)]"
-                          : "bg-white/5 text-slate-300 hover:bg-white/10"
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <Sparkles size={14} className="text-yellow-300 fill-yellow-300" />
-                        <span>Skill Mode</span>
-                      </div>
-                      {gameMode === "skills" && <Check size={12} strokeWidth={3} />}
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </>
+        {/* CLASSIC-only arena: the mode toggle is gone, replaced by a compact platform "31" mark sized
+            to match the sound/profile icons (top-right). Practice + plain tournaments show it. */}
+        {showSmallBrand && (
+          <button
+            type="button"
+            onClick={() => {
+              soundManager.playClick();
+              router.push("/home");
+            }}
+            className="brand-31-badge relative flex items-center justify-center h-11 sm:h-12 rounded-full bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 border-2 border-white shadow-[0_4px_12px_rgba(245,158,11,0.9),inset_0_1px_2px_rgba(255,255,255,0.7)] hover:scale-105 active:scale-95 transition-transform cursor-pointer shrink-0"
+            title="Vera 31"
+            aria-label="Vera 31 — Home"
+          >
+            <span className="brand-31-badge-text font-title font-black leading-none text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
+              VERA 31
+            </span>
+          </button>
         )}
 
         {/* Single Cause Heart Icon strictly on the Left */}
@@ -425,6 +366,14 @@ export function ArcadeHeader({
               </span>
             </div>
           </div>
+        ) : showSmallBrand ? (
+          /* The platform mark lives in the top-left "31" badge, so the centre slot carries the PAGE
+             NAME plate — one fixed-size box, same spot on every page. See .page-name-plate. */
+          pageTitle ? (
+            <div className="page-name-plate pointer-events-none" role="heading" aria-level={2}>
+              <span className="page-name-plate-text">{pageTitle}</span>
+            </div>
+          ) : null
         ) : (
           /* STANDARD CLASSIC ARENA MODE: big, beautiful platform brand lockup — "31" shield + name. */
           <div
@@ -434,30 +383,33 @@ export function ArcadeHeader({
             {/* Animated shine sweep across the whole lockup. */}
             <span className="brand-shine" aria-hidden="true" />
 
-            {/* Brand mark — a sponsor LOGO IMAGE (Game Studio) when set, else the golden "31" shield. */}
+            {/* Brand mark — EITHER a sponsor LOGO or the name wordmark, never both: a logo already
+                carries the brand, so the Game Studio treats them as one choice. With a logo set we
+                show the logo alone; with no logo we show the "31" shield + the name (+ tagline). */}
             {config.branding.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={config.branding.logoUrl}
                 alt={config.branding.gameTitle || "Logo"}
-                className="standard-game-badge w-14 h-14 sm:w-[86px] sm:h-[86px] object-contain shrink-0 drop-shadow-[0_4px_10px_rgba(0,0,0,0.6)]"
+                className="standard-game-badge h-14 w-auto sm:h-[86px] max-w-[220px] object-contain shrink-0 drop-shadow-[0_4px_10px_rgba(0,0,0,0.6)]"
               />
             ) : (
-              <div className="standard-game-badge relative flex items-center justify-center w-14 h-14 sm:w-[86px] sm:h-[86px] rounded-2xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 border-2 sm:border-[3px] border-white shadow-[0_6px_18px_rgba(245,158,11,0.95),inset_0_2px_3px_rgba(255,255,255,0.7)] shrink-0">
-                <span className="font-title font-black text-4xl sm:text-[66px] leading-none text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.7)]">
-                  31
-                </span>
-              </div>
+              <>
+                <div className="standard-game-badge relative flex items-center justify-center w-14 h-14 sm:w-[86px] sm:h-[86px] rounded-2xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 border-2 sm:border-[3px] border-white shadow-[0_6px_18px_rgba(245,158,11,0.95),inset_0_2px_3px_rgba(255,255,255,0.7)] shrink-0">
+                  <span className="font-title font-black text-4xl sm:text-[66px] leading-none text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.7)]">
+                    31
+                  </span>
+                </div>
+                {/* Name wordmark + tagline — driven by the Game Studio "Brand & copy" section. The
+                    tagline only exists in name mode, which is exactly this branch. */}
+                <div className="standard-game-name flex flex-col items-start leading-none pr-1">
+                  <span className="brand-wordmark font-title font-black">
+                    {config.branding.gameTitle || "VERA 31"}
+                  </span>
+                  {config.branding.subtitle && <span className="brand-tagline">{config.branding.subtitle}</span>}
+                </div>
+              </>
             )}
-
-            {/* Platform name wordmark — driven by the Game Studio "Brand & copy" section, so a sponsor
-                name/logo/tagline set in the admin panel appears here (where "31 THIRTY ONE" sits). */}
-            <div className="standard-game-name flex flex-col items-start leading-none pr-1">
-              <span className="brand-wordmark font-title font-black">
-                {config.branding.gameTitle || "THIRTY ONE"}
-              </span>
-              {config.branding.subtitle && <span className="brand-tagline">{config.branding.subtitle}</span>}
-            </div>
           </div>
         )}
 
@@ -822,19 +774,6 @@ export function ArcadeHeader({
                 </div>
               </div>
 
-              {/* Wallet Quick View */}
-              {user && (
-                <div className="flex items-center justify-between p-2.5 rounded-2xl bg-black/60 border border-amber-400/40">
-                  <div className="flex items-center gap-2">
-                    <Wallet size={16} className="text-emerald-400" />
-                    <span className="text-xs font-title font-bold text-slate-300">Balance:</span>
-                  </div>
-                  <span className="font-title font-black text-xs text-amber-300">
-                    {balanceDisplay}
-                  </span>
-                </div>
-              )}
-
               {/* Admin-configured navigation items */}
               <div className="flex flex-col gap-1 text-xs font-title font-bold">
                 {menuItems.map((item) => {
@@ -870,6 +809,20 @@ export function ArcadeHeader({
                     <ChevronRight size={14} className="text-slate-500" />
                   </button>
                 )}
+
+                {/* Sponsor dashboard — sponsors sign in with their OWN credentials (separate from
+                    player accounts), so this is always available, signed in or not. Fixed entry (not
+                    part of the admin-configurable list) so it can never be lost from a saved menu. */}
+                <button
+                  onClick={() => handleNavigate("/sponsor/login")}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Building2 size={15} className="text-emerald-400" />
+                    <span className="font-title font-black">Sponsor Dashboard</span>
+                  </div>
+                  <ChevronRight size={14} className="text-emerald-400" />
+                </button>
 
                 {user?.role === "ADMIN" && (
                   <button

@@ -132,7 +132,7 @@ h3 {
   z-index: 24;
 }
 
-/* ---- Platform brand wordmark (the "THIRTY ONE" name beside the 31 shield) ---- */
+/* ---- Platform brand wordmark (the "VERA 31" name beside the 31 shield) ---- */
 .brand-wordmark {
   font-size: 34px;
   line-height: 0.86;
@@ -719,9 +719,10 @@ h3 {
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(6, 2, 16, 0.66);
+  background: rgba(3, 7, 5, 0.72);
   backdrop-filter: blur(6px);
 }
+/* New cow-arcade theme: dark green pasture gradient + gold border/glow (matches AuthGateModal). */
 .name-card {
   position: relative;
   width: min(420px, 100%);
@@ -729,13 +730,15 @@ h3 {
   flex-direction: column;
   gap: 12px;
   padding: 30px 26px 26px;
-  border-radius: 20px;
-  border: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--surface), var(--bg2));
-  box-shadow: var(--shadow);
+  border-radius: 22px;
+  border: 2px solid #f5a524;
+  background: linear-gradient(180deg, #18281e 0%, #0d1811 55%, #050a07 100%);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 42px rgba(245, 158, 11, 0.3);
+  color: #fff8ef;
 }
 .name-card h2 {
   margin: 0;
+  padding-right: 38px;
   font-size: 24px;
   font-variant-ligatures: none;
   letter-spacing: 0.02em;
@@ -749,14 +752,16 @@ h3 {
   padding: 14px 16px;
   margin-top: 4px;
   border-radius: 13px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text);
+  border: 1px solid rgba(245, 165, 36, 0.35);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
   font-size: 15px;
   outline: none;
 }
+.name-card input::placeholder { color: rgba(182, 199, 186, 0.6); }
 .name-card input:focus {
-  border-color: var(--cyan);
+  border-color: #f5a524;
+  box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.18);
 }
 
 /* Empty placeholder pages (Game Play, Shop). */
@@ -2031,23 +2036,25 @@ h3 {
   display: flex;
   flex-direction: column;
   border-radius: 22px;
-  border: 1px solid var(--border);
-  background: var(--glass);
-  backdrop-filter: blur(18px);
-  box-shadow: var(--shadow);
+  border: 1px solid rgba(245, 165, 36, 0.5);
+  background: linear-gradient(180deg, #18281e 0%, #0d1811 55%, #050a07 100%);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 42px rgba(245, 158, 11, 0.26);
   padding: 22px 26px 20px;
   border-top-width: 4px;
 }
-/* Rule Book = gold; Terms & Conditions = cyan→violet, so the two steps read differently. */
+/* Rule Book = gold; Terms & Conditions = cyan, so the two steps read differently — both on the
+   new green pasture panel. */
 .rules-card.rules {
   border-top-color: var(--gold);
   background:
-    radial-gradient(circle at 50% -8%, rgba(244, 185, 66, 0.16), transparent 55%), var(--glass);
+    radial-gradient(circle at 50% -8%, rgba(244, 185, 66, 0.18), transparent 55%),
+    linear-gradient(180deg, #18281e 0%, #0d1811 55%, #050a07 100%);
 }
 .rules-card.terms {
   border-top-color: var(--cyan);
   background:
-    radial-gradient(circle at 50% -8%, rgba(33, 230, 215, 0.16), transparent 55%), var(--glass);
+    radial-gradient(circle at 50% -8%, rgba(33, 230, 215, 0.16), transparent 55%),
+    linear-gradient(180deg, #18281e 0%, #0d1811 55%, #050a07 100%);
 }
 .rules-head {
   display: flex;
@@ -7086,10 +7093,10 @@ h3 {
   padding: 32px;
   position: relative;
   background:
-    radial-gradient(circle at 50% 0%, rgba(33, 230, 215, 0.18), transparent 45%),
-    linear-gradient(145deg, rgba(38, 21, 62, 0.96), rgba(18, 9, 36, 0.98));
-  border: 1px solid rgba(255, 128, 224, 0.35);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 77, 207, 0.2);
+    radial-gradient(circle at 50% 0%, rgba(85, 230, 148, 0.16), transparent 45%),
+    linear-gradient(180deg, #18281e 0%, #0d1811 55%, #050a07 100%);
+  border: 2px solid #f5a524;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.85), 0 0 40px rgba(245, 158, 11, 0.28);
   color: #fff8ef !important;
 }
 .modal-close {
@@ -7099,8 +7106,8 @@ h3 {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(245, 165, 36, 0.4);
   display: grid;
   place-items: center;
   color: var(--text);
@@ -8442,7 +8449,7 @@ h3 {
 .event-card .primary { margin-top: 6px; }
 .gate-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
 .gate-login, .gate-signup { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; border-radius: 13px; font-weight: 800; font-size: 14px; }
-.gate-login { border: 1px solid var(--border); background: rgba(255,255,255,0.06); color: var(--text); }
+.gate-login { border: 1px solid rgba(245,165,36,0.45); background: rgba(0,0,0,0.4); color: #ffdf78; }
 .gate-signup { border: 1px solid #ffe492; background: linear-gradient(180deg,#ffe176,#e79a24); color: #291406; }
 
 /* User settings — Card tab */
@@ -8844,19 +8851,24 @@ button.mini:hover { filter: brightness(1.06); }
 /* Count Down 31 — choose-your-name gate before joining */
 .cd31-gate-overlay {
   position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
-  background: rgba(6, 4, 12, 0.72); backdrop-filter: blur(4px); padding: 24px;
+  background: rgba(3, 7, 5, 0.78); backdrop-filter: blur(5px); padding: 24px;
 }
+/* New cow-arcade theme (matches AuthGateModal): dark green pasture gradient + gold border/glow. */
 .cd31-gate {
-  width: 100%; max-width: 380px; padding: 26px 24px; border-radius: 20px; text-align: center;
-  display: flex; flex-direction: column; gap: 12px;
+  width: 100%; max-width: 380px; padding: 26px 24px; border-radius: 22px; text-align: center;
+  display: flex; flex-direction: column; gap: 12px; color: #fff8ef;
+  background: linear-gradient(180deg, #18281e 0%, #0d1811 55%, #050a07 100%);
+  border: 2px solid #f5a524;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 42px rgba(245, 158, 11, 0.3);
 }
-.cd31-gate h2 { margin: 0; font-size: 22px; }
-.cd31-gate p { margin: 0; color: var(--muted); font-size: 13px; }
+.cd31-gate h2 { margin: 0; font-size: 22px; color: #ffffff; }
+.cd31-gate p { margin: 0; color: #b6c7ba; font-size: 13px; }
 .cd31-gate input {
-  padding: 13px 14px; border-radius: 12px; border: 1px solid var(--border);
-  background: var(--input-bg, rgba(255,255,255,0.05)); color: var(--text); font-size: 16px; text-align: center; margin-top: 4px;
+  padding: 13px 14px; border-radius: 12px; border: 1px solid rgba(245, 165, 36, 0.35);
+  background: rgba(0, 0, 0, 0.45); color: #fff; font-size: 16px; text-align: center; margin-top: 4px;
 }
-.cd31-gate input:focus { outline: none; border-color: var(--gold2); }
+.cd31-gate input::placeholder { color: rgba(182, 199, 186, 0.6); }
+.cd31-gate input:focus { outline: none; border-color: #f5a524; box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.18); }
 .cd31-gate button { margin-top: 6px; }
 .vis-pill.seeking { background: rgba(244,185,66,0.16); color: var(--gold2); }
 
@@ -8865,7 +8877,9 @@ button.mini:hover { filter: brightness(1.06); }
 .cd31-turn.win { color: var(--gold2); font-weight: 800; }
 .cd31-gate-ico {
   width: 46px; height: 46px; margin: 0 auto 2px; display: grid; place-items: center;
-  border-radius: 14px; background: rgba(244,185,66,0.16); color: var(--gold2);
+  border-radius: 14px; color: #1a1206;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b 60%, #b45309);
+  box-shadow: 0 0 22px rgba(245, 158, 11, 0.55);
 }
 .cd31-proll { height: 132px; }
 
@@ -9502,26 +9516,69 @@ body:has(.mobile-landscape-game) .app-shell > footer {
     display: none !important;
   }
 
-  /* AUTO-LANDSCAPE: a phone held in portrait is rotated into landscape automatically (no "please
-     rotate" prompt). We rotate the whole game stage 90° and size it to the viewport's height×width.
-     Fixed overlays (mascot, timer cow, wheel, winner) live INSIDE .arena-viewport, so a transform on
-     it becomes their containing block and they rotate correctly with the stage. */
+  /* PORTRAIT: the game only ever runs in TRUE landscape (the measured arc-board layout is not valid
+     inside a 90° CSS rotation — that fake-landscape hack is gone). Instead a full-screen "rotate your
+     phone" prompt (.rotate-to-play) covers the arena until the device is turned to landscape. */
   html:has(.mobile-landscape-game),
   body:has(.mobile-landscape-game) {
     overflow: hidden !important;
     overscroll-behavior: none;
   }
-  .mobile-landscape-game.arena-viewport {
-    position: fixed !important;
-    top: 0;
-    left: 0;
-    width: 100vh;
-    height: 100vw;
-    transform-origin: top left;
-    transform: rotate(90deg) translateY(-100vw);
-    overflow: hidden;
+}
+
+/* "Rotate your phone to play" — shown ONLY on a touch device held in portrait while the game is on
+   screen. Hidden everywhere else (desktop has a fine pointer; landscape hides it via the media query).
+   Because iOS Safari can't force the screen to rotate, this is how the player is asked to turn the
+   phone; once in landscape the real arena renders exactly as it does on desktop / manual landscape. */
+.rotate-to-play { display: none; }
+@media (orientation: portrait) and (pointer: coarse) {
+  .rotate-to-play {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000; /* above the header, profile trigger, bottom-nav (all at 9999) */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 40px 28px;
+    text-align: center;
+    background: radial-gradient(120% 80% at 50% 18%, #1b2e21 0%, #0c1710 55%, #050a07 100%);
+    color: #fff8ef;
+  }
+  /* In portrait the rotate prompt is the ONLY thing on screen. The game header / profile trigger /
+     bottom nav each sit in their own stacking context and would otherwise float above the prompt, so
+     hide them outright while the game is shown in portrait. */
+  body:has(.mobile-landscape-game) .arcade-arena-header,
+  body:has(.mobile-landscape-game) .mobile-bottom-nav,
+  body:has(.mobile-landscape-game) .app-shell > footer {
+    display: none !important;
   }
 }
+.rtp-phone {
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  border-radius: 26px;
+  color: #1a1206;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b 60%, #b45309);
+  box-shadow: 0 0 42px rgba(245, 158, 11, 0.5);
+  animation: rtp-turn 2.4s ease-in-out infinite;
+}
+@keyframes rtp-turn {
+  0%, 18% { transform: rotate(0deg); }
+  46%, 70% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+.rtp-title {
+  font-family: var(--font-title, inherit);
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  color: #ffdf78;
+}
+.rtp-sub { font-size: 13.5px; color: #b6c7ba; max-width: 260px; line-height: 1.5; }
 
 @media (max-width: 1180px) and (orientation: landscape) {
   body:has(.mobile-landscape-game .defeat-cow-result) .mobile-bottom-nav,
@@ -9551,7 +9608,7 @@ body:has(.mobile-landscape-game) .app-shell > footer {
   html:has(.mobile-landscape-game),
   body:has(.mobile-landscape-game) {
     width: 100%;
-    height: 100dvh;
+    height: var(--app-vh, 100dvh);
     overflow: hidden;
     overscroll-behavior: none;
   }
@@ -9632,7 +9689,9 @@ body:has(.mobile-landscape-game) .app-shell > footer {
   .app-shell:has(.mobile-landscape-game) .cd31-page,
   .mobile-landscape-game.arena-viewport {
     width: 100%;
-    height: 100dvh;
+    /* --app-vh = the TRUE visible height (visualViewport), so iOS Safari's landscape toolbar can't
+       clip the bottom of the arena. Falls back to 100dvh before the JS runs / where unsupported. */
+    height: var(--app-vh, 100dvh);
     min-height: 0;
     overflow: hidden;
     padding: 0 !important;
@@ -10052,7 +10111,8 @@ body:has(.mobile-landscape-game) .app-shell > footer {
   .mobile-landscape-game .defeat-cow-stage.is-idle {
     top: auto !important;
     bottom: max(6px, env(safe-area-inset-bottom)) !important;
-    left: max(6px, env(safe-area-inset-left)) !important;
+    /* +10px right to stay aligned with the "31" badge + PLAY button (nudged the same amount). */
+    left: max(16px, calc(env(safe-area-inset-left) + 10px)) !important;
     width: 48px !important;
     height: 80px !important;
     opacity: 0.9 !important;
@@ -10371,15 +10431,6 @@ body:has(.mobile-landscape-game) .app-shell > footer {
     gap: 10px !important;
   }
 
-  /* 5. Wallet Page (/wallet) Landscape 2-Column Split */
-  .wallet-container,
-  main:has(.wallet-card) {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 12px !important;
-    align-items: start !important;
-  }
-
   /* 6. Settings Page (/settings) Landscape 2-Column Grid */
   .settings-container,
   main:has(.settings-group) {
@@ -10414,7 +10465,7 @@ body:has(.mobile-landscape-game) .app-shell > footer {
     align-items: flex-start !important;
   }
 
-  /* Brand: compact 31 badge + THIRTY ONE wordmark (tagline hidden), centred at top. */
+  /* Brand: compact brand pill + VERA 31 wordmark (tagline hidden), centred at top. */
   .arcade-arena-header.is-page-header .arcade-brand {
     top: 5px !important;
     left: 50% !important;
@@ -10502,4 +10553,293 @@ body:has(.mobile-landscape-game) .app-shell > footer {
   .mobile-landscape-game .arcade-arena-header.is-page-header .arcade-header-actions {
     padding-top: 4px !important;
   }
+}
+
+/* PLAY button (practice) — centred under the top-left "31" badge. On desktop the badge sits ~80px in;
+   on landscape phones the header is compressed so the badge sits far left — align the button to it. */
+.nb-play-pos { left: 30px; }
+@media (max-width: 1180px) {
+  /* The top-left trio — "31" badge, PLAY button, idle cow — is aligned; nudge all three the SAME
+     small amount right on mobile so they stay aligned (see the badge + idle-cow rules below). */
+  .nb-play-pos { left: 14px; }
+  .brand-31-badge { margin-left: 10px; }
+}
+/* Desktop: the top-left platform mark is the "VERA 31" NAME PILL, not a round chip, so the PLAY
+   button lines up with its LEFT EDGE rather than its centre — centring a 52px button under a ~100px
+   pill would shove it into the arc's apex avatar. The pill sits inside TWO paddings —
+   .arena-viewport (sm:px-6 = 24px) + .arcade-arena-header (sm:px-8 = 32px) — minus its own -28px
+   margin, so it starts at 24+32-28 = 28px. The button is absolutely positioned against the viewport
+   (padding is ignored), hence left: 28px. The arc's apex avatar (ARC_APEX_X in ClassicArcBoard) is
+   pushed right to clear it. */
+@media (min-width: 1181px) {
+  .nb-play-pos { left: 28px; }
+}
+
+/* Elimination FREEZE — during the 4.6s cinematic the live game desaturates + dims and holds still
+   (the elimination card is portaled to <body>, so it stays full-colour above this). */
+.arena-viewport.elim-frozen { filter: saturate(0.18) brightness(0.62); transition: filter 0.45s ease; }
+
+/* Desktop only (>1180px): nudge the top-left brand pill left, toward the screen edge. The PLAY button
+   then lines up with its left edge (see .nb-play-pos above). Mobile-landscape keeps its own alignment. */
+@media (min-width: 1181px) {
+  .brand-31-badge { margin-left: -28px; }
+}
+
+/* Desktop only (>1180px): centre the idle/dancing cow under the PLAY button (the button spans 28→80,
+   so its centre is 54px; the cow is 104px wide → left:2 centres it) and lift it a little.
+   Mobile-landscape keeps its own (already-aligned) placement. */
+@media (min-width: 1181px) {
+  .defeat-cow-stage.is-idle { left: 2px; bottom: 72px; }
+}
+
+/* Arena roster overlay right offset. Desktop hugs the edge (6px); on landscape phones nudge it a
+   little left (14px) so the list sits a touch further from the screen edge. */
+[data-roster-ov] { right: 6px; }
+@media (max-width: 1180px) {
+  [data-roster-ov] { right: 14px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   TURN INDICATION — "whose turn is it" (see TURN-BRIEF.md / turn-indicator.html)
+   THE CONTRACT: cyan (#35D6E8) = YOU. Nothing else is ever cyan. Others = warm
+   white (#D8E6DB). Rendered inside .arena-viewport, so inset:0 rings the game.
+   ───────────────────────────────────────────────────────────────────────── */
+.ti-root { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+
+/* 1 ─ the frame breathes: cyan glow on your turn, red panic when time's nearly out */
+.ti-edge {
+  position: absolute; inset: 0; border-radius: inherit; opacity: 0;
+  box-shadow: inset 0 0 0 2px rgba(53, 214, 232, 0.62), inset 0 0 60px rgba(53, 214, 232, 0.2);
+  transition: opacity 0.4s ease;
+}
+.ti-root.mine .ti-edge { opacity: 1; animation: ti-breathe 2.4s ease-in-out infinite; }
+@keyframes ti-breathe {
+  50% { box-shadow: inset 0 0 0 2px rgba(53, 214, 232, 0.95), inset 0 0 110px rgba(53, 214, 232, 0.32); }
+}
+.ti-root.mine.panic .ti-edge {
+  opacity: 1; animation: ti-panic 0.5s ease-in-out infinite;
+  box-shadow: inset 0 0 0 2px rgba(255, 74, 61, 0.9), inset 0 0 90px rgba(255, 74, 61, 0.3);
+}
+@keyframes ti-panic {
+  50% { box-shadow: inset 0 0 0 3px rgba(255, 74, 61, 1), inset 0 0 140px rgba(255, 74, 61, 0.45); }
+}
+
+/* 2 ─ the announcement sweep: a cyan band wipes across with a big YOUR TURN */
+.ti-sweep {
+  position: absolute; left: 0; right: 0; top: 40%; height: 120px; z-index: 2;
+  display: grid; place-items: center; opacity: 0;
+}
+.ti-sweep .ti-bar {
+  position: absolute; inset: 0; transform: scaleX(0); transform-origin: left;
+  background: linear-gradient(90deg, transparent, rgba(53, 214, 232, 0.26) 18%, rgba(53, 214, 232, 0.44),
+    rgba(53, 214, 232, 0.26) 82%, transparent);
+  border-top: 1px solid rgba(53, 214, 232, 0.6); border-bottom: 1px solid rgba(53, 214, 232, 0.6);
+}
+.ti-sweep b {
+  position: relative; font-family: var(--font-title, inherit);
+  font-size: clamp(30px, 6vw, 54px); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  transform: scale(0.6); opacity: 0;
+  background: linear-gradient(100deg, #EAFDFF 30%, #FFF 45%, #8FF4FF 58%, #EAFDFF 72%);
+  background-size: 260% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 30px rgba(53, 214, 232, 0.72));
+}
+.ti-bolt {
+  position: absolute; top: 50%; width: 22%; max-width: 180px; height: 2px; opacity: 0;
+  background: linear-gradient(90deg, transparent, #EAFDFF, transparent);
+}
+.ti-bolt.l { left: 4%; }
+.ti-bolt.r { right: 4%; }
+
+.ti-root.fire .ti-sweep { opacity: 1; }
+.ti-root.fire-mine .ti-sweep .ti-bar { animation: ti-barWipe 0.95s cubic-bezier(0.2, 0.9, 0.2, 1) forwards; }
+.ti-root.fire-mine .ti-sweep b {
+  animation: ti-textPop 0.95s cubic-bezier(0.2, 1.4, 0.3, 1) 0.1s forwards, ti-shine 1.05s ease-in-out 0.12s;
+}
+.ti-root.fire-mine .ti-bolt { animation: ti-bolt 0.5s ease-out 0.1s; }
+@keyframes ti-barWipe {
+  0% { transform: scaleX(0); transform-origin: left; }
+  42% { transform: scaleX(1); transform-origin: left; }
+  58% { transform: scaleX(1); transform-origin: right; }
+  100% { transform: scaleX(0); transform-origin: right; }
+}
+@keyframes ti-textPop {
+  0% { opacity: 0; transform: scale(0.6); }
+  20% { opacity: 1; transform: scale(1.06); }
+  32% { transform: scale(1); }
+  70% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.16); }
+}
+@keyframes ti-shine { from { background-position: 180% 0; } to { background-position: -60% 0; } }
+@keyframes ti-bolt {
+  0% { opacity: 0; transform: scaleX(0.2); }
+  30% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1.5); }
+}
+
+/* the quiet version for everyone else — small warm caption, no bar, no bolts */
+.ti-root.fire-them .ti-sweep .ti-bar,
+.ti-root.fire-them .ti-bolt { animation: none; opacity: 0; }
+.ti-root.fire-them .ti-sweep b {
+  font-size: clamp(16px, 3vw, 22px); letter-spacing: 0.22em; background: none; color: #D8E6DB;
+  -webkit-text-fill-color: #D8E6DB; filter: none; animation: ti-quiet 1.2s ease forwards;
+}
+@keyframes ti-quiet {
+  0% { opacity: 0; transform: translateY(8px); }
+  25%, 70% { opacity: 0.9; transform: none; }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Keep the colour states; drop the breathing + sweep motion. */
+  .ti-root.mine .ti-edge, .ti-root.mine.panic .ti-edge { animation: none; }
+  .ti-root.fire-mine .ti-sweep .ti-bar { animation: none; transform: scaleX(1); opacity: 0.5; }
+  .ti-root.fire-mine .ti-sweep b, .ti-root.fire-them .ti-sweep b { animation: none; opacity: 1; transform: none; }
+  .ti-root.fire-mine .ti-bolt { animation: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   ORIENTATION-TRANSITION MASK
+   Shown only while a phone is actively auto-rotating between portrait and
+   landscape. Auto-rotation flips the orientation media query (toggling the 90°
+   fake-landscape transform), swaps the viewport dimensions, and re-runs every
+   measured layout mid-animation. This opaque cover hides that churn until the
+   viewport settles, so the arena reappears already laid out — no blinking.
+   ───────────────────────────────────────────────────────────────────────── */
+.arena-rotate-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 210;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(120% 90% at 50% 20%, #16241a 0%, #0a140d 55%, #050a07 100%);
+  pointer-events: none;
+}
+.arena-rotate-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PAGE-NAME PLATE — the header's centre slot.
+   One fixed-size box, identical on every page and in the same place: horizontally centred by
+   .arcade-brand (left:50% + translateX(-50%)) and vertically level with the top-left "31" badge and
+   the right-hand action icons. Sized to the design box: 250 x 54 desktop. It borrows the platform's
+   own furniture — the amber rim, dark gradient fill and inner highlight of .standard-game-marquee /
+   .brand-31-badge — so it reads as part of the arcade chrome, not a page-level element.
+   ───────────────────────────────────────────────────────────────────────── */
+.page-name-plate {
+  width: 250px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 2px solid rgba(245, 158, 11, 0.9);
+  background: linear-gradient(180deg, #8a5a16 0%, #3a2508 45%, #0b0805 100%);
+  box-shadow:
+    0 8px 26px rgba(0, 0, 0, 0.85),
+    0 0 24px rgba(245, 158, 11, 0.4),
+    inset 0 1px 2px rgba(255, 217, 138, 0.35);
+}
+
+.page-name-plate-text {
+  font-family: var(--font-game-ui, inherit);
+  font-weight: 900;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ffd98a;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The centre column is positioned from `top`; the plate sits a few px below the "31" badge's centre
+   line and a little left of dead centre — the right side carries three icons to the badge's one, so
+   true geometric centre reads as sitting slightly right. The inline transform on .arcade-brand is
+   translateX(-50%), so overriding it needs !important. */
+.arcade-brand:has(.page-name-plate) {
+  transform: translateX(calc(-50% - 20px)) !important;
+}
+@media (min-width: 1181px) {
+  .arcade-brand:has(.page-name-plate) { top: 12px; }
+}
+/* Mobile: the page-header centre column is pinned with `top: 5px !important` (a rule written for the
+   big brand marquee), so the plate needs the same weight to sit level with the badge + icons. */
+@media (max-width: 1180px) {
+  .arcade-arena-header .arcade-brand:has(.page-name-plate) {
+    top: 14px !important;
+    /* Narrower screens get a smaller sideways nudge so the plate never crowds the "31" badge. */
+    transform: translateX(calc(-50% - 10px)) !important;
+  }
+}
+@media (max-width: 1180px) and (orientation: landscape) {
+  .mobile-landscape-game .arcade-arena-header .arcade-brand:has(.page-name-plate) {
+    top: 10px !important;
+  }
+  /* The landscape ARENA header collapses to 43px and its badge + icons deliberately overhang that
+     band (48px tall, centred on y=33); the plate follows them rather than the band. */
+  .mobile-landscape-game .arcade-arena-header.is-game-header .arcade-brand:has(.page-name-plate) {
+    top: 21px !important;
+  }
+}
+
+/* Phones / small tablets: same box, same place, scaled to fit a 47px-tall compressed header. */
+@media (max-width: 1180px) {
+  .page-name-plate {
+    width: 168px;
+    height: 38px;
+    padding: 0 10px;
+    border-width: 1.5px;
+    border-radius: 12px;
+  }
+  .page-name-plate-text {
+    font-size: 13px;
+    letter-spacing: 0.1em;
+  }
+}
+
+@media (max-width: 560px) {
+  .page-name-plate {
+    width: 140px;
+    height: 34px;
+    border-radius: 11px;
+  }
+  .page-name-plate-text { font-size: 12px; }
+}
+
+/* Mobile-landscape arena: the header collapses to 47px and .arcade-brand is re-pinned by the
+   landscape rules; keep the plate inside that band. */
+@media (max-width: 1180px) and (orientation: landscape) {
+  .mobile-landscape-game .page-name-plate {
+    width: 150px;
+    height: 30px;
+    border-radius: 10px;
+  }
+  .mobile-landscape-game .page-name-plate-text { font-size: 11px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PLATFORM MARK — the top-left "VERA 31" pill.
+   This IS the platform name, so it is a name plate rather than a number chip: the element keeps its
+   height (so it stays level with the header's right-hand icons) and grows sideways for the word.
+   ───────────────────────────────────────────────────────────────────────── */
+.brand-31-badge { padding: 0 14px; }
+.brand-31-badge-text {
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+@media (max-width: 1180px) {
+  .brand-31-badge { padding: 0 11px; }
+  .brand-31-badge-text { font-size: 14px; letter-spacing: 0.04em; }
+}
+@media (max-width: 560px) {
+  .brand-31-badge { padding: 0 9px; }
+  .brand-31-badge-text { font-size: 12.5px; }
 }

@@ -13,11 +13,9 @@ import {
   Trophy,
   User,
   UserPlus,
-  WalletCards,
 } from "lucide-react";
 import { useProfile } from "../../lib/hooks/useAuth";
 import { useAuthStore } from "../../stores/auth-store";
-import { useBalanceSocket } from "../../lib/hooks/useBalanceSocket";
 import { useNotifications, useMarkNotificationsRead } from "../../lib/hooks/useNotifications";
 
 // [key, EN label, KO label, Icon, path, disabled?]
@@ -27,19 +25,8 @@ const NAV_ITEMS: [string, string, string, typeof HomeIcon, string, boolean?][] =
   ["home", "Home", "홈", HomeIcon, "/home"],
   ["tournaments", "Tournaments", "토너먼트", Trophy, "/events"],
   ["sponsorship", "Sponsorship", "스폰서십", Handshake, "/sponsorship"],
-  ["wallet", "Wallet", "지갑", WalletCards, "/wallet"],
   ["shop", "Shop", "상점", ShoppingBag, "/shop"],
 ];
-
-/** USDT from our base-unit balance string (1 USDT = 1_000_000 base units). */
-function usdtFromMinor(minor: string | undefined): number {
-  if (!minor) return 0;
-  try {
-    return Number(BigInt(minor)) / 1_000_000;
-  } catch {
-    return 0;
-  }
-}
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
@@ -148,9 +135,6 @@ function ProfileMenu({ initials, avatarUrl, name, email }: { initials: string; a
               <button onClick={() => go("/sponsorship")}>
                 <Handshake size={17} /> Sponsorship
               </button>
-              <button onClick={() => go("/wallet")}>
-                <WalletCards size={17} /> Wallet
-              </button>
               <button onClick={() => go("/history")}>
                 <HistoryIcon size={17} /> History
               </button>
@@ -232,7 +216,6 @@ export function PageShell({ children, className = "", brandVa = false }: { child
   const accessToken = useAuthStore((s) => s.accessToken);
   const authed = !!accessToken;
   const { data: profile } = useProfile();
-  useBalanceSocket();
 
   // No fallback to "home": on pages not in the nav (e.g. /settings, /history) NO tab is highlighted.
   const activeKey =
@@ -286,4 +269,3 @@ export function ToggleRow({
   );
 }
 
-export { usdtFromMinor };

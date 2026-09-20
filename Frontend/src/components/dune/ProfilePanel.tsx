@@ -5,31 +5,20 @@ import {
   Crown,
   Trophy,
   Flame,
-  Zap,
-  RotateCcw,
   Swords,
   Award,
-  Calendar,
   Sparkles,
   Mail,
-  Wallet,
   Clock,
 } from "lucide-react";
 import { MasterAvatar } from "./MasterAvatar";
 import { useAvatarStore } from "../../stores/avatar-customization-store";
 import { useProfile } from "../../lib/hooks/useAuth";
-import { formatUsdt } from "../../lib/money";
-
-const MATCH_HISTORY = [
-  { id: "m1", result: "VICTORY", opponent: "Daisy Cow 🌸", score: "Conquered 31", date: "Just now", trophies: "+45 🏆", coins: "+150 🪙" },
-  { id: "m2", result: "VICTORY", opponent: "Bessie AI 🐮", score: "Trap at #30", date: "15m ago", trophies: "+38 🏆", coins: "+120 🪙" },
-  { id: "m3", result: "DEFEAT", opponent: "Barnaby Horns 👑", score: "Hit 31 Bomb", date: "1h ago", trophies: "-15 🏆", coins: "+20 🪙" },
-  { id: "m4", result: "VICTORY", opponent: "Daisy Cow 🌸", score: "Conquered 31", date: "3h ago", trophies: "+50 🏆", coins: "+200 🪙" },
-];
 
 /**
  * The full player-card / profile UI (hero banner + loadout + match history), with no page
- * chrome. Rendered on the dedicated /profile page and also embedded as a section inside Settings.
+ * chrome. Rendered as the "MY PROFILE" section of the Settings page (the standalone /profile route
+ * was removed — Settings already showed the same panel). Match history lives on Past Games (/history).
  */
 export function ProfilePanel() {
   const avatar = useAvatarStore();
@@ -37,7 +26,6 @@ export function ProfilePanel() {
 
   const playerName = profile?.fullName || profile?.email?.split("@")[0] || "Player";
   const memberSince = profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "Loading…";
-  const balanceUsdt = profile ? formatUsdt(profile.balance) : "Loading…";
 
   return (
     <div className="w-full flex flex-col gap-6">
@@ -79,12 +67,6 @@ export function ProfilePanel() {
                 <Clock size={13} className="text-emerald-400" />
                 <span>Member since: {memberSince}</span>
               </span>
-              <span className="flex items-center gap-1">
-                <Wallet size={13} className="text-cyan-400" />
-                <span>
-                  Balance: <b>{balanceUsdt}</b>
-                </span>
-              </span>
             </div>
           </div>
         </div>
@@ -113,81 +95,6 @@ export function ProfilePanel() {
             <Swords size={20} className="text-cyan-400 mb-1" />
             <span className="font-title font-black text-xl text-cyan-300">142</span>
             <span className="text-[10px] font-title font-bold text-slate-400 uppercase">Total Matches</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2-Column Grid: Equipped Battle Skills & Match History */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Equipped Tactical Battle Skills */}
-        <div className="lg:col-span-5 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 rounded-3xl p-5 shadow-xl flex flex-col gap-3">
-          <div className="flex items-center justify-between border-b border-white/10 pb-2">
-            <span className="font-title font-black text-sm sm:text-base text-amber-300 uppercase tracking-widest flex items-center gap-1.5">
-              <Zap size={16} className="text-yellow-400 fill-yellow-400" />
-              <span>EQUIPPED LOADOUT</span>
-            </span>
-            <span className="text-[10px] font-title font-bold text-slate-400">2 Active Skills</span>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-[#082f49] to-black border-2 border-cyan-400/70 shadow-lg">
-              <div className="p-2.5 rounded-xl bg-black/60 border border-cyan-400/40 text-cyan-300">
-                <RotateCcw size={22} />
-              </div>
-              <div className="flex flex-col flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-title font-black text-sm text-white">Chrono Rewind</span>
-                  <span className="text-[10px] font-title font-bold text-cyan-300 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-400/50">-2 STEPS</span>
-                </div>
-                <span className="text-[11px] text-slate-300 mt-0.5">Rewinds the live counter back by -2 numbers.</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-[#451a03] to-black border-2 border-amber-400/70 shadow-lg">
-              <div className="p-2.5 rounded-xl bg-black/60 border border-amber-400/40 text-amber-300">
-                <Zap size={22} className="fill-amber-300" />
-              </div>
-              <div className="flex flex-col flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-title font-black text-sm text-white">Turbo Leap</span>
-                  <span className="text-[10px] font-title font-bold text-amber-300 bg-amber-950 px-2 py-0.5 rounded border border-amber-400/50">+3 LEAP</span>
-                </div>
-                <span className="text-[11px] text-slate-300 mt-0.5">Instantly surges forward +3 numbers in a burst.</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Match History Log */}
-        <div className="lg:col-span-7 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 rounded-3xl p-5 shadow-xl flex flex-col gap-3">
-          <div className="flex items-center justify-between border-b border-white/10 pb-2">
-            <span className="font-title font-black text-sm sm:text-base text-amber-300 uppercase tracking-widest flex items-center gap-1.5">
-              <Calendar size={16} />
-              <span>RECENT MATCH HISTORY</span>
-            </span>
-            <span className="text-[10px] font-title font-bold text-emerald-400">Last 4 Battles</span>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            {MATCH_HISTORY.map((match) => (
-              <div key={match.id} className="flex items-center justify-between p-3 rounded-2xl bg-black/60 border border-slate-800 hover:border-amber-400/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className={`px-2.5 py-1 rounded-xl text-[10px] font-title font-black shadow ${match.result === "VICTORY" ? "bg-emerald-500 text-slate-950" : "bg-rose-600 text-white"}`}>
-                    {match.result}
-                  </span>
-
-                  <div className="flex flex-col">
-                    <span className="font-title font-black text-xs sm:text-sm text-white">vs. {match.opponent}</span>
-                    <span className="text-[10px] text-slate-400">{match.score} · {match.date}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 font-title font-black text-xs sm:text-sm">
-                  <span className={match.result === "VICTORY" ? "text-emerald-400" : "text-rose-400"}>{match.trophies}</span>
-                  <span className="text-amber-300">{match.coins}</span>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>

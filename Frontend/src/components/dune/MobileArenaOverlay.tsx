@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Home, User, Trophy, ShoppingBag, Handshake, Wallet, Settings, Users, Crown, History } from "lucide-react";
+import { Home, User, Trophy, ShoppingBag, Handshake, Settings, Users, Crown, History } from "lucide-react";
 import { soundManager } from "../../lib/soundManager";
 import { useAuthStore } from "../../stores/auth-store";
 import { useAvatarStore } from "../../stores/avatar-customization-store";
@@ -21,7 +21,6 @@ const MENU_ICONS: Record<string, typeof Home> = {
   sponsor: Handshake,
   shop: ShoppingBag,
   profile: User,
-  wallet: Wallet,
   history: History,
   settings: Settings,
 };

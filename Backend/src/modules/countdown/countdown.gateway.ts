@@ -65,14 +65,36 @@ export class CountdownGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
   // Tournament rooms whose winner we've already persisted (so we write it exactly once).
   private readonly recordedWinners = new Set<string>();
+  // GROUP rooms → userIds whose ELIMINATED result we've already written to the DB (so a returning
+  // knocked-out player is recognised as out even if the in-memory game is later lost).
+  private readonly persistedElims = new Map<string, Set<string>>();
 
   afterInit(): void {
     this.game.setBroadcaster((roomId, state) => {
       this.server.to(roomId).emit("state", state);
-      // When a tournament game ends, persist its result exactly once.
       const parsed = parseTourRoom(roomId);
-      if (parsed && state.status === "over" && state.winner && !this.recordedWinners.has(roomId)) {
+      if (!parsed) return;
+
+      // Persist eliminations AS THEY HAPPEN (GROUP rooms). Without this, a mid-game elimination lives
+      // only in server memory; if the server restarts, the room re-seeds from the DB (everyone still
+      // "playing") and the eliminated player is revived into a fresh game. Writing ELIMINATED here
+      // means they instead land on the spectator page, and re-seeded rooms exclude them.
+      if (parsed.groupId) {
+        const already = this.persistedElims.get(roomId) ?? new Set<string>();
+        const fresh = this.game.eliminatedIds(roomId).filter((uid) => !already.has(uid));
+        if (fresh.length) {
+          for (const uid of fresh) already.add(uid);
+          this.persistedElims.set(roomId, already);
+          this.prisma.groupMember
+            .updateMany({ where: { groupId: parsed.groupId, userId: { in: fresh }, result: "PENDING" }, data: { result: "ELIMINATED" } })
+            .catch(() => { for (const uid of fresh) already.delete(uid); }); // retry on next tick if the write fails
+        }
+      }
+
+      // When a tournament game ends, persist its result exactly once.
+      if (state.status === "over" && state.winner && !this.recordedWinners.has(roomId)) {
         this.recordedWinners.add(roomId);
+        this.persistedElims.delete(roomId);
         const winner = state.winner;
         if (parsed.groupId) {
           // A GROUP match: record the group winner (advances them to the final, or crowns the

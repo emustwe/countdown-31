@@ -10,7 +10,6 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as argon2 from "argon2";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import { WalletService } from "../wallet/wallet.service";
 import { MailService } from "../../common/mail/mail.service";
 import { AuditService } from "../../common/audit/audit.service";
 import { AuthThrottleService } from "../../common/auth-throttle/auth-throttle.service";
@@ -54,7 +53,6 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
-    private readonly wallet: WalletService,
     private readonly mail: MailService,
     private readonly audit: AuditService,
     private readonly throttle: AuthThrottleService,
@@ -74,7 +72,6 @@ export class AuthService {
       const created = await tx.user.create({
         data: { email, fullName: dto.fullName, passwordHash },
       });
-      await this.wallet.createWalletForNewUser(tx, created.id);
       return created;
     });
 
@@ -93,9 +90,7 @@ export class AuthService {
     await this.throttle.assertNotLocked("user", key);
 
     const user = await this.prisma.user.findUnique({ where: { email: key } });
-    // System accounts (treasury) hold balances but are never real logins — treat like "no user"
-    // (same generic error, so their existence isn't confirmable).
-    if (!user || user.isSystem) {
+    if (!user) {
       await this.throttle.recordFailure("user", key);
       this.audit.record("LOGIN_FAILURE", { actor: key, detail: { reason: "no_user" } });
       throw new UnauthorizedException("Invalid email or password");
@@ -183,13 +178,12 @@ export class AuthService {
     }
   }
 
-  async getProfile(userId: string): Promise<PublicUser & { balance: string }> {
+  async getProfile(userId: string): Promise<PublicUser> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new UnauthorizedException("User not found");
     }
-    const { balance } = await this.wallet.getWallet(userId);
-    return { ...toPublicUser(user), balance };
+    return toPublicUser(user);
   }
 
   /** Updates the caller's own profile (display name and/or avatar image). */
@@ -352,7 +346,7 @@ export class AuthService {
     const clean = (email || "").trim().toLowerCase();
     const user = clean ? await this.prisma.user.findUnique({ where: { email: clean } }) : null;
     // Never issue a reset for a banned or system (treasury) account.
-    if (!user || user.status === "BANNED" || user.isSystem) return { ok: true, emailSent: this.mail.live };
+    if (!user || user.status === "BANNED") return { ok: true, emailSent: this.mail.live };
 
     // Per-account resend cooldown: don't let an attacker churn fresh codes (each new code gives 5
     // more guesses). If a code was issued very recently, no-op with the same generic response.
@@ -389,7 +383,7 @@ export class AuthService {
     await assertPasswordStrong(newPassword);
 
     const user = await this.prisma.user.findUnique({ where: { email: clean } });
-    if (!user || user.isSystem) throw new UnauthorizedException("Invalid or expired reset code");
+    if (!user) throw new UnauthorizedException("Invalid or expired reset code");
 
     const reset = await this.prisma.passwordReset.findFirst({
       where: { userId: user.id, consumedAt: null, expiresAt: { gt: new Date() } },

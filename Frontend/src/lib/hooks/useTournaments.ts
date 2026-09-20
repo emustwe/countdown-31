@@ -109,13 +109,12 @@ export function usePickSlot(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (matchId: string) =>
-      apiRequest<{ matchId: string; seat: number; walletBalance: string }>(
+      apiRequest<{ matchId: string; seat: number }>(
         `/tournaments/${id}/matches/${matchId}/pick`,
         { method: "POST" },
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tournaments", id, "bracket"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet"] });
     },
   });
 }
@@ -279,14 +278,13 @@ export function useJoinTournament() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      apiRequest<{ entry: TournamentEntry; walletBalance: string }>(`/tournaments/${id}/join`, {
+      apiRequest<{ entry: TournamentEntry }>(`/tournaments/${id}/join`, {
         method: "POST",
       }),
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ["tournaments", id, "me"] });
       queryClient.invalidateQueries({ queryKey: ["tournaments", id] });
       queryClient.invalidateQueries({ queryKey: ["tournaments", "open"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet"] });
     },
   });
 }
@@ -387,11 +385,10 @@ export function useRebuy(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () =>
-      apiRequest<{ requested: boolean; round: number; status: string; walletBalance: string }>(`/tournaments/${id}/rebuy`, { method: "POST" }),
+      apiRequest<{ requested: boolean; round: number; status: string }>(`/tournaments/${id}/rebuy`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tournaments", id, "me"] });
       queryClient.invalidateQueries({ queryKey: ["tournaments", id, "bracket"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet"] });
     },
   });
 }

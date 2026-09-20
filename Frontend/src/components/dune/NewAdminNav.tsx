@@ -8,6 +8,7 @@ import {
   CircleDot,
   Gamepad2,
   LayoutDashboard,
+  LayoutTemplate,
   LogOut,
   Trophy,
   ShieldAlert,
@@ -25,6 +26,7 @@ export function NewAdminNav() {
   const items = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/admin" },
     { label: "Game Studio", icon: Gamepad2, path: "/admin/game" },
+    { label: "Lobby Studio", icon: LayoutTemplate, path: "/admin/lobby" },
     { label: "Tournaments", icon: Trophy, path: "/admin/tournament" },
     { label: "Sponsors", icon: Building2, path: "/admin/sponsor" },
   ];
@@ -78,7 +80,7 @@ export function NewAdminNav() {
                 </span>
               </span>
               <span className="block truncate text-[9px] font-bold uppercase tracking-[.18em] text-emerald-400/75 sm:text-[10px]">
-                Thirty One 31
+                Vera 31
               </span>
             </span>
           </button>

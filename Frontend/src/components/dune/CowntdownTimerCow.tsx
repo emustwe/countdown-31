@@ -5,6 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { TransparentVideo } from "./TransparentVideo";
 import { soundManager } from "../../lib/soundManager";
 
+// The clip counts 7 → 1 across its full 8.011s, i.e. ~1.14s per number. Speeding it up by that same
+// ratio makes each number hold for EXACTLY one second, so the cow's count tracks the turn clock:
+// one pass = 7 seconds. Practice runs two passes (7→1, then 7→2) for a 13-second turn.
+const COW_CLIP_SECONDS = 8.011;
+const COW_CLIP_NUMBERS = 7;
+const COW_CLIP_RATE = COW_CLIP_SECONDS / COW_CLIP_NUMBERS;
+
 interface CowntdownTimerCowProps {
   active: boolean;
   isMyTurn?: boolean;
@@ -12,6 +19,9 @@ interface CowntdownTimerCowProps {
   /** Seconds remaining on the current turn (used only for the per-second beat, not the size). */
   secondsLeft?: number;
   turnSeconds?: number;
+  /** Which pass of the cow's 7-count this is. A turn longer than the clip (practice runs 13s) bumps
+   * this at the boundary, replaying the count in place — see TransparentVideo's `restartKey`. */
+  countLap?: number;
   onTimeout?: () => void;
   /** ANCHORED mode: render as an absolute element that fills its POSITIONED parent (instead of the
    *  default viewport-fixed placement). The arc board uses this to pin the cow to the number board's
@@ -31,6 +41,7 @@ export function CowntdownTimerCow({
   isMyTurn,
   turnKey,
   secondsLeft,
+  countLap = 0,
   anchored = false,
 }: CowntdownTimerCowProps) {
   const lastTickRef = useRef<number | null>(null);
@@ -56,7 +67,8 @@ export function CowntdownTimerCow({
     <TransparentVideo
       src="/assets/cowntdown.mov"
       audioEnabled
-      playbackRate={1.0}
+      playbackRate={COW_CLIP_RATE}
+      restartKey={`${turnKey ?? "t"}-${countLap}`}
       loop={false}
       width={340}
       height={340}

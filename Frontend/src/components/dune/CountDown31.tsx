@@ -1,17 +1,20 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { Crown, LogIn, Dices, Sparkles, Send, Play } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Crown, LogIn, Dices, Sparkles, Send, Play, Smartphone } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useGuestStore } from "../../stores/guest-store";
 import { useAuthStore } from "../../stores/auth-store";
 import { useCosmetics } from "../../lib/hooks/useSponsors";
-import { useCountdownLive, type SkillType, type GameMode } from "../../lib/hooks/useCountdownLive";
+import { useCountdownLive, COW_COUNT_SPAN, type SkillType, type GameMode } from "../../lib/hooks/useCountdownLive";
 import { soundManager } from "../../lib/soundManager";
 import { BarnabyMascot } from "./BarnabyMascot";
+import { EliminationSequence } from "./EliminationSequence";
 import { KickoffWheel } from "./KickoffWheel";
 import { WinnerCelebration } from "./WinnerCelebration";
 import { CowntdownTimerCow } from "./CowntdownTimerCow";
+import TurnIndicator from "./TurnIndicator";
 import { SkillFXOverlay } from "./SkillFXOverlay";
 import { MobileArenaOverlay } from "./MobileArenaOverlay";
 import { ArcadeHeader } from "./ArcadeHeader";
@@ -22,13 +25,15 @@ import { OfficialRulesModal } from "./OfficialRulesModal";
 import { SkillLoadoutModal } from "./SkillLoadoutModal";
 import confetti from "canvas-confetti";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
+import { useSettledResize } from "../../lib/hooks/useSettledResize";
 import { useRouter } from "next/navigation";
 
-import { DEFAULT_GAME_CONFIG, type GameTheme } from "../../lib/game-config";
+import { DEFAULT_GAME_CONFIG, DEFAULT_THEME_ADS, type GameTheme } from "../../lib/game-config";
 import { MobileArenaShell } from "./MobileArenaShell";
 import { MobileBattleStrip } from "./MobileBattleStrip";
 import { MobileLandscape } from "./MobileLandscape";
 import { TournamentSponsorLayer } from "./TournamentSponsorLayer";
+import { ArenaAdBanners } from "./ArenaAdBanners";
 import { resolveCampaignAssetUrl, useActiveTournamentCampaign } from "../../lib/hooks/useTournamentCampaign";
 
 export function CountDown31({ roomId = "practice", testArena = false, theme = null }: { roomId?: string; testArena?: boolean; theme?: GameTheme | null }) {
@@ -48,6 +53,24 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
         },
       }
     : undefined;
+  // AD SURFACES from the selected sponsor theme (Game Studio → Ad placements). No theme → null, so
+  // the board and roster keep their default look.
+  const themeAds = theme ? { ...DEFAULT_THEME_ADS, ...(theme.ads ?? {}) } : null;
+  const boardBrand = themeAds
+    ? {
+        logoUrl: theme!.logoUrl || undefined,
+        name: theme!.gameTitle || undefined,
+        color: theme!.primaryColor,
+        watermark: themeAds.boardWatermark,
+        watermarkOpacity: themeAds.boardWatermarkOpacity,
+        boardImage: themeAds.boardImage || undefined,
+        boardStyle: themeAds.boardStyle,
+        tileStyle: themeAds.tileStyle,
+      }
+    : null;
+  // The arena list carries no banner any more — only its panel style (brand tint needs the colour).
+  const rosterSponsor = themeAds ? { color: theme!.primaryColor } : null;
+  const rosterStyle = themeAds ? themeAds.rosterStyle : undefined;
   // Sponsor campaign (co-branded tournament skin) — only for tour: rooms with a published campaign.
   const tournamentId = roomId.startsWith("tour:") ? roomId.slice(5) : null;
   const { data: campaignData } = useActiveTournamentCampaign(tournamentId);
@@ -62,7 +85,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   const { data: cosmetics } = useCosmetics(!!accessToken);
   // The always-open TEST tournament runs the local engine with 100 CPU cows (auto-restarting), and is
   // playable only by an admin (everyone else watches). A real tournament uses the server socket.
-  const { state, myId, join, leaveGame, submit, useSkill, endDance } = useCountdownLive(roomId, testArena ? { local: true, botCount: 100 } : undefined);
+  const { state, myId, join, leaveGame, submit, useSkill, endDance, turnSeconds } = useCountdownLive(roomId, testArena ? { local: true, botCount: 100 } : undefined);
   // The practice room and the always-open test arena run the in-browser engine (which supports the
   // freeze-for-cow-dance). Real tournaments are server-driven.
   const isLocalEngine = roomId === "practice" || testArena;
@@ -83,10 +106,82 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   const wasAliveRef = useRef(false);
 
   // Game Mode: Classic 31 (pure counting) vs. Tactical Skill Mode (loadout cards).
-  // Real tournaments are SKILLS-ONLY; practice honours the configured default.
-  const [gameMode, setGameMode] = useState<GameMode>(isTournament ? "skills" : gameConfig.gameplay.defaultMode);
+  // Tournaments are now CLASSIC too (no skills); practice honours the configured default.
+  const [gameMode, setGameMode] = useState<GameMode>(isTournament ? "classic" : gameConfig.gameplay.defaultMode);
   // Direct Card Selection State on the 3D Reel
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
+  // The arc board's fit scale — used to size the screen-edge ARENA roster overlay to match the board.
+  const [boardScale, setBoardScale] = useState(1);
+  // The arena roster is pinned to EXACTLY the number board's top (its "head" aligns with the board),
+  // measured live so it survives the stage's padding + letterbox on every screen.
+  const arenaMainRef = useRef<HTMLElement | null>(null);
+  const arenaViewportRef = useRef<HTMLDivElement | null>(null);
+  // Position (relative to the arena viewport) for the counting-cow overlay — placed just above the
+  // board's top-right corner, OUTSIDE the clipped board so its head stays fully visible.
+  const [cowBox, setCowBox] = useState<{ left: number; top: number } | null>(null);
+  // The ARENA roster now lives INSIDE the board's own scaled stage (ClassicArcBoard), so the whole
+  // arc + board + roster composition scales and centres as one unit — no parent alignment needed. The
+  // ONLY overlay the parent still positions is the counting cow, which sits just above the board's
+  // top-right corner OUTSIDE the clipped board so its head shows.
+  const boardShiftX = 0;
+  const alignArena = useCallback(() => {
+    const main = arenaMainRef.current;
+    if (!main) return;
+    const board = main.querySelector(".nb-stage") as HTMLElement | null;
+    if (!board) return;
+    const b = board.getBoundingClientRect();
+    const av = arenaViewportRef.current?.getBoundingClientRect();
+    if (av) {
+      const s = boardScale || 1;
+      const COW_W = 158, COW_H = 154;
+      const left = b.right - av.left - COW_W * s - 4;
+      const top = b.top - av.top - COW_H * s + 10; // bottom dips ~10px into the board's title strip
+      setCowBox((c) => (!c || Math.abs(c.left - left) > 0.5 || Math.abs(c.top - top) > 0.5 ? { left, top } : c));
+    }
+  }, [boardScale]);
+  // Position the cow only once the viewport has SETTLED after a resize / orientation burst (mobile
+  // auto-rotation fires a flurry of transient sizes). See useSettledResize.
+  useSettledResize(alignArena, arenaMainRef);
+
+  // Orientation-transition MASK. On a phone, auto-rotating between portrait and landscape flips the
+  // orientation media query (which toggles the 90° fake-landscape transform), swaps the viewport
+  // dimensions, and re-runs every measured layout — all mid-animation. Even with the measurements
+  // settle-gated, that produces a visible snap. So while the device is actively rotating we cover the
+  // arena with an opaque "rotating" screen and lift it only once the viewport has held steady, so the
+  // player never sees the intermediate churn — the arena simply reappears already laid out.
+  const [rotating, setRotating] = useState(false);
+  // Portal target readiness — the rotate prompt must live at <body> level (see below), not inside the
+  // arena's stacking context, so it can cover the body-level mobile profile button in portrait.
+  const [portalReady, setPortalReady] = useState(false);
+  useEffect(() => setPortalReady(true), []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const coarse = window.matchMedia?.("(pointer: coarse)")?.matches;
+    if (!coarse) return; // phones/tablets only — desktop window-resizing shouldn't flash a cover
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastLandscape = window.innerWidth >= window.innerHeight;
+    const cover = () => {
+      setRotating(true);
+      if (hideTimer) clearTimeout(hideTimer);
+      // Hold the cover across the rotation animation + the settle window, then reveal the settled arena.
+      hideTimer = setTimeout(() => setRotating(false), 650);
+    };
+    const onOrient = () => cover();
+    const onResize = () => {
+      const landscape = window.innerWidth >= window.innerHeight;
+      if (landscape !== lastLandscape) {
+        lastLandscape = landscape;
+        cover(); // aspect flipped → a rotation is under way even if orientationchange didn't fire
+      }
+    };
+    window.addEventListener("orientationchange", onOrient);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("orientationchange", onOrient);
+      window.removeEventListener("resize", onResize);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, []);
 
   const [now, setNow] = useState(() => Date.now());
   const prevCount = useRef(0);
@@ -103,7 +198,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   useEffect(() => {
     if (chosenName) return;
     setBotCount(gameConfig.gameplay.defaultBotCount);
-    setGameMode(isTournament ? "skills" : gameConfig.gameplay.defaultMode);
+    setGameMode(isTournament ? "classic" : gameConfig.gameplay.defaultMode);
   }, [chosenName, gameConfig, isTournament]);
 
   const count = state?.count ?? 0;
@@ -117,6 +212,12 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   const spinPhase = !!state?.spinEndsAt;
   const serverDancing = !!state?.danceEndsAt && now < state.danceEndsAt;
   const dancePhase = !!state?.dancing || serverDancing;
+  // Elimination cinematic phase (local engine): "seq" = the 4.6s ELIMINATION sequence plays on every
+  // elimination; "cow" = the dancing cow, shown ONLY when that elimination completed the round (31).
+  const [elimPhase, setElimPhase] = useState<"seq" | "cow" | null>(null);
+  useEffect(() => {
+    setElimPhase(state?.dancing ? "seq" : null);
+  }, [state?.dancing?.id]);
   const frozen = dancePhase || spinPhase;
   const myTurn = status === "playing" && currentId === myId && !frozen;
   const myPlayer = players.find((p) => p.id === myId) ?? null;
@@ -134,6 +235,17 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   const remainingSeconds = Math.ceil(remaining / 1000);
   const timerRunning = status === "playing" && !!state?.turnEndsAt;
   const isLowTime = remainingSeconds <= 2 && timerRunning;
+  // The countdown cow's clip only counts 7 → 1. When a turn is longer than that (practice runs 13s)
+  // the clip replays, so the player sees a full 7→1 and then a second pass that gets as far as 7→2
+  // before the turn expires. This is passed DOWN as a lap number (not folded into the cow's React
+  // key) so the replay is a seek — re-keying would rebuild the cow's WebGL pipeline every 7s.
+  const turnLap = Math.max(0, Math.floor((turnSeconds - remainingSeconds) / COW_COUNT_SPAN));
+  // The countdown cow belongs to whoever is CURRENTLY playing, so everyone in the arena can read the
+  // clock — knocked-out players watching included. It's suppressed only while the arena is FROZEN
+  // (elimination cinematic / cow dance / kickoff wheel), which is also the window my own defeat
+  // sequence owns. This used to be gated on `isLocalDefeat`, which made the cow vanish for me the
+  // moment I was eliminated and only reappear once somebody else went out.
+  const countdownActive = timerRunning && status === "playing" && !frozen;
 
   // Practice / test-arena get an eliminated rejoin control; a real tournament is watch-only once out.
   const showRejoinControl = status !== "over" && !amInAlive && (!isTournament || testArena) && canPlay;
@@ -211,7 +323,9 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
     if (isLocalEngine && amInAlive && !wasAliveRef.current) {
       wasAliveRef.current = true;
       setJoining(true);
-      const h = setTimeout(() => setJoining(false), 1300);
+      // Just long enough to read as a deliberate transition rather than a flicker. It used to hold
+      // 1.3s, which stacked on top of the wait for the first turn and made PLAY feel unresponsive.
+      const h = setTimeout(() => setJoining(false), 350);
       return () => clearTimeout(h);
     }
     if (!amInAlive) wasAliveRef.current = false;
@@ -223,7 +337,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
       autoJoinedRef.current = true;
       const name = (user.fullName || user.email?.split("@")[0] || "Player").slice(0, 20);
       setChosenName(name);
-      join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "skills", []);
+      join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", []);
     }
   }, [isTournament, testArena, user, amIn, status, join, cosmetics]);
 
@@ -284,8 +398,8 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
       const name = (defaultName || "Player").slice(0, 20);
       setChosenName(name);
       if (isTournament && !testArena) {
-        // Tournament: skills are already locked in from the join step — just join, no modal.
-        join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "skills", []);
+        // Tournament: classic knockout (no skills) — just join, no modal.
+        join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", []);
       } else if (gameMode === "skills") {
         setShowSkillModal(true);
       } else {
@@ -397,7 +511,8 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
 
   return (
     <div
-      className={`arena-viewport mobile-landscape-game relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${campaign ? "has-tournament-campaign" : ""} ${theme ? "has-tournament-theme" : ""} ${isShaking ? "animate-screen-shake" : ""}`}
+      ref={arenaViewportRef}
+      className={`arena-viewport mobile-landscape-game relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${campaign ? "has-tournament-campaign" : ""} ${theme ? "has-tournament-theme" : ""} ${isShaking ? "animate-screen-shake" : ""} ${elimPhase === "seq" || (!isLocalEngine && serverDancing) ? "elim-frozen" : ""}`}
       style={
         campaign
           ? ({
@@ -442,12 +557,57 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
         campaignRevision={campaignData?.campaign?.revision}
       />
 
+      {/* Counting-cow overlay — rendered OUTSIDE the clipped board so it can rise above the board with
+          its head fully visible. Positioned (measured) just above the board's top-right corner. */}
+      {useArcBoard && cowBox && (
+        <div
+          className="pointer-events-none absolute z-40"
+          style={{ left: cowBox.left, top: cowBox.top, width: 158, height: 154, transform: `scale(${boardScale})`, transformOrigin: "top left" }}
+        >
+          <CowntdownTimerCow
+            anchored
+            active={countdownActive}
+            isMyTurn={myTurn}
+            secondsLeft={remainingSeconds}
+            countLap={turnLap}
+            turnKey={currentId ?? count}
+          />
+        </div>
+      )}
+
+      {/* PLAY button — practice join / rejoin. Pinned to the LEFT side and VERTICALLY CENTRED on the
+          page (below the top-left "31" mark). Shown only when you can take a seat. */}
+      {useArcBoard && showArcJoin && (
+        <div className="nb-play-pos absolute top-1/2 z-30 -translate-y-1/2 flex flex-col items-center gap-1.5 select-none">
+          <button
+            type="button"
+            onClick={chosenName ? rejoin : openNameGate}
+            aria-label={chosenName ? "Rejoin the game" : "Play — join the game"}
+            title={chosenName ? "Rejoin" : "Play"}
+            className="relative grid h-[44px] w-[44px] place-items-center rounded-full border-2 border-white bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 text-slate-950 shadow-[0_0_24px_rgba(245,158,11,0.85)] transition-transform hover:scale-105 active:scale-95 cursor-pointer sm:h-[52px] sm:w-[52px]"
+          >
+            <span className="pointer-events-none absolute inset-[-4px] rounded-full ring-2 ring-amber-400/45 animate-ping" />
+            <Play size={22} className="translate-x-[1px] fill-slate-950" strokeWidth={2.5} />
+          </button>
+          <span className="font-title text-[10px] font-black uppercase tracking-[0.18em] text-amber-300 drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]">
+            {chosenName ? "Rejoin" : "Play"}
+          </span>
+        </div>
+      )}
+
       {/* CLASSIC-PRACTICE ARC BOARD — a curved player rail with a right-side number picker, running
           total and claimed-numbers ledger. Everything else (skills, tournaments, test arena) keeps
           the horizontal cylinder board below. */}
       {useArcBoard ? (
-        <main className="arena-main mx-auto flex min-h-0 w-full max-w-[1580px] flex-1 overflow-hidden mt-0 sm:mt-2">
+        <main ref={arenaMainRef} className="arena-main relative mx-auto flex min-h-0 w-full max-w-[1580px] flex-1 overflow-hidden mt-0 sm:mt-2">
+          {/* The ARENA roster is now rendered INSIDE ClassicArcBoard's scaled stage (right of the
+              board), so the whole arc + board + roster group scales and centres as one balanced unit. */}
           <ClassicArcBoard
+            boardBrand={boardBrand}
+            rosterSponsor={rosterSponsor}
+            rosterStyle={rosterStyle}
+            onScale={setBoardScale}
+            shiftX={boardShiftX}
             players={players}
             currentId={currentId}
             myId={myId}
@@ -463,8 +623,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
             amInAlive={amInAlive}
             showJoin={showArcJoin}
             onJoin={chosenName ? rejoin : openNameGate}
-            timerActive={timerRunning && status === "playing" && !isLocalDefeat}
-            secondsLeft={remainingSeconds}
+            timerActive={countdownActive}
             turnKey={currentId ?? count}
             gameMode={gameMode}
             onSkill={handleSkill}
@@ -649,16 +808,47 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
         />
       )}
 
+      {/* ELIMINATION cinematic — plays on EVERY elimination, showing the eliminated player's avatar +
+          name + reason. Local: driven by state.dancing (seq phase). Server tournament: driven by the
+          server freeze + lastEliminated. */}
+      {isLocalEngine && state?.dancing && elimPhase === "seq" && (
+        <EliminationSequence
+          name={state.dancing.name}
+          avatar={state.dancing.avatar}
+          color={state.dancing.color}
+          seat={state.dancing.seat}
+          reason={state.dancing.reason}
+          remaining={state.dancing.remaining}
+          onDone={() => {
+            // The dancing cow shows ONLY when this elimination completed the round (31); otherwise
+            // resume straight away.
+            if (state.dancing?.roundDone) setElimPhase("cow");
+            else endDance();
+          }}
+        />
+      )}
+      {/* Mid-lap knockout (timeout/repeat/skip/over-3): the elimination cinematic. A round-completing
+          "31" instead plays the dancing cow below (round over → next round). */}
+      {!isLocalEngine && serverDancing && state?.lastEliminated && state.lastEliminated.reason !== "31" && (
+        <EliminationSequence
+          key={state.lastEliminated.name}
+          name={state.lastEliminated.name}
+          reason={state.lastEliminated.reason}
+          remaining={players.filter((p) => !p.eliminated).length}
+          onDone={() => {}}
+        />
+      )}
+
       <BarnabyMascot
         status={status}
         winner={state?.winner ?? null}
         lastEliminated={state?.lastEliminated ?? null}
         isMyWin={isMyWin}
         isLocalDefeat={isLocalDefeat}
-        // The dance is CONTROLLED in BOTH engines:
-        //  • Local practice → `state.dancing` (resumes via onDanceEnd when the clip ends).
-        //  • Real tournament → `serverDancing` (a server-timed freeze shown to EVERY player at once).
-        forceDancing={isLocalEngine ? !!state?.dancing : serverDancing}
+        // The dancing cow plays ONLY at ROUND COMPLETION (a "31" elimination — the lap resets), never
+        // on an ordinary mid-lap elimination (the ELIMINATION sequence above owns those). Local uses
+        // the "cow" phase; the server tournament dances whenever its freeze is for a "31".
+        forceDancing={isLocalEngine ? elimPhase === "cow" : serverDancing && state?.lastEliminated?.reason === "31"}
         serverPaced={!isLocalEngine}
         // The full-screen WinnerCelebration owns the finale — mascot shows no result panel.
         showPlayAgain={false}
@@ -671,12 +861,66 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
           upper-centre one is only for the other boards (skills / tournament / test arena). */}
       {!useArcBoard && (
         <CowntdownTimerCow
-          active={timerRunning && status === "playing" && !isLocalDefeat}
+          active={countdownActive}
           isMyTurn={myTurn}
           secondsLeft={remainingSeconds}
-          turnSeconds={gameConfig.gameplay.turnSeconds}
+          turnSeconds={turnSeconds}
+          countLap={turnLap}
           turnKey={currentId ?? count}
         />
+      )}
+
+      {/* Whose-turn-is-it signals — cyan frame breathe + "YOUR TURN" sweep + sound/haptic/tab-title.
+          Cyan = YOU, warm white = everyone else. Shared by practice AND live tournaments. */}
+      {/* Extra sponsor ad slots (centre + the side opposite the marquee). Decorative + click-through. */}
+      {themeAds && (
+        <div
+          aria-hidden="true"
+          style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 18, fontSize: "clamp(9px, 1.5vh, 15px)" }}
+        >
+          <ArenaAdBanners ads={themeAds} />
+        </div>
+      )}
+
+      <TurnIndicator
+        active={status === "playing" && !frozen}
+        myTurn={myTurn}
+        currentName={players.find((p) => p.id === currentId)?.name ?? ""}
+        secondsLeft={remainingSeconds}
+        turnSeconds={turnSeconds}
+        turnKey={currentId ?? count}
+        soundOn={soundOn}
+      />
+
+      {/* "Rotate your phone to play" — visibility is controlled purely by CSS (shown only on a touch
+          device held in portrait). The arena's measured layout is valid only in TRUE landscape, so in
+          portrait we cover it with this prompt instead of a broken 90° fake-rotate. Portaled to <body>
+          so it sits above the body-level mobile profile button (which is outside the arena's stacking
+          context and would otherwise peek through). */}
+      {portalReady &&
+        createPortal(
+          <div className="rotate-to-play" aria-hidden>
+            <div className="rtp-phone">
+              <Smartphone size={40} />
+            </div>
+            <div className="rtp-title">Rotate your phone</div>
+            <div className="rtp-sub">Turn sideways to enter the arena — Vera 31 plays in landscape.</div>
+          </div>,
+          document.body,
+        )}
+
+      {/* Orientation-transition mask — opaque cover shown only while the phone is actively rotating, so
+          the layout snap/churn is never visible. Lifts once the viewport has settled. */}
+      {rotating && (
+        <div className="arena-rotate-cover" aria-hidden>
+          <div className="arena-rotate-inner">
+            <div className="relative w-14 h-14">
+              <span className="absolute inset-0 rounded-full border-4 border-amber-400/25 border-t-amber-400 animate-spin" />
+              <span className="absolute inset-0 grid place-items-center font-title font-black text-amber-300 text-base">31</span>
+            </div>
+            <span className="font-title font-black text-amber-300 text-[11px] uppercase tracking-widest">Rotating…</span>
+          </div>
+        </div>
       )}
 
       {/* 3D Cinematic Tactical Skill FX Overlay */}
@@ -704,7 +948,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
       {/* Choose Your Name Gate Modal */}
       {showNameGate && (
         <div className="cd31-gate-overlay" onClick={() => setShowNameGate(false)}>
-          <div className="cd31-gate glass" onClick={(e) => e.stopPropagation()}>
+          <div className="cd31-gate" onClick={(e) => e.stopPropagation()}>
             <span className="cd31-gate-ico">
               <Crown size={22} />
             </span>

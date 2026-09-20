@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, Volume2, Sparkles, User, Check, Save, LogOut, Camera, IdCard } from "lucide-react";
+import { Volume2, Sparkles, Save, LogOut, Camera, Check, IdCard } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { ProfilePanel } from "../../components/dune/ProfilePanel";
@@ -106,43 +106,30 @@ function SettingsContent() {
 
   return (
     <>
-      {/* Title Header */}
-      <div className="w-full bg-gradient-to-r from-amber-950/95 via-[#132019]/95 to-amber-950/95 border-2 sm:border-3 border-amber-400/80 rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 shadow">
-            <Settings size={24} />
-          </div>
-          <div>
-            <h1 className="font-title font-black text-2xl sm:text-3xl text-amber-300 tracking-wide">
-              SETTINGS
-            </h1>
-            <p className="text-xs text-slate-300">
-              Manage your account profile, audio effects, visuals, and preferences.
-            </p>
-          </div>
+      {/* ACCOUNT & PROFILE — the old "YOUR ACCOUNT" form and the "MY PROFILE" player card were two
+          separate sections at opposite ends of the page; they are one section now, at the top. The
+          standalone SETTINGS title banner was removed — the page header already names the page, so
+          the "changes saved" pill moved onto this section heading. */}
+      <div className="w-full flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+          <span className="flex items-center gap-2">
+            <IdCard size={18} className="text-amber-400" />
+            <span className="font-title font-black text-sm text-amber-300 uppercase tracking-wider">
+              ACCOUNT &amp; PROFILE
+            </span>
+          </span>
+
+          {savedToast && (
+            <span className="px-4 py-1.5 rounded-full bg-emerald-500 text-slate-950 font-title font-black text-xs shadow flex items-center gap-1.5 animate-bounce">
+              <Check size={14} /> CHANGES SAVED!
+            </span>
+          )}
         </div>
 
-        {savedToast && (
-          <span className="px-4 py-1.5 rounded-full bg-emerald-500 text-slate-950 font-title font-black text-xs shadow flex items-center gap-1.5 animate-bounce">
-            <Check size={14} /> CHANGES SAVED!
-          </span>
-        )}
-      </div>
-
-      {/* Settings Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Profile Card & Account Details */}
         <form
           onSubmit={handleSaveProfile}
-          className="md:col-span-2 bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 rounded-3xl p-6 shadow-xl flex flex-col gap-4"
+          className="bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 rounded-3xl p-6 shadow-xl flex flex-col gap-4"
         >
-          <div className="flex items-center gap-2 border-b border-white/10 pb-2">
-            <User size={18} className="text-amber-400" />
-            <span className="font-title font-black text-sm text-amber-300 uppercase tracking-wider">
-              YOUR ACCOUNT
-            </span>
-          </div>
-
           <div className="flex flex-col sm:flex-row items-center gap-6">
             {/* Avatar Photo with Upload Overlay */}
             <div className="relative group shrink-0">
@@ -213,6 +200,11 @@ function SettingsContent() {
           </div>
         </form>
 
+        <ProfilePanel />
+      </div>
+
+      {/* The rest of the settings, below the account section. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Audio & SFX */}
         <div className="bg-gradient-to-b from-[#192b20]/95 via-[#0e1a13]/98 to-[#060c08] border-2 border-amber-400/50 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col gap-4">
           <div className="flex items-center gap-2 border-b border-white/10 pb-2">
@@ -294,17 +286,6 @@ function SettingsContent() {
             <span>SIGN OUT OF ACCOUNT</span>
           </button>
         </div>
-      </div>
-
-      {/* My Profile — the full player card, embedded here as a section. */}
-      <div className="w-full flex flex-col gap-4">
-        <div className="flex items-center gap-2 border-b border-white/10 pb-2">
-          <IdCard size={18} className="text-amber-400" />
-          <span className="font-title font-black text-sm text-amber-300 uppercase tracking-wider">
-            MY PROFILE
-          </span>
-        </div>
-        <ProfilePanel />
       </div>
     </>
   );

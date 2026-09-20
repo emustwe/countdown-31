@@ -50,3 +50,6 @@ Frontend/.env.designer
 
 # Oversized design-source dump (7GB+) — back up separately, not in git
 /VA_Theme_Files/
+backups/
+.env.production
+Backend/.env.production
