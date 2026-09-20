@@ -53,3 +53,8 @@ Frontend/.env.designer
 backups/
 .env.production
 Backend/.env.production
+
+# Design-source archives — handed to/from the designer, never built or served.
+# Keep them locally; the server only needs what's under Frontend/public/.
+*.zip
+/Zip_Files/
