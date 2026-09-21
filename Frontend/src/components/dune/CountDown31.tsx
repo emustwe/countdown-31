@@ -23,6 +23,7 @@ import { OfficialRulesModal } from "./OfficialRulesModal";
 import confetti from "canvas-confetti";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
 import { useSettledResize } from "../../lib/hooks/useSettledResize";
+import { useVisualViewport } from "../../lib/hooks/useVisualViewport";
 import { useRouter } from "next/navigation";
 
 import { DEFAULT_GAME_CONFIG, DEFAULT_THEME_ADS, type GameTheme } from "../../lib/game-config";
@@ -96,6 +97,8 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   // In the test arena, only an admin gets the join/rejoin controls + their own player card.
   const canPlay = !testArena || isAdmin;
   const [botCount, setBotCount] = useState<number>(gameConfig.gameplay.defaultBotCount);
+  // Publishes the visible region to CSS so the name prompt can sit above the on-screen keyboard.
+  useVisualViewport();
 
   const [chosenName, setChosenName] = useState("");
   const [showNameGate, setShowNameGate] = useState(false);
@@ -719,7 +722,9 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
             <h2 className="font-title text-2xl font-black">{gameConfig.gameplay.guestNamePrompt}</h2>
             <p className="font-ui text-sm">Enter the arcade pasture and battle for the crown!</p>
             <input
-              autoFocus
+              // NO autoFocus. On iOS it opened the keyboard the instant the prompt appeared, which
+              // shrank the visual viewport and hid the card behind the keyboard — the name could
+              // not be typed at all. The player taps the field when they are ready.
               value={nameInput}
               maxLength={gameConfig.gameplay.maxGuestNameLength}
               placeholder="Your cow name"

@@ -8850,13 +8850,20 @@ button.mini:hover { filter: brightness(1.06); }
 
 /* Count Down 31 — choose-your-name gate before joining */
 .cd31-gate-overlay {
-  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+  /* Anchored to the VISUAL viewport, not the layout viewport. On iOS the on-screen keyboard shrinks
+     the visible region without changing 100dvh, so a `inset: 0` dialog ends up behind the keyboard
+     and cannot be reached. --vv-h / --vv-top come from useVisualViewport; the dvh values are the
+     fallback where visualViewport is unsupported. */
+  position: fixed; left: 0; right: 0;
+  top: var(--vv-top, 0px);
+  height: var(--vv-h, 100dvh);
+  /* Above EVERYTHING in the arena — the countdown cow sits at z-100 and was drawing over the
+     prompt. A modal that blocks input must outrank the game it covers. */
+  z-index: 200; display: grid; place-items: center;
   background: rgba(3, 7, 5, 0.78); backdrop-filter: blur(5px); padding: 24px;
-  /* A phone in landscape has very little height once the browser chrome is counted (~300px of a
-     nominal 390). The card was a fixed 315px tall, so the "Enter Game" button fell below the fold
-     and the name could never be submitted. Let the overlay scroll as a last resort. */
   overflow-y: auto;
 }
+
 /* New cow-arcade theme (matches AuthGateModal): dark green pasture gradient + gold border/glow. */
 .cd31-gate {
   width: 100%; max-width: 380px; padding: 26px 24px; border-radius: 22px; text-align: center;
@@ -8880,14 +8887,25 @@ button.mini:hover { filter: brightness(1.06); }
 /* Short viewports (phone in landscape, browser chrome visible): compact the gate so the input AND
    the Enter Game button are both on screen without scrolling. */
 @media (max-height: 420px) {
-  .cd31-gate-overlay { padding: 10px; align-items: start; }
-  .cd31-gate { padding: 14px 16px; gap: 7px; border-radius: 16px; max-height: calc(100dvh - 20px); }
-  .cd31-gate h2 { font-size: 17px; }
-  .cd31-gate p { font-size: 11.5px; }
-  .cd31-gate input { padding: 9px 12px; font-size: 16px; margin-top: 2px; }
-  .cd31-gate button { margin-top: 2px; padding-top: 9px; padding-bottom: 9px; }
-  .cd31-gate-ico { width: 32px; height: 32px; border-radius: 10px; margin-bottom: 0; }
+  .cd31-gate-overlay { padding: 8px; align-items: start; }
+  .cd31-gate { padding: 12px 14px; gap: 6px; border-radius: 14px; max-height: none; }
+  .cd31-gate h2 { font-size: 16px; }
+  .cd31-gate p { display: none; }              /* the blurb is the first thing to go */
+  .cd31-gate-ico { display: none; }            /* so is the crown badge */
+  .cd31-gate input { padding: 9px 12px; font-size: 16px; margin-top: 0; }
+  .cd31-gate button { margin-top: 0; padding-top: 9px; padding-bottom: 9px; }
 }
+
+/* Keyboard open on a phone in landscape: only ~150px of usable height remains. Strip to the two
+   controls that matter — the field and the submit — laid out side by side so both stay on screen. */
+@media (max-height: 260px) {
+  .cd31-gate-overlay { padding: 6px; }
+  .cd31-gate { padding: 8px 10px; gap: 6px; flex-direction: row; align-items: center; max-width: 520px; }
+  .cd31-gate h2 { display: none; }
+  .cd31-gate input { flex: 1 1 auto; margin: 0; }
+  .cd31-gate button { flex: 0 0 auto; width: auto; margin: 0; padding: 9px 14px; white-space: nowrap; }
+}
+
 .vis-pill.seeking { background: rgba(244,185,66,0.16); color: var(--gold2); }
 
 /* Count Down 31 — turn hint (timer not started yet) + name-gate icon + winner turn label */
