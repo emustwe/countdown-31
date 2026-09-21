@@ -57,8 +57,6 @@
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.28",
     "@prisma/client": "^6.19.3",
-    "@solana/spl-token": "^0.3.11",
-    "@solana/web3.js": "^1.98.4",
     "@types/cookie-parser": "^1.4.10",
     "@types/nodemailer": "^8.0.1",
     "argon2": "^0.44.0",
