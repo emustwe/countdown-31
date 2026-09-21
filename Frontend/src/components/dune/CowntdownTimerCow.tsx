@@ -30,7 +30,7 @@ interface CowntdownTimerCowProps {
 }
 
 /**
- * The turn countdown cow — ONLY on the LOCAL player's turn. It plays the counting clip (cowntdown.mov,
+ * The turn countdown cow — ONLY on the LOCAL player's turn. It plays the counting clip (cowntdown.mp4,
  * which shows the number on the cow's own hand, WITH sound). It stays the SAME SIZE and FULLY VISIBLE
  * for the whole countdown — it never glides across the screen and never fades out early; it simply
  * counts every number down to the last and clears when the turn ends. In `anchored` mode its parent
@@ -65,7 +65,11 @@ export function CowntdownTimerCow({
 
   const video = (
     <TransparentVideo
-      src="/assets/cowntdown.mov"
+      // MP4, not the byte-identical .mov twin: QuickTime does not decode on Android Chrome (the cow
+      // simply never appeared there), and Cloudflare will not cache video/quicktime, so every page
+      // load re-pulled 7.5MB from the origin. The WebGL matte derives alpha from luminance rather
+      // than an alpha channel, so the two files render identically.
+      src="/assets/cowntdown.mp4"
       audioEnabled
       playbackRate={COW_CLIP_RATE}
       restartKey={`${turnKey ?? "t"}-${countLap}`}
