@@ -17,7 +17,6 @@ function validateEnv(): void {
     "JWT_ACCESS_SECRET",
     "JWT_REFRESH_SECRET",
     "CRED_SECRET",
-    "SOLANA_TREASURY_ADDRESS",
   ];
   const missing = required.filter((k) => !process.env[k] || String(process.env[k]).length < 8);
   if (missing.length) {
@@ -33,16 +32,6 @@ function validateEnv(): void {
         "[config] EMAIL_ENABLED is not true — verification and password-reset emails will not be delivered.",
       );
     }
-  }
-  // Mainnet guardrail (#20): running against Solana mainnet moves REAL money, so it must be an
-  // explicit, deliberate opt-in — never something you fall into by leaving a devnet flag unset.
-  const cluster = (process.env.SOLANA_CLUSTER ?? "").toLowerCase();
-  const rpc = (process.env.SOLANA_RPC_URL ?? "").toLowerCase();
-  const looksMainnet = cluster.includes("mainnet") || rpc.includes("mainnet");
-  if (looksMainnet && process.env.ALLOW_MAINNET !== "true") {
-    throw new Error(
-      "Refusing to start against Solana mainnet without ALLOW_MAINNET=true (this moves real funds).",
-    );
   }
 }
 
