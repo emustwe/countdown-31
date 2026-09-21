@@ -4,23 +4,10 @@
  */
 import { Howl } from "howler";
 
-export type BgmTrackType =
-  | "arcade"
-  | "vegas"
-  | "synthwave"
-  | "tropical"
-  | "vip"
-  | "chiptune"
-  | "lofi";
+export type BgmTrackType = "tropical";
 
 export const BGM_AUDIO_MAP: Record<BgmTrackType, string> = {
-  arcade: "/assets/sounds/arcade-party-bgm.wav",
-  vegas: "/assets/sounds/vegas-funk-bgm.wav",
-  synthwave: "/assets/sounds/cyber-synthwave-bgm.wav",
   tropical: "/assets/sounds/tropical-party-bgm.wav",
-  vip: "/assets/sounds/vip-club-bgm.wav",
-  chiptune: "/assets/sounds/retro-chiptune-bgm.wav",
-  lofi: "/assets/sounds/lofi-chillhop-bgm.wav",
 };
 
 class SoundManager {
@@ -208,7 +195,7 @@ class SoundManager {
   private bgmPlaying: boolean = false;
   private bgmVolume: number = 0.85;
   private bgmDucked: boolean = false;
-  private bgmTrack: BgmTrackType = "arcade";
+  private bgmTrack: BgmTrackType = "tropical";
 
   /**
    * Duck/silence BGM completely (used when mascot animation is shown on screen)
@@ -287,7 +274,7 @@ class SoundManager {
     this.stopBgm();
     this.bgmPlaying = true;
 
-    const audioFile = BGM_AUDIO_MAP[selectedTrack] || BGM_AUDIO_MAP.arcade;
+    const audioFile = BGM_AUDIO_MAP[selectedTrack] || BGM_AUDIO_MAP.tropical;
 
     try {
       this.bgmSound = new Howl({

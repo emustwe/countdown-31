@@ -26,11 +26,7 @@ import {
   HeartHandshake,
   ExternalLink,
   Check,
-  Disc,
-  Zap,
   Sun,
-  Gamepad2,
-  Coffee,
   X,
 } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
@@ -522,44 +518,11 @@ export function ArcadeHeader({
                     <span className="text-xs font-title font-bold text-slate-300">
                       SELECT MUSIC TRACK
                     </span>
-                    <span className="text-[10px] text-amber-400 font-mono">7 SOUNDTRACKS</span>
+                    <span className="text-[10px] text-amber-400 font-mono">1 SOUNDTRACK</span>
                   </div>
 
                   <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto pr-1">
                     {[
-                      {
-                        id: "arcade" as const,
-                        name: "Arcade Party Groove",
-                        desc: "136 BPM Mastered Party Beat",
-                        icon: Disc,
-                        activeBorder: "border-emerald-400",
-                        activeBg: "bg-gradient-to-r from-emerald-950/80 to-emerald-900/60",
-                        activeText: "text-emerald-200",
-                        iconColor: "text-emerald-400",
-                        shadow: "shadow-[0_0_12px_rgba(52,211,153,0.35)]",
-                      },
-                      {
-                        id: "vegas" as const,
-                        name: "Vegas Casino Funk",
-                        desc: "128 BPM Disco House & Slap Bass",
-                        icon: Sparkles,
-                        activeBorder: "border-amber-400",
-                        activeBg: "bg-gradient-to-r from-amber-950/80 to-amber-900/60",
-                        activeText: "text-amber-200",
-                        iconColor: "text-amber-400",
-                        shadow: "shadow-[0_0_12px_rgba(251,191,36,0.35)]",
-                      },
-                      {
-                        id: "synthwave" as const,
-                        name: "Cyber Synthwave 80s",
-                        desc: "125 BPM Retro Synth & Running Bass",
-                        icon: Zap,
-                        activeBorder: "border-cyan-400",
-                        activeBg: "bg-gradient-to-r from-cyan-950/80 to-blue-900/60",
-                        activeText: "text-cyan-200",
-                        iconColor: "text-cyan-400",
-                        shadow: "shadow-[0_0_12px_rgba(34,211,238,0.35)]",
-                      },
                       {
                         id: "tropical" as const,
                         name: "Tropical Beach Party",
@@ -570,39 +533,6 @@ export function ArcadeHeader({
                         activeText: "text-yellow-200",
                         iconColor: "text-yellow-400",
                         shadow: "shadow-[0_0_12px_rgba(250,204,21,0.35)]",
-                      },
-                      {
-                        id: "vip" as const,
-                        name: "High-Stakes VIP Club",
-                        desc: "130 BPM Electro House & Saw Stabs",
-                        icon: Crown,
-                        activeBorder: "border-fuchsia-400",
-                        activeBg: "bg-gradient-to-r from-fuchsia-950/80 to-purple-900/60",
-                        activeText: "text-fuchsia-200",
-                        iconColor: "text-fuchsia-400",
-                        shadow: "shadow-[0_0_12px_rgba(232,121,249,0.35)]",
-                      },
-                      {
-                        id: "chiptune" as const,
-                        name: "8-Bit Retro Chiptune",
-                        desc: "144 BPM Fast Gamified Pixel Arcade",
-                        icon: Gamepad2,
-                        activeBorder: "border-rose-400",
-                        activeBg: "bg-gradient-to-r from-rose-950/80 to-red-900/60",
-                        activeText: "text-rose-200",
-                        iconColor: "text-rose-400",
-                        shadow: "shadow-[0_0_12px_rgba(251,113,133,0.35)]",
-                      },
-                      {
-                        id: "lofi" as const,
-                        name: "Lofi Chill Hop Pasture",
-                        desc: "90 BPM Warm Jazz Rhodes & Vinyl Swing",
-                        icon: Coffee,
-                        activeBorder: "border-teal-400",
-                        activeBg: "bg-gradient-to-r from-teal-950/80 to-emerald-900/60",
-                        activeText: "text-teal-200",
-                        iconColor: "text-teal-400",
-                        shadow: "shadow-[0_0_12px_rgba(45,212,191,0.35)]",
                       },
                     ].map((trackItem) => {
                       const IconComponent = trackItem.icon;

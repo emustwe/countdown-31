@@ -1,0 +1,20 @@
+{
+  "name": "Vera 31 — Arcade Cow Counting Game",
+  "short_name": "Vera 31",
+  "description": "Count to 31. Say 31 and you're out. A juicy, high-energy arcade cow counting game.",
+  "start_url": "/home",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#070e0a",
+  "theme_color": "#070e0a",
+  "icons": [
+    {
+      "src": "/assets/barnaby/barnaby-field.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}

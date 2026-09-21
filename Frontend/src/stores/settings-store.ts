@@ -2,14 +2,9 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type ThemeMode = "light" | "dark";
-export type BgmTrackId =
-  | "arcade"
-  | "vegas"
-  | "synthwave"
-  | "tropical"
-  | "vip"
-  | "chiptune"
-  | "lofi";
+// Only one soundtrack ships now — the other six were removed from the product (and their 14.7MB
+// of uncompressed WAV with them). Kept as a union so re-adding a track stays a one-line change.
+export type BgmTrackId = "tropical";
 
 interface SettingsState {
   soundEnabled: boolean;
@@ -32,7 +27,7 @@ export const useSettingsStore = create<SettingsState>()(
       soundEnabled: true,
       bgmEnabled: true,
       bgmVolume: 0.85,
-      bgmTrack: "arcade",
+      bgmTrack: "tropical",
       animationsEnabled: true,
       theme: "dark",
       toggleSound: () => set((s) => ({ soundEnabled: !s.soundEnabled })),

@@ -8852,11 +8852,17 @@ button.mini:hover { filter: brightness(1.06); }
 .cd31-gate-overlay {
   position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
   background: rgba(3, 7, 5, 0.78); backdrop-filter: blur(5px); padding: 24px;
+  /* A phone in landscape has very little height once the browser chrome is counted (~300px of a
+     nominal 390). The card was a fixed 315px tall, so the "Enter Game" button fell below the fold
+     and the name could never be submitted. Let the overlay scroll as a last resort. */
+  overflow-y: auto;
 }
 /* New cow-arcade theme (matches AuthGateModal): dark green pasture gradient + gold border/glow. */
 .cd31-gate {
   width: 100%; max-width: 380px; padding: 26px 24px; border-radius: 22px; text-align: center;
   display: flex; flex-direction: column; gap: 12px; color: #fff8ef;
+  /* Never taller than the viewport; scroll inside itself if the content still does not fit. */
+  max-height: calc(100dvh - 32px); overflow-y: auto;
   background: linear-gradient(180deg, #18281e 0%, #0d1811 55%, #050a07 100%);
   border: 2px solid #f5a524;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 42px rgba(245, 158, 11, 0.3);
@@ -8870,6 +8876,18 @@ button.mini:hover { filter: brightness(1.06); }
 .cd31-gate input::placeholder { color: rgba(182, 199, 186, 0.6); }
 .cd31-gate input:focus { outline: none; border-color: #f5a524; box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.18); }
 .cd31-gate button { margin-top: 6px; }
+
+/* Short viewports (phone in landscape, browser chrome visible): compact the gate so the input AND
+   the Enter Game button are both on screen without scrolling. */
+@media (max-height: 420px) {
+  .cd31-gate-overlay { padding: 10px; align-items: start; }
+  .cd31-gate { padding: 14px 16px; gap: 7px; border-radius: 16px; max-height: calc(100dvh - 20px); }
+  .cd31-gate h2 { font-size: 17px; }
+  .cd31-gate p { font-size: 11.5px; }
+  .cd31-gate input { padding: 9px 12px; font-size: 16px; margin-top: 2px; }
+  .cd31-gate button { margin-top: 2px; padding-top: 9px; padding-bottom: 9px; }
+  .cd31-gate-ico { width: 32px; height: 32px; border-radius: 10px; margin-bottom: 0; }
+}
 .vis-pill.seeking { background: rgba(244,185,66,0.16); color: var(--gold2); }
 
 /* Count Down 31 — turn hint (timer not started yet) + name-gate icon + winner turn label */
