@@ -12,11 +12,12 @@ interface CowntdownTimerCowProps {
   /** When the current turn expires. The seconds remaining are derived HERE from the shared clock,
    * so a tick re-renders only this counter — not the arena. */
   turnEndsAt?: number | null;
-  /** Total length of a turn (13 in practice, 7 in a tournament) — sets the top of the count. */
+  /** Total length of a turn (13 in practice, 7 in a tournament). Drives the sweep ring's progress;
+   *  it is no longer printed beside the digit. */
   turnSeconds: number;
   /** ANCHORED mode: fill the POSITIONED parent instead of sitting viewport-fixed. The arc board
-   *  uses this to pin the counter to the number board's corner so it lands in the same spot on
-   *  every screen (it scales with the board stage). */
+   *  uses this to pin the counter to the number board's header strip — centred on the board, sitting
+   *  just above the number grid — so it lands in the same spot on every screen. */
   anchored?: boolean;
 }
 
@@ -59,8 +60,14 @@ function CowntdownTimerCowImpl({
     soundManager.playTick(secondsLeft <= URGENT_AT);
   }, [show, secondsLeft]);
 
+  // Fraction of the turn still left, for the sweep ring behind the digit.
+  const progress = turnSeconds > 0 ? Math.max(0, Math.min(1, secondsLeft / turnSeconds)) : 0;
+
   const counter = (
-    <div className={`cd31-count ${urgent ? "is-urgent" : ""} ${isMyTurn ? "is-mine" : ""}`}>
+    <div
+      className={`cd31-count ${urgent ? "is-urgent" : ""} ${isMyTurn ? "is-mine" : ""}`}
+      style={{ "--cd31-progress": progress } as React.CSSProperties}
+    >
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.b
           key={secondsLeft}
@@ -72,7 +79,6 @@ function CowntdownTimerCowImpl({
           {secondsLeft}
         </motion.b>
       </AnimatePresence>
-      <small>{turnSeconds > 0 ? `/${turnSeconds}` : ""}</small>
     </div>
   );
 
@@ -82,7 +88,10 @@ function CowntdownTimerCowImpl({
         (anchored ? (
           <motion.div
             key={`turncount-${turnKey ?? "t"}`}
-            className="absolute inset-0 pointer-events-none select-none flex items-center justify-center"
+            /* items-END: the box stops just above the number grid, so anchoring to its bottom keeps
+               the dial in the board's header strip (overflowing upward into the sky) and never over
+               a tile. justify-center keeps it on the board's horizontal centre line. */
+            className="absolute inset-0 pointer-events-none select-none flex items-end justify-center"
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}

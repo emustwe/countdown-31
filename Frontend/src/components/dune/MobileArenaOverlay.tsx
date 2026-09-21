@@ -71,11 +71,13 @@ export function MobileArenaOverlay({
   return createPortal(
     <div className="lg:hidden">
       {/* Top-right profile/menu button — styled to look EXACTLY like the desktop profile trigger
-          (amber avatar ring), so the profile, sound and music icons all match desktop on mobile. */}
+          (amber avatar ring). It is PORTALED to <body>, so it sits outside .arcade-header-actions and
+          cannot inherit that row's size/spacing; .mobile-arena-profile in dune.css re-aligns it with
+          the music + sound icons (same box, same centre line, same gap). */}
       <button
         type="button"
         onClick={() => { soundManager.playClick(); setOpen((o) => !o); }}
-        className="fixed top-2 right-2 z-[210] w-11 h-11 rounded-full bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.6)] hover:scale-105 active:scale-95 transition-transform"
+        className="mobile-arena-profile fixed z-[210] rounded-full bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.6)] hover:scale-105 active:scale-95 transition-transform"
         aria-label={isAuthenticated ? "Profile Menu" : "Player Menu"}
       >
         {isAuthenticated ? (

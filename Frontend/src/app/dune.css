@@ -8910,24 +8910,85 @@ button.mini:hover { filter: brightness(1.06); }
 
 /* Turn countdown — the numeric clock that replaced the WebGL cow-video timer. Sized in em off a
    clamped root so it scales with the board stage in anchored mode. */
+/* TURN CLOCK — sits dead centre ON the number board, shown only on YOUR turn.
+   A single huge digit inside a progress ring that drains as the turn runs out. The board stays
+   readable through it: the disc is translucent and the whole thing is pointer-events:none, so the
+   number tiles underneath are still visible and tappable. */
 .cd31-count {
-  display: flex; align-items: baseline; justify-content: center; gap: 0.12em;
-  font-size: clamp(38px, 7.5vh, 76px); line-height: 1;
-  font-family: var(--font-lilita), system-ui, sans-serif; font-weight: 900;
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* Sized to the room ABOVE the number grid: the dial sits in the board's header strip and overhangs
+     upward into the sky, so it must not grow so tall that it reaches the header icons. */
+  width: clamp(76px, 23vh, 150px);
+  aspect-ratio: 1;
+  line-height: 1;
+  font-family: var(--font-lilita), system-ui, sans-serif;
+  font-weight: 900;
   color: #fff8ef;
-  text-shadow: 0 0 0.18em rgba(53, 214, 232, 0.55), 0 0.06em 0.12em rgba(0, 0, 0, 0.85);
+  --cd31-ring: rgba(53, 214, 232, 0.95);
+  --cd31-progress: 1;
 }
-.cd31-count b { font-weight: 900; display: inline-block; font-variant-numeric: tabular-nums; }
-.cd31-count small {
-  font-size: 0.32em; font-weight: 800; opacity: 0.6; letter-spacing: 0.02em;
-  font-family: var(--font-fredoka), system-ui, sans-serif;
+/* The ring: a conic sweep that unwinds anticlockwise as the seconds drain, masked to a thin band. */
+.cd31-count::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--cd31-ring) calc(var(--cd31-progress) * 360deg),
+    rgba(255, 255, 255, 0.09) 0
+  );
+  -webkit-mask: radial-gradient(circle, transparent calc(50% - 9px), #000 calc(50% - 9px));
+  mask: radial-gradient(circle, transparent calc(50% - 9px), #000 calc(50% - 9px));
+  transition: background 0.3s linear;
+  filter: drop-shadow(0 0 10px rgba(53, 214, 232, 0.45));
+}
+/* The disc must stay SEE-THROUGH: this only shows on your own turn, when you need to read and tap
+   the glowing tiles underneath it. Just enough tint to seat the digit, not enough to hide a number. */
+.cd31-count::after {
+  content: "";
+  position: absolute;
+  inset: 11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, rgba(6, 16, 20, 0.44), rgba(3, 8, 10, 0.26));
+  backdrop-filter: blur(1px);
+}
+.cd31-count b {
+  position: relative;
+  z-index: 1;
+  font-weight: 900;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(40px, 12vh, 80px);
+  letter-spacing: -0.03em;
+  /* Heavier outline than usual — the digit now sits over live number tiles, not a solid disc. */
+  text-shadow:
+    0 0 0.1em rgba(0, 0, 0, 0.95),
+    0 0.04em 0.1em rgba(0, 0, 0, 0.95),
+    0 0 0.3em rgba(53, 214, 232, 0.75);
 }
 /* Your own clock reads cyan — the same "cyan = you" contract the turn indicator uses. */
 .cd31-count.is-mine { color: #35d6e8; }
-/* Final seconds: red and a touch larger, so it reads at a glance without another animation. */
+/* Final seconds: red, and the ring glows hot. */
 .cd31-count.is-urgent {
   color: #ff5d5d;
-  text-shadow: 0 0 0.22em rgba(255, 93, 93, 0.7), 0 0.06em 0.12em rgba(0, 0, 0, 0.9);
+  --cd31-ring: rgba(255, 93, 93, 0.95);
+}
+.cd31-count.is-urgent::before { filter: drop-shadow(0 0 14px rgba(255, 93, 93, 0.65)); }
+.cd31-count.is-urgent b {
+  text-shadow:
+    0 0 0.1em rgba(0, 0, 0, 0.95),
+    0 0.04em 0.1em rgba(0, 0, 0, 0.95),
+    0 0 0.32em rgba(255, 93, 93, 0.85);
+  animation: cd31-pulse 1s ease-in-out infinite;
+}
+@keyframes cd31-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cd31-count.is-urgent b { animation: none; }
 }
 
 /* Count Down 31 — turn hint (timer not started yet) + name-gate icon + winner turn label */
@@ -9555,7 +9616,9 @@ body:has(.mobile-landscape-game) .app-shell > footer {
   }
   .mobile-landscape-game .arcade-header-actions {
     gap: 8px !important;
-    padding-right: 54px !important; /* leave room for the fixed profile-style menu button at the far right */
+    /* Room for the portaled profile button: its own width (44) + the SAME gap the icons use (5), so
+       music -> sound -> profile are evenly spaced. See .mobile-arena-profile below. */
+    padding-right: 49px !important;
   }
   /* Keep the music/sound icons perfectly circular on mobile — never let the flex row squish them into
      ovals (fixed square size + aspect ratio, no shrink). */
@@ -10897,4 +10960,45 @@ body:has(.mobile-landscape-game) .app-shell > footer {
 @media (max-width: 560px) {
   .brand-31-badge { padding: 0 9px; }
   .brand-31-badge-text { font-size: 12.5px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   MOBILE ARENA PROFILE BUTTON — aligned with the music + sound icons.
+   The button is portaled to <body>, so it is not a child of .arcade-header-actions and inherits
+   none of that row's sizing. It was 44px at top:8px while the icons are 44px at top:9px, with a
+   9px gap instead of the row's 5px — close enough to look like a mistake. These rules pin it to the
+   icons' exact box, centre line and spacing. `body:has(...)` because the arena class is on the
+   arena viewport, which is NOT an ancestor of a portaled node.
+   ───────────────────────────────────────────────────────────────────────── */
+.mobile-arena-profile {
+  top: 8px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
+}
+body:has(.mobile-landscape-game) .mobile-arena-profile {
+  /* Same y as the icons (row top 5px + its 4px top padding) and the same right edge as the row. */
+  top: 9px;
+  right: max(7px, env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PLAY BUTTON on a notched phone in landscape.
+   .nb-play-pos used a FIXED left, but the header indents its brand pill by the safe-area inset —
+   so on a notched device the pill slid ~40px right while the button stayed put. Anchor the button
+   to the same inset and centre it under the pill (pill = inset + 10px margin + 79px wide; the
+   button is 52px, so left = inset + 10 + 39.5 - 26 ~= inset + 23).
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 1180px) and (orientation: landscape) {
+  .nb-play-pos {
+    left: calc(max(7px, env(safe-area-inset-left)) + 23px) !important;
+  }
+}
+@media (max-width: 560px) and (orientation: landscape) {
+  /* Narrower pill at this size (9px padding, 12.5px text ~= 68px wide) -> inset + 10 + 34 - 26. */
+  .nb-play-pos {
+    left: calc(max(7px, env(safe-area-inset-left)) + 18px) !important;
+  }
 }

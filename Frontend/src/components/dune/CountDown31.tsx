@@ -120,13 +120,13 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   // measured live so it survives the stage's padding + letterbox on every screen.
   const arenaMainRef = useRef<HTMLElement | null>(null);
   const arenaViewportRef = useRef<HTMLDivElement | null>(null);
-  // Position (relative to the arena viewport) for the counting-cow overlay — placed just above the
-  // board's top-right corner, OUTSIDE the clipped board so its head stays fully visible.
-  const [cowBox, setCowBox] = useState<{ left: number; top: number } | null>(null);
+  // The turn clock's box (relative to the arena viewport): the board's full WIDTH, ending just above
+  // the number grid. The counter is centred horizontally in it and anchored to its BOTTOM, so it sits
+  // on the board's centre line but never over a number tile.
+  const [cowBox, setCowBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   // The ARENA roster now lives INSIDE the board's own scaled stage (ClassicArcBoard), so the whole
   // arc + board + roster composition scales and centres as one unit — no parent alignment needed. The
-  // ONLY overlay the parent still positions is the counting cow, which sits just above the board's
-  // top-right corner OUTSIDE the clipped board so its head shows.
+  // ONLY overlay the parent still positions is the turn clock, which is laid over the board's centre.
   const boardShiftX = 0;
   const alignArena = useCallback(() => {
     const main = arenaMainRef.current;
@@ -136,13 +136,27 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
     const b = board.getBoundingClientRect();
     const av = arenaViewportRef.current?.getBoundingClientRect();
     if (av) {
-      const s = boardScale || 1;
-      const COW_W = 158, COW_H = 154;
-      const left = b.right - av.left - COW_W * s - 4;
-      const top = b.top - av.top - COW_H * s + 10; // bottom dips ~10px into the board's title strip
-      setCowBox((c) => (!c || Math.abs(c.left - left) > 0.5 || Math.abs(c.top - top) > 0.5 ? { left, top } : c));
+      // Bottom of the box = top of the number grid (less a small gap), so the clock — bottom-anchored
+      // inside it — sits in the board's header strip and clears the tiles entirely.
+      const grid = main.querySelector(".nb-trackwrap") as HTMLElement | null;
+      const gridTop = grid ? grid.getBoundingClientRect().top : b.top + b.height * 0.15;
+      const box = {
+        left: b.left - av.left,
+        top: b.top - av.top,
+        width: b.width,
+        height: Math.max(0, gridTop - 6 - b.top),
+      };
+      setCowBox((c) =>
+        !c ||
+        Math.abs(c.left - box.left) > 0.5 ||
+        Math.abs(c.top - box.top) > 0.5 ||
+        Math.abs(c.width - box.width) > 0.5 ||
+        Math.abs(c.height - box.height) > 0.5
+          ? box
+          : c,
+      );
     }
-  }, [boardScale]);
+  }, []);
   // Position the cow only once the viewport has SETTLED after a resize / orientation burst (mobile
   // auto-rotation fires a flurry of transient sizes). See useSettledResize.
   useSettledResize(alignArena, arenaMainRef);
@@ -487,12 +501,14 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
         campaignRevision={campaignData?.campaign?.revision}
       />
 
-      {/* Counting-cow overlay — rendered OUTSIDE the clipped board so it can rise above the board with
-          its head fully visible. Positioned (measured) just above the board's top-right corner. */}
-      {cowBox && (
+      {/* TURN CLOCK — laid over the CENTRE of the number board, and only ever shown on YOUR OWN turn:
+          the countdown is a call to act, so a player watching someone else think has nothing to do
+          with it. Each player therefore sees it only while it is their move. Measured to the board's
+          box (not scaled by boardScale — the box is already in screen px). */}
+      {cowBox && myTurn && (
         <div
           className="pointer-events-none absolute z-40"
-          style={{ left: cowBox.left, top: cowBox.top, width: 158, height: 154, transform: `scale(${boardScale})`, transformOrigin: "top left" }}
+          style={{ left: cowBox.left, top: cowBox.top, width: cowBox.width, height: cowBox.height }}
         >
           <CowntdownTimerCow
             anchored
