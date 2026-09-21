@@ -377,11 +377,21 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
         dancing: null,
       };
 
-      // Classic PRACTICE freezes for a centre cow-dance on EVERY elimination — human OR CPU — so every
-      // player is celebrated the same way (the CPU still auto-rejoins afterwards via resumeState). The
-      // test arena (100 bots) and other modes keep the old behaviour: only a human elimination dances.
-      const danceEveryElim = roomId === "practice" && baseState.gameMode === "classic";
-      if ((isHuman || danceEveryElim) && eliminatedPlayer) {
+      // FREEZE gate — NOT the dancing cow. In practice, EVERY elimination (human or CPU) freezes the
+      // arena so the ELIMINATION SEQUENCE can play and every player is treated the same; the CPU
+      // still auto-rejoins afterwards via resumeState. Elsewhere (the 100-bot test arena, real
+      // tournaments) only a human elimination freezes.
+      //
+      // The DANCING COW is a separate, downstream gate: CountDown31.tsx:854 plays it only when
+      // `reason === "31"`, i.e. when the lap completed and the board resets to 0. Do not conflate
+      // the two — this flag was previously called `danceEveryElim`, which caused exactly that
+      // misreading. Freezing on every elimination is correct; dancing on every elimination is not.
+      //
+      // Was `roomId === "practice" && baseState.gameMode === "classic"`. The gameMode half was dead
+      // weight and an active trap: the socket-failure fallbacks build state with
+      // `gameMode: "skills"`, so a dropped tournament socket silently disabled the freeze.
+      const freezeEveryElim = roomId === "practice";
+      if ((isHuman || freezeEveryElim) && eliminatedPlayer) {
         // Freeze the arena and play the centre cow-dance. endDance() will apply resumeState (for a
         // human they're now marked eliminated → REJOIN button; for a CPU they're already re-seated).
         pendingResumeRef.current = resumeState;
@@ -405,7 +415,7 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
         });
         // Do NOT advance — wait for endDance() when the dance video finishes.
       } else {
-        // CPU blunder (non-classic-practice): auto-rejoin + continue immediately, no pause.
+        // CPU blunder outside practice: auto-rejoin + continue immediately, no pause.
         setState(resumeState);
         processNextTurn(resumeState);
       }
@@ -683,8 +693,10 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
     (
       name: string,
       cos?: JoinCosmetics,
-      mode: GameMode = "skills",
-      chosenSkills: SkillType[] = ["rewind", "turbo"],
+      // Default to CLASSIC. This previously defaulted to "skills" with a pre-filled loadout, which
+      // was inert only because every caller passes "classic" explicitly — a landmine, not a design.
+      mode: GameMode = "classic",
+      chosenSkills: SkillType[] = [],
       // botCount is accepted for backward-compat but practice always fields 5 CPU cows.
       _botCount: number = PRACTICE_BOT_COUNT,
     ) => {

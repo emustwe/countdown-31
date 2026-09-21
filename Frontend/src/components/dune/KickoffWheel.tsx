@@ -4,6 +4,7 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import type { LivePlayer } from "../../lib/hooks/useCountdownLive";
+import { useDeadlinePassed, useSecondsLeft } from "../../stores/clock-store";
 
 /**
  * Kickoff wheel: when a tournament reaches its start time the game auto-enters and this wheel spins
@@ -16,14 +17,17 @@ export function KickoffWheel({
   players,
   spinEndsAt,
   startingId,
-  now,
 }: {
   players: LivePlayer[];
   spinEndsAt: number;
   startingId: string | null;
-  now: number;
 }) {
-  const spinning = now < spinEndsAt;
+  // A ONE-SHOT flip at the deadline, not a per-second comparison — the wheel must stop exactly when
+  // the spin ends, and polling a 1s clock would let it overstay by up to a second.
+  const spinning = !useDeadlinePassed(spinEndsAt);
+  // Whole seconds for the hub digit, straight from the shared clock (was a `now` prop threaded
+  // down from CountDown31, which forced the whole arena to re-render every tick).
+  const secondsLeft = useSecondsLeft(spinning ? spinEndsAt : null);
 
   // Numbered ring in seating order (capped so a huge arena still renders cleanly). We ALWAYS keep the
   // starting player in the ring so the pointer lands on the real starter even in a 100-cow arena.
@@ -42,7 +46,7 @@ export function KickoffWheel({
   const startingName = ring[targetIndex]?.name ?? "—";
 
   // Capture the total spin duration ONCE so the pointer eases to its landing over the whole phase.
-  const durationRef = useRef<number>(Math.max(600, spinEndsAt - now));
+  const durationRef = useRef<number>(Math.max(600, spinEndsAt - Date.now()));
   // The pointer sweeps several full turns and lands pointing at the target pip (angle = seg*index).
   const finalAngle = 360 * 5 + seg * targetIndex;
 
@@ -115,7 +119,7 @@ export function KickoffWheel({
 
           {/* Hub */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-14 h-14 rounded-full bg-gradient-to-b from-amber-300 to-amber-600 border-2 border-white flex items-center justify-center font-title font-black text-slate-950 text-sm shadow">
-            {spinning ? Math.max(0, Math.ceil((spinEndsAt - now) / 1000)) : "GO"}
+            {spinning ? secondsLeft : "GO"}
           </div>
         </div>
 

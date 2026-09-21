@@ -426,20 +426,11 @@ export function ArcadeHeader({
         className="arcade-header-actions flex items-center gap-2.5 z-20 pt-1 relative"
         ref={profileMenuRef}
       >
-        {hasCampaign && showModeToggle && (
-          <button
-            type="button"
-            onClick={() => {
-              soundManager.playClick();
-              onToggleMode?.(gameMode === "skills" ? "classic" : "skills");
-            }}
-            className={`tournament-header-action ${gameMode === "skills" ? "is-skills" : "is-classic"}`}
-            title={`Game mode: ${gameMode === "skills" ? "Skills" : "Classic"}. Click to switch.`}
-            aria-label={`Game mode: ${gameMode === "skills" ? "Skills" : "Classic"}`}
-          >
-            {gameMode === "skills" ? <Sparkles size={20} /> : <Dices size={20} />}
-          </button>
-        )}
+        {/* A game-mode toggle used to sit here, gated on `hasCampaign && showModeToggle`. Those are
+            mutually exclusive — `hasCampaign` requires a tournament campaign, while the only caller
+            passes `showModeToggle={!isTournament && …}` — so it could never render. Removed.
+            `showModeToggle` / `canToggle` are KEPT: `canToggle` still drives the header's
+            is-game-header vs is-page-header layout class below. */}
 
         {/* Music (BGM) Button & Interactive Track / Volume Popover */}
         <div className="relative" ref={musicMenuRef}>

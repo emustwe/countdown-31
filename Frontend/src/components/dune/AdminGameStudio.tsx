@@ -1153,7 +1153,7 @@ function GameplayPanel({
           onChange={(allowClassic) =>
             patch("gameplay", {
               allowClassic,
-              defaultMode: !allowClassic ? "skills" : draft.gameplay.defaultMode,
+              defaultMode: draft.gameplay.defaultMode,
             })
           }
         />
@@ -1192,7 +1192,6 @@ function GameplayPanel({
               })
             }
           >
-            {draft.gameplay.allowSkills && <option value="skills">Skill mode</option>}
             {draft.gameplay.allowClassic && <option value="classic">Classic mode</option>}
           </select>
         </Field>

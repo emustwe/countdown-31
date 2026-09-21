@@ -11,8 +11,6 @@ import { CountDown31 } from "../../../components/dune/CountDown31";
 import { StartingWheel } from "../../../components/dune/StartingWheel";
 import { TournamentLobby } from "../../../components/dune/TournamentLobby";
 import { ArenaLoading } from "../../../components/dune/ArenaLoading";
-import { SkillLoadoutModal } from "../../../components/dune/SkillLoadoutModal";
-import type { SkillType } from "../../../lib/hooks/useCountdownLive";
 import { usePromoDetail, useJoinPromo, useVoteStartTime, useCreateInquiry, usePromoRoster } from "../../../lib/hooks/useSponsors";
 import { useProfile } from "../../../lib/hooks/useAuth";
 import { useAuthStore } from "../../../stores/auth-store";
@@ -63,7 +61,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [slotPick, setSlotPick] = useState("");
   const [showRules, setShowRules] = useState(false);
   const [requested, setRequested] = useState(false);
-  const [showSkillPicker, setShowSkillPicker] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   // The Grand Starting Wheel plays ONCE per tournament (persisted), at the very start. On any later
   // re-entry the player skips straight to a short loading screen and then into the arena.
@@ -151,8 +148,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // takes over (see the `showWheel` render branch below); when it finishes it drops the player into
   // the arena. No "Enter the game" button.
 
-  // Joining: validate, then register directly. Tournaments are now CLASSIC (no skill loadout), so
-  // there is no skill-picker step — we register with no skills and go straight to the time survey.
+  // Joining: validate, then register directly. Tournaments are CLASSIC — there is no loadout step;
+  // we register and go straight to the time survey.
   function onJoin() {
     setError("");
     if (!authed) {
@@ -163,18 +160,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       setError("Enter the tournament referral code to enter this private tournament.");
       return;
     }
-    void confirmJoinWithSkills([]);
+    void register();
   }
 
-  // Register with the (empty) loadout, then show the start-time survey.
-  async function confirmJoinWithSkills(skills: SkillType[]) {
-    setShowSkillPicker(false);
+  // Register, then show the start-time survey.
+  async function register() {
     setError("");
     try {
       await join.mutateAsync({
         id,
         joinCode: isPrivate ? refCode.trim() : undefined,
-        skills,
+        skills: [],
       });
       if (hasTimeVote) setShowVote(true);
     } catch (err) {
@@ -533,11 +529,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       <OfficialRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
 
       {/* Lock in your skill loadout BEFORE the start-time survey (step 1 of joining). */}
-      <SkillLoadoutModal
-        isOpen={showSkillPicker}
-        onClose={() => setShowSkillPicker(false)}
-        onConfirm={confirmJoinWithSkills}
-      />
     </div>
   );
 }

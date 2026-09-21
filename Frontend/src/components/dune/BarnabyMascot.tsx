@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { RotateCcw } from "lucide-react";
 import { TransparentVideo } from "./TransparentVideo";
@@ -30,7 +30,12 @@ interface BarnabyMascotProps {
 // clip length so it never cuts the animation short.
 const DANCE_MAX_MS = 20000;
 
-export function BarnabyMascot({
+/**
+ * Memoised. Its only function props are `onDanceEnd` (a useCallback from useCountdownLive) and
+ * `onPlayAgain` (`rejoin`, made a useCallback in CountDown31 for exactly this reason). Everything
+ * else is a primitive or a reference off the live game state.
+ */
+function BarnabyMascotImpl({
   status,
   winner,
   lastEliminated,
@@ -170,3 +175,7 @@ export function BarnabyMascot({
     </div>
   );
 }
+
+/** Shallow-compare is safe: primitives, state references, and two stable callbacks. */
+export const BarnabyMascot = memo(BarnabyMascotImpl);
+BarnabyMascot.displayName = "BarnabyMascot";

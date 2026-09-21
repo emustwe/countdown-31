@@ -1,22 +1,13 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Crown, Sparkles, Send, Flame, Users, RotateCcw, Zap, Shield, Moon } from "lucide-react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Crown, Send, Flame, Users } from "lucide-react";
 import { useSettledResize } from "../../lib/hooks/useSettledResize";
 import { ArenaRoster } from "./ArenaRoster";
 import { MasterAvatar } from "./MasterAvatar";
 import { NumberBoard } from "./NumberBoard";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
-import type { LivePlayer, LastMoveInfo, SkillType, GameMode } from "../../lib/hooks/useCountdownLive";
-
-/* Skill presentation (icon + short label + accent) — matches the rest of the arena. */
-const SKILL_META: Record<SkillType, { short: string; icon: typeof Zap; color: string }> = {
-  rewind: { short: "Back 2", icon: RotateCcw, color: "#22d3ee" },
-  turbo: { short: "Leap 3", icon: Zap, color: "#f59e0b" },
-  shield: { short: "Shield", icon: Shield, color: "#c084fc" },
-  nudge: { short: "Skip", icon: Moon, color: "#34d399" },
-  double: { short: "Force 2", icon: Sparkles, color: "#f472b6" },
-};
+import type { LivePlayer, LastMoveInfo } from "../../lib/hooks/useCountdownLive";
 
 /**
  * ClassicArcBoard — the curved player rail for Countdown 31 CLASSIC PRACTICE.
@@ -232,7 +223,7 @@ function ArcNode({
 }
 
 /* ------------------------------------------------------------ detail card */
-function CurrentCard({ player, waiting, skills }: { player: LivePlayer; waiting: string | null; skills?: SkillType[] }) {
+function CurrentCard({ player, waiting }: { player: LivePlayer; waiting: string | null }) {
   const p = pointAt(0);
   const title = (player.card?.title as string) ?? "Countdown Cow";
   const rating = (player.card?.rating as number) ?? null;
@@ -268,21 +259,6 @@ function CurrentCard({ player, waiting, skills }: { player: LivePlayer; waiting:
         )}
         {waiting && <span style={{ fontSize: 12, color: C.mute, fontStyle: "italic" }}>{waiting}</span>}
       </div>
-
-      {/* Skills mode: show the active player's loadout as small pips. */}
-      {skills && skills.length > 0 && (
-        <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-          {skills.map((skill) => {
-            const meta = SKILL_META[skill];
-            const Icon = meta.icon;
-            return (
-              <span key={skill} className="cab-skillpip" style={{ color: meta.color, borderColor: `${meta.color}55`, background: `${meta.color}18` }}>
-                <Icon size={11} /> {meta.short}
-              </span>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -307,10 +283,6 @@ interface ClassicArcBoardProps {
   // Countdown timer cow (pinned to the number board's corner while it's your turn).
   timerActive: boolean;
   turnKey: string | number | null;
-  // Skills mode: the same arc board, plus the player's equipped skills as turn actions.
-  gameMode: GameMode;
-  onSkill: (skill: SkillType) => void;
-  skillsLocked: boolean;
   // Real tournaments / test arena: shown in the picker slot while the local player is spectating.
   spectatorMessage?: string | null;
   // Live reveal of the CURRENT (non-local) player's picked numbers, highlighted in their colour so
@@ -330,7 +302,13 @@ interface ClassicArcBoardProps {
 }
 
 /* ------------------------------------------------------------------ stage */
-export function ClassicArcBoard({
+/**
+ * Memoised. NOTE the honest expectation: `selecting`, `lastMove`, `taken` and `count` change on
+ * nearly every engine tick during play, so this still re-renders often — legitimately, because its
+ * content genuinely changed. The memo is for correctness (it no longer re-renders on unrelated
+ * parent state), not a large win. The real cost here is the layout-animated arc rail; see FIX 3.
+ */
+function ClassicArcBoardImpl({
   players,
   currentId,
   myId,
@@ -348,9 +326,6 @@ export function ClassicArcBoard({
   onJoin,
   timerActive,
   turnKey,
-  gameMode,
-  onSkill,
-  skillsLocked,
   spectatorMessage,
   selecting,
   onScale,
@@ -359,7 +334,6 @@ export function ClassicArcBoard({
   rosterSponsor = null,
   rosterStyle = "default",
 }: ClassicArcBoardProps) {
-  const skillsMode = gameMode === "skills";
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
   // Rightward nudge (screen px) applied to the whole composition on phone-landscape, so it doesn't sit
@@ -438,10 +412,6 @@ export function ClassicArcBoard({
   }, [currentId, N]);
 
   const currentPlayer = queue[curIdx] ?? null;
-  const myPlayer = players.find((p) => p.id === myId) ?? null;
-  // The local player's equipped skills (skills mode only) — rendered as turn actions in the picker.
-  const mySkills: SkillType[] = skillsMode ? myPlayer?.equippedSkills ?? [] : [];
-
   // The three next numbers the active player may claim (consecutive from the total).
   const tiles = [count + 1, count + 2, count + 3];
 
@@ -462,11 +432,6 @@ export function ClassicArcBoard({
         .cab-submit:hover{filter:brightness(1.08)}
         .cab-submit:active{transform:scale(.98)}
         .cab-submit[disabled]{opacity:.4;filter:grayscale(.5);cursor:not-allowed;box-shadow:none}
-        .cab-skill{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:14px;border:1.5px solid;cursor:pointer;user-select:none;transition:transform .12s ease,filter .15s ease}
-        .cab-skill:hover:not([disabled]){filter:brightness(1.14)}
-        .cab-skill:active:not([disabled]){transform:scale(.96)}
-        .cab-skill[disabled]{cursor:not-allowed;filter:grayscale(.55);opacity:.6}
-        .cab-skillpip{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:999px;border:1px solid;font-size:10px;font-weight:800}
         .cab-join{width:120px;height:120px;border-radius:999px;display:grid;place-items:center;cursor:pointer;border:3px solid #fff;color:#1b1206;background:linear-gradient(180deg,#fcd34d,#f59e0b,#b45309);box-shadow:0 0 38px rgba(245,158,11,.9);transition:transform .15s}
         .cab-join:hover{transform:scale(1.05)}.cab-join:active{transform:scale(.95)}
         .cab-panel{position:relative;border-radius:22px;border:2px solid transparent;background:linear-gradient(#0f0c07,#0f0c07) padding-box,linear-gradient(160deg,#E9B45A,#7A4E12) border-box;box-shadow:0 18px 40px rgba(0,0,0,.55), inset 0 2px 6px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,217,138,.12)}
@@ -528,7 +493,6 @@ export function ClassicArcBoard({
           <CurrentCard
             player={currentPlayer}
             waiting={status === "playing" && currentPlayer.id !== myId ? "Choosing…" : null}
-            skills={skillsMode ? currentPlayer.equippedSkills : undefined}
           />
         )}
 
@@ -608,38 +572,6 @@ export function ClassicArcBoard({
                     {selectedCards.length === 0 ? "Pick your numbers" : `Submit ${selectedCards.length} number${selectedCards.length > 1 ? "s" : ""}`}
                   </button>
 
-                  {/* Skills mode: the player's equipped skills as alternative turn actions. */}
-                  {skillsMode && mySkills.length > 0 && (
-                    <div style={{ display: "grid", gridTemplateColumns: `repeat(${mySkills.length},1fr)`, gap: 10, marginTop: 10 }}>
-                      {mySkills.map((skill) => {
-                        const meta = SKILL_META[skill];
-                        const Icon = meta.icon;
-                        const uses = myPlayer?.skills?.[skill] ?? 0;
-                        const disabled = uses <= 0 || skillsLocked;
-                        return (
-                          <button
-                            key={skill}
-                            type="button"
-                            disabled={disabled}
-                            onClick={() => onSkill(skill)}
-                            className="cab-skill"
-                            aria-label={`Use ${meta.short}`}
-                            style={{
-                              borderColor: disabled ? "rgba(120,120,120,.3)" : `${meta.color}88`,
-                              color: disabled ? C.mute : meta.color,
-                              background: disabled
-                                ? "linear-gradient(160deg,rgba(20,20,20,.7),rgba(8,8,8,.8))"
-                                : `linear-gradient(160deg,${meta.color}22,rgba(8,10,7,.85))`,
-                            }}
-                          >
-                            <Icon size={17} className="shrink-0" />
-                            <span style={{ fontSize: 12, fontWeight: 900 }}>{meta.short}</span>
-                            <span style={{ fontSize: 10, fontWeight: 800, opacity: 0.8 }}>×{uses}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
                 </>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", borderRadius: 16, border: "1px solid rgba(245,165,36,.2)", background: "rgba(8,7,5,.55)" }}>
@@ -693,3 +625,7 @@ export function ClassicArcBoard({
     </div>
   );
 }
+
+/** Callbacks and objects are stabilised at the call site in CountDown31; see the note above. */
+export const ClassicArcBoard = memo(ClassicArcBoardImpl);
+ClassicArcBoard.displayName = "ClassicArcBoard";

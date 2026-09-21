@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { soundManager } from "@/lib/soundManager";
+import { useSecondsLeft } from "@/stores/clock-store";
 
 /**
  * TurnIndicator — the "whose turn is it" system (see TURN-BRIEF.md / turn-indicator.html).
@@ -29,18 +30,25 @@ interface TurnIndicatorProps {
   myTurn: boolean;
   /** Display name of whoever's turn it currently is. */
   currentName: string;
-  secondsLeft: number;
+  /** When the current turn expires. Seconds remaining are derived HERE from the shared clock
+   * rather than passed in, so a tick re-renders only this indicator and not the whole arena. */
+  turnEndsAt: number | null;
   turnSeconds: number;
   /** Changes whenever the turn passes to a new seat — drives the announcement sweep. */
   turnKey: string | number | null;
   soundOn: boolean;
 }
 
-export default function TurnIndicator({
+/**
+ * Memoised: every prop is a primitive (active, myTurn, currentName, turnEndsAt, turnSeconds,
+ * turnKey, soundOn), so a shallow compare is exact and this no longer re-renders when an unrelated
+ * part of the arena changes. Its own per-second value is read from the clock store internally.
+ */
+function TurnIndicatorImpl({
   active,
   myTurn,
   currentName,
-  secondsLeft,
+  turnEndsAt,
   turnSeconds,
   turnKey,
   soundOn,
@@ -53,6 +61,9 @@ export default function TurnIndicator({
   const wasMine = useRef(false);
   const prevTitle = useRef("");
 
+  // Subscribe only while the indicator is live; the selector reduces to whole seconds so this
+  // re-renders on the digit change alone.
+  const secondsLeft = useSecondsLeft(active ? turnEndsAt : null);
   // Panic only ever fires on your OWN clock — under ~22% of the turn (min 2s).
   const panic = myTurn && active && turnSeconds > 0 && secondsLeft <= Math.max(2, Math.round(turnSeconds * 0.22));
 
@@ -143,3 +154,8 @@ export default function TurnIndicator({
     </div>
   );
 }
+
+/** Shallow-compare is exact here — every prop is a primitive. */
+const TurnIndicator = memo(TurnIndicatorImpl);
+TurnIndicator.displayName = "TurnIndicator";
+export default TurnIndicator;
