@@ -480,6 +480,34 @@ class SoundManager {
   /**
    * Danger Warning Sound (Count >= 28) - Vegas Tension Heartbeat Pulse
    */
+  /**
+   * Turn-clock TICK — a short dry "tock" for the numeric countdown, one per second. Deliberately
+   * plainer and quieter than playDanger (a two-tone alarm): this fires up to 13 times a turn, so it
+   * has to sit under the music rather than on top of it. `urgent` raises pitch + level for the last
+   * few seconds.
+   */
+  public playTick(urgent = false) {
+    if (this.isMuted) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "square";
+    osc.frequency.setValueAtTime(urgent ? 1180 : 820, t);
+    osc.frequency.exponentialRampToValueAtTime(urgent ? 720 : 520, t + 0.05);
+
+    gain.gain.setValueAtTime((urgent ? 0.20 : 0.12) * this.volume, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.08);
+  }
+
   public playDanger() {
     if (this.isMuted) return;
     const ctx = this.getAudioContext();

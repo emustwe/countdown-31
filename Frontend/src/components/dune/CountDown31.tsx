@@ -10,7 +10,6 @@ import { useCosmetics } from "../../lib/hooks/useSponsors";
 import { useCountdownLive, type GameMode, type LivePlayer } from "../../lib/hooks/useCountdownLive";
 import { setClockDeadline, useDeadlinePassed } from "../../stores/clock-store";
 import { soundManager } from "../../lib/soundManager";
-import { BarnabyMascot } from "./BarnabyMascot";
 import { EliminationSequence } from "./EliminationSequence";
 import { KickoffWheel } from "./KickoffWheel";
 import { WinnerCelebration } from "./WinnerCelebration";
@@ -226,7 +225,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   const dancePhase = !!state?.dancing || serverDancing;
   // Elimination cinematic phase (local engine): "seq" = the 4.6s ELIMINATION sequence plays on every
   // elimination; "cow" = the dancing cow, shown ONLY when that elimination completed the round (31).
-  const [elimPhase, setElimPhase] = useState<"seq" | "cow" | null>(null);
+  const [elimPhase, setElimPhase] = useState<"seq" | null>(null);
   useEffect(() => {
     setElimPhase(state?.dancing ? "seq" : null);
   }, [state?.dancing?.id]);
@@ -236,10 +235,6 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   // "In and alive" — an eliminated player should get an immediate rejoin, not a spectator strip.
   const amInAlive = amIn && !!myPlayer && !myPlayer.eliminated;
   const isMyWin = !!(state?.winner && players.find((player) => player.id === myId)?.name === state.winner.name);
-  // My own elimination. In a REAL tournament the server REMOVES me from `players` when I'm out (so
-  // `myPlayer` goes null) — so match on my name against the latest elimination instead of a flag.
-  const myName = (myPlayer?.name ?? chosenName ?? "").slice(0, 20);
-  const isLocalDefeat = !!(myName && state?.lastEliminated?.name === myName && !amInAlive);
 
   // NOTE: `remaining` / `remainingSeconds` / `isLowTime` / `turnLap` used to live here, which made
   // every per-second value a dependency of this component. They now live in the leaves that render
@@ -392,7 +387,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
     leaveGame(mode);
   }
 
-  // useCallback so `rejoin` (and therefore BarnabyMascot's memo) can be stable. Reads NOTHING that
+  // useCallback so `rejoin` stays referentially stable for its consumers. Reads NOTHING that
   // changes per turn — no board state, no currentId, no selectedCards — so it survives a whole game
   // without re-creating.
   const openNameGate = useCallback(() => {
@@ -430,8 +425,8 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
     join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", [], botCount);
   }
 
-  // useCallback so BarnabyMascot's `onPlayAgain` is referentially stable and its memo actually
-  // holds. Like openNameGate it reads no per-turn state, so it does not re-create between turns.
+  // useCallback so the rejoin control keeps a stable identity. Like openNameGate it reads no
+  // per-turn state, so it does not re-create between turns.
   const rejoin = useCallback(() => {
     soundManager.playClick();
     if (chosenName) {
@@ -510,10 +505,11 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
         </div>
       )}
 
-      {/* PLAY button — practice join / rejoin. Pinned to the LEFT side and VERTICALLY CENTRED on the
-          page (below the top-left "31" mark). Shown only when you can take a seat. */}
+      {/* PLAY button — practice join / rejoin. Sits BOTTOM-LEFT, on the same left edge as the
+          "VERA 31" brand pill, in the space the idle cow used to occupy. It was previously centred
+          vertically, which left it floating against the arc rail with nothing to align to. */}
       {showArcJoin && (
-        <div className="nb-play-pos absolute top-1/2 z-30 -translate-y-1/2 flex flex-col items-center gap-1.5 select-none">
+        <div className="nb-play-pos absolute z-30 flex flex-col items-center gap-1.5 select-none">
           <button
             type="button"
             onClick={chosenName ? rejoin : openNameGate}
@@ -597,10 +593,11 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
           reason={state.dancing.reason}
           remaining={state.dancing.remaining}
           onDone={() => {
-            // The dancing cow shows ONLY when this elimination completed the round (31); otherwise
-            // resume straight away.
-            if (state.dancing?.roundDone) setElimPhase("cow");
-            else endDance();
+            // ALWAYS resume here. The dancing cow used to own this call on a round-completing "31"
+            // (elimPhase -> "cow", then the clip's `ended` fired onDanceEnd). With the cow gone
+            // there is nothing else to unfreeze the arena, so a missed endDance would hang the
+            // game on state.dancing forever.
+            endDance();
           }}
         />
       )}
@@ -616,26 +613,10 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
         />
       )}
 
-      <BarnabyMascot
-        status={status}
-        winner={state?.winner ?? null}
-        lastEliminated={state?.lastEliminated ?? null}
-        isMyWin={isMyWin}
-        isLocalDefeat={isLocalDefeat}
-        // The dancing cow plays ONLY at ROUND COMPLETION (a "31" elimination — the lap resets), never
-        // on an ordinary mid-lap elimination (the ELIMINATION sequence above owns those). Local uses
-        // the "cow" phase; the server tournament dances whenever its freeze is for a "31".
-        //
-        // DELIBERATELY SEPARATE from the FREEZE gate at useCountdownLive.ts:383 (`freezeEveryElim`),
-        // which freezes the arena on every practice elimination. Freeze != dance; changing one does
-        // not change the other.
-        forceDancing={isLocalEngine ? elimPhase === "cow" : serverDancing && state?.lastEliminated?.reason === "31"}
-        serverPaced={!isLocalEngine}
-        // The full-screen WinnerCelebration owns the finale — mascot shows no result panel.
-        showPlayAgain={false}
-        onDanceEnd={endDance}
-        onPlayAgain={rejoin}
-      />
+      {/* The BarnabyMascot cow was removed: it rendered a 1080x960 video through a WebGL
+          chroma-key shader, looping forever on the side and again full-screen on a round
+          completion. Together with the countdown cow it was the bulk of the arena's per-frame GPU
+          cost on a phone. The elimination cinematic above still marks every knockout. */}
 
       {/* Animated Countdown Cow — announces + counts the local player's turn (visible number + ticks).
           The classic arc board renders its OWN cow pinned to the number-board corner, so the standalone

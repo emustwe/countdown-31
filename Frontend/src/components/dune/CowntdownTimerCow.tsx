@@ -1,46 +1,36 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { memo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { TransparentVideo } from "./TransparentVideo";
 import { soundManager } from "../../lib/soundManager";
-import { COW_COUNT_SPAN } from "../../lib/hooks/useCountdownLive";
 import { useSecondsLeft } from "../../stores/clock-store";
-
-// The clip counts 7 → 1 across its full 8.011s, i.e. ~1.14s per number. Speeding it up by that same
-// ratio makes each number hold for EXACTLY one second, so the cow's count tracks the turn clock:
-// one pass = 7 seconds. Practice runs two passes (7→1, then 7→2) for a 13-second turn.
-const COW_CLIP_SECONDS = 8.011;
-const COW_CLIP_NUMBERS = 7;
-const COW_CLIP_RATE = COW_CLIP_SECONDS / COW_CLIP_NUMBERS;
 
 interface CowntdownTimerCowProps {
   active: boolean;
   isMyTurn?: boolean;
   turnKey?: string | number | null;
-  /** When the current turn expires. The seconds remaining and the count lap are derived HERE from
-   * the shared clock rather than passed in, so a tick re-renders only this cow — not the arena. */
+  /** When the current turn expires. The seconds remaining are derived HERE from the shared clock,
+   * so a tick re-renders only this counter — not the arena. */
   turnEndsAt?: number | null;
-  /** Total length of a turn, used to work out which pass of the 7-count we are on. REQUIRED: a
-   * silently-defaulted 0 would pin `countLap` to 0 and stop the lap replay with no error. */
+  /** Total length of a turn (13 in practice, 7 in a tournament) — sets the top of the count. */
   turnSeconds: number;
-  onTimeout?: () => void;
-  /** ANCHORED mode: render as an absolute element that fills its POSITIONED parent (instead of the
-   *  default viewport-fixed placement). The arc board uses this to pin the cow to the number board's
-   *  corner, so it lands in the SAME spot on desktop and mobile (it scales with the board stage). */
+  /** ANCHORED mode: fill the POSITIONED parent instead of sitting viewport-fixed. The arc board
+   *  uses this to pin the counter to the number board's corner so it lands in the same spot on
+   *  every screen (it scales with the board stage). */
   anchored?: boolean;
 }
 
+/** Below this many seconds the tick sharpens and the digit turns red. */
+const URGENT_AT = 3;
+
 /**
- * The turn countdown cow — ONLY on the LOCAL player's turn. It plays the counting clip (cowntdown.mp4,
- * which shows the number on the cow's own hand, WITH sound). It stays the SAME SIZE and FULLY VISIBLE
- * for the whole countdown — it never glides across the screen and never fades out early; it simply
- * counts every number down to the last and clears when the turn ends. In `anchored` mode its parent
- * positions it (classic arc board → number-board corner); otherwise it sits upper-centre of the view.
+ * The turn countdown — a plain NUMBER counting the turn down (13 → 1 in practice, 7 → 1 in a
+ * tournament) with a dry tick each second.
  *
- * MEMOISED (see the export below): all props are primitives, and the per-second countdown is read
- * from the clock store inside the component — so the arena re-rendering cannot force this
- * WebGL-backed cow to re-render.
+ * This replaced a 1080x960 video of a cow holding up numbered cards. That clip was decoded every
+ * frame and chroma-keyed through a WebGL fragment shader to fake transparency, all to paint a
+ * ~70x125px area — one of the two heaviest things on the page, and the main reason the arena
+ * stuttered on a phone. A styled `<span>` costs nothing and reads far more clearly at this size.
  */
 function CowntdownTimerCowImpl({
   active,
@@ -50,44 +40,40 @@ function CowntdownTimerCowImpl({
   turnSeconds,
   anchored = false,
 }: CowntdownTimerCowProps) {
+  // Subscribe only while counting; the selector already reduces to whole seconds, so this
+  // re-renders on the digit change and nowhere else.
+  const secondsLeft = useSecondsLeft(active ? turnEndsAt : null);
+  const show = active && secondsLeft > 0;
+  const urgent = secondsLeft <= URGENT_AT;
   const lastTickRef = useRef<number | null>(null);
-  // Subscribe only while this cow is actually counting; the selector already reduces to whole
-  // seconds, so a re-render happens on the digit change and nowhere else.
-  const secWhole = useSecondsLeft(active ? turnEndsAt : null);
-  // Which pass of the cow's 7-count we are on. A turn longer than the clip (practice runs 13s)
-  // bumps this at the boundary, replaying the count in place via TransparentVideo's `restartKey`.
-  const countLap = Math.max(0, Math.floor((turnSeconds - secWhole) / COW_COUNT_SPAN));
-  // Shown on EVERY turn (not just the local player's) so everyone sees how long the CURRENT player has
-  // to pick. Audio + the urgency beat stay on the local player's own turn to avoid constant beeping.
-  const show = active && secWhole > 0;
 
-  // A subtle urgency beat in the final seconds — only on the LOCAL player's own turn.
-  React.useEffect(() => {
-    if (!show || !isMyTurn) {
+  // One tick per second while the clock is visible. Keyed on the whole second so a re-render for
+  // any other reason cannot double-fire it.
+  useEffect(() => {
+    if (!show) {
       lastTickRef.current = null;
       return;
     }
-    if (lastTickRef.current !== secWhole && secWhole >= 1 && secWhole <= 3) {
-      lastTickRef.current = secWhole;
-      soundManager.playDanger();
-    }
-  }, [show, isMyTurn, secWhole]);
+    if (lastTickRef.current === secondsLeft) return;
+    lastTickRef.current = secondsLeft;
+    soundManager.playTick(secondsLeft <= URGENT_AT);
+  }, [show, secondsLeft]);
 
-  const video = (
-    <TransparentVideo
-      // MP4, not the byte-identical .mov twin: QuickTime does not decode on Android Chrome (the cow
-      // simply never appeared there), and Cloudflare will not cache video/quicktime, so every page
-      // load re-pulled 7.5MB from the origin. The WebGL matte derives alpha from luminance rather
-      // than an alpha channel, so the two files render identically.
-      src="/assets/cowntdown.mp4"
-      audioEnabled
-      playbackRate={COW_CLIP_RATE}
-      restartKey={`${turnKey ?? "t"}-${countLap}`}
-      loop={false}
-      width={340}
-      height={340}
-      className="w-full h-full object-contain"
-    />
+  const counter = (
+    <div className={`cd31-count ${urgent ? "is-urgent" : ""} ${isMyTurn ? "is-mine" : ""}`}>
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.b
+          key={secondsLeft}
+          initial={{ opacity: 0, scale: 0.55, y: -6 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 1.5, y: 8 }}
+          transition={{ duration: 0.16, ease: "easeOut" }}
+        >
+          {secondsLeft}
+        </motion.b>
+      </AnimatePresence>
+      <small>{turnSeconds > 0 ? `/${turnSeconds}` : ""}</small>
+    </div>
   );
 
   return (
@@ -95,30 +81,28 @@ function CowntdownTimerCowImpl({
       {show &&
         (anchored ? (
           <motion.div
-            key={`turncow-${turnKey ?? "t"}`}
-            // Fill the positioned parent (the arc board pins that parent to the board corner).
-            className="absolute inset-0 pointer-events-none select-none flex items-center justify-center drop-shadow-[0_10px_30px_rgba(0,0,0,0.55)]"
-            initial={{ opacity: 0, scale: 0.8 }}
+            key={`turncount-${turnKey ?? "t"}`}
+            className="absolute inset-0 pointer-events-none select-none flex items-center justify-center"
+            initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.85 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
             aria-hidden="true"
           >
-            {video}
+            {counter}
           </motion.div>
         ) : (
           <motion.div
-            key={`turncow-${turnKey ?? "t"}`}
-            // Fixed upper-centre, ABOVE the centred elimination cow (z-90) — stays put, full opacity.
-            className="fixed z-[100] pointer-events-none select-none flex items-center justify-center drop-shadow-[0_10px_30px_rgba(0,0,0,0.55)]"
-            style={{ top: "clamp(48px, 9vh, 116px)", left: "50%", width: "clamp(150px, 22vw, 226px)", height: "clamp(150px, 24vh, 226px)", transform: "translateX(-50%)" }}
-            initial={{ opacity: 0, scale: 0.8, x: "-50%" }}
+            key={`turncount-${turnKey ?? "t"}`}
+            className="fixed z-[100] pointer-events-none select-none flex items-center justify-center"
+            style={{ top: "clamp(48px, 9vh, 116px)", left: "50%", transform: "translateX(-50%)" }}
+            initial={{ opacity: 0, scale: 0.85, x: "-50%" }}
             animate={{ opacity: 1, scale: 1, x: "-50%" }}
-            exit={{ opacity: 0, scale: 0.85, x: "-50%" }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
+            exit={{ opacity: 0, scale: 0.9, x: "-50%" }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
             aria-hidden="true"
           >
-            {video}
+            {counter}
           </motion.div>
         ))}
     </AnimatePresence>
@@ -126,5 +110,5 @@ function CowntdownTimerCowImpl({
 }
 
 /** Shallow-compare is exact here — every prop is a primitive. */
-export const CowntdownTimerCow = React.memo(CowntdownTimerCowImpl);
+export const CowntdownTimerCow = memo(CowntdownTimerCowImpl);
 CowntdownTimerCow.displayName = "CowntdownTimerCow";

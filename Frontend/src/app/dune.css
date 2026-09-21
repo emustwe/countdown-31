@@ -8908,6 +8908,28 @@ button.mini:hover { filter: brightness(1.06); }
 
 .vis-pill.seeking { background: rgba(244,185,66,0.16); color: var(--gold2); }
 
+/* Turn countdown — the numeric clock that replaced the WebGL cow-video timer. Sized in em off a
+   clamped root so it scales with the board stage in anchored mode. */
+.cd31-count {
+  display: flex; align-items: baseline; justify-content: center; gap: 0.12em;
+  font-size: clamp(38px, 7.5vh, 76px); line-height: 1;
+  font-family: var(--font-lilita), system-ui, sans-serif; font-weight: 900;
+  color: #fff8ef;
+  text-shadow: 0 0 0.18em rgba(53, 214, 232, 0.55), 0 0.06em 0.12em rgba(0, 0, 0, 0.85);
+}
+.cd31-count b { font-weight: 900; display: inline-block; font-variant-numeric: tabular-nums; }
+.cd31-count small {
+  font-size: 0.32em; font-weight: 800; opacity: 0.6; letter-spacing: 0.02em;
+  font-family: var(--font-fredoka), system-ui, sans-serif;
+}
+/* Your own clock reads cyan — the same "cyan = you" contract the turn indicator uses. */
+.cd31-count.is-mine { color: #35d6e8; }
+/* Final seconds: red and a touch larger, so it reads at a glance without another animation. */
+.cd31-count.is-urgent {
+  color: #ff5d5d;
+  text-shadow: 0 0 0.22em rgba(255, 93, 93, 0.7), 0 0.06em 0.12em rgba(0, 0, 0, 0.9);
+}
+
 /* Count Down 31 — turn hint (timer not started yet) + name-gate icon + winner turn label */
 .cd31-hint { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: -2px; }
 .cd31-turn.win { color: var(--gold2); font-weight: 800; }
@@ -10591,13 +10613,17 @@ body:has(.mobile-landscape-game) .app-shell > footer {
   }
 }
 
-/* PLAY button (practice) — centred under the top-left "31" badge. On desktop the badge sits ~80px in;
-   on landscape phones the header is compressed so the badge sits far left — align the button to it. */
-.nb-play-pos { left: 30px; }
+/* PLAY button (practice) — BOTTOM-LEFT, sharing the left edge of the "VERA 31" brand pill so the
+   two read as one column. It used to be vertically centred, which left it mid-arc with nothing to
+   align against. `bottom` is set here rather than in the class list so each breakpoint can tune it
+   alongside its matching `left`. */
+.nb-play-pos { left: 30px; bottom: 30px; }
 @media (max-width: 1180px) {
   /* The top-left trio — "31" badge, PLAY button, idle cow — is aligned; nudge all three the SAME
      small amount right on mobile so they stay aligned (see the badge + idle-cow rules below). */
-  .nb-play-pos { left: 14px; }
+  /* 17px = the brand pill's computed left on mobile (14px viewport padding + its 10px margin,
+     less its own box offset), so the button and the wordmark share one left edge exactly. */
+  .nb-play-pos { left: 17px; bottom: 18px; }
   .brand-31-badge { margin-left: 10px; }
 }
 /* Desktop: the top-left platform mark is the "VERA 31" NAME PILL, not a round chip, so the PLAY
@@ -10608,7 +10634,7 @@ body:has(.mobile-landscape-game) .app-shell > footer {
    (padding is ignored), hence left: 28px. The arc's apex avatar (ARC_APEX_X in ClassicArcBoard) is
    pushed right to clear it. */
 @media (min-width: 1181px) {
-  .nb-play-pos { left: 28px; }
+  .nb-play-pos { left: 28px; bottom: 34px; }
 }
 
 /* Elimination FREEZE — during the 4.6s cinematic the live game desaturates + dims and holds still
@@ -10619,13 +10645,6 @@ body:has(.mobile-landscape-game) .app-shell > footer {
    then lines up with its left edge (see .nb-play-pos above). Mobile-landscape keeps its own alignment. */
 @media (min-width: 1181px) {
   .brand-31-badge { margin-left: -28px; }
-}
-
-/* Desktop only (>1180px): centre the idle/dancing cow under the PLAY button (the button spans 28→80,
-   so its centre is 54px; the cow is 104px wide → left:2 centres it) and lift it a little.
-   Mobile-landscape keeps its own (already-aligned) placement. */
-@media (min-width: 1181px) {
-  .defeat-cow-stage.is-idle { left: 2px; bottom: 72px; }
 }
 
 /* Arena roster overlay right offset. Desktop hugs the edge (6px); on landscape phones nudge it a
