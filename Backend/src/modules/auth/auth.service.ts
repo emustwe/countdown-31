@@ -70,7 +70,7 @@ export class AuthService {
     const passwordHash = await argon2.hash(dto.password);
     const user = await this.prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
-        data: { email, fullName: dto.fullName, passwordHash },
+        data: { email, fullName: dto.fullName, country: dto.country, passwordHash },
       });
       return created;
     });
@@ -187,7 +187,10 @@ export class AuthService {
   }
 
   /** Updates the caller's own profile (display name and/or avatar image). */
-  async updateProfile(userId: string, data: { fullName?: string; avatarUrl?: string | null }): Promise<PublicUser> {
+  async updateProfile(
+    userId: string,
+    data: { fullName?: string; avatarUrl?: string | null; country?: string },
+  ): Promise<PublicUser> {
     let avatarUrl: string | null | undefined = undefined;
     if (data.avatarUrl !== undefined) {
       try {
@@ -200,6 +203,7 @@ export class AuthService {
       where: { id: userId },
       data: {
         ...(data.fullName !== undefined ? { fullName: data.fullName } : {}),
+        ...(data.country !== undefined ? { country: data.country } : {}),
         ...(avatarUrl !== undefined ? { avatarUrl } : {}),
       },
     });
@@ -427,6 +431,8 @@ export interface PublicUser {
   email: string;
   fullName: string | null;
   avatarUrl: string | null;
+  /** ISO 3166-1 alpha-2 country code; null for accounts created before the field existed. */
+  country: string | null;
   role: "PLAYER" | "ADMIN";
   status: "ACTIVE" | "BANNED";
   createdAt: Date;
@@ -439,6 +445,7 @@ function toPublicUser(user: {
   email: string;
   fullName: string | null;
   avatarUrl: string | null;
+  country?: string | null;
   role: "PLAYER" | "ADMIN";
   status: "ACTIVE" | "BANNED";
   createdAt: Date;
@@ -450,6 +457,7 @@ function toPublicUser(user: {
     email: user.email,
     fullName: user.fullName,
     avatarUrl: user.avatarUrl,
+    country: user.country ?? null,
     role: user.role,
     status: user.status,
     createdAt: user.createdAt,

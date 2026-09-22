@@ -4,6 +4,7 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "
 import { Crown, Send, Flame, Users } from "lucide-react";
 import { useSettledResize } from "../../lib/hooks/useSettledResize";
 import { ArenaRoster } from "./ArenaRoster";
+import { countryFlag, countryName } from "../../lib/countries";
 import { MasterAvatar } from "./MasterAvatar";
 import { NumberBoard } from "./NumberBoard";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
@@ -238,7 +239,29 @@ function CurrentCard({ player, waiting }: { player: LivePlayer; waiting: string 
           ⚡ Active turn
         </span>
       </div>
-      <div style={{ fontSize: 26, fontWeight: 800, color: C.bone, lineHeight: 1.1, letterSpacing: "-.01em" }}>{player.name}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+        {/* Country flag — the clearest read of where a player is from, right beside their name.
+            CPU cows and pre-country players have none, and the row just closes up. */}
+        {countryFlag(player.country) && (
+          <span className="player-flag" title={countryName(player.country)} style={{ fontSize: 26 }}>
+            {countryFlag(player.country)}
+          </span>
+        )}
+        <div
+          style={{
+            fontSize: 26,
+            fontWeight: 800,
+            color: C.bone,
+            lineHeight: 1.1,
+            letterSpacing: "-.01em",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {player.name}
+        </div>
+      </div>
       <div style={{ fontSize: 13, fontWeight: 600, color: C.goldSoft, marginTop: 4 }}>✦ {title}</div>
       <div
         style={{

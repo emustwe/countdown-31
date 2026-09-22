@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { Crown, LogIn, Play, Smartphone } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useGuestStore } from "../../stores/guest-store";
+import { normalizeCountry } from "../../lib/countries";
+import { CountrySelect } from "./CountrySelect";
 import { useAuthStore } from "../../stores/auth-store";
 import { useCosmetics } from "../../lib/hooks/useSponsors";
 import { useCountdownLive, type GameMode, type LivePlayer } from "../../lib/hooks/useCountdownLive";
@@ -81,9 +83,13 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   const gameConfig = isTournament ? (serverConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG;
   const guestName = useGuestStore((s) => s.username);
   const setGuestName = useGuestStore((s) => s.setUsername);
+  const guestCountry = useGuestStore((s) => s.country);
+  const setGuestCountry = useGuestStore((s) => s.setCountry);
   const user = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
   const defaultName = user?.fullName || user?.email?.split("@")[0] || guestName || "";
+  // A signed-in player's account country is authoritative; guests fall back to their saved pick.
+  const seatCountry = normalizeCountry(user?.country) ?? normalizeCountry(guestCountry);
   const soundOn = useSettingsStore((s) => s.soundEnabled);
   const { data: cosmetics } = useCosmetics(!!accessToken);
   // The always-open TEST tournament runs the local engine with 100 CPU cows (auto-restarting), and is
@@ -103,6 +109,9 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   const [showNameGate, setShowNameGate] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [nameInput, setNameInput] = useState("");
+  // Country for the practice seat. A signed-in player's account country wins; a guest picks one at
+  // the gate and it is remembered locally for next time.
+  const [countryInput, setCountryInput] = useState("");
   const [isShaking, setIsShaking] = useState(false);
   // A brief "joining" loader when the local player first enters a practice game (gives the arena a
   // beat to settle). Tournaments use the full ArenaLoading flow instead.
@@ -416,27 +425,43 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
     if (user) {
       const name = (defaultName || "Player").slice(0, 20);
       setChosenName(name);
+      const cos = {
+        card: cosmetics?.card as Record<string, unknown> | undefined,
+        avatar: cosmetics?.avatar,
+        country: seatCountry ?? undefined,
+      };
       if (isTournament && !testArena) {
-        join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", []);
+        join(name, cos, "classic", []);
       } else {
-        join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", [], botCount);
+        join(name, cos, "classic", [], botCount);
       }
       return;
     }
     setNameInput(chosenName || defaultName);
+    setCountryInput(seatCountry ?? "");
     setShowNameGate(true);
-    // Closes over: accessToken, gameConfig, router, user, defaultName, isTournament, testArena,
-    // join, cosmetics, botCount, chosenName. (setState setters are stable and omitted.)
-  }, [accessToken, gameConfig, router, user, defaultName, isTournament, testArena, join, cosmetics, botCount, chosenName]);
+    // Closes over: accessToken, gameConfig, router, user, defaultName, seatCountry, isTournament,
+    // testArena, join, cosmetics, botCount, chosenName. (setState setters are stable and omitted.)
+  }, [accessToken, gameConfig, router, user, defaultName, seatCountry, isTournament, testArena, join, cosmetics, botCount, chosenName]);
 
   function confirmJoin() {
     soundManager.playClick();
     const name = nameInput.trim().slice(0, 20) || `Player ${Math.floor(1000 + Math.random() * 9000)}`;
+    const country = normalizeCountry(countryInput) ?? seatCountry;
     setChosenName(name);
-    if (!user) setGuestName(name);
+    if (!user) {
+      setGuestName(name);
+      if (country) setGuestCountry(country);
+    }
     setShowNameGate(false);
 
-    join(name, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", [], botCount);
+    join(
+      name,
+      { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar, country: country ?? undefined },
+      "classic",
+      [],
+      botCount,
+    );
   }
 
   // useCallback so the rejoin control keeps a stable identity. Like openNameGate it reads no
@@ -444,12 +469,18 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   const rejoin = useCallback(() => {
     soundManager.playClick();
     if (chosenName) {
-      join(chosenName, { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar }, "classic", [], botCount);
+      join(
+        chosenName,
+        { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar, country: seatCountry ?? undefined },
+        "classic",
+        [],
+        botCount,
+      );
     } else {
       openNameGate();
     }
-    // Closes over: chosenName, join, cosmetics, botCount, openNameGate.
-  }, [chosenName, join, cosmetics, botCount, openNameGate]);
+    // Closes over: chosenName, join, cosmetics, seatCountry, botCount, openNameGate.
+  }, [chosenName, join, cosmetics, seatCountry, botCount, openNameGate]);
 
   // Shared action-zone content (used by both the desktop center column and the mobile shell action).
 
@@ -730,6 +761,9 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
                 if (e.key === "Enter" && nameInput.trim()) confirmJoin();
               }}
             />
+            {/* Country — a searchable picker (not a 249-option native select, which scrolled the
+                page behind it and whose type-ahead matched the flag emoji, not the name). */}
+            <CountrySelect variant="gate" value={countryInput} onChange={setCountryInput} />
             <button className="btn-arcade-3d btn-arcade-green text-base py-3 w-full" onClick={confirmJoin} disabled={!nameInput.trim()}>
               <LogIn size={18} /> Enter Game
             </button>

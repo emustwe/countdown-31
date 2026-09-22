@@ -27,6 +27,8 @@ export interface LivePlayer {
   name: string;
   cpu: boolean;
   color: string;
+  /** ISO 3166-1 alpha-2 code, shown as a flag on the player's card. Absent for CPU cows. */
+  country?: string;
   card?: Record<string, unknown>;
   avatar?: Record<string, string>;
   skills?: Record<SkillType, number>;
@@ -96,6 +98,8 @@ export interface JoinCosmetics {
   card?: Record<string, unknown>;
   avatar?: Record<string, string>;
   chosenSkills?: SkillType[];
+  /** ISO 3166-1 alpha-2 country code — shown as a flag on the player's card in the arena. */
+  country?: string;
 }
 
 export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; botCount?: number }) {
@@ -492,6 +496,7 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
           name: seat.name,
           cpu: false,
           color: "#5be348",
+          country: seat.cos?.country,
           card: seat.cos?.card,
           avatar: seat.cos?.avatar,
           skills: playerSkills,
@@ -616,7 +621,14 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
         const pending = pendingJoinRef.current;
         if (pending) {
           pendingJoinRef.current = null;
-          socket?.emit("join", { roomId, name: pending.name, card: pending.cos?.card, avatar: pending.cos?.avatar, mode: pending.mode });
+          socket?.emit("join", {
+            roomId,
+            name: pending.name,
+            card: pending.cos?.card,
+            avatar: pending.cos?.avatar,
+            country: pending.cos?.country,
+            mode: pending.mode,
+          });
         }
       });
 
@@ -706,6 +718,7 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
           name,
           card: cos?.card,
           avatar: cos?.avatar,
+          country: cos?.country,
           mode,
         });
         return;
@@ -736,7 +749,14 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
             ...cur,
             players: cur.players.map((p) =>
               p.id === "player_local"
-                ? { ...p, name, eliminated: false, skills: playerSkills, equippedSkills: mode === "skills" ? chosenSkills : [] }
+                ? {
+                    ...p,
+                    name,
+                    country: cos?.country ?? p.country,
+                    eliminated: false,
+                    skills: playerSkills,
+                    equippedSkills: mode === "skills" ? chosenSkills : [],
+                  }
                 : p,
             ),
           });
@@ -746,6 +766,7 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
             name,
             cpu: false,
             color: "#5be348",
+            country: cos?.country,
             card: cos?.card,
             avatar: cos?.avatar,
             skills: playerSkills,

@@ -3,6 +3,12 @@ import { z } from "zod";
 export const UpdateProfileDtoSchema = z
   .object({
     fullName: z.string().trim().min(1).max(120).optional(),
+    country: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z]{2}$/, "Country must be a 2-letter ISO code")
+      .optional(),
     // A data URL (data:image/...;base64,...) for the avatar, or null to clear it. Capped to
     // keep the row small — the client resizes avatars before upload.
     avatarUrl: z

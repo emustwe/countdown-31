@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Users } from "lucide-react";
+import { countryFlag, countryName } from "../../lib/countries";
 import type { LivePlayer } from "../../lib/hooks/useCountdownLive";
 
 const C = { gold: "#F5A524", goldSoft: "#FFD98A", cyan: "#2ED3E9", mute: "#8A8071" };
@@ -146,6 +147,13 @@ export function ArenaRoster({
               {/* Name + role */}
               <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
                 <span style={{ fontSize: 14, fontWeight: 800, color: pl.eliminated ? C.mute : "#fff", textDecoration: pl.eliminated ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {/* Country flag, ahead of the name. Absent for CPU cows and for players who joined
+                      before the country picker existed — the row simply has no flag then. */}
+                  {countryFlag(pl.country) && (
+                    <span className="player-flag" title={countryName(pl.country)} style={{ marginRight: 5, fontSize: 13 }}>
+                      {countryFlag(pl.country)}
+                    </span>
+                  )}
                   {pl.name}
                   {isMe && <span style={{ color: C.cyan, fontWeight: 900 }}> · you</span>}
                 </span>

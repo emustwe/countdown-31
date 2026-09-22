@@ -6,6 +6,8 @@ import { Volume2, Sparkles, Save, LogOut, Camera, Check, IdCard } from "lucide-r
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { ProfilePanel } from "../../components/dune/ProfilePanel";
+import { CountrySelect } from "../../components/dune/CountrySelect";
+import { normalizeCountry } from "../../lib/countries";
 import { AuthGuard } from "../../components/AuthGuard";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useProfile, useLogout, useUpdateProfile } from "../../lib/hooks/useAuth";
@@ -60,6 +62,7 @@ function SettingsContent() {
 
   const [savedToast, setSavedToast] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [country, setCountry] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +70,7 @@ function SettingsContent() {
   useEffect(() => {
     if (profile) {
       setFullName(profile.fullName ?? "");
+      setCountry(normalizeCountry(profile.country) ?? "");
       setAvatarUrl(profile.avatarUrl ?? null);
     }
   }, [profile]);
@@ -90,6 +94,7 @@ function SettingsContent() {
       await updateProfile.mutateAsync({
         fullName: fullName.trim() || undefined,
         avatarUrl: avatarUrl ?? undefined,
+        country: normalizeCountry(country) ?? undefined,
       });
       setSavedToast(true);
       setTimeout(() => setSavedToast(false), 2500);
@@ -182,6 +187,13 @@ function SettingsContent() {
                   value={profile?.email ?? ""}
                   className="px-4 py-2.5 rounded-xl bg-black/40 border border-slate-800 text-slate-400 font-title text-sm outline-none cursor-not-allowed"
                 />
+              </div>
+
+              {/* Country — accounts created before the country field existed have none, so this is
+                  the only way for them to get a flag in the arena. */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-title font-bold text-slate-300">Country:</label>
+                <CountrySelect variant="form" value={country} onChange={setCountry} />
               </div>
             </div>
           </div>

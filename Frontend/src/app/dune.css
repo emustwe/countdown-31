@@ -11002,3 +11002,270 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
     left: calc(max(7px, env(safe-area-inset-left)) + 18px) !important;
   }
 }
+
+/* Country picker in the practice name gate — matches the gate's own input styling (same rounding,
+   border and focus ring), with the chosen flag sitting inside the control on the left. */
+.cd31-gate-country {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+.cd31-gate-flag {
+  position: absolute;
+  left: 13px;
+  font-size: 19px;
+  line-height: 1;
+  pointer-events: none;
+}
+.cd31-gate-country select {
+  width: 100%;
+  appearance: none;
+  padding: 13px 14px 13px 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 165, 36, 0.35);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
+.cd31-gate-country select:focus {
+  outline: none;
+  border-color: #f5a524;
+  box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.18);
+}
+.cd31-gate-country option { background: #0d1811; color: #fff; }
+
+/* PLAYER FLAG — the country badge on the arena card and in the roster. Emoji flags have no colour
+   of their own to inherit, so they just need size and a little contrast against the dark card. */
+.player-flag {
+  display: inline-block;
+  line-height: 1;
+  font-family:
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   COUNTRY SELECT (CountrySelect.tsx) — searchable, self-scrolling, A–Z jump.
+   Replaces a native <select> of 249 options, which on a phone scrolled the PAGE behind it and whose
+   type-ahead matched the flag emoji instead of the country name.
+   ───────────────────────────────────────────────────────────────────────── */
+.cs-root { position: relative; width: 100%; }
+
+/* The picker is dropped into containers that style their descendants wholesale — the arena name gate
+   has `.cd31-gate button { margin-top: 6px }` and friends, which inflated every A-Z letter to a 42px
+   box and stretched the panel to 1261px tall. Neutralise inherited button styling first, then the
+   component's own rules below re-apply what it actually wants. */
+.cs-root button,
+.cs-panel button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  min-height: 0;
+  min-width: 0;
+  height: auto;
+  width: auto;
+  font: inherit;
+  line-height: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.cs-root .cs-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  color: #fff;
+  text-align: left;
+}
+.cs-trigger-face { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.cs-trigger-flag { font-size: 18px; }
+.cs-trigger-globe { color: #94a3b8; flex: none; }
+.cs-trigger-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-trigger-ph { color: rgba(182, 199, 186, 0.6); }
+.cs-chev { color: #94a3b8; flex: none; transition: transform 0.15s ease; }
+.cs-chev.is-open { transform: rotate(180deg); }
+
+/* Invisible mirror of the value so `required` still blocks form submit. */
+.cs-validity {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  bottom: 6px;
+  left: 12px;
+}
+
+/* Field look: matches the signup inputs. */
+.cs-root.cs-form .cs-trigger {
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #334155;
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-size: 14px;
+}
+.cs-root.cs-form .cs-trigger:hover { border-color: #475569; }
+
+/* Gate look: matches the arena name-gate input. */
+.cs-root.cs-gate .cs-trigger {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(245, 165, 36, 0.35);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 16px;
+}
+
+/* Portaled to <body> and placed in viewport space by CountrySelect — left/width/top|bottom all come
+   from the trigger's measured box. z-index clears the name-gate overlay (200). */
+.cs-panel {
+  position: fixed;
+  z-index: 900;
+  border-radius: 14px;
+  border: 1px solid rgba(245, 165, 36, 0.4);
+  background: #0d1811;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.75);
+  overflow: hidden;
+}
+
+.cs-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+.cs-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: #fff;
+  /* 16px keeps iOS from zooming the page when the field takes focus. */
+  font-size: 16px;
+  padding: 2px 0;
+}
+.cs-search input::placeholder { color: rgba(148, 163, 184, 0.75); }
+.cs-panel .cs-clear { display: grid; place-items: center; color: #94a3b8; cursor: pointer; padding: 2px; }
+
+/* The A-Z rail is taken OUT OF FLOW: as a flex item its 25 letters set the body's height, which
+   overrode the list's measured max-height and pushed the panel past the top of the screen. Absolute
+   inside a relative body, it can only ever be as tall as the list beside it. */
+.cs-body { position: relative; display: flex; align-items: stretch; }
+
+.cs-list {
+  flex: 1;
+  min-width: 0;
+  /* Clear of the absolutely-positioned A-Z rail (19px) plus breathing room, so the ISO code on the
+     right of each row is never tucked under it. */
+  padding-right: 28px;
+  max-height: 260px;
+  overflow-y: auto;
+  /* THE fix for "the whole page scrolls": the chain stops at this box. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 5px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 165, 36, 0.5) transparent;
+}
+.cs-list::-webkit-scrollbar { width: 6px; }
+.cs-list::-webkit-scrollbar-thumb { background: rgba(245, 165, 36, 0.5); border-radius: 999px; }
+
+.cs-panel .cs-opt {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  color: #e8efe9;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.cs-panel .cs-opt:hover { background: rgba(245, 165, 36, 0.14); }
+.cs-panel .cs-opt.is-selected { background: rgba(245, 165, 36, 0.22); color: #ffd98a; font-weight: 700; }
+.cs-opt-flag { font-size: 17px; flex: none; }
+.cs-opt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-opt-code { font-size: 11px; color: #8a8071; letter-spacing: 0.06em; flex: none; }
+.cs-empty { padding: 18px 12px; text-align: center; color: #8a8071; font-size: 13px; }
+
+/* A–Z rail — tap a letter to jump the list to it. */
+.cs-az {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 19px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  padding: 4px 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.cs-panel .cs-az-l {
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 800;
+  color: #b08d4a;
+  padding: 0 4px;
+  margin: 0;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+.cs-panel .cs-az-l:hover { color: #ffd98a; }
+
+/* Short landscape phones: the gate itself scrolls, so cap the list harder to keep the
+   Enter Game button reachable. */
+/* The list's max-height is measured at open time (see CountrySelect), so it is not capped again
+   here — only the A–Z rail tightens up on a short screen. */
+@media (max-height: 460px) {
+  .cs-panel .cs-az-l { font-size: 8px; padding: 0 3px; }
+}
+
+/* SHEET MODE — short viewports (a landscape phone) get a centred picker with a backdrop instead of a
+   dropdown, because there is no room to hang a list off the control without burying the dialog. */
+.cs-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 890;
+  background: rgba(3, 7, 5, 0.72);
+  backdrop-filter: blur(3px);
+}
+.cs-panel.is-sheet {
+  border-width: 2px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.9), 0 0 42px rgba(245, 158, 11, 0.22);
+}
+.cs-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffd98a;
+}
+.cs-root .cs-sheet-head button,
+.cs-panel .cs-sheet-head button {
+  display: grid;
+  place-items: center;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 3px;
+}
+.cs-panel .cs-sheet-head button:hover { color: #fff; }

@@ -153,7 +153,13 @@ export class CountdownGateway implements OnGatewayInit, OnGatewayConnection, OnG
   async onJoin(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    data: { roomId?: string; name?: string; card?: Record<string, unknown>; avatar?: Record<string, string> },
+    data: {
+      roomId?: string;
+      name?: string;
+      card?: Record<string, unknown>;
+      avatar?: Record<string, string>;
+      country?: string;
+    },
   ): Promise<void> {
     if (!this.rateOk(client)) return;
     const room = roomOf(data);
@@ -168,6 +174,7 @@ export class CountdownGateway implements OnGatewayInit, OnGatewayConnection, OnG
     this.game.join(room, client.id, typeof data?.name === "string" ? data.name : "Guest", {
       card: data?.card,
       avatar: data?.avatar,
+      country: normalizeCountry(data?.country),
     });
   }
 
@@ -195,7 +202,14 @@ export class CountdownGateway implements OnGatewayInit, OnGatewayConnection, OnG
     }
 
     // Build the roster of {userId, name, skills, cosmetics, startAt} to seed the room.
-    let roster: { userId: string; name: string; skills: string[]; card?: Record<string, unknown>; avatar?: Record<string, string> }[];
+    let roster: {
+      userId: string;
+      name: string;
+      country?: string;
+      skills: string[];
+      card?: Record<string, unknown>;
+      avatar?: Record<string, string>;
+    }[];
     let startAt: number | undefined;
 
     if (parsed.groupId) {
@@ -214,6 +228,7 @@ export class CountdownGateway implements OnGatewayInit, OnGatewayConnection, OnG
       roster = info.players.map((p: GroupPlayer) => ({
         userId: p.userId,
         name: p.name.slice(0, 20),
+        country: p.country,
         skills: Array.isArray(p.skills) ? p.skills : [],
         card: (p.cosmetics?.card as Record<string, unknown>) ?? undefined,
         avatar: (p.cosmetics?.avatar as Record<string, string>) ?? undefined,
@@ -222,7 +237,7 @@ export class CountdownGateway implements OnGatewayInit, OnGatewayConnection, OnG
       // REGULAR room: every registered entrant plays in one knockout.
       const entries = await this.prisma.promoEntry.findMany({
         where: { tournamentId: parsed.tournamentId },
-        include: { user: { select: { fullName: true, email: true } } },
+        include: { user: { select: { fullName: true, email: true, country: true } } },
       });
       if (!entries.some((e) => e.userId === userId)) {
         client.emit("joinError", "You are not registered for this tournament.");
@@ -232,6 +247,7 @@ export class CountdownGateway implements OnGatewayInit, OnGatewayConnection, OnG
       roster = entries.map((e) => ({
         userId: e.userId,
         name: (e.user.fullName || e.user.email.split("@")[0] || "Player").slice(0, 20),
+        country: e.user.country ?? undefined,
         skills: Array.isArray(e.skills) ? (e.skills as string[]) : [],
       }));
     }
@@ -239,7 +255,13 @@ export class CountdownGateway implements OnGatewayInit, OnGatewayConnection, OnG
     void client.join(room);
     // Seed the whole roster (by userId) so the field is complete before the game begins.
     for (const p of roster) {
-      this.game.join(room, p.userId, p.name, { startAt, skills: p.skills, card: p.card, avatar: p.avatar });
+      this.game.join(room, p.userId, p.name, {
+        startAt,
+        skills: p.skills,
+        card: p.card,
+        avatar: p.avatar,
+        country: p.country,
+      });
     }
     // Then mark THIS player present with their live cosmetics (their seat already exists from the seed).
     const me = roster.find((p) => p.userId === userId)!;
@@ -248,6 +270,7 @@ export class CountdownGateway implements OnGatewayInit, OnGatewayConnection, OnG
       avatar: data?.avatar ?? me.avatar,
       startAt,
       skills: me.skills,
+      country: me.country,
     });
   }
 
@@ -282,4 +305,12 @@ export class CountdownGateway implements OnGatewayInit, OnGatewayConnection, OnG
     if (!this.rateOk(client)) return;
     this.game.leave(roomOf(data), client.id);
   }
+}
+
+/** Practice players self-report their country, so never trust the wire: accept exactly two ASCII
+ *  letters and upper-case them, or nothing at all. (Tournament players get theirs from the DB.) */
+function normalizeCountry(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const code = raw.trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(code) ? code : undefined;
 }

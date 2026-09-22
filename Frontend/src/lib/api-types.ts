@@ -8,6 +8,8 @@ export interface PublicUser {
   email: string;
   fullName: string | null;
   avatarUrl: string | null;
+  /** ISO 3166-1 alpha-2 country code; null on accounts created before the field existed. */
+  country: string | null;
   role: "PLAYER" | "ADMIN";
   status: "ACTIVE" | "BANNED";
   createdAt: string;

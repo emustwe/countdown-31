@@ -1032,7 +1032,7 @@ export class SponsorsService {
     const userIds = members.map((m) => m.userId);
     const [entries, users] = await Promise.all([
       this.prisma.promoEntry.findMany({ where: { tournamentId, userId: { in: userIds } }, select: { userId: true, skills: true } }),
-      this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, fullName: true, email: true, cosmeticsJson: true } }),
+      this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, fullName: true, email: true, country: true, cosmeticsJson: true } }),
     ]);
     const skillsFor = new Map(entries.map((e) => [e.userId, e.skills]));
     const userFor = new Map(users.map((u) => [u.id, u]));
@@ -1043,6 +1043,7 @@ export class SponsorsService {
         return {
           userId: m.userId,
           name: u?.fullName?.trim() || u?.email.split("@")[0] || "Player",
+          country: u?.country ?? undefined,
           skills: skillsFor.get(m.userId) ?? [],
           cosmetics: (u?.cosmeticsJson ?? {}) as Record<string, unknown>,
         };

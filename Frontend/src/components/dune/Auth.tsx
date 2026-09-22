@@ -16,6 +16,7 @@ import {
   Lock,
 } from "lucide-react";
 import { useLogin, useRegister } from "../../lib/hooks/useAuth";
+import { CountrySelect } from "./CountrySelect";
 import { ApiError } from "../../lib/api-client";
 import { soundManager } from "../../lib/soundManager";
 
@@ -29,6 +30,10 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Country is REQUIRED on sign-up: the flag is part of a player's identity in the arena, and a
+  // blank <option> as the default forces a deliberate choice rather than silently defaulting to
+  // whatever sorts first. Pre-filled from the browser locale as a convenience, not a commitment.
+  const [country, setCountry] = useState("");
   const [mfaCode, setMfaCode] = useState("");
   const [requiresMfa, setRequiresMfa] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +49,7 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
 
     try {
       if (isRegister) {
-        await registerMutation.mutateAsync({ fullName, email, password });
+        await registerMutation.mutateAsync({ fullName, email, password, country });
       } else {
         await loginMutation.mutateAsync({ email, password, ...(requiresMfa ? { mfaCode } : {}) });
       }
@@ -210,6 +215,16 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
                     className="w-full bg-black/80 border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-colors"
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Country (Register only) — shown as flag + name so the choice is visually obvious. */}
+            {isRegister && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-title font-bold text-slate-300 uppercase tracking-wider">
+                  Country
+                </label>
+                <CountrySelect variant="form" value={country} onChange={setCountry} required />
               </div>
             )}
 

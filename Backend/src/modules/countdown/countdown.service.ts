@@ -40,6 +40,8 @@ type Mode = "practice" | "knockout";
 interface Cosmetics {
   card?: Record<string, unknown>;
   avatar?: Record<string, string>;
+  /** ISO 3166-1 alpha-2 country code — drives the flag on the player's card in the arena. */
+  country?: string;
   startAt?: number; // tournament start time (ms) — the game holds in a lobby until then
   skills?: string[]; // the loadout the player LOCKED IN at join (0–2 skills), used all tournament
 }
@@ -48,6 +50,7 @@ interface Player {
   name: string;
   cpu: boolean;
   color: string;
+  country?: string;
   card?: Record<string, unknown>;
   avatar?: Record<string, string>;
   skills?: Record<string, number>; // remaining charges per skill (1 charge each for the tournament)
@@ -58,6 +61,7 @@ export interface LivePlayer {
   name: string;
   cpu: boolean;
   color: string;
+  country?: string;
   card?: Record<string, unknown>;
   avatar?: Record<string, string>;
   skills?: Record<string, number>;
@@ -188,6 +192,7 @@ class Room {
       existing.name = name;
       if (cos?.card) existing.card = cos.card;
       if (cos?.avatar) existing.avatar = cos.avatar;
+      if (cos?.country) existing.country = cos.country;
       existing.color = this.colorFor(this.players.indexOf(existing), cos?.card);
       // Only set the locked loadout the first time (it can't be changed after joining).
       if (existing.equippedSkills === undefined && equippedSkills.length) {
@@ -202,6 +207,7 @@ class Room {
         color: this.colorFor(this.players.length, cos?.card),
         card: cos?.card,
         avatar: cos?.avatar,
+        country: cos?.country,
         equippedSkills,
         skills: skillCharges,
       });
@@ -499,6 +505,7 @@ class Room {
         name: p.name,
         cpu: p.cpu,
         color: p.color,
+        country: p.country,
         card: p.card,
         avatar: p.avatar,
         skills: p.skills,

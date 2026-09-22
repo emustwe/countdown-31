@@ -18,7 +18,7 @@ export function useProfile() {
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { fullName?: string; avatarUrl?: string | null }) =>
+    mutationFn: (input: { fullName?: string; avatarUrl?: string | null; country?: string }) =>
       apiRequest<PublicUser>("/auth/me", { method: "PATCH", body: input }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["me"] });
@@ -43,7 +43,7 @@ export function useRegister() {
   const setSession = useAuthStore((s) => s.setSession);
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { fullName: string; email: string; password: string }) =>
+    mutationFn: (input: { fullName: string; email: string; password: string; country?: string }) =>
       apiRequest<RegisterResponse>("/auth/register", { method: "POST", body: input, auth: false }),
     onSuccess: (data) => {
       setSession(data);
