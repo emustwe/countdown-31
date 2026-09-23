@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Lilita_One, Fredoka, Orbitron, Cinzel_Decorative } from "next/font/google";
 import { Providers } from "./providers";
 import { FullscreenOnRotate } from "../components/dune/FullscreenOnRotate";
+import { ViewportCalibrator } from "../components/dune/ViewportCalibrator";
 import "./globals.css";
 import "./dune.css";
 
@@ -76,6 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-ui">
         <Providers>
           <FullscreenOnRotate />
+          <ViewportCalibrator />
           {children}
         </Providers>
       </body>
