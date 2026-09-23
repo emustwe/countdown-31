@@ -6,6 +6,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { BookOpen, ChevronRight, Play, ShieldCheck, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { PastureAmbiance } from "../components/dune/PastureAmbiance";
+import { RotateHint } from "../components/dune/RotateHint";
 import { OfficialRulesModal } from "../components/dune/OfficialRulesModal";
 import { soundManager } from "../lib/soundManager";
 import { useSettingsStore } from "../stores/settings-store";
@@ -36,6 +37,7 @@ export default function RootLandingPage() {
 
   return (
     <div className="landing-playground">
+      <RotateHint />
       <PastureAmbiance />
       <div className="landing-orb landing-orb-one" />
       <div className="landing-orb landing-orb-two" />

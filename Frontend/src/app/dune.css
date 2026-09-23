@@ -6,155 +6,6 @@
    height. On desktop dvh and vh are identical, so this is a no-op there. */
 @import url("https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700;800;900&display=swap");
 
-/* VIEWPORT UNITS: this file uses 100dvh, never 100vh.
-   On iOS, 100vh is the LARGE viewport — the height as if the browser bars were hidden — and it does
-   not shrink while they are showing. Every page container sized that way was therefore taller than
-   the screen whenever the bars were up, pushing content off the bottom; that is the "content is cut
-   off" bug, and it is independent of whether the bars ever collapse. dvh tracks the actually-visible
-   height. On desktop dvh and vh are identical, so this is a no-op there. */
-@import url("https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700;800;900&display=swap");
-
-/* ───────────────────────────────────────────────────────────────────────────
-   SOFT-FULLSCREEN (iOS Safari, landscape)
-
-   Safari's bars cannot be hidden by a page — there is no API. Safari collapses
-   them itself, but ONLY while scrolling a page that actually has somewhere to
-   scroll. Our pages were exactly viewport-height, so the gesture had nowhere to
-   go and the bars stayed up permanently.
-
-   This gives the document a deliberate scroll gap so the gesture works, in both
-   directions: flick down -> bars collapse -> dvh grows -> the layout fills the
-   reclaimed space. Flick up -> they come back.
-
-   THE OFFSET: measured off a real iPhone 13 Pro Max in landscape — the URL bar
-   plus the tab strip occupy ~101 CSS px of a 428px viewport, leaving 327. The
-   widely-quoted 72px is portrait-era Safari and is too small here, which is why
-   earlier attempts produced a gap you could not scroll back out of. 112px =
-   ~101 measured + slack, so a normal thumb flick clears the collapse threshold
-   without overshooting into dead space.
-
-   Coarse pointer + landscape + browser-tab only. A desktop window has no bars to
-   collapse, and an installed PWA has none either — the gap would be dead space.
-   ─────────────────────────────────────────────────────────────────────────── */
-@media (pointer: coarse) and (orientation: landscape) and (display-mode: browser) {
-  html {
-    /* The scroll range Safari needs. min-height, not height, so a genuinely tall
-       page (the landing page) keeps its own greater height. */
-    min-height: calc(100% + 112px);
-  }
-  html, body {
-    /* No rubber-band and no pull-to-refresh off the new scroll range. */
-    overscroll-behavior: none;
-  }
-  /* The ARENA must not move. It is measured to fit the visible area exactly, so
-     letting the page scroll would drag the board off-screen mid-turn. Pinning it
-     means the scroll gap lives behind it: the flick still collapses the bars, the
-     game never shifts. Its absolutely-positioned children keep this as their
-     containing block, so the PLAY button and overlays are unaffected. */
-  .arena-viewport {
-    position: fixed;
-    inset: 0;
-    height: var(--app-vh, 100dvh);
-  }
-  /* Vertical drags on the board are the game's own gesture surface, never the
-     page's — so the extra scroll height can't be used to drag the arena. */
-  .nb-stage,
-  .nb-trackwrap,
-  .cab-stage {
-    touch-action: manipulation;
-  }
-}
-
-
-:root {
-  font-family:
-    "Nunito Sans",
-    Segoe UI,
-    sans-serif;
-  color-scheme: dark;
-  --bg: #10091f;
-  --bg2: #170d2d;
-  --surface: #21143a;
-  --surface2: #2c1a4b;
-  --glass: rgba(31, 20, 58, 0.74);
-  --border: rgba(203, 177, 255, 0.18);
-  --text: #fff8ef;
-  --muted: #b9aec9;
-  --gold: #f4b942;
-  --gold2: #ffdf78;
-  --cyan: #21e6d7;
-  --pink: #fb4dbd;
-  --violet: #9b6cff;
-  --green: #55e694;
-  --danger: #ff6b7f;
-  --shadow: 0 24px 80px rgba(3, 0, 15, 0.36);
-  --serif: "Cinzel Decorative", Georgia, serif;
-  --numeric: "Fredoka", "Nunito Sans", sans-serif;
-}
-* {
-  box-sizing: border-box;
-}
-html,
-body,
-#root {
-  margin: 0;
-  min-height: 100%;
-  background: var(--bg);
-  color: var(--text);
-}
-body {
-  overflow-x: hidden;
-}
-button,
-input {
-  font: inherit;
-}
-button {
-  color: inherit;
-  cursor: pointer;
-}
-button:focus-visible,
-input:focus-visible {
-  outline: 2px solid var(--cyan);
-  outline-offset: 3px;
-}
-h1,
-h2,
-h3,
-p {
-  margin-top: 0;
-}
-h1,
-h2 {
-  font-family: var(--serif);
-  /* Cinzel Decorative ligates "oo"/" ee" into glued glyphs — turn ligatures off so words like
-   * CHOOSE render as separate letters. */
-  font-variant-ligatures: none;
-}
-h1 {
-  font-size: clamp(42px, 5.3vw, 78px);
-  line-height: 0.98;
-  letter-spacing: -0.035em;
-  margin-bottom: 22px;
-}
-h2 {
-  font-size: 30px;
-  line-height: 1.15;
-  margin-bottom: 8px;
-}
-h3 {
-  font-size: 18px;
-  margin-bottom: 7px;
-}
-.app-shell {
-  min-height: 100dvh;
-  background:
-    radial-gradient(ellipse at 50% 12%, rgba(255, 219, 120, 0.22), transparent 48%),
-    radial-gradient(circle at 18% 28%, rgba(85, 230, 148, 0.18), transparent 38%),
-    radial-gradient(circle at 82% 35%, rgba(33, 230, 215, 0.16), transparent 42%),
-    linear-gradient(180deg, #101c18 0%, #0d1714 45%, #080f0c 100%);
-  position: relative;
-}
 
 /* Practice Page: Joyful Barnaby Cow Pasture Arena Theme */
 .practice-page {
@@ -11335,6 +11186,127 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   padding: 3px;
 }
 .cs-panel .cs-sheet-head button:hover { color: #fff; }
+
+/* ── First-visit coach mark for the soft-fullscreen swipe ───────────────────
+   The 112px scroll gap is useless unless the player discovers the gesture, so
+   once ever we dim the arena and run a stream of chevrons upward at the top
+   right — the direction the finger should travel. */
+.scrollhint {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(2, 8, 5, 0.78);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  /* Starts BELOW the header icon row (music / sound / profile) so the trail never
+     sits on top of them, while staying in the top-right corner the swipe targets. */
+  padding: 58px 26px 0 0;
+  animation: scrollhint-in 0.28s ease-out both;
+}
+@keyframes scrollhint-in { from { opacity: 0; } to { opacity: 1; } }
+
+.scrollhint-arrows {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  color: #35d6e8;
+  pointer-events: none;
+}
+/* Each chevron pulses; the component staggers delays from the BOTTOM of the stack
+   upward so the twelve read as one travelling stream rather than blinking icons. */
+.scrollhint-chevron {
+  display: block;
+  margin-bottom: -6px;
+  opacity: 0.12;
+  animation: scrollhint-run 1.25s ease-in-out infinite;
+  filter: drop-shadow(0 0 7px rgba(53, 214, 232, 0.65));
+}
+@keyframes scrollhint-run {
+  0%, 70%, 100% { opacity: 0.12; transform: translateY(2px); }
+  28%           { opacity: 1;    transform: translateY(-2px); }
+}
+
+.scrollhint-label {
+  margin: 10px 2px 0 0;
+  text-align: center;
+  font-family: var(--font-lilita), system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 900;
+  color: #fff8ef;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+.scrollhint-label small {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-fredoka), system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b6c7ba;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scrollhint-chevron { animation: none; opacity: 0.85; }
+}
+
+/* ── "Turn your phone" hint — landing page, portrait only ───────────────────
+   A footer strip, never a blocking wall: portrait stays usable and a player with
+   rotation locked is not walled out. It removes itself the moment you rotate. */
+.rotate-hint {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(245, 165, 36, 0.55);
+  background: linear-gradient(180deg, rgba(24, 40, 30, 0.97), rgba(5, 10, 7, 0.97));
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), 0 0 26px rgba(245, 158, 11, 0.22);
+  animation: rotate-hint-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes rotate-hint-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.rotate-hint-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  color: #1a1206;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b 60%, #b45309);
+  animation: rotateHint 2.4s ease-in-out infinite; /* reuses the existing keyframe */
+}
+.rotate-hint-copy { flex: 1 1 auto; min-width: 0; line-height: 1.25; }
+.rotate-hint-copy b {
+  display: block;
+  font-family: var(--font-lilita), system-ui, sans-serif;
+  font-size: 14px;
+  color: #fff8ef;
+}
+.rotate-hint-copy small { display: block; font-size: 11px; color: #b6c7ba; }
+.rotate-hint-close {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.45);
+  color: #b6c7ba;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rotate-hint-icon { animation: none; }
+}
 
 /* ───────────────────────────────────────────────────────────────────────────
    SOFT-FULLSCREEN (iOS Safari, landscape)  —  kept LAST in this file on purpose
