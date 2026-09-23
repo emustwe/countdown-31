@@ -1,3 +1,9 @@
+/* VIEWPORT UNITS: this file uses 100dvh, never 100vh.
+   On iOS, 100vh is the LARGE viewport — the height as if the browser bars were hidden — and it does
+   not shrink while they are showing. Every page container sized that way was therefore taller than
+   the screen whenever the bars were up, pushing content off the bottom; that is the "content is cut
+   off" bug, and it is independent of whether the bars ever collapse. dvh tracks the actually-visible
+   height. On desktop dvh and vh are identical, so this is a no-op there. */
 @import url("https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700;800;900&display=swap");
 
 :root {
@@ -81,7 +87,7 @@ h3 {
   margin-bottom: 7px;
 }
 .app-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   background:
     radial-gradient(ellipse at 50% 12%, rgba(255, 219, 120, 0.22), transparent 48%),
     radial-gradient(circle at 18% 28%, rgba(85, 230, 148, 0.18), transparent 38%),
@@ -766,7 +772,7 @@ h3 {
 
 /* Empty placeholder pages (Game Play, Shop). */
 .placeholder-page {
-  min-height: calc(100vh - 200px);
+  min-height: calc(100dvh - 200px);
   display: grid;
   place-items: center;
   padding: 60px 20px;
@@ -802,7 +808,7 @@ h3 {
 
 /* Game page (/play): a framed game preview with the "Enter to the game" call-to-action. */
 .play-showcase {
-  min-height: calc(100vh - 180px);
+  min-height: calc(100dvh - 180px);
   display: grid;
   place-items: center;
   padding: 44px 20px;
@@ -811,7 +817,7 @@ h3 {
   position: relative;
   width: min(940px, 100%);
   aspect-ratio: 16 / 9;
-  max-height: calc(100vh - 220px);
+  max-height: calc(100dvh - 220px);
   border-radius: 24px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -860,7 +866,7 @@ h3 {
 
 /* Countdown 31 game page: coming-soon header + a LIVE view of the practice game + enter button. */
 .countdown-page {
-  min-height: calc(100vh - 180px);
+  min-height: calc(100dvh - 180px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -901,7 +907,7 @@ h3 {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  max-height: calc(100vh - 360px);
+  max-height: calc(100dvh - 360px);
   border-radius: 22px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -978,7 +984,7 @@ h3 {
 
 /* Empty practice game screen (slot game removed; new game lands here later) — shown below the navbar. */
 .empty-game-stage {
-  min-height: calc(100vh - 200px);
+  min-height: calc(100dvh - 200px);
   display: grid;
   place-items: center;
   color: var(--muted);
@@ -987,7 +993,7 @@ h3 {
 
 /* ---- Baskin Robbins 31 (practice game) ---- */
 .cd31-page {
-  min-height: calc(100vh - 190px);
+  min-height: calc(100dvh - 190px);
   display: grid;
   place-items: start center;
   padding: 34px 20px 56px;
@@ -1931,7 +1937,7 @@ h3 {
   right: 0;
   z-index: 61;
   width: min(320px, 92vw);
-  max-height: min(560px, calc(100vh - 80px));
+  max-height: min(560px, calc(100dvh - 80px));
   border-radius: 16px;
   border: 1px solid var(--border);
   background: var(--glass);
@@ -4052,7 +4058,7 @@ h3 {
 }
 
 .page-main {
-  min-height: calc(100vh - 86px);
+  min-height: calc(100dvh - 86px);
 }
 .page-banner {
   min-height: 280px;
@@ -4206,7 +4212,7 @@ h3 {
 }
 
 .game-page {
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   position: relative;
   background: #080412;
@@ -4442,7 +4448,7 @@ h3 {
   text-align: left;
 }
 .game-stage {
-  height: calc(100vh - 66px);
+  height: calc(100dvh - 66px);
   position: relative;
   z-index: 2;
   display: flex;
@@ -5403,14 +5409,14 @@ h3 {
 }
 
 .admin-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   background:
     linear-gradient(180deg, rgba(13, 5, 25, 0.93), rgba(13, 5, 25, 0.97)),
     url("/assets/monster-stage.png") center / cover fixed;
 }
 /* Admin dashboard chooser (Classic vs New). */
 .admin-choose {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -5532,7 +5538,7 @@ h3 {
 }
 /* Centred placeholder for the new-dashboard sections. */
 .admin-new-main {
-  min-height: calc(100vh - 140px);
+  min-height: calc(100dvh - 140px);
   display: grid;
   place-items: center;
   padding: 40px 20px;
@@ -6353,7 +6359,7 @@ h3 {
 }
 
 .auth-page {
-  height: 100vh;
+  height: 100dvh;
   min-height: 720px;
   display: grid;
   grid-template-columns: 1.08fr 0.92fr;
@@ -6893,7 +6899,7 @@ h3 {
     display: none;
   }
   .game-stage {
-    height: calc(100vh - 56px);
+    height: calc(100dvh - 56px);
     justify-content: center;
   }
   /* Top bar is 56px on mobile — keep the big timer just below it. */
@@ -6970,7 +6976,7 @@ h3 {
      the sign-in form instead of sitting beside it. */
   .auth-page {
     height: auto;
-    min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
   }
@@ -7038,7 +7044,7 @@ h3 {
     width: 54px;
   }
   .page-main {
-    min-height: calc(100vh - 68px);
+    min-height: calc(100dvh - 68px);
   }
 }
 @media (max-height: 760px) and (min-width: 761px) {
@@ -7450,7 +7456,7 @@ h3 {
 
 /* H2D Design Strip Styles */
 .h2d-export-previewer {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: #080311;
   overflow: auto;
   position: relative;
@@ -8473,7 +8479,7 @@ h3 {
 
 /* ===== Sponsor sign-in + dashboard ===== */
 .sponsor-auth {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 24px;
