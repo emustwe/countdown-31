@@ -6,6 +6,66 @@
    height. On desktop dvh and vh are identical, so this is a no-op there. */
 @import url("https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700;800;900&display=swap");
 
+/* VIEWPORT UNITS: this file uses 100dvh, never 100vh.
+   On iOS, 100vh is the LARGE viewport — the height as if the browser bars were hidden — and it does
+   not shrink while they are showing. Every page container sized that way was therefore taller than
+   the screen whenever the bars were up, pushing content off the bottom; that is the "content is cut
+   off" bug, and it is independent of whether the bars ever collapse. dvh tracks the actually-visible
+   height. On desktop dvh and vh are identical, so this is a no-op there. */
+@import url("https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700;800;900&display=swap");
+
+/* ───────────────────────────────────────────────────────────────────────────
+   SOFT-FULLSCREEN (iOS Safari, landscape)
+
+   Safari's bars cannot be hidden by a page — there is no API. Safari collapses
+   them itself, but ONLY while scrolling a page that actually has somewhere to
+   scroll. Our pages were exactly viewport-height, so the gesture had nowhere to
+   go and the bars stayed up permanently.
+
+   This gives the document a deliberate scroll gap so the gesture works, in both
+   directions: flick down -> bars collapse -> dvh grows -> the layout fills the
+   reclaimed space. Flick up -> they come back.
+
+   THE OFFSET: measured off a real iPhone 13 Pro Max in landscape — the URL bar
+   plus the tab strip occupy ~101 CSS px of a 428px viewport, leaving 327. The
+   widely-quoted 72px is portrait-era Safari and is too small here, which is why
+   earlier attempts produced a gap you could not scroll back out of. 112px =
+   ~101 measured + slack, so a normal thumb flick clears the collapse threshold
+   without overshooting into dead space.
+
+   Coarse pointer + landscape + browser-tab only. A desktop window has no bars to
+   collapse, and an installed PWA has none either — the gap would be dead space.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (pointer: coarse) and (orientation: landscape) and (display-mode: browser) {
+  html {
+    /* The scroll range Safari needs. min-height, not height, so a genuinely tall
+       page (the landing page) keeps its own greater height. */
+    min-height: calc(100% + 112px);
+  }
+  html, body {
+    /* No rubber-band and no pull-to-refresh off the new scroll range. */
+    overscroll-behavior: none;
+  }
+  /* The ARENA must not move. It is measured to fit the visible area exactly, so
+     letting the page scroll would drag the board off-screen mid-turn. Pinning it
+     means the scroll gap lives behind it: the flick still collapses the bars, the
+     game never shifts. Its absolutely-positioned children keep this as their
+     containing block, so the PLAY button and overlays are unaffected. */
+  .arena-viewport {
+    position: fixed;
+    inset: 0;
+    height: var(--app-vh, 100dvh);
+  }
+  /* Vertical drags on the board are the game's own gesture surface, never the
+     page's — so the extra scroll height can't be used to drag the arena. */
+  .nb-stage,
+  .nb-trackwrap,
+  .cab-stage {
+    touch-action: manipulation;
+  }
+}
+
+
 :root {
   font-family:
     "Nunito Sans",
@@ -11275,3 +11335,62 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   padding: 3px;
 }
 .cs-panel .cs-sheet-head button:hover { color: #fff; }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   SOFT-FULLSCREEN (iOS Safari, landscape)  —  kept LAST in this file on purpose
+
+   Safari's bars cannot be hidden by a page; there is no API. Safari collapses
+   them itself, but only while scrolling a page that has somewhere to scroll.
+   Our pages were exactly viewport-height, so the gesture had nowhere to go and
+   the bars stayed up permanently. This adds a deliberate scroll gap so the
+   gesture works both ways: flick down -> bars collapse -> dvh grows -> the
+   layout fills the reclaimed space; flick up -> they return.
+
+   THE OFFSET: measured off a real iPhone 13 Pro Max in landscape — URL bar plus
+   tab strip occupy ~101 CSS px of a 428px viewport, leaving 327. The commonly
+   quoted 72px is portrait-era Safari and too small here, which is why earlier
+   attempts left a gap you could not scroll back out of. 112px = ~101 measured
+   plus slack, so a normal thumb flick clears the collapse threshold.
+
+   Position: this block MUST stay at the end of the file. `html` here has the
+   same specificity as the base `html, body, #root { min-height: 100% }` rule,
+   so it only wins by source order.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (pointer: coarse) and (orientation: landscape) and (display-mode: browser) {
+  html {
+    min-height: calc(100% + 112px);
+  }
+  html,
+  body {
+    overscroll-behavior: none; /* no rubber-band or pull-to-refresh off the gap */
+  }
+
+  /* The arena page disables page scrolling outright (see the rule that sets
+     overflow:hidden on html/body when .mobile-landscape-game is present) — which
+     also blocks Safari's collapse. Re-enable just the vertical gap here. This is
+     only safe because .arena-viewport is pinned below: the scroll moves the empty
+     gap behind the game, never the game. */
+  html:has(.mobile-landscape-game),
+  body:has(.mobile-landscape-game) {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  /* The ARENA must not move — it is measured to fit the visible area exactly, so
+     a scrolling page would drag the board off-screen mid-turn. Pinning it puts
+     the scroll gap behind it. Its absolutely-positioned children keep this as
+     their containing block, so the PLAY button and overlays are unaffected. */
+  .arena-viewport {
+    position: fixed;
+    inset: 0;
+    height: var(--app-vh, 100dvh);
+  }
+
+  /* Vertical drags on the board belong to the game, never to the page, so the
+     extra scroll height can't be used to drag the arena mid-round. */
+  .nb-stage,
+  .nb-trackwrap,
+  .cab-stage {
+    touch-action: manipulation;
+  }
+}
