@@ -11187,6 +11187,43 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
 }
 .cs-panel .cs-sheet-head button:hover { color: #fff; }
 
+/* ── Landing page: force the LANDSCAPE layout on a portrait phone ───────────
+   The landing page is designed for landscape and looks right there. The problem
+   is a phone with iOS Rotation Lock ON: turning it does not re-lay-out, so the
+   player sees the PORTRAIT design sideways and there is no API a page can call
+   to override that lock.
+
+   So in portrait we render the landscape layout and rotate it 90°. The viewport
+   box is swapped (width = viewport height, height = viewport width), which makes
+   the page believe it is landscape, and the whole surface is turned so it reads
+   correctly the moment the phone is physically turned — lock on or off.
+
+   Only on touch devices in portrait. A real landscape viewport, and every
+   desktop, is left completely alone — that layout is already correct and must
+   not be touched. */
+@media (pointer: coarse) and (orientation: portrait) {
+  .landing-playground {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100dvh;           /* swapped on purpose */
+    height: 100dvw;          /* swapped on purpose */
+    /* The base rule carries min-height:100svh, which in portrait is the LONG edge and
+       would stretch the rotated box off-screen. Swap it too. */
+    min-height: 100dvw;
+    max-height: 100dvw;
+    transform-origin: top left;
+    /* Rotate about the top-left, then slide up by the new height so the rotated
+       box lands back over the viewport. */
+    transform: rotate(90deg) translateY(-100%);
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* The rotate prompt is meaningless once the layout is already landscape. */
+  .rotate-hint { display: none !important; }
+}
+
 /* ── First-visit coach mark for the soft-fullscreen swipe ───────────────────
    The 112px scroll gap is useless unless the player discovers the gesture, so
    once ever we dim the arena and run a stream of chevrons upward at the top

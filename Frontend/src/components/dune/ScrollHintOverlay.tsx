@@ -17,7 +17,9 @@ const ARROWS = 12;
  * inside a browser tab. An installed PWA has no bars to hide, portrait has no scroll gap, and a
  * desktop window has neither — in all of those it renders nothing.
  *
- * Dismisses on the first scroll (they did it), on any tap, or after 9s so it can never trap anyone.
+ * Dismisses once they ACTUALLY scroll (>24px, so a stray 0-offset scroll event cannot burn the
+ * single showing), or after 12s so it can never trap anyone. A tap does not dismiss it — players tap
+ * constantly and it was vanishing before it could be read.
  */
 export function ScrollHintOverlay() {
   const [show, setShow] = useState(false);
@@ -56,13 +58,18 @@ export function ScrollHintOverlay() {
         /* ignored */
       }
     };
-    // Any of these means the player has seen it.
-    window.addEventListener("scroll", done, { passive: true, once: true });
-    window.addEventListener("pointerdown", done, { passive: true, once: true });
-    const t = setTimeout(done, 9000);
+    // Only a REAL scroll counts as "they did it" — a stray scroll event at 0 offset (Safari
+    // restoring position, a rubber-band settle) used to dismiss it instantly and burn the
+    // one-and-only showing. A tap is deliberately NOT a dismissal any more: the player taps
+    // constantly, and the hint was disappearing before it could be read.
+    const onScroll = () => {
+      if (window.scrollY > 24) done();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    // Generous floor so it is readable, then it clears itself.
+    const t = setTimeout(done, 12000);
     return () => {
-      window.removeEventListener("scroll", done);
-      window.removeEventListener("pointerdown", done);
+      window.removeEventListener("scroll", onScroll);
       clearTimeout(t);
     };
   }, [show]);
