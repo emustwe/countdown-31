@@ -7,8 +7,7 @@ import { ArenaRoster } from "./ArenaRoster";
 import { countryFlag, countryName } from "../../lib/countries";
 import { MasterAvatar } from "./MasterAvatar";
 import { NumberBoard } from "./NumberBoard";
-import { ArcNumberBoard, TOTAL_CX } from "./ArcNumberBoard";
-import { ArcArenaRoster } from "./ArcArenaRoster";
+import { ArcNumberBoard, ARC_APEX, ARC_APEX_HALF } from "./ArcNumberBoard";
 import { useArcDesign } from "../../lib/arena-design";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
 import type { LivePlayer, LastMoveInfo } from "../../lib/hooks/useCountdownLive";
@@ -66,14 +65,27 @@ const CONTENT_W = ROSTER_X + ROSTER_W + 18;
 // ── MIRROR ARC layout. The number board stops being a 520px box and becomes an arc drawn straight
 // onto the stage, so the roster comes left and the whole composition gets narrower — which means it
 // fit-scales LARGER on exactly the small phone screens that were the tightest fit before.
-// The arc now shares the player rail's 430 radius, so its apex node reaches x 895 (NUM_CX 400 +
-// NUM_R 430 + half a 130px node). The roster starts clear of that.
-const ARC_ROSTER_X = 920;
-const ARC_ROSTER_W = 310;
-const ARC_CONTENT_W = ARC_ROSTER_X + ARC_ROSTER_W + 18;
-/** Submit bar / status line, centred under the running total in the bowl between the two arcs. */
-const ARC_ACTION_W = 210;
-const ARC_ACTION_TOP = 440;
+// ── MIRROR ARC layout ────────────────────────────────────────────────────────
+// The bowl between the two arcs holds exactly two things: the player's info card on the left, and
+// the arena list directly in front of it. The card does NOT move — it stays pinned to the player
+// arc's apex as it always was — so the arena list is centred on the card's line instead.
+/** Frozen empty array — a fresh [] every render would defeat the board's memo. */
+const NO_PICKS: number[] = [];
+
+// 300 wide, not 270: at 270 the arena list truncated real names ("Daisy Cow …", "Barnaby H…").
+// A roster whose names you cannot read is not a roster, so it wins the width argument over the
+// composition being a few percent tighter.
+const ARC_ROSTER_X = 538;
+const ARC_ROSTER_W = 300;
+/** Centred on STAGE_H/2, which is exactly where the player card's midline sits. */
+const ARC_ROSTER_TOP = STAGE_H / 2 - ARENA_H / 2;
+/** Submit + status sit OUTSIDE the arc, level with the apex number, so the button is right beside
+ *  the number the player just tapped. */
+const ARC_ACTION_W = 190;
+const ARC_ACTION_X = ARC_APEX.x + ARC_APEX_HALF + 16;
+const ARC_ACTION_H = 150;
+const ARC_ACTION_TOP = STAGE_H / 2 - ARC_ACTION_H / 2;
+const ARC_CONTENT_W = ARC_ACTION_X + ARC_ACTION_W + 18;
 
 const ARC_RADIUS = 430; // bigger = flatter curve
 const ARC_STEP_DEG = 19; // angular gap between two neighbouring players
@@ -456,6 +468,13 @@ function ClassicArcBoardImpl({
   // The three next numbers the active player may claim (consecutive from the total).
   const tiles = [count + 1, count + 2, count + 3];
 
+  // The numbers the PREVIOUS player just claimed, so the arc can paint them brown and everyone can
+  // see at a glance whether they took 1, 2 or 3.
+  const lastPicks = useMemo(() => {
+    if (!lastMove || lastMove.count <= 0) return NO_PICKS;
+    return Array.from({ length: lastMove.count }, (_, i) => count - i).filter((n) => n >= 1);
+  }, [lastMove, count]);
+
   // One contract, both boards — so the switch can never drift into two different sets of rules.
   const boardProps = {
     brand: boardBrand,
@@ -563,7 +582,7 @@ function ClassicArcBoardImpl({
         {arc ? (
           /* MIRROR ARC — drawn straight onto the stage so it can share the rail's coordinate space
              and bow toward the players. No wrapper box: the arc IS the board. */
-          <ArcNumberBoard {...boardProps} />
+          <ArcNumberBoard {...boardProps} lastPicks={lastPicks} />
         ) : (
           <div style={{ position: "absolute", left: BOARD_X + shiftX, top: ROSTER_TOP, width: BOARD_W, height: ARENA_H }}>
             {/* The serpentine TRACK board — 1…31 threaded by a ribbon with a hopping cow token. */}
@@ -578,32 +597,21 @@ function ClassicArcBoardImpl({
           style={{
             position: "absolute",
             left: arc ? ARC_ROSTER_X : ROSTER_X,
-            top: ROSTER_TOP,
+            top: arc ? ARC_ROSTER_TOP : ROSTER_TOP,
             width: arc ? ARC_ROSTER_W : ROSTER_W,
             height: ARENA_H,
           }}
         >
-          {arc ? (
-            <ArcArenaRoster
-              players={players}
-              currentId={currentId}
-              myId={myId}
-              status={status as "waiting" | "playing" | "over"}
-              style={{ width: "100%", height: "100%", pointerEvents: "auto" }}
-              sponsor={rosterSponsor}
-              rosterStyle={rosterStyle}
-            />
-          ) : (
-            <ArenaRoster
-              players={players}
-              currentId={currentId}
-              myId={myId}
-              status={status as "waiting" | "playing" | "over"}
-              style={{ width: "100%", height: "100%", pointerEvents: "auto" }}
-              sponsor={rosterSponsor}
-              rosterStyle={rosterStyle}
-            />
-          )}
+          <ArenaRoster
+            players={players}
+            currentId={currentId}
+            myId={myId}
+            status={status as "waiting" | "playing" | "over"}
+            style={{ width: "100%", height: "100%", pointerEvents: "auto" }}
+            sponsor={rosterSponsor}
+            rosterStyle={rosterStyle}
+            plainText={arc}
+          />
         </div>
 
         {/* Countdown timer cow is now rendered by the parent (CountDown31) as an OVERLAY above the
@@ -614,7 +622,7 @@ function ClassicArcBoardImpl({
         <div
           style={
             arc
-              ? { position: "absolute", left: TOTAL_CX - ARC_ACTION_W / 2, top: ARC_ACTION_TOP, width: ARC_ACTION_W, zIndex: 14 }
+              ? { position: "absolute", left: ARC_ACTION_X, top: ARC_ACTION_TOP, width: ARC_ACTION_W, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: ARC_ACTION_H, zIndex: 14 }
               : { position: "absolute", left: BOARD_X + shiftX, top: ROSTER_TOP + ARENA_H + 12, width: BOARD_W }
           }
         >

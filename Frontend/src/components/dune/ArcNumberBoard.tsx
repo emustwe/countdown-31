@@ -1,42 +1,41 @@
 "use client";
 
-import React, { memo, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useMemo } from "react";
 
 import type { NumberBoardProps } from "./NumberBoard";
 
 /**
  * ArcNumberBoard — the number board as an arc that MIRRORS the player rail.
  *
- * Same radius as the player rail (ARC_RADIUS 430), so the two arcs read as one pair of facing curves
- * and the numbers carry the same visual weight as the cows.
+ * The rail is drawn with the SAME four-layer stack as the player rail (wide gold glow, brass
+ * gradient, fine gold hairline, rivets) over the same ±63° sweep, so the two arcs are the same
+ * object facing opposite ways rather than two different-looking curves.
  *
  * The window, top to bottom, is always seven:
  *
- *     3 taken      grey    — already claimed, including the running total itself
- *     3 active     cyan    — the player takes 1, 2 or 3 of these, in order
- *     1 next       dim     — a preview of what follows, never clickable
+ *     3 taken      grey / BROWN  — already claimed; brown marks the previous player's own claim,
+ *                                  so everyone can see whether they took 1, 2 or 3
+ *     3 active     cyan          — the player takes 1, 2 or 3 of these, in order
+ *     1 next       dim           — a preview of what follows, never clickable
  *
- * There is deliberately NO highlighted "current total" node. The total is already claimed, so
- * painting it gold both duplicated the readout in the middle and made a dead node look live. The
- * running total lives in exactly one place now: the text in the bowl.
- *
- * Colour: cyan = claimable, red = 31, grey = gone. Nothing else. A number's owner is never painted.
+ * Colour: cyan = claimable, red = 31 (and ONLY 31), brown = the last claim, grey = older. There is
+ * no running-total readout — the numbers themselves say where the round is.
  */
 
 /* ---------------------------------------------------------------- geometry */
 /** Circle centre, LEFT of the apex so the arc bulges right — the mirror of the player rail. */
-export const NUM_CX = 400;
+export const NUM_CX = 580;
 export const NUM_CY = 340; // = STAGE_H / 2
 /** Matches ARC_RADIUS in ClassicArcBoard — the two arcs are the same size, by design. */
 export const NUM_R = 430;
+
 /**
  * The angular step TIGHTENS toward the ends rather than staying constant.
  *
- * A constant step can't satisfy both halves of the brief: wide enough to separate the big claimable
- * numbers means the outermost node lands past the bottom of the 680-tall stage (at a constant 16° the
- * preview node centred at y 660 was visibly cut in half); narrow enough to fit makes the two largest
- * nodes overlap. Tightening the outer slots — where the nodes are small anyway — buys the room for a
- * full-size 130px number at the apex AND keeps all seven inside the stage.
+ * A constant step cannot satisfy both halves of the brief: wide enough to separate the big claimable
+ * numbers puts the outermost node past the bottom of the 680-tall stage; narrow enough to fit makes
+ * the two largest nodes overlap. Tightening the outer slots — where the nodes are small anyway —
+ * buys a full-size 130px number at the apex AND keeps all seven inside the stage.
  */
 const RAMP = [0, 16, 30, 42];
 const angleAt = (step: number) => {
@@ -48,14 +47,18 @@ const angleAt = (step: number) => {
   return sign * (RAMP[i]! + (RAMP[i + 1]! - RAMP[i]!) * (a - i));
 };
 
-/** Where the running total + submit bar live, in the bowl between the two arcs. */
-export const TOTAL_CX = 628;
-
 const rad = (d: number) => (d * Math.PI) / 180;
-export const arcPointAt = (step: number) => {
-  const a = rad(angleAt(step));
-  return { x: NUM_CX + NUM_R * Math.cos(a), y: NUM_CY + NUM_R * Math.sin(a) };
-};
+/** A point on the arc from a raw ANGLE — the rail is swept by angle so it can match the player rail's
+ *  ±63° reach independently of where the seven nodes happen to sit. */
+const pointAtAngle = (deg: number) => ({ x: NUM_CX + NUM_R * Math.cos(rad(deg)), y: NUM_CY + NUM_R * Math.sin(rad(deg)) });
+export const arcPointAt = (step: number) => pointAtAngle(angleAt(step));
+
+/** The apex — where the first claimable number sits, and what the submit button lines up with. */
+export const ARC_APEX = pointAtAngle(0);
+/** Half-width of the apex node, so callers can place things clear of it. */
+export const ARC_APEX_HALF = 65;
+/** The player rail's sweep, matched exactly: 3.3 steps × 19° per step. */
+const SWEEP_DEG = 62.7;
 
 type NodeState = "taken" | "active" | "next";
 
@@ -72,7 +75,7 @@ const fadeAt = (state: NodeState, step: number) => {
   if (Math.abs(step) > 3.4) return 0;
   if (state === "active") return 1;
   if (state === "next") return 0.62;
-  return step > -1.5 ? 0.6 : step > -2.5 ? 0.48 : 0.36;
+  return step > -1.5 ? 0.72 : step > -2.5 ? 0.56 : 0.42;
 };
 
 const GOAL = 31;
@@ -81,26 +84,27 @@ const C = {
   goldSoft: "#FFD98A",
   claim: "#35D6E8",
   claimSoft: "#D3FBFF",
+  /** 31, and nothing else. */
   danger: "#F87171",
+  /** The previous player's claim. Deliberately far from `danger` in hue so the two never read alike. */
+  brown: "#A0682F",
+  brownInk: "#DCA96B",
   grey: "#6E6757",
   greyInk: "#8C8468",
-  mute: "#8A8071",
 };
 
 /* -------------------------------------------------------------------- rail */
-function ArcRail({ progress }: { progress: number }) {
-  const d = useMemo(() => {
+/** Identical construction to ClassicArcBoard's `Rail` — same layers, widths, opacities and rivets. */
+function ArcRail() {
+  const { d, rivets } = useMemo(() => {
     const pts: string[] = [];
-    for (let i = 0; i <= 120; i++) {
-      const p = arcPointAt(-3.4 + (6.8 * i) / 120);
+    for (let i = 0; i <= 140; i++) {
+      const p = pointAtAngle(-SWEEP_DEG + (2 * SWEEP_DEG * i) / 140);
       pts.push(`${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`);
     }
-    return pts.join(" ");
-  }, []);
-  const runRef = useRef<SVGPathElement | null>(null);
-  const [len, setLen] = useState(1);
-  useEffect(() => {
-    if (runRef.current) setLen(runRef.current.getTotalLength());
+    // 19 rivets over a slightly shorter sweep than the rail, exactly as the player rail does it.
+    const r = Array.from({ length: 19 }, (_, i) => pointAtAngle(-58.9 + (117.8 * i) / 18));
+    return { d: pts.join(" "), rivets: r };
   }, []);
 
   return (
@@ -115,30 +119,19 @@ function ArcRail({ progress }: { progress: number }) {
           <stop offset="100%" stopColor="#7A4E12" />
         </linearGradient>
         <filter id="anb-glow" x="-60%" y="-20%" width="220%" height="140%">
-          <feGaussianBlur stdDeviation="8" result="b" />
+          <feGaussianBlur stdDeviation="9" result="b" />
           <feMerge>
             <feMergeNode in="b" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
       </defs>
-      <path d={d} fill="none" stroke={C.gold} strokeWidth="24" opacity="0.09" filter="url(#anb-glow)" />
-      <path d={d} fill="none" stroke="url(#anb-brass)" strokeWidth="14" strokeLinecap="round" />
-      {/* Progress toward 31, drawn along the rail itself — the board's only chart. */}
-      <path
-        ref={runRef}
-        d={d}
-        fill="none"
-        stroke={C.goldSoft}
-        strokeWidth="4"
-        strokeLinecap="round"
-        opacity="0.9"
-        style={{
-          strokeDasharray: len,
-          strokeDashoffset: len * (1 - Math.max(0, Math.min(1, progress))),
-          transition: "stroke-dashoffset .55s cubic-bezier(.22,.9,.24,1)",
-        }}
-      />
+      <path d={d} fill="none" stroke={C.gold} strokeWidth="26" opacity="0.1" filter="url(#anb-glow)" />
+      <path d={d} fill="none" stroke="url(#anb-brass)" strokeWidth="16" strokeLinecap="round" />
+      <path d={d} fill="none" stroke={C.goldSoft} strokeWidth="1.5" opacity="0.5" strokeLinecap="round" />
+      {rivets.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="2.6" fill="#3B2708" opacity="0.85" />
+      ))}
     </svg>
   );
 }
@@ -148,12 +141,15 @@ function ArcNode({
   value,
   step,
   state,
+  recent,
   selected,
   onSelect,
 }: {
   value: number;
   step: number;
   state: NodeState;
+  /** Part of the PREVIOUS player's claim — painted brown so its size is readable at a glance. */
+  recent: boolean;
   selected: boolean;
   onSelect?: (n: number) => void;
 }) {
@@ -165,13 +161,33 @@ function ArcNode({
   const isDanger = value === GOAL && state === "active";
   const clickable = state === "active" && !!onSelect;
 
-  const ring = selected ? C.claim : isDanger ? C.danger : state === "active" ? C.claim : state === "next" ? "rgba(245,165,36,.22)" : C.grey;
+  const ring = selected
+    ? C.claim
+    : isDanger
+      ? C.danger
+      : state === "active"
+        ? C.claim
+        : recent
+          ? C.brown
+          : state === "next"
+            ? "rgba(245,165,36,.22)"
+            : C.grey;
 
   const bg = selected
     ? `radial-gradient(circle at 35% 30%, ${C.claimSoft}, ${C.claim} 62%, #0E7F90)`
-    : "rgba(14,16,12,.88)";
+    : recent
+      ? "radial-gradient(circle at 35% 30%, rgba(160,104,47,.30), rgba(14,16,12,.9) 70%)"
+      : "rgba(14,16,12,.88)";
 
-  const fg = selected ? "#04222A" : isDanger ? "#FECACA" : state === "active" ? C.claimSoft : C.greyInk;
+  const fg = selected
+    ? "#04222A"
+    : isDanger
+      ? "#FECACA"
+      : state === "active"
+        ? C.claimSoft
+        : recent
+          ? C.brownInk
+          : C.greyInk;
 
   const glow = selected
     ? `0 0 30px ${C.claim}b0`
@@ -179,7 +195,9 @@ function ArcNode({
       ? `0 0 20px ${C.danger}88`
       : state === "active"
         ? `0 0 18px ${C.claim}55`
-        : "0 4px 12px rgba(0,0,0,.45)";
+        : recent
+          ? `0 0 14px ${C.brown}66`
+          : "0 4px 12px rgba(0,0,0,.45)";
 
   return (
     <div
@@ -190,7 +208,7 @@ function ArcNode({
           ? `Claim ${value}${isDanger ? " — this is 31, it knocks you out" : ""}${selected ? ", selected" : ""}`
           : state === "next"
             ? `${value}, next after this turn`
-            : `${value}, already taken`
+            : `${value}, already taken${recent ? ", by the previous player" : ""}`
       }
       aria-pressed={clickable ? selected : undefined}
       onClick={clickable ? () => onSelect?.(value) : undefined}
@@ -216,7 +234,7 @@ function ArcNode({
         transform: `translate(${(p.x - NUM_CX).toFixed(1)}px,${(p.y - NUM_CY).toFixed(1)}px) translate(-50%,-50%) scale(${(size / BASE).toFixed(3)})`,
         opacity,
         background: bg,
-        border: `${state === "active" ? 3 : 2}px solid ${ring}`,
+        border: `${state === "active" || recent ? 3 : 2}px solid ${ring}`,
         color: fg,
         boxShadow: glow,
         fontSize: BASE * (value >= 10 ? 0.4 : 0.46),
@@ -230,14 +248,19 @@ function ArcNode({
 }
 
 /* ------------------------------------------------------------------- board */
-function ArcNumberBoardImpl({ total, taken, picks, highlight, onSelect, myTurn, ticker, brand }: NumberBoardProps) {
+export type ArcNumberBoardProps = NumberBoardProps & {
+  /** Numbers the PREVIOUS player claimed this turn — painted brown. */
+  lastPicks?: number[];
+};
+
+function ArcNumberBoardImpl({ total, picks, highlight, onSelect, myTurn, lastPicks, brand }: ArcNumberBoardProps) {
   /**
    * The seven-node window. Steps run -3…+3 with the FIRST claimable number at the apex (step 0),
    * where it is biggest and easiest to hit — it is the number a player reaches for most.
    */
   const nodes = useMemo(() => {
     const out: { value: number; step: number; state: NodeState }[] = [];
-    // Above: the three most recently claimed, the running total among them. Grey — they are gone.
+    // Above: the three most recently claimed, the running total among them.
     for (let k = 3; k >= 1; k--) {
       const v = total - k + 1;
       if (v >= 1) out.push({ value: v, step: -k, state: "taken" });
@@ -255,55 +278,28 @@ function ArcNumberBoardImpl({ total, taken, picks, highlight, onSelect, myTurn, 
 
   const claimable = useMemo(() => new Set(picks), [picks]);
   const selected = useMemo(() => new Set(highlight), [highlight]);
-  const left = GOAL - total;
+  const recent = useMemo(() => new Set(lastPicks ?? []), [lastPicks]);
+
+  // The sponsor's mark. It used to sit behind the running total; with that gone it moves to the open
+  // space outside the arc, under the submit button — still a real, visible surface, and now the only
+  // thing in the composition that isn't the game itself.
   const wm = brand?.watermark !== false && brand?.logoUrl;
 
   return (
     <div className="anb-layer" aria-label="Number board">
-      {wm && (
-        <img
-          src={brand.logoUrl}
-          alt=""
-          aria-hidden="true"
-          className="anb-watermark"
-          style={{ left: TOTAL_CX, opacity: brand?.watermarkOpacity ?? 0.12 }}
-        />
-      )}
-
-      <ArcRail progress={total / GOAL} />
-
+      <ArcRail />
+      {wm && <img src={brand.logoUrl} alt="" aria-hidden="true" className="anb-watermark" style={{ opacity: brand?.watermarkOpacity ?? 0.14 }} />}
       {nodes.map((n) => (
         <ArcNode
           key={n.value}
           value={n.value}
           step={n.step}
           state={n.state}
+          recent={n.state === "taken" && recent.has(n.value)}
           selected={selected.has(n.value)}
           onSelect={myTurn && n.state === "active" && claimable.has(n.value) ? onSelect : undefined}
         />
       ))}
-
-      {/* The running total — now the ONLY place it appears. */}
-      <div className="anb-total" style={{ left: TOTAL_CX }}>
-        <div className="anb-cap">Running total</div>
-        {total > 0 ? (
-          <>
-            <div className="anb-big">
-              {total}
-              <small>/{GOAL}</small>
-            </div>
-            <div className="anb-sub" style={{ color: left <= 3 ? C.danger : C.mute }}>
-              {total >= GOAL ? "Round over" : `${left} to go`}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="anb-start">START</div>
-            <div className="anb-sub">Claim 1, 2 or 3</div>
-          </>
-        )}
-        {ticker && <div className="anb-ticker">{ticker}</div>}
-      </div>
     </div>
   );
 }

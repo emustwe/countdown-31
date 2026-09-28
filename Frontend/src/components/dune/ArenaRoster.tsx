@@ -31,6 +31,7 @@ export function ArenaRoster({
   style,
   sponsor,
   rosterStyle = "default",
+  plainText = false,
 }: {
   players: LivePlayer[];
   currentId: string | null;
@@ -43,8 +44,15 @@ export function ArenaRoster({
   sponsor?: { logoUrl?: string; name?: string; color?: string; bannerImage?: string } | null;
   /** Look of the arena-list panel (sponsor-selectable). Omitted → the default cabinet panel. */
   rosterStyle?: "default" | "glass" | "solid" | "brand";
+  /** Normal-weight type instead of the heavy default. A hundred bold rows is a wall; regular weight
+   *  with a colour shift for the active row carries the same hierarchy and stays legible at arena
+   *  scale. Opt-in so the legacy board keeps exactly the look it always had. */
+  plainText?: boolean;
 }) {
   const alive = players.filter((p) => !p.eliminated).length;
+  const W = plainText
+    ? { hdr: 400, cnt: 400, seat: 400, ava: 500, name: 400, you: 500, role: 400 }
+    : { hdr: 900, cnt: 800, seat: 800, ava: 900, name: 800, you: 900, role: 600 };
   return (
     <div
       className="cab-panel"
@@ -70,10 +78,10 @@ export function ArenaRoster({
     >
       {/* Header: ARENA · N/M ALIVE */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flex: "none" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, letterSpacing: ".22em", textTransform: "uppercase", fontWeight: 900, color: "#c8b790" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, letterSpacing: ".22em", textTransform: "uppercase", fontWeight: W.hdr, color: "#c8b790" }}>
           <Users size={13} style={{ color: C.gold }} /> Arena
         </span>
-        <span style={{ fontSize: 11, letterSpacing: ".08em", fontWeight: 800, textTransform: "uppercase", color: C.goldSoft }}>
+        <span style={{ fontSize: 11, letterSpacing: ".08em", fontWeight: W.cnt, textTransform: "uppercase", color: C.goldSoft }}>
           {alive} <span style={{ color: C.mute }}>/ {players.length} alive</span>
         </span>
       </div>
@@ -137,16 +145,16 @@ export function ArenaRoster({
                 </span>
               )}
               {/* Seat number */}
-              <span style={{ minWidth: 21, height: 21, display: "grid", placeItems: "center", borderRadius: 7, fontFamily: "ui-monospace,Menlo,monospace", fontWeight: 800, fontSize: 11, flex: "none", color: isCur ? "#1b1206" : C.goldSoft, background: isCur ? C.gold : "rgba(8,7,5,.75)", border: `1px solid ${isCur ? C.goldSoft : "rgba(245,165,36,.28)"}` }}>
+              <span style={{ minWidth: 21, height: 21, display: "grid", placeItems: "center", borderRadius: 7, fontFamily: "ui-monospace,Menlo,monospace", fontWeight: W.seat, fontSize: 11, flex: "none", color: isCur ? "#1b1206" : C.goldSoft, background: isCur ? C.gold : "rgba(8,7,5,.75)", border: `1px solid ${isCur ? C.goldSoft : "rgba(245,165,36,.28)"}` }}>
                 {seat}
               </span>
               {/* Colour avatar with initials */}
-              <span style={{ width: 38, height: 38, borderRadius: 999, display: "grid", placeItems: "center", flex: "none", background: `linear-gradient(160deg, ${pl.color}, ${pl.color}cc)`, border: "2px solid rgba(255,255,255,.82)", boxShadow: `0 3px 10px ${pl.color}55`, color: "#0b0906", fontWeight: 900, fontSize: 13, letterSpacing: ".01em", filter: pl.eliminated ? "grayscale(.6)" : "none" }}>
+              <span style={{ width: 38, height: 38, borderRadius: 999, display: "grid", placeItems: "center", flex: "none", background: `linear-gradient(160deg, ${pl.color}, ${pl.color}cc)`, border: "2px solid rgba(255,255,255,.82)", boxShadow: `0 3px 10px ${pl.color}55`, color: "#0b0906", fontWeight: W.ava, fontSize: 13, letterSpacing: ".01em", filter: pl.eliminated ? "grayscale(.6)" : "none" }}>
                 {cowInitials(pl.name)}
               </span>
               {/* Name + role */}
               <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: pl.eliminated ? C.mute : "#fff", textDecoration: pl.eliminated ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 14, fontWeight: W.name, color: pl.eliminated ? C.mute : "#fff", textDecoration: pl.eliminated ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {/* Country flag, ahead of the name. Absent for CPU cows and for players who joined
                       before the country picker existed — the row simply has no flag then. */}
                   {countryFlag(pl.country) && (
@@ -155,9 +163,9 @@ export function ArenaRoster({
                     </span>
                   )}
                   {pl.name}
-                  {isMe && <span style={{ color: C.cyan, fontWeight: 900 }}> · you</span>}
+                  {isMe && <span style={{ color: C.cyan, fontWeight: W.you }}> · you</span>}
                 </span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: isCur ? C.goldSoft : C.mute, fontStyle: isCur && !isMe ? "italic" : "normal", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 11, fontWeight: W.role, color: isCur ? C.goldSoft : C.mute, fontStyle: isCur && !isMe ? "italic" : "normal", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {role}
                 </span>
               </span>
