@@ -66,7 +66,9 @@ const CONTENT_W = ROSTER_X + ROSTER_W + 18;
 // ── MIRROR ARC layout. The number board stops being a 520px box and becomes an arc drawn straight
 // onto the stage, so the roster comes left and the whole composition gets narrower — which means it
 // fit-scales LARGER on exactly the small phone screens that were the tightest fit before.
-const ARC_ROSTER_X = 900;
+// The arc now shares the player rail's 430 radius, so its apex node reaches x 895 (NUM_CX 400 +
+// NUM_R 430 + half a 130px node). The roster starts clear of that.
+const ARC_ROSTER_X = 920;
 const ARC_ROSTER_W = 310;
 const ARC_CONTENT_W = ARC_ROSTER_X + ARC_ROSTER_W + 18;
 /** Submit bar / status line, centred under the running total in the bowl between the two arcs. */

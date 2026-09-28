@@ -7,51 +7,72 @@ import type { NumberBoardProps } from "./NumberBoard";
 /**
  * ArcNumberBoard — the number board as an arc that MIRRORS the player rail.
  *
- * The player rail bows LEFT with the active cow at its apex. This bows RIGHT, so the two face each
- * other across the running total: ( total )
+ * Same radius as the player rail (ARC_RADIUS 430), so the two arcs read as one pair of facing curves
+ * and the numbers carry the same visual weight as the cows.
  *
- * The board deliberately shows a WINDOW, not all 31 numbers — the three just spent, the running
- * total, and the three you may claim. That is the whole of what a player needs to decide a turn, and
- * it reads identically on a 390px phone and a 27" monitor, which a 31-tile grid never did. The full
- * ledger of what has gone is the arena list's job, not the board's.
+ * The window, top to bottom, is always seven:
  *
- * Colour discipline is inherited from the old board and unchanged: gold = progress and the running
- * total, cyan = claimable now, red = 31. A number's owner is never painted here.
+ *     3 taken      grey    — already claimed, including the running total itself
+ *     3 active     cyan    — the player takes 1, 2 or 3 of these, in order
+ *     1 next       dim     — a preview of what follows, never clickable
  *
- * Geometry all derives from `arcPointAt`, so the constants below are the single source of truth.
+ * There is deliberately NO highlighted "current total" node. The total is already claimed, so
+ * painting it gold both duplicated the readout in the middle and made a dead node look live. The
+ * running total lives in exactly one place now: the text in the bowl.
+ *
+ * Colour: cyan = claimable, red = 31, grey = gone. Nothing else. A number's owner is never painted.
  */
 
 /* ---------------------------------------------------------------- geometry */
-/** Circle centre. Sits LEFT of the apex, so the arc bulges right — the mirror of the player rail. */
-export const NUM_CX = 470;
+/** Circle centre, LEFT of the apex so the arc bulges right — the mirror of the player rail. */
+export const NUM_CX = 400;
 export const NUM_CY = 340; // = STAGE_H / 2
-export const NUM_R = 360;
-const STEP_DEG = 15;
+/** Matches ARC_RADIUS in ClassicArcBoard — the two arcs are the same size, by design. */
+export const NUM_R = 430;
+/**
+ * The angular step TIGHTENS toward the ends rather than staying constant.
+ *
+ * A constant step can't satisfy both halves of the brief: wide enough to separate the big claimable
+ * numbers means the outermost node lands past the bottom of the 680-tall stage (at a constant 16° the
+ * preview node centred at y 660 was visibly cut in half); narrow enough to fit makes the two largest
+ * nodes overlap. Tightening the outer slots — where the nodes are small anyway — buys the room for a
+ * full-size 130px number at the apex AND keeps all seven inside the stage.
+ */
+const RAMP = [0, 16, 30, 42];
+const angleAt = (step: number) => {
+  const sign = step < 0 ? -1 : 1;
+  const a = Math.abs(step);
+  const last = RAMP.length - 1;
+  if (a >= last) return sign * (RAMP[last]! + (a - last) * 12);
+  const i = Math.floor(a);
+  return sign * (RAMP[i]! + (RAMP[i + 1]! - RAMP[i]!) * (a - i));
+};
 
 /** Where the running total + submit bar live, in the bowl between the two arcs. */
 export const TOTAL_CX = 628;
 
 const rad = (d: number) => (d * Math.PI) / 180;
 export const arcPointAt = (step: number) => {
-  const a = rad(step * STEP_DEG);
+  const a = rad(angleAt(step));
   return { x: NUM_CX + NUM_R * Math.cos(a), y: NUM_CY + NUM_R * Math.sin(a) };
 };
 
-/** Every node is rendered at this size and scaled by transform; see the note in ArcNode. */
-const BASE = 96;
+type NodeState = "taken" | "active" | "next";
 
-/** Spent numbers ride smaller than claimable ones — the eye goes to what you can still take. */
-const sizeAt = (step: number) => {
-  if (step > -0.2 && step < 0.2) return 96;
-  const a = Math.abs(step);
-  if (step > 0) return a <= 1 ? 84 : a <= 2 ? 77 : 70;
-  return a <= 1 ? 62 : a <= 2 ? 54 : 47;
+/** Largest node; every node renders at this size and is scaled by transform. See ArcNode. */
+const BASE = 130;
+
+/** The three you can take lead the eye; what is gone, and what is merely coming, recede. */
+const sizeAt = (state: NodeState, step: number) => {
+  if (state === "active") return step < 0.5 ? 130 : step < 1.5 ? 108 : 92;
+  if (state === "next") return 76;
+  return step > -1.5 ? 72 : step > -2.5 ? 60 : 50;
 };
-const fadeAt = (step: number) => {
-  const a = Math.abs(step);
-  if (a > 3.3) return 0;
-  const edge = a > 2.6 ? Math.max(0, 1 - (a - 2.6) / 0.75) : 1;
-  return (step < 0 ? 0.52 : 1) * edge;
+const fadeAt = (state: NodeState, step: number) => {
+  if (Math.abs(step) > 3.4) return 0;
+  if (state === "active") return 1;
+  if (state === "next") return 0.62;
+  return step > -1.5 ? 0.6 : step > -2.5 ? 0.48 : 0.36;
 };
 
 const GOAL = 31;
@@ -59,28 +80,27 @@ const C = {
   gold: "#F5A524",
   goldSoft: "#FFD98A",
   claim: "#35D6E8",
-  claimSoft: "#B9F5DA",
+  claimSoft: "#D3FBFF",
   danger: "#F87171",
-  bone: "#F6EFE2",
+  grey: "#6E6757",
+  greyInk: "#8C8468",
   mute: "#8A8071",
 };
 
 /* -------------------------------------------------------------------- rail */
 function ArcRail({ progress }: { progress: number }) {
-  const { d, len } = useMemo(() => {
+  const d = useMemo(() => {
     const pts: string[] = [];
     for (let i = 0; i <= 120; i++) {
-      const p = arcPointAt(-3.35 + (6.7 * i) / 120);
+      const p = arcPointAt(-3.4 + (6.8 * i) / 120);
       pts.push(`${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`);
     }
-    // Chord length is a close enough dash basis for a shallow arc; the exact value is set from the
-    // DOM below once the path exists.
-    return { d: pts.join(" "), len: 2 * NUM_R * rad(3.35 * STEP_DEG) };
+    return pts.join(" ");
   }, []);
   const runRef = useRef<SVGPathElement | null>(null);
-  const [total, setTotal] = useState(len);
+  const [len, setLen] = useState(1);
   useEffect(() => {
-    if (runRef.current) setTotal(runRef.current.getTotalLength());
+    if (runRef.current) setLen(runRef.current.getTotalLength());
   }, []);
 
   return (
@@ -114,8 +134,8 @@ function ArcRail({ progress }: { progress: number }) {
         strokeLinecap="round"
         opacity="0.9"
         style={{
-          strokeDasharray: total,
-          strokeDashoffset: total * (1 - Math.max(0, Math.min(1, progress))),
+          strokeDasharray: len,
+          strokeDashoffset: len * (1 - Math.max(0, Math.min(1, progress))),
           transition: "stroke-dashoffset .55s cubic-bezier(.22,.9,.24,1)",
         }}
       />
@@ -133,55 +153,43 @@ function ArcNode({
 }: {
   value: number;
   step: number;
-  state: "spent" | "current" | "claim";
+  state: NodeState;
   selected: boolean;
   onSelect?: (n: number) => void;
 }) {
   const p = arcPointAt(step);
-  const size = sizeAt(step);
-  const opacity = fadeAt(step);
+  const size = sizeAt(state, step);
+  const opacity = fadeAt(state, step);
   if (opacity <= 0) return null;
 
-  const isDanger = value === GOAL && state === "claim";
-  const clickable = state === "claim" && !!onSelect;
+  const isDanger = value === GOAL && state === "active";
+  const clickable = state === "active" && !!onSelect;
 
-  const ring = selected
-    ? C.claim
-    : isDanger
-      ? C.danger
-      : state === "current"
-        ? "#FFF3C4"
-        : state === "claim"
-          ? C.claim
-          : "rgba(245,165,36,.3)";
+  const ring = selected ? C.claim : isDanger ? C.danger : state === "active" ? C.claim : state === "next" ? "rgba(245,165,36,.22)" : C.grey;
 
   const bg = selected
     ? `radial-gradient(circle at 35% 30%, ${C.claimSoft}, ${C.claim} 62%, #0E7F90)`
-    : state === "current"
-      ? "radial-gradient(circle at 35% 30%,#FDE68A,#F59E0B 60%,#B45309)"
-      : "rgba(14,16,12,.88)";
+    : "rgba(14,16,12,.88)";
 
-  const fg = selected ? "#04222A" : state === "current" ? "#3B2203" : isDanger ? "#FECACA" : state === "claim" ? C.claimSoft : "#8C8468";
+  const fg = selected ? "#04222A" : isDanger ? "#FECACA" : state === "active" ? C.claimSoft : C.greyInk;
 
   const glow = selected
-    ? `0 0 26px ${C.claim}b0`
-    : state === "current"
-      ? "0 0 28px rgba(245,165,36,.72)"
-      : isDanger
-        ? `0 0 18px ${C.danger}88`
-        : state === "claim"
-          ? `0 0 16px ${C.claim}66`
-          : "0 4px 12px rgba(0,0,0,.45)";
+    ? `0 0 30px ${C.claim}b0`
+    : isDanger
+      ? `0 0 20px ${C.danger}88`
+      : state === "active"
+        ? `0 0 18px ${C.claim}55`
+        : "0 4px 12px rgba(0,0,0,.45)";
 
   return (
     <div
       role={clickable ? "button" : undefined}
       tabIndex={clickable ? 0 : undefined}
       aria-label={
-        state === "current"
-          ? `Running total ${value}`
-          : state === "claim"
-            ? `Claim ${value}${isDanger ? " — this is 31, it knocks you out" : ""}${selected ? ", selected" : ""}`
+        state === "active"
+          ? `Claim ${value}${isDanger ? " — this is 31, it knocks you out" : ""}${selected ? ", selected" : ""}`
+          : state === "next"
+            ? `${value}, next after this turn`
             : `${value}, already taken`
       }
       aria-pressed={clickable ? selected : undefined}
@@ -208,11 +216,11 @@ function ArcNode({
         transform: `translate(${(p.x - NUM_CX).toFixed(1)}px,${(p.y - NUM_CY).toFixed(1)}px) translate(-50%,-50%) scale(${(size / BASE).toFixed(3)})`,
         opacity,
         background: bg,
-        border: `2.5px solid ${ring}`,
+        border: `${state === "active" ? 3 : 2}px solid ${ring}`,
         color: fg,
         boxShadow: glow,
         fontSize: BASE * (value >= 10 ? 0.4 : 0.46),
-        zIndex: state === "current" ? 30 : 20 - Math.round(Math.abs(step)),
+        zIndex: state === "active" ? 30 - Math.round(step) : 10,
         cursor: clickable ? "pointer" : "default",
       }}
     >
@@ -223,18 +231,25 @@ function ArcNode({
 
 /* ------------------------------------------------------------------- board */
 function ArcNumberBoardImpl({ total, taken, picks, highlight, onSelect, myTurn, ticker, brand }: NumberBoardProps) {
-  // The visible window: three spent, the total, three claimable.
+  /**
+   * The seven-node window. Steps run -3…+3 with the FIRST claimable number at the apex (step 0),
+   * where it is biggest and easiest to hit — it is the number a player reaches for most.
+   */
   const nodes = useMemo(() => {
-    const out: { value: number; step: number; state: "spent" | "current" | "claim" }[] = [];
+    const out: { value: number; step: number; state: NodeState }[] = [];
+    // Above: the three most recently claimed, the running total among them. Grey — they are gone.
     for (let k = 3; k >= 1; k--) {
-      const v = total - k;
-      if (v >= 1) out.push({ value: v, step: -k, state: "spent" });
+      const v = total - k + 1;
+      if (v >= 1) out.push({ value: v, step: -k, state: "taken" });
     }
-    if (total > 0) out.push({ value: total, step: 0, state: "current" });
+    // The three that can be claimed this turn.
     for (let k = 1; k <= 3; k++) {
       const v = total + k;
-      if (v <= GOAL) out.push({ value: v, step: k, state: "claim" });
+      if (v <= GOAL) out.push({ value: v, step: k - 1, state: "active" });
     }
+    // One step of lookahead, so the shape of the next turn is visible. Never clickable.
+    const nxt = total + 4;
+    if (nxt <= GOAL) out.push({ value: nxt, step: 3, state: "next" });
     return out;
   }, [total]);
 
@@ -245,8 +260,6 @@ function ArcNumberBoardImpl({ total, taken, picks, highlight, onSelect, myTurn, 
 
   return (
     <div className="anb-layer" aria-label="Number board">
-      {/* Sponsor watermark, ghosted into the bowl behind the total — the same ad surface the old
-          board carried, in the one place nothing else occupies. */}
       {wm && (
         <img
           src={brand.logoUrl}
@@ -266,11 +279,11 @@ function ArcNumberBoardImpl({ total, taken, picks, highlight, onSelect, myTurn, 
           step={n.step}
           state={n.state}
           selected={selected.has(n.value)}
-          onSelect={myTurn && n.state === "claim" && claimable.has(n.value) ? onSelect : undefined}
+          onSelect={myTurn && n.state === "active" && claimable.has(n.value) ? onSelect : undefined}
         />
       ))}
 
-      {/* Running total, in the bowl the two arcs make. */}
+      {/* The running total — now the ONLY place it appears. */}
       <div className="anb-total" style={{ left: TOTAL_CX }}>
         <div className="anb-cap">Running total</div>
         {total > 0 ? (
