@@ -71,10 +71,13 @@ const sizeAt = (state: NodeState, step: number) => {
   if (state === "next") return 76;
   return step > -1.5 ? 72 : step > -2.5 ? 60 : 50;
 };
-const fadeAt = (state: NodeState, step: number) => {
+const fadeAt = (state: NodeState, step: number, recent: boolean) => {
   if (Math.abs(step) > 3.4) return 0;
   if (state === "active") return 1;
   if (state === "next") return 0.62;
+  // The previous player's claim is the one thing in the taken zone that carries live information —
+  // how many they took — so it does NOT fade with age the way older claims do.
+  if (recent) return 0.96;
   return step > -1.5 ? 0.72 : step > -2.5 ? 0.56 : 0.42;
 };
 
@@ -86,9 +89,13 @@ const C = {
   claimSoft: "#D3FBFF",
   /** 31, and nothing else. */
   danger: "#F87171",
-  /** The previous player's claim. Deliberately far from `danger` in hue so the two never read alike. */
+  /** The previous player's claim — a SOLID disc, not an outline: a tinted ring over a near-black
+   *  fill just read as grey. Deliberately far from `danger` in hue so the two never read alike. */
   brown: "#A0682F",
-  brownInk: "#DCA96B",
+  brownHi: "#CE8F4E",
+  brownLo: "#63401E",
+  brownRim: "#E0A870",
+  brownInk: "#FFF1DD",
   grey: "#6E6757",
   greyInk: "#8C8468",
 };
@@ -155,7 +162,7 @@ function ArcNode({
 }) {
   const p = arcPointAt(step);
   const size = sizeAt(state, step);
-  const opacity = fadeAt(state, step);
+  const opacity = fadeAt(state, step, recent);
   if (opacity <= 0) return null;
 
   const isDanger = value === GOAL && state === "active";
@@ -168,7 +175,7 @@ function ArcNode({
       : state === "active"
         ? C.claim
         : recent
-          ? C.brown
+          ? C.brownRim
           : state === "next"
             ? "rgba(245,165,36,.22)"
             : C.grey;
@@ -176,7 +183,7 @@ function ArcNode({
   const bg = selected
     ? `radial-gradient(circle at 35% 30%, ${C.claimSoft}, ${C.claim} 62%, #0E7F90)`
     : recent
-      ? "radial-gradient(circle at 35% 30%, rgba(160,104,47,.30), rgba(14,16,12,.9) 70%)"
+      ? `radial-gradient(circle at 35% 30%, ${C.brownHi}, ${C.brown} 58%, ${C.brownLo})`
       : "rgba(14,16,12,.88)";
 
   const fg = selected
@@ -196,7 +203,7 @@ function ArcNode({
       : state === "active"
         ? `0 0 18px ${C.claim}55`
         : recent
-          ? `0 0 14px ${C.brown}66`
+          ? `0 0 22px ${C.brown}aa`
           : "0 4px 12px rgba(0,0,0,.45)";
 
   return (
