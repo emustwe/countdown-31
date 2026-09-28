@@ -696,7 +696,7 @@ export function ArcadeHeader({
               </div>
 
               {/* Admin-configured navigation items */}
-              <div className="flex flex-col gap-1 text-xs font-title font-bold">
+              <div className="flex flex-col gap-1 text-xs font-title font-normal">
                 {menuItems.map((item) => {
                   const Icon = menuIcons[item.icon];
                   return (
@@ -740,7 +740,7 @@ export function ArcadeHeader({
                 >
                   <div className="flex items-center gap-2.5">
                     <Building2 size={15} className="text-emerald-400" />
-                    <span className="font-title font-black">Sponsor Dashboard</span>
+                    <span className="font-title font-normal">Sponsor Dashboard</span>
                   </div>
                   <ChevronRight size={14} className="text-emerald-400" />
                 </button>
@@ -752,7 +752,7 @@ export function ArcadeHeader({
                   >
                     <div className="flex items-center gap-2.5">
                       <ShieldAlert size={15} className="text-amber-400" />
-                      <span className="font-title font-black">Admin Console</span>
+                      <span className="font-title font-normal">Admin Console</span>
                     </div>
                     <ChevronRight size={14} className="text-amber-400" />
                   </button>

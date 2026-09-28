@@ -7,6 +7,9 @@ import { ArenaRoster } from "./ArenaRoster";
 import { countryFlag, countryName } from "../../lib/countries";
 import { MasterAvatar } from "./MasterAvatar";
 import { NumberBoard } from "./NumberBoard";
+import { ArcNumberBoard, TOTAL_CX } from "./ArcNumberBoard";
+import { ArcArenaRoster } from "./ArcArenaRoster";
+import { useArcDesign } from "../../lib/arena-design";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
 import type { LivePlayer, LastMoveInfo } from "../../lib/hooks/useCountdownLive";
 
@@ -60,6 +63,16 @@ const BOARD_ROSTER_GAP = 45;
 const ROSTER_X = BOARD_X + BOARD_W + BOARD_ROSTER_GAP;
 const ROSTER_W = 300;
 const CONTENT_W = ROSTER_X + ROSTER_W + 18;
+// ── MIRROR ARC layout. The number board stops being a 520px box and becomes an arc drawn straight
+// onto the stage, so the roster comes left and the whole composition gets narrower — which means it
+// fit-scales LARGER on exactly the small phone screens that were the tightest fit before.
+const ARC_ROSTER_X = 900;
+const ARC_ROSTER_W = 310;
+const ARC_CONTENT_W = ARC_ROSTER_X + ARC_ROSTER_W + 18;
+/** Submit bar / status line, centred under the running total in the bowl between the two arcs. */
+const ARC_ACTION_W = 210;
+const ARC_ACTION_TOP = 440;
+
 const ARC_RADIUS = 430; // bigger = flatter curve
 const ARC_STEP_DEG = 19; // angular gap between two neighbouring players
 // Where the current player sits (left edge inset). Big enough that the apex avatar (140 stage px wide,
@@ -364,20 +377,23 @@ function ClassicArcBoardImpl({
   // right edge (0 on square windows that fill the width, and 0 on desktop).
   const [shift, setShift] = useState(0);
   const localCfg = useAvatarStore();
+  // THE switch. See src/lib/arena-design.ts — flipping one constant there restores the old board.
+  const arc = useArcDesign();
+  const contentW = arc ? ARC_CONTENT_W : CONTENT_W;
 
   // Fit the fixed-design stage into whatever space the arena gives us (width AND height). Runs only
   // once the viewport has SETTLED after a resize / orientation burst — mobile auto-rotation fires a
   // flurry of transient sizes, and re-fitting on each one makes the board scale (and the overlays
   // that mirror it) blink. useSettledResize waits for the size to hold steady, then fits once.
   const fit = useCallback(() => {
-    const w = wrapRef.current?.clientWidth ?? CONTENT_W;
+    const w = wrapRef.current?.clientWidth ?? contentW;
     const h = wrapRef.current?.clientHeight ?? STAGE_H;
-    const s = Math.min(w / CONTENT_W, h / STAGE_H, 1.05);
+    const s = Math.min(w / contentW, h / STAGE_H, 1.05);
     setScale(s);
     onScale?.(s);
     // Nudge the whole composition right so the arc clears the left-edge PLAY button (and the board +
     // roster sit a touch further right). Clamped so the roster never spills off the right edge.
-    const margin = (w - CONTENT_W * s) / 2; // cab-fit side margin
+    const margin = (w - contentW * s) / 2; // cab-fit side margin
     const isPhoneLandscape =
       typeof window !== "undefined" &&
       window.matchMedia?.("(max-width: 1180px) and (orientation: landscape)").matches;
@@ -387,12 +403,12 @@ function ClassicArcBoardImpl({
       // Desktop: clamp to the REAL room to the viewport's right edge (cab-fit is inset from it), so the
       // composition can move far enough right for the arc's apex avatar to clear the PLAY button.
       const cabLeft = wrapRef.current?.getBoundingClientRect().left ?? 0;
-      const compRight = cabLeft + (w + CONTENT_W * s) / 2; // centred composition's right edge
+      const compRight = cabLeft + (w + contentW * s) / 2; // centred composition's right edge
       const vw = typeof window !== "undefined" ? window.innerWidth : w;
       const rightRoom = vw - compRight - 8; // keep a small breathing gap at the right edge
       setShift(Math.max(0, Math.min(72, rightRoom)));
     }
-  }, [onScale]);
+  }, [onScale, contentW]);
   useSettledResize(fit, wrapRef);
 
   // Turn order: surviving players in seating order. Seat number = original roster index + 1.
@@ -437,6 +453,24 @@ function ClassicArcBoardImpl({
   const currentPlayer = queue[curIdx] ?? null;
   // The three next numbers the active player may claim (consecutive from the total).
   const tiles = [count + 1, count + 2, count + 3];
+
+  // One contract, both boards — so the switch can never drift into two different sets of rules.
+  const boardProps = {
+    brand: boardBrand,
+    total: count,
+    taken,
+    picks: myTurn && count < 31 ? tiles.filter((n) => n <= 31 && !taken[n]) : [],
+    highlight: myTurn ? selectedCards : selecting && selecting.playerId === currentId ? selecting.picks : [],
+    onSelect: onToggleCard,
+    myTurn,
+    ticker:
+      spectatorMessage ??
+      (myTurn
+        ? "Tap the glowing numbers — claim 1, 2 or 3."
+        : currentPlayer && status === "playing"
+          ? `${currentPlayer.name} is choosing…`
+          : ""),
+  };
 
   return (
     <div ref={wrapRef} className="cab-fit">
@@ -488,7 +522,7 @@ function ClassicArcBoardImpl({
         @media (prefers-reduced-motion: reduce){.cab-ring,.cab-card{animation:none}}
       `}</style>
 
-      <div style={{ position: "relative", width: CONTENT_W, height: STAGE_H, transform: `translateX(${shift}px) scale(${scale})`, transformOrigin: "center center", flex: "none" }}>
+      <div style={{ position: "relative", width: contentW, height: STAGE_H, transform: `translateX(${shift}px) scale(${scale})`, transformOrigin: "center center", flex: "none" }}>
         <Rail />
 
         {/* Player rail */}
@@ -524,50 +558,50 @@ function ClassicArcBoardImpl({
         {/* ---- The NUMBER BOARD — enlarged to fill the open centre (the roster is now a right-edge
              overlay). Its TOP (stage y = ROSTER_TOP) is aligned with the arena roster's head, which the
              parent pins at ROSTER_TOP*scale — so the two panels line up exactly on every screen. ---- */}
-        <div style={{ position: "absolute", left: BOARD_X + shiftX, top: ROSTER_TOP, width: BOARD_W, height: ARENA_H }}>
-
-        {/* The serpentine TRACK board — 1…31 threaded by a ribbon with a hopping cow token, heat ramp,
-            trap diamonds and a 31 doom cell. It fills the ARENA_H height so it lines up with the arena
-            roster top and bottom. Picks are claimed by tapping the glowing tiles on the board. */}
-        <NumberBoard
-          brand={boardBrand}
-          total={count}
-          taken={taken}
-          picks={myTurn && count < 31 ? tiles.filter((n) => n <= 31 && !taken[n]) : []}
-          highlight={
-            myTurn
-              ? selectedCards
-              : selecting && selecting.playerId === currentId
-                ? selecting.picks
-                : []
-          }
-          onSelect={onToggleCard}
-          myTurn={myTurn}
-          ticker={
-            spectatorMessage ??
-            (myTurn
-              ? "Tap the glowing tiles — claim 1, 2 or 3."
-              : currentPlayer && status === "playing"
-                ? `${currentPlayer.name} is choosing…`
-                : "")
-          }
-        />
-
-        </div>
+        {arc ? (
+          /* MIRROR ARC — drawn straight onto the stage so it can share the rail's coordinate space
+             and bow toward the players. No wrapper box: the arc IS the board. */
+          <ArcNumberBoard {...boardProps} />
+        ) : (
+          <div style={{ position: "absolute", left: BOARD_X + shiftX, top: ROSTER_TOP, width: BOARD_W, height: ARENA_H }}>
+            {/* The serpentine TRACK board — 1…31 threaded by a ribbon with a hopping cow token. */}
+            <NumberBoard {...boardProps} />
+          </div>
+        )}
         {/* ---- end number board row ---- */}
 
         {/* ---- ARENA roster — a fixed part of the composition, a gap to the RIGHT of the board, so the
              whole arc + board + roster group scales and centres as one unit on every screen. ---- */}
-        <div style={{ position: "absolute", left: ROSTER_X, top: ROSTER_TOP, width: ROSTER_W, height: ARENA_H }}>
-          <ArenaRoster
-            players={players}
-            currentId={currentId}
-            myId={myId}
-            status={status as "waiting" | "playing" | "over"}
-            style={{ width: "100%", height: "100%", pointerEvents: "auto" }}
-            sponsor={rosterSponsor}
-            rosterStyle={rosterStyle}
-          />
+        <div
+          style={{
+            position: "absolute",
+            left: arc ? ARC_ROSTER_X : ROSTER_X,
+            top: ROSTER_TOP,
+            width: arc ? ARC_ROSTER_W : ROSTER_W,
+            height: ARENA_H,
+          }}
+        >
+          {arc ? (
+            <ArcArenaRoster
+              players={players}
+              currentId={currentId}
+              myId={myId}
+              status={status as "waiting" | "playing" | "over"}
+              style={{ width: "100%", height: "100%", pointerEvents: "auto" }}
+              sponsor={rosterSponsor}
+              rosterStyle={rosterStyle}
+            />
+          ) : (
+            <ArenaRoster
+              players={players}
+              currentId={currentId}
+              myId={myId}
+              status={status as "waiting" | "playing" | "over"}
+              style={{ width: "100%", height: "100%", pointerEvents: "auto" }}
+              sponsor={rosterSponsor}
+              rosterStyle={rosterStyle}
+            />
+          )}
         </div>
 
         {/* Countdown timer cow is now rendered by the parent (CountDown31) as an OVERLAY above the
@@ -575,7 +609,13 @@ function ClassicArcBoardImpl({
             head fully visible instead of being cut off by the board boundary. */}
 
         {/* Number picker / waiting state / join. */}
-        <div style={{ position: "absolute", left: BOARD_X + shiftX, top: ROSTER_TOP + ARENA_H + 12, width: BOARD_W }}>
+        <div
+          style={
+            arc
+              ? { position: "absolute", left: TOTAL_CX - ARC_ACTION_W / 2, top: ARC_ACTION_TOP, width: ARC_ACTION_W, zIndex: 14 }
+              : { position: "absolute", left: BOARD_X + shiftX, top: ROSTER_TOP + ARENA_H + 12, width: BOARD_W }
+          }
+        >
           {showJoin ? (
             /* Play/"Tap to take a seat" button removed for now — it will be re-added elsewhere. */
             null

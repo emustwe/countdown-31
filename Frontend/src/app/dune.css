@@ -11187,6 +11187,147 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
 }
 .cs-panel .cs-sheet-head button:hover { color: #fff; }
 
+/* ══ MIRROR ARC ARENA ══════════════════════════════════════════════════════
+   The arc number board (.anb-*) and the curved arena list (.aar-*). Both are
+   behind the ARC_DESIGN switch in src/lib/arena-design.ts — flip that constant
+   to false and none of this is reachable. */
+
+/* ── the number arc ─────────────────────────────────────────────────────── */
+.anb-layer { position: absolute; inset: 0; pointer-events: none; }
+.anb-layer > * { pointer-events: auto; }
+
+.anb-node {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;                 /* numerals read fine without bold at this size */
+  letter-spacing: -0.01em;
+  user-select: none;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+  /* The travel along the arc lives HERE, not in a rAF loop — persisting numbers ease to their new
+     slot on the compositor, and arriving ones fade in at their final place instead of flying in from
+     off-arc (which is what made them pop). */
+  transition: transform .52s cubic-bezier(.22,.9,.24,1), background .28s ease, border-color .28s ease,
+              color .28s ease, box-shadow .28s ease, opacity .3s ease;
+  animation: anb-in .34s ease both;
+}
+@keyframes anb-in { from { opacity: 0 } }
+.anb-node.is-live { cursor: pointer; }
+.anb-node.is-live:active { filter: brightness(1.12); }
+.anb-node.is-live:focus-visible { outline: 3px solid #7DD3FC; outline-offset: 3px; }
+
+.anb-total {
+  position: absolute;
+  top: 340px;
+  transform: translate(-50%, -50%);
+  width: 210px;
+  text-align: center;
+  z-index: 12;
+}
+.anb-cap {
+  font-size: 12px; font-weight: 400; letter-spacing: .18em; text-transform: uppercase;
+  color: #C8B790;
+}
+.anb-big {
+  font-size: 84px; line-height: .92; font-weight: 500; font-variant-numeric: tabular-nums;
+  letter-spacing: -.03em; color: #FFF6DA; text-shadow: 0 5px 0 rgba(0,0,0,.35);
+}
+.anb-big small { font-size: 26px; font-weight: 400; color: #D6C79A; letter-spacing: 0; }
+.anb-start {
+  font-size: 40px; line-height: 1.05; font-weight: 500; letter-spacing: .06em; color: #FFF6DA;
+  text-shadow: 0 4px 0 rgba(0,0,0,.35);
+}
+.anb-sub { margin-top: 4px; font-size: 14px; font-weight: 400; color: #8A8071; }
+.anb-ticker {
+  margin-top: 14px; font-size: 13px; font-weight: 400; line-height: 1.35; color: #E3D7B2;
+  text-shadow: 0 1px 3px rgba(0,0,0,.7);
+}
+.anb-watermark {
+  position: absolute; top: 340px; transform: translate(-50%, -50%);
+  width: 250px; height: 250px; object-fit: contain; pointer-events: none;
+  filter: grayscale(1) brightness(1.6); z-index: 1;
+}
+
+/* ── the curved arena list ──────────────────────────────────────────────── */
+.aar-panel { --aar-pad: 0px; }
+.aar-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px; flex: none; padding: 0 4px;
+}
+.aar-title {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 400; letter-spacing: .22em; text-transform: uppercase; color: #C8B790;
+}
+.aar-count { font-size: 11px; font-weight: 400; letter-spacing: .06em; text-transform: uppercase; color: #FFD98A; }
+
+.aar-list {
+  position: relative; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: none;
+  /* Fade the ends so the column reads as a band of an arc, not a clipped box. */
+  -webkit-mask-image: linear-gradient(transparent, #000 13%, #000 87%, transparent);
+          mask-image: linear-gradient(transparent, #000 13%, #000 87%, transparent);
+}
+.aar-list::-webkit-scrollbar { display: none; }
+.aar-pad { height: var(--aar-pad); flex: none; }
+.aar-inner { position: relative; }
+
+.aar-row {
+  position: absolute; left: 0; right: 6px; height: 44px;
+  display: flex; align-items: center; gap: 9px; padding: 0 10px;
+  border-radius: 22px;
+  background: rgba(255,255,255,.035);
+  border: 1px solid rgba(255,255,255,.06);
+  will-change: transform;
+  transition: background .25s ease, border-color .25s ease, opacity .25s ease;
+}
+.aar-row.is-cur {
+  background: linear-gradient(100deg, rgba(245,165,36,.22), rgba(245,165,36,.05));
+  border-color: rgba(245,165,36,.7);
+  box-shadow: 0 0 18px rgba(245,165,36,.2);
+}
+.aar-row.is-out { opacity: .45; }
+
+.aar-arrow { position: absolute; left: -13px; display: flex; align-items: center; pointer-events: none; }
+.aar-seat {
+  min-width: 20px; height: 20px; flex: none; display: grid; place-items: center;
+  border-radius: 7px; font-family: ui-monospace, Menlo, monospace; font-size: 11px; font-weight: 400;
+  color: #FFD98A; background: rgba(8,7,5,.75); border: 1px solid rgba(245,165,36,.28);
+}
+.aar-row.is-cur .aar-seat { color: #1b1206; background: #F5A524; border-color: #FFD98A; }
+.aar-ava {
+  width: 30px; height: 30px; flex: none; border-radius: 999px; display: grid; place-items: center;
+  border: 2px solid rgba(255,255,255,.82); color: #0b0906; font-size: 11px; font-weight: 500;
+}
+.aar-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+/* NORMAL weight, deliberately — see the note at the top of ArcArenaRoster.tsx. */
+.aar-name {
+  font-size: 13.5px; font-weight: 400; color: #fff; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.aar-row.is-out .aar-name { color: #8A8071; text-decoration: line-through; }
+.aar-row.is-cur .aar-name { color: #FFD98A; }
+.aar-you { color: #2ED3E9; }
+.aar-role {
+  font-size: 10.5px; font-weight: 400; color: #8A8071; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.aar-row.is-cur .aar-role { color: #FFD98A; font-style: italic; }
+.aar-dot { width: 8px; height: 8px; flex: none; border-radius: 999px; }
+
+.aar-sponsor {
+  flex: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(245,165,36,.16);
+  display: grid; place-items: center; min-height: 34px;
+}
+.aar-sponsor img { max-height: 30px; max-width: 100%; object-fit: contain; opacity: .9; }
+.aar-sponsor span { font-size: 11px; font-weight: 400; letter-spacing: .1em; text-transform: uppercase; color: #C8B790; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anb-node, .aar-row { transition: none; animation: none; }
+}
+
 /* ── Landing page: force the LANDSCAPE layout on a portrait phone ───────────
    The landing page is designed for landscape and looks right there. The problem
    is a phone with iOS Rotation Lock ON: turning it does not re-lay-out, so the
