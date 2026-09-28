@@ -11230,6 +11230,49 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   .anb-node { transition: none; animation: none; }
 }
 
+/* ── Landing page: "turn your phone" gate ──────────────────────────────────
+   Shown in portrait on touch devices, covering the landing page entirely. Same
+   construction as the arena's .rotate-to-play, so the two screens match.
+
+   It is rendered OUTSIDE .landing-playground on purpose: that element carries a
+   90deg transform in portrait, and a transformed ancestor becomes the containing
+   block for `position: fixed` descendants — nested here, this overlay would be
+   rotated with the page it is meant to cover.
+
+   DELIBERATE: no dismiss. With iOS Rotation Lock on, orientation never changes
+   and this screen stays. That is the intent — the product owner's call — so that
+   visitors unlock rotation and get the landscape layout rather than a worse one. */
+.landing-rotate { display: none; }
+@media (orientation: portrait) and (pointer: coarse) {
+  .landing-rotate {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 40px 28px;
+    text-align: center;
+    background: radial-gradient(120% 80% at 50% 18%, #1b2e21 0%, #0c1710 55%, #050a07 100%);
+    color: #fff8ef;
+  }
+  /* Nothing from the page may float above the gate. */
+  body:has(.landing-rotate) .topnav,
+  body:has(.landing-rotate) .mobile-bottom-nav {
+    display: none !important;
+  }
+}
+.landing-rotate-note {
+  margin: 6px 0 0;
+  max-width: 34ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #9db0a2;
+}
+.landing-rotate-note b { color: #ffd98a; font-weight: 600; }
+
 /* ── Landing page: force the LANDSCAPE layout on a portrait phone ───────────
    The landing page is designed for landscape and looks right there. The problem
    is a phone with iOS Rotation Lock ON: turning it does not re-lay-out, so the
@@ -11288,6 +11331,18 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   animation: scrollhint-in 0.28s ease-out both;
 }
 @keyframes scrollhint-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Every showing AFTER the first. Same arrow, same place — but no dimming, no blur and no blocking,
+   because this one appears every time the bars come back and must never feel like an interruption. */
+.scrollhint.is-compact {
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  pointer-events: none;
+  padding-top: 52px;
+}
+.scrollhint.is-compact .scrollhint-label { font-size: 13px; opacity: 0.85; }
+.scrollhint.is-compact .scrollhint-chevron { margin-bottom: -4px; }
 
 .scrollhint-arrows {
   display: flex;
@@ -11436,6 +11491,20 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
     position: fixed;
     inset: 0;
     height: var(--app-vh, 100dvh);
+  }
+
+  /* THE SCROLL GAP MUST NEVER SHOW AS BARE DOCUMENT.
+     The arena is sized to the VISIBLE height (--app-vh). The moment Safari
+     collapses its bars the viewport grows but the fixed arena does not, and the
+     body's flat colour showed through as a dark strip — the glitch reported from
+     production. Painting the body with the arena's own ground, ATTACHED to the
+     viewport so it cannot scroll away, means whatever the bar state reveals is
+     pasture rather than a hole. This touches only paint; the arena's measured
+     layout is deliberately left alone. */
+  body:has(.mobile-landscape-game) {
+    background:
+      radial-gradient(120% 80% at 50% 18%, #1b2e21 0%, #0c1710 55%, #050a07 100%)
+      fixed no-repeat;
   }
 
   /* Vertical drags on the board belong to the game, never to the page, so the

@@ -6,7 +6,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { BookOpen, ChevronRight, Play, ShieldCheck, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { PastureAmbiance } from "../components/dune/PastureAmbiance";
-import { RotateHint } from "../components/dune/RotateHint";
+import { LandingRotateGate } from "../components/dune/LandingRotateGate";
 import { OfficialRulesModal } from "../components/dune/OfficialRulesModal";
 import { soundManager } from "../lib/soundManager";
 import { useSettingsStore } from "../stores/settings-store";
@@ -36,8 +36,9 @@ export default function RootLandingPage() {
   }
 
   return (
-    <div className="landing-playground">
-      <RotateHint />
+    <>
+      <LandingRotateGate />
+      <div className="landing-playground">
       <PastureAmbiance />
       <div className="landing-orb landing-orb-one" />
       <div className="landing-orb landing-orb-two" />
@@ -93,6 +94,7 @@ export default function RootLandingPage() {
 
       <footer className="landing-footer"><span>WM Tournaments</span><span>18+ · Play responsibly</span></footer>
       <OfficialRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
-    </div>
+      </div>
+    </>
   );
 }

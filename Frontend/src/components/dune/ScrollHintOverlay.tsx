@@ -1,93 +1,108 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const SEEN_KEY = "vera31-scroll-hint-seen";
 /** How many chevrons make the trail. Enough to read as a flowing stream, not a single icon. */
 const ARROWS = 12;
+/** Past this much scroll the bars have collapsed, so the hint has done its job. */
+const COLLAPSED_AT = 40;
+/** Below this there is nowhere to scroll and the hint would be a lie. */
+const MIN_RANGE = 40;
 
 /**
- * First-visit coach mark for the soft-fullscreen swipe.
+ * Coach mark for the soft-fullscreen swipe.
  *
- * Safari only collapses its bars while the page is scrolling, so the 112px gap we added is useless
- * unless the player discovers the gesture. This shows it once: the screen dims and a stream of
- * chevrons runs upward at the top-right, pointing the way the finger should go.
+ * Safari only collapses its bars while the page is scrolling, so the scroll gap is useless unless the
+ * player discovers the gesture. This points it out: a stream of chevrons running upward at the
+ * top-right, the way the finger should go.
  *
- * Shown ONCE ever (localStorage), and only where the gesture exists: a touch device, in landscape,
- * inside a browser tab. An installed PWA has no bars to hide, portrait has no scroll gap, and a
- * desktop window has neither — in all of those it renders nothing.
+ * It is STATE-DRIVEN, not once-ever. It shows whenever the bars are actually up (there is scroll room
+ * and the page is at the top) and hides the moment they collapse — so it comes back by itself if the
+ * player scrolls down again, reloads, or lands on a new page. A once-ever hint was invisible in
+ * practice: it burned itself on the first visit and was never seen again.
  *
- * Dismisses once they ACTUALLY scroll (>24px, so a stray 0-offset scroll event cannot burn the
- * single showing), or after 12s so it can never trap anyone. A tap does not dismiss it — players tap
- * constantly and it was vanishing before it could be read.
+ * The FIRST showing dims the screen so it cannot be missed. Every showing after that is a compact
+ * arrow with no dimming and no blocking — the same information, without nagging someone who already
+ * knows the gesture.
+ *
+ * Only where the gesture exists: a touch device, in landscape, inside a browser tab. An installed PWA
+ * has no bars to hide, portrait has no gap, and desktop has neither.
  */
 export function ScrollHintOverlay() {
   const [show, setShow] = useState(false);
+  const [compact, setCompact] = useState(true);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    // Only where the swipe actually does something.
+  const eligible = useCallback(() => {
+    if (typeof window === "undefined") return false;
     const coarse = window.matchMedia("(pointer: coarse)").matches;
     const landscape = window.matchMedia("(orientation: landscape)").matches;
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (navigator as Navigator & { standalone?: boolean }).standalone === true;
-    if (!coarse || !landscape || standalone) return;
-
-    try {
-      if (localStorage.getItem(SEEN_KEY)) return;
-    } catch {
-      /* private mode — just show it this once */
-    }
-
-    // Only if there is genuinely somewhere to scroll; otherwise the hint would be a lie.
+    if (!coarse || !landscape || standalone) return false;
     const d = document.documentElement;
-    if (d.scrollHeight - d.clientHeight < 40) return;
-
-    setShow(true);
+    return d.scrollHeight - d.clientHeight >= MIN_RANGE;
   }, []);
 
   useEffect(() => {
-    if (!show) return;
-    const done = () => {
-      setShow(false);
+    if (typeof window === "undefined") return;
+
+    try {
+      setCompact(!!localStorage.getItem(SEEN_KEY));
+    } catch {
+      /* private mode — treat as first time */
+    }
+
+    const sync = () => {
+      // Bars are up when we are parked at the top with room below. Once the player has scrolled past
+      // the gap the bars are gone and there is nothing left to say.
+      setShow(eligible() && window.scrollY <= COLLAPSED_AT);
+    };
+
+    sync();
+    window.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    window.addEventListener("orientationchange", sync);
+    // The arena mounts after a beat and changes the scroll range; re-check once it settles.
+    const t = setTimeout(sync, 1200);
+    return () => {
+      window.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+      window.removeEventListener("orientationchange", sync);
+      clearTimeout(t);
+    };
+  }, [eligible]);
+
+  // The dimmed version is a one-time introduction. Mark it seen as soon as it has been on screen long
+  // enough to read, so the next appearance is the quiet one.
+  useEffect(() => {
+    if (!show || compact) return;
+    const t = setTimeout(() => {
+      setCompact(true);
       try {
         localStorage.setItem(SEEN_KEY, "1");
       } catch {
         /* ignored */
       }
-    };
-    // Only a REAL scroll counts as "they did it" — a stray scroll event at 0 offset (Safari
-    // restoring position, a rubber-band settle) used to dismiss it instantly and burn the
-    // one-and-only showing. A tap is deliberately NOT a dismissal any more: the player taps
-    // constantly, and the hint was disappearing before it could be read.
-    const onScroll = () => {
-      if (window.scrollY > 24) done();
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    // Generous floor so it is readable, then it clears itself.
-    const t = setTimeout(done, 12000);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      clearTimeout(t);
-    };
-  }, [show]);
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [show, compact]);
 
   if (!show) return null;
 
   return (
-    <div className="scrollhint" aria-hidden="true">
+    <div className={`scrollhint${compact ? " is-compact" : ""}`} aria-hidden="true">
       <div className="scrollhint-arrows">
-        {Array.from({ length: ARROWS }).map((_, i) => (
+        {Array.from({ length: compact ? 6 : ARROWS }).map((_, i, a) => (
           <span
             key={i}
             className="scrollhint-chevron"
             /* Staggered from the BOTTOM of the stack upward, so the stream reads as travelling the
                way the finger should move. */
-            style={{ animationDelay: `${(ARROWS - 1 - i) * 0.09}s` }}
+            style={{ animationDelay: `${(a.length - 1 - i) * 0.09}s` }}
           >
-            <svg viewBox="0 0 24 14" width="34" height="20" fill="none">
+            <svg viewBox="0 0 24 14" width={compact ? 24 : 34} height={compact ? 14 : 20} fill="none">
               <path
                 d="M2 12 L12 3 L22 12"
                 stroke="currentColor"
@@ -101,7 +116,7 @@ export function ScrollHintOverlay() {
       </div>
       <p className="scrollhint-label">
         Swipe up
-        <small>to hide the browser bars</small>
+        {!compact && <small>to hide the browser bars</small>}
       </p>
     </div>
   );
