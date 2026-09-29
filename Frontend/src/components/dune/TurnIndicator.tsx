@@ -133,6 +133,9 @@ function TurnIndicatorImpl({
 
   const rootClass = [
     "ti-root",
+    // "on" = a turn is genuinely running, so the frame should carry the ambient green even when the
+    // move belongs to someone else.
+    active ? "on" : "",
     myTurn && active ? "mine" : "theirs",
     panic ? "panic" : "",
     fire ? (fireMine ? "fire fire-mine" : "fire fire-them") : "",

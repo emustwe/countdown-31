@@ -9,6 +9,7 @@ import { MasterAvatar } from "./MasterAvatar";
 import { NumberBoard } from "./NumberBoard";
 import { ArcNumberBoard, ARC_APEX, ARC_APEX_HALF } from "./ArcNumberBoard";
 import { useArcDesign } from "../../lib/arena-design";
+import { CowntdownTimerCow } from "./CowntdownTimerCow";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
 import type { LivePlayer, LastMoveInfo } from "../../lib/hooks/useCountdownLive";
 
@@ -81,6 +82,11 @@ const ARC_ROSTER_W = 300;
 const ARC_ROSTER_TOP = STAGE_H / 2 - ARENA_H / 2;
 /** Submit + status sit OUTSIDE the arc, level with the apex number, so the button is right beside
  *  the number the player just tapped. */
+/** Turn clock: top of the bowl, on its edge, centred over the card + roster group. */
+const ARC_CLOCK_D = 92;
+const ARC_CLOCK_X = 530;
+const ARC_CLOCK_Y = 48;
+
 const ARC_ACTION_W = 190;
 const ARC_ACTION_X = ARC_APEX.x + ARC_APEX_HALF + 16;
 const ARC_ACTION_H = 150;
@@ -333,6 +339,9 @@ interface ClassicArcBoardProps {
   // Countdown timer cow (pinned to the number board's corner while it's your turn).
   timerActive: boolean;
   turnKey: string | number | null;
+  /** Turn deadline + length, for the clock at the top of the bowl. */
+  turnEndsAt?: number | null;
+  turnSeconds?: number;
   // Real tournaments / test arena: shown in the picker slot while the local player is spectating.
   spectatorMessage?: string | null;
   // Live reveal of the CURRENT (non-local) player's picked numbers, highlighted in their colour so
@@ -376,6 +385,8 @@ function ClassicArcBoardImpl({
   onJoin,
   timerActive,
   turnKey,
+  turnEndsAt = null,
+  turnSeconds = 0,
   spectatorMessage,
   selecting,
   onScale,
@@ -587,6 +598,34 @@ function ClassicArcBoardImpl({
           <div style={{ position: "absolute", left: BOARD_X + shiftX, top: ROSTER_TOP, width: BOARD_W, height: ARENA_H }}>
             {/* The serpentine TRACK board — 1…31 threaded by a ribbon with a hopping cow token. */}
             <NumberBoard {...boardProps} />
+          </div>
+        )}
+
+        {/* Turn clock — sits on the top edge of the bowl, over the card + roster group. Shown ONLY on
+            your own turn: the countdown is a call to act, so it means nothing while someone else
+            thinks. Sized in STAGE units (the dial is normally sized in vh, which would be scaled a
+            second time by the stage transform). */}
+        {arc && myTurn && (
+          <div
+            className="cab-clock"
+            style={{
+              position: "absolute",
+              left: ARC_CLOCK_X - ARC_CLOCK_D / 2,
+              top: ARC_CLOCK_Y - ARC_CLOCK_D / 2,
+              width: ARC_CLOCK_D,
+              height: ARC_CLOCK_D,
+              zIndex: 40,
+              pointerEvents: "none",
+            }}
+          >
+            <CowntdownTimerCow
+              anchored
+              active={timerActive}
+              isMyTurn
+              turnEndsAt={turnEndsAt}
+              turnSeconds={turnSeconds}
+              turnKey={turnKey}
+            />
           </div>
         )}
         {/* ---- end number board row ---- */}

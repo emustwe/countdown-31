@@ -8831,6 +8831,10 @@ button.mini:hover { filter: brightness(1.06); }
    A single huge digit inside a progress ring that drains as the turn runs out. The board stays
    readable through it: the disc is translucent and the whole thing is pointer-events:none, so the
    number tiles underneath are still visible and tappable. */
+/* Inside the arc stage the dial is sized in STAGE units by its wrapper — the default vh sizing
+   would be scaled a second time by the stage transform and come out wrong on every screen. */
+.cab-clock .cd31-count { width: 100%; }
+
 .cd31-count {
   position: relative;
   display: grid;
@@ -10647,6 +10651,16 @@ body:has(.mobile-landscape-game) .app-shell > footer {
   box-shadow: inset 0 0 0 2px rgba(53, 214, 232, 0.62), inset 0 0 60px rgba(53, 214, 232, 0.2);
   transition: opacity 0.4s ease;
 }
+/* SOMEONE ELSE'S turn — ambient green, steady, no animation. The frame is lit the whole time a round
+   is running so the arena always reads as live; what changes with whose turn it is, is the COLOUR:
+   green = someone else, cyan = you, red = you and nearly out of time. Colour carries the meaning, not
+   brightness, which keeps the "cyan means YOU" rule intact. */
+.ti-root.on.theirs .ti-edge {
+  opacity: 1;
+  box-shadow: inset 0 0 0 2px rgba(53, 227, 155, 0.45), inset 0 0 52px rgba(53, 227, 155, 0.14);
+}
+
+/* YOUR turn — cyan, and it breathes. */
 .ti-root.mine .ti-edge { opacity: 1; animation: ti-breathe 2.4s ease-in-out infinite; }
 @keyframes ti-breathe {
   50% { box-shadow: inset 0 0 0 2px rgba(53, 214, 232, 0.95), inset 0 0 110px rgba(53, 214, 232, 0.32); }

@@ -162,7 +162,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     secondaryColor: "#34d399",
   },
   gameplay: {
-    turnSeconds: 7,
+    turnSeconds: 13,
     defaultBotCount: 1,
     botThinkMinMs: 900,
     botThinkMaxMs: 2300,

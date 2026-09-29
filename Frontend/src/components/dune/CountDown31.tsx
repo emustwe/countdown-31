@@ -20,6 +20,7 @@ import TurnIndicator from "./TurnIndicator";
 import { MobileArenaOverlay } from "./MobileArenaOverlay";
 import { ArcadeHeader } from "./ArcadeHeader";
 import { ClassicArcBoard } from "./ClassicArcBoard";
+import { useArcDesign } from "../../lib/arena-design";
 import { OfficialRulesModal } from "./OfficialRulesModal";
 import confetti from "canvas-confetti";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
@@ -43,6 +44,8 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   const router = useRouter();
   const { data: serverConfig } = useGameConfig();
   const isTournament = roomId !== "practice";
+  // Which board is live — the clock is positioned differently in each. See lib/arena-design.ts.
+  const arcDesign = useArcDesign();
   // A selected sponsor THEME overrides this tournament's brand (name/logo/tagline) via a header
   // config, and its backdrop via the viewport background.
   const themedHeaderConfig = theme
@@ -132,11 +135,15 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   // The turn clock's box (relative to the arena viewport): the board's full WIDTH, ending just above
   // the number grid. The counter is centred horizontally in it and anchored to its BOTTOM, so it sits
   // on the board's centre line but never over a number tile.
-  const [cowBox, setCowBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   // The ARENA roster now lives INSIDE the board's own scaled stage (ClassicArcBoard), so the whole
   // arc + board + roster composition scales and centres as one unit — no parent alignment needed. The
   // ONLY overlay the parent still positions is the turn clock, which is laid over the board's centre.
   const boardShiftX = 0;
+  // Only the LEGACY board needs this: it measures `.nb-stage`, which exists solely in NumberBoard.
+  // Under the arc design the clock is positioned in stage units inside ClassicArcBoard instead, and
+  // this measuring pass bails at the `!board` guard — which is exactly why the clock silently
+  // disappeared when the arc board landed.
+  const [cowBox, setCowBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const alignArena = useCallback(() => {
     const main = arenaMainRef.current;
     if (!main) return;
@@ -536,7 +543,10 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
           the countdown is a call to act, so a player watching someone else think has nothing to do
           with it. Each player therefore sees it only while it is their move. Measured to the board's
           box (not scaled by boardScale — the box is already in screen px). */}
-      {cowBox && myTurn && (
+      {/* LEGACY board only. Under the arc design the clock is rendered inside the board's own scaled
+          stage (top of the bowl) — see ClassicArcBoard — because `cowBox` measures `.nb-stage`, which
+          the arc board does not have. That mismatch is why the clock vanished when the arc landed. */}
+      {!arcDesign && cowBox && myTurn && (
         <div
           className="pointer-events-none absolute z-40"
           style={{ left: cowBox.left, top: cowBox.top, width: cowBox.width, height: cowBox.height }}
@@ -605,6 +615,8 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
             onJoin={chosenName ? rejoin : openNameGate}
             timerActive={countdownActive}
             turnKey={currentId ?? count}
+            turnEndsAt={turnEndsAt}
+            turnSeconds={turnSeconds}
             spectatorMessage={arcSpectatorMessage}
             selecting={state?.selecting ?? null}
           />
