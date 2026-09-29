@@ -409,6 +409,7 @@ function ClassicArcBoardImpl({
   rosterStyle = "default",
 }: ClassicArcBoardProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
   // Rightward nudge (screen px) applied to the whole composition on phone-landscape, so it doesn't sit
   // a touch left of centre. Clamped to the available side margin so the roster can never spill off the
@@ -429,7 +430,6 @@ function ClassicArcBoardImpl({
     const s = Math.min(w / contentW, h / STAGE_H, 1.05);
     setScale(s);
     onScale?.(s);
-    const box = wrapRef.current?.getBoundingClientRect();
     // Nudge the whole composition right so the arc clears the left-edge PLAY button (and the board +
     // roster sit a touch further right). Clamped so the roster never spills off the right edge.
     const margin = (w - contentW * s) / 2; // cab-fit side margin
@@ -447,18 +447,7 @@ function ClassicArcBoardImpl({
       const rightRoom = vw - compRight - 8; // keep a small breathing gap at the right edge
       setShift(Math.max(0, Math.min(72, rightRoom)));
     }
-    // Derived from the very expressions that lay the stage out below, so the two cannot disagree.
-    if (box) {
-      const sh = isPhoneLandscape
-        ? Math.max(0, Math.min(60, margin - 8))
-        : Math.max(0, Math.min(72, (typeof window !== "undefined" ? window.innerWidth : w) - ((wrapRef.current?.getBoundingClientRect().left ?? 0) + (w + contentW * s) / 2) - 8));
-      onStageRect?.({
-        left: box.left + (w - contentW * s) / 2 + sh,
-        top: box.top + (h - STAGE_H * s) / 2,
-        scale: s,
-      });
-    }
-  }, [onScale, onStageRect, contentW]);
+  }, [onScale, contentW]);
   useSettledResize(fit, wrapRef);
 
   // Turn order: surviving players in seating order. Seat number = original roster index + 1.
@@ -499,6 +488,21 @@ function ClassicArcBoardImpl({
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [currentId, N]);
+
+  /**
+   * Report the stage's REAL screen box.
+   *
+   * An earlier version recomputed this from the same expressions that lay the stage out. It drifted
+   * immediately — it assumed a scale of 0.578 where the truth was 0.488, because it guessed at the
+   * container height — and put the turn clock a long way right of where it belonged. The element
+   * knows where it is; ask it, don't re-derive it.
+   */
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || !onStageRect) return;
+    const r = el.getBoundingClientRect();
+    onStageRect({ left: r.left, top: r.top, scale: r.height / STAGE_H });
+  }, [scale, shift, contentW, onStageRect]);
 
   const currentPlayer = queue[curIdx] ?? null;
   // The three next numbers the active player may claim (consecutive from the total).
@@ -579,7 +583,7 @@ function ClassicArcBoardImpl({
         @media (prefers-reduced-motion: reduce){.cab-ring,.cab-card{animation:none}}
       `}</style>
 
-      <div style={{ position: "relative", width: contentW, height: STAGE_H, transform: `translateX(${shift}px) scale(${scale})`, transformOrigin: "center center", flex: "none" }}>
+      <div ref={stageRef} style={{ position: "relative", width: contentW, height: STAGE_H, transform: `translateX(${shift}px) scale(${scale})`, transformOrigin: "center center", flex: "none" }}>
         <Rail />
 
         {/* Player rail */}
