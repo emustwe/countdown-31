@@ -11314,6 +11314,23 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
    The 112px scroll gap is useless unless the player discovers the gesture, so
    once ever we dim the arena and run a stream of chevrons upward at the top
    right — the direction the finger should travel. */
+/* The measuring stick for "are the browser bars up?".
+   100lvh (falling back to 100vh, which on iOS is already the bars-hidden height and never shrinks)
+   is the viewport AS IF no chrome were present; visualViewport.height is what is really visible.
+   The difference between them is the chrome — a direct measurement, where reading scrollY was a
+   guess that iOS regularly invalidates by settling back to 0 with the bars still collapsed. */
+.scrollhint-probe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100vh;
+  height: 100lvh;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+
 .scrollhint {
   position: fixed;
   inset: 0;
