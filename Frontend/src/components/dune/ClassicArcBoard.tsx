@@ -9,7 +9,6 @@ import { MasterAvatar } from "./MasterAvatar";
 import { NumberBoard } from "./NumberBoard";
 import { ArcNumberBoard, ARC_APEX, ARC_APEX_HALF } from "./ArcNumberBoard";
 import { useArcDesign } from "../../lib/arena-design";
-import { CowntdownTimerCow } from "./CowntdownTimerCow";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
 import type { LivePlayer, LastMoveInfo } from "../../lib/hooks/useCountdownLive";
 
@@ -82,10 +81,20 @@ const ARC_ROSTER_W = 300;
 const ARC_ROSTER_TOP = STAGE_H / 2 - ARENA_H / 2;
 /** Submit + status sit OUTSIDE the arc, level with the apex number, so the button is right beside
  *  the number the player just tapped. */
-/** Turn clock: top of the bowl, on its edge, centred over the card + roster group. */
-const ARC_CLOCK_D = 92;
-const ARC_CLOCK_X = 530;
-const ARC_CLOCK_Y = 48;
+/**
+ * Turn clock, in STAGE units — but rendered by the PARENT, not here.
+ *
+ * `.cab-fit` clips (overflow:hidden) and the stage fills it almost exactly: measured headroom above
+ * stage y=0 is 5 units on desktop and 0 on phone. The dial has to straddle the bowl's mouth, which is
+ * where the two arcs end at y = -42 — i.e. ABOVE the stage entirely. Anything drawn there from inside
+ * this component would simply be cut off, so the parent places it over the arena instead, using the
+ * stage rect reported by `onStageRect`.
+ */
+export const ARC_CLOCK_D = 140;
+/** Midway between the two arc tips (player arc ends at x 359, number arc at x 777). */
+export const ARC_CLOCK_X = 568;
+/** The bowl's mouth: the y both arcs reach at the end of their sweep. */
+export const ARC_BOWL_RIM_Y = -42;
 
 const ARC_ACTION_W = 190;
 const ARC_ACTION_X = ARC_APEX.x + ARC_APEX_HALF + 16;
@@ -350,6 +359,9 @@ interface ClassicArcBoardProps {
   // Reports the board's fit scale up to the parent, so it can render the ARENA roster as a screen-edge
   // overlay scaled to match the board (hugs the right edge on every size, never overlaps the board).
   onScale?: (scale: number) => void;
+  /** Where the scaled stage sits on screen, so the parent can place overlays (the turn clock) in
+   *  stage coordinates without re-measuring anything itself. */
+  onStageRect?: (r: { left: number; top: number; scale: number }) => void;
   // Extra rightward offset (stage units) for the number board group, set by the parent so the board
   // sits right next to the arena roster on every screen (0 on desktop, larger on letterboxed mobile).
   shiftX?: number;
@@ -390,6 +402,7 @@ function ClassicArcBoardImpl({
   spectatorMessage,
   selecting,
   onScale,
+  onStageRect,
   shiftX = 0,
   boardBrand = null,
   rosterSponsor = null,
@@ -416,6 +429,7 @@ function ClassicArcBoardImpl({
     const s = Math.min(w / contentW, h / STAGE_H, 1.05);
     setScale(s);
     onScale?.(s);
+    const box = wrapRef.current?.getBoundingClientRect();
     // Nudge the whole composition right so the arc clears the left-edge PLAY button (and the board +
     // roster sit a touch further right). Clamped so the roster never spills off the right edge.
     const margin = (w - contentW * s) / 2; // cab-fit side margin
@@ -433,7 +447,18 @@ function ClassicArcBoardImpl({
       const rightRoom = vw - compRight - 8; // keep a small breathing gap at the right edge
       setShift(Math.max(0, Math.min(72, rightRoom)));
     }
-  }, [onScale, contentW]);
+    // Derived from the very expressions that lay the stage out below, so the two cannot disagree.
+    if (box) {
+      const sh = isPhoneLandscape
+        ? Math.max(0, Math.min(60, margin - 8))
+        : Math.max(0, Math.min(72, (typeof window !== "undefined" ? window.innerWidth : w) - ((wrapRef.current?.getBoundingClientRect().left ?? 0) + (w + contentW * s) / 2) - 8));
+      onStageRect?.({
+        left: box.left + (w - contentW * s) / 2 + sh,
+        top: box.top + (h - STAGE_H * s) / 2,
+        scale: s,
+      });
+    }
+  }, [onScale, onStageRect, contentW]);
   useSettledResize(fit, wrapRef);
 
   // Turn order: surviving players in seating order. Seat number = original roster index + 1.
@@ -601,33 +626,6 @@ function ClassicArcBoardImpl({
           </div>
         )}
 
-        {/* Turn clock — sits on the top edge of the bowl, over the card + roster group. Shown ONLY on
-            your own turn: the countdown is a call to act, so it means nothing while someone else
-            thinks. Sized in STAGE units (the dial is normally sized in vh, which would be scaled a
-            second time by the stage transform). */}
-        {arc && myTurn && (
-          <div
-            className="cab-clock"
-            style={{
-              position: "absolute",
-              left: ARC_CLOCK_X - ARC_CLOCK_D / 2,
-              top: ARC_CLOCK_Y - ARC_CLOCK_D / 2,
-              width: ARC_CLOCK_D,
-              height: ARC_CLOCK_D,
-              zIndex: 40,
-              pointerEvents: "none",
-            }}
-          >
-            <CowntdownTimerCow
-              anchored
-              active={timerActive}
-              isMyTurn
-              turnEndsAt={turnEndsAt}
-              turnSeconds={turnSeconds}
-              turnKey={turnKey}
-            />
-          </div>
-        )}
         {/* ---- end number board row ---- */}
 
         {/* ---- ARENA roster — a fixed part of the composition, a gap to the RIGHT of the board, so the

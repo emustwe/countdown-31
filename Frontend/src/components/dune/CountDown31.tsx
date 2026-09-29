@@ -19,7 +19,7 @@ import { CowntdownTimerCow } from "./CowntdownTimerCow";
 import TurnIndicator from "./TurnIndicator";
 import { MobileArenaOverlay } from "./MobileArenaOverlay";
 import { ArcadeHeader } from "./ArcadeHeader";
-import { ClassicArcBoard } from "./ClassicArcBoard";
+import { ClassicArcBoard, ARC_CLOCK_D, ARC_CLOCK_X, ARC_BOWL_RIM_Y } from "./ClassicArcBoard";
 import { useArcDesign } from "../../lib/arena-design";
 import { OfficialRulesModal } from "./OfficialRulesModal";
 import confetti from "canvas-confetti";
@@ -144,6 +144,14 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   // this measuring pass bails at the `!board` guard — which is exactly why the clock silently
   // disappeared when the arc board landed.
   const [cowBox, setCowBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  // Where the arc board's scaled stage sits on screen. The turn clock is placed from this so it can
+  // rise ABOVE the stage — .cab-fit clips, and the bowl's mouth is above stage y=0 entirely.
+  const [stageRect, setStageRect] = useState<{ left: number; top: number; scale: number } | null>(null);
+  const handleStageRect = useCallback((r: { left: number; top: number; scale: number }) => {
+    setStageRect((c) =>
+      !c || Math.abs(c.left - r.left) > 0.5 || Math.abs(c.top - r.top) > 0.5 || Math.abs(c.scale - r.scale) > 0.002 ? r : c,
+    );
+  }, []);
   const alignArena = useCallback(() => {
     const main = arenaMainRef.current;
     if (!main) return;
@@ -543,6 +551,32 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
           the countdown is a call to act, so a player watching someone else think has nothing to do
           with it. Each player therefore sees it only while it is their move. Measured to the board's
           box (not scaled by boardScale — the box is already in screen px). */}
+      {/* Turn clock — placed over the arena from the board's stage rect, NOT inside the stage: the
+          stage is clipped and fills its box, so a dial straddling the bowl's mouth (stage y -42, i.e.
+          above the stage) would simply be cut in half. Clamped to stay fully on screen, so on a short
+          phone it sits lower rather than losing its top. Yours only. */}
+      {arcDesign && myTurn && stageRect && (() => {
+        const size = ARC_CLOCK_D * stageRect.scale;
+        // 80% of the dial above the bowl's mouth, 20% dipping in.
+        const wanted = stageRect.top + (ARC_BOWL_RIM_Y - 0.8 * ARC_CLOCK_D) * stageRect.scale;
+        const top = Math.max(4, wanted);
+        return (
+          <div
+            className="cab-clock pointer-events-none fixed z-[60]"
+            style={{ left: stageRect.left + (ARC_CLOCK_X - ARC_CLOCK_D / 2) * stageRect.scale, top, width: size, height: size }}
+          >
+            <CowntdownTimerCow
+              anchored
+              active={countdownActive}
+              isMyTurn
+              turnEndsAt={turnEndsAt}
+              turnSeconds={turnSeconds}
+              turnKey={currentId ?? count}
+            />
+          </div>
+        );
+      })()}
+
       {/* LEGACY board only. Under the arc design the clock is rendered inside the board's own scaled
           stage (top of the bowl) — see ClassicArcBoard — because `cowBox` measures `.nb-stage`, which
           the arc board does not have. That mismatch is why the clock vanished when the arc landed. */}
@@ -617,6 +651,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
             turnKey={currentId ?? count}
             turnEndsAt={turnEndsAt}
             turnSeconds={turnSeconds}
+            onStageRect={handleStageRect}
             spectatorMessage={arcSpectatorMessage}
             selecting={state?.selecting ?? null}
           />
