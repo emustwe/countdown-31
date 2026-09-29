@@ -1,148 +1,74 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { requestFullscreen } from "../../lib/fullscreen";
 
-const SEEN_KEY = "vera31-scroll-hint-seen";
 /** How many chevrons make the trail. Enough to read as a flowing stream, not a single icon. */
-const ARROWS = 12;
-/**
- * How much shorter the visible viewport has to be than the bars-hidden viewport before we call the
- * bars "up". Comfortably above rounding noise, comfortably below Safari's ~101px of chrome.
- */
-const BARS_UP_PX = 24;
+const ARROWS = 8;
 
 /**
- * Coach mark for the soft-fullscreen swipe.
+ * The swipe-up affordance — and, on Android, a button.
  *
- * Safari only collapses its bars while the page is scrolling, so the scroll gap is useless unless the
- * player discovers the gesture. This points it out: a stream of chevrons running upward at the
- * top-right, the way the finger should go.
+ * ALWAYS VISIBLE wherever the gesture exists: a touch device, in landscape, inside a browser tab.
+ * Earlier versions tried to be clever about when the browser chrome was up and hid themselves the
+ * rest of the time. Two problems: the detection was wrong often enough to be useless, and Android
+ * drops fullscreen every time the tab loses focus — so the one moment a player most needs this is
+ * exactly when they have come back from another app, which no amount of cleverness predicted. It is
+ * cheap, it is small, it sits in a corner; leaving it up is simply better than guessing.
  *
- * ── HOW IT KNOWS THE BARS ARE UP ────────────────────────────────────────────
- * By MEASURING THE VIEWPORT, not by guessing from scroll position.
- *
- * `scrollY` is a bad proxy and was the bug: iOS routinely keeps the bars collapsed while letting the
- * page settle back to scrollY 0, so a scroll-based test sees "at the top", concludes the bars must be
- * showing, and puts the arrow back on screen when the bars are already gone. The result was an
- * indicator that appeared to be up permanently.
- *
- * Instead: a hidden probe sized to `100lvh` (falling back to `100vh`, which on iOS is already the
- * bars-hidden height and never shrinks) gives the viewport as it would be with no chrome.
- * `visualViewport.height` gives what is genuinely visible right now. The difference between them IS
- * the browser chrome, so the test is direct rather than inferred.
- *
- * Shown only where the gesture exists: a touch device, in landscape, inside a browser tab. An
- * installed PWA has no bars to hide, portrait has no gap, and desktop has neither.
- *
- * The FIRST showing dims the screen so it cannot be missed. Every showing after is a compact arrow —
- * no dimming, no blocking — because something that can reappear this often must never nag.
+ * TAPPING IT re-enters true fullscreen on Android — the tap is the user gesture Chrome requires, and
+ * returning to a tab is not one, so nothing can restore fullscreen automatically. On iOS the call is
+ * a no-op (no Fullscreen API for page content) and the swipe remains the mechanism there.
  */
 export function ScrollHintOverlay() {
-  const probeRef = useRef<HTMLDivElement | null>(null);
   const [show, setShow] = useState(false);
-  const [compact, setCompact] = useState(true);
-
-  /** True when browser chrome is currently eating part of the screen. */
-  const barsAreUp = useCallback(() => {
-    if (typeof window === "undefined") return false;
-
-    const coarse = window.matchMedia("(pointer: coarse)").matches;
-    const landscape = window.matchMedia("(orientation: landscape)").matches;
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as Navigator & { standalone?: boolean }).standalone === true;
-    if (!coarse || !landscape || standalone) return false;
-
-    const probe = probeRef.current;
-    if (!probe) return false;
-    const barsHidden = probe.getBoundingClientRect().height; // 100lvh / 100vh
-    const visible = window.visualViewport?.height ?? window.innerHeight;
-    if (!barsHidden || !visible) return false;
-
-    // Don't promise a gesture that does nothing: there must genuinely be somewhere to scroll.
-    const d = document.documentElement;
-    if (d.scrollHeight - d.clientHeight < BARS_UP_PX) return false;
-
-    return barsHidden - visible >= BARS_UP_PX;
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    try {
-      setCompact(!!localStorage.getItem(SEEN_KEY));
-    } catch {
-      /* private mode — treat as first time */
-    }
-
-    const sync = () => setShow(barsAreUp());
+    const sync = () => {
+      const coarse = window.matchMedia("(pointer: coarse)").matches;
+      const landscape = window.matchMedia("(orientation: landscape)").matches;
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (navigator as Navigator & { standalone?: boolean }).standalone === true;
+      // Only where the swipe actually does something. The entry screen has nothing to scroll, so an
+      // arrow saying "swipe up" there would simply be a lie.
+      const d = document.documentElement;
+      const scrollable = d.scrollHeight - d.clientHeight >= 40;
+      setShow(coarse && landscape && !standalone && scrollable);
+    };
     sync();
-
-    const vv = window.visualViewport;
-    vv?.addEventListener("resize", sync);
-    vv?.addEventListener("scroll", sync);
     window.addEventListener("resize", sync);
     window.addEventListener("orientationchange", sync);
-    // The arena mounts after a beat and changes the scroll range; re-check once it settles.
-    const t = setTimeout(sync, 1200);
-
+    // Client-side navigation changes the page — and the scroll room with it — without firing any of
+    // the events above, so a cheap poll is what actually keeps this correct across routes.
+    const poll = setInterval(sync, 800);
     return () => {
-      vv?.removeEventListener("resize", sync);
-      vv?.removeEventListener("scroll", sync);
       window.removeEventListener("resize", sync);
       window.removeEventListener("orientationchange", sync);
-      clearTimeout(t);
+      clearInterval(poll);
     };
-  }, [barsAreUp]);
+  }, []);
 
-  // The dimmed version is a one-time introduction. Mark it seen once it has been on screen long
-  // enough to read, so every later appearance is the quiet one.
-  useEffect(() => {
-    if (!show || compact) return;
-    const t = setTimeout(() => {
-      setCompact(true);
-      try {
-        localStorage.setItem(SEEN_KEY, "1");
-      } catch {
-        /* ignored */
-      }
-    }, 6000);
-    return () => clearTimeout(t);
-  }, [show, compact]);
+  if (!show) return null;
 
   return (
-    <>
-      {/* Always mounted: it is the measuring stick, not decoration. */}
-      <div ref={probeRef} className="scrollhint-probe" aria-hidden="true" />
-      {show && (
-        <div className={`scrollhint${compact ? " is-compact" : ""}`} aria-hidden="true">
-          <div className="scrollhint-arrows">
-            {Array.from({ length: compact ? 6 : ARROWS }).map((_, i, a) => (
-              <span
-                key={i}
-                className="scrollhint-chevron"
-                /* Staggered from the BOTTOM of the stack upward, so the stream reads as travelling
-                   the way the finger should move. */
-                style={{ animationDelay: `${(a.length - 1 - i) * 0.09}s` }}
-              >
-                <svg viewBox="0 0 24 14" width={compact ? 24 : 34} height={compact ? 14 : 20} fill="none">
-                  <path
-                    d="M2 12 L12 3 L22 12"
-                    stroke="currentColor"
-                    strokeWidth="3.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-            ))}
-          </div>
-          <p className="scrollhint-label">
-            Swipe up
-            {!compact && <small>to hide the browser bars</small>}
-          </p>
-        </div>
-      )}
-    </>
+    <button
+      type="button"
+      className="scrollhint"
+      aria-label="Hide the browser bars"
+      onClick={() => requestFullscreen(document.documentElement)}
+    >
+      <span className="scrollhint-arrows" aria-hidden="true">
+        {Array.from({ length: ARROWS }).map((_, i) => (
+          <span key={i} className="scrollhint-chevron" style={{ animationDelay: `${(ARROWS - 1 - i) * 0.09}s` }}>
+            <svg viewBox="0 0 24 14" width="26" height="15" fill="none">
+              <path d="M2 12 L12 3 L22 12" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        ))}
+      </span>
+      <span className="scrollhint-label">Swipe up</span>
+    </button>
   );
 }

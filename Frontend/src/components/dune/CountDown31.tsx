@@ -19,6 +19,7 @@ import { CowntdownTimerCow } from "./CowntdownTimerCow";
 import TurnIndicator from "./TurnIndicator";
 import { MobileArenaOverlay } from "./MobileArenaOverlay";
 import { ArcadeHeader } from "./ArcadeHeader";
+import { FullBleedPage } from "./FullBleedPage";
 import { ClassicArcBoard, ARC_CLOCK_D, ARC_CLOCK_X, ARC_BOWL_RIM_Y } from "./ClassicArcBoard";
 import { useArcDesign } from "../../lib/arena-design";
 import { OfficialRulesModal } from "./OfficialRulesModal";
@@ -519,6 +520,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
             : undefined
       }
     >
+      <FullBleedPage />
       <MobileLandscape />
 
       {/* Mobile nav menu + single-column roster — portaled to <body> so the arena auto-rotate

@@ -11403,90 +11403,55 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
    is the viewport AS IF no chrome were present; visualViewport.height is what is really visible.
    The difference between them is the chrome — a direct measurement, where reading scrollY was a
    guess that iOS regularly invalidates by settling back to 0 with the bars still collapsed. */
-.scrollhint-probe {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 1px;
-  height: 100vh;
-  height: 100lvh;
-  visibility: hidden;
-  pointer-events: none;
-  z-index: -1;
-}
-
 .scrollhint {
   position: fixed;
-  inset: 0;
+  top: max(52px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
   z-index: 2000;
-  background: rgba(2, 8, 5, 0.78);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: flex-start;
-  /* Starts BELOW the header icon row (music / sound / profile) so the trail never
-     sits on top of them, while staying in the top-right corner the swipe targets. */
-  padding: 58px 26px 0 0;
-  animation: scrollhint-in 0.28s ease-out both;
-}
-@keyframes scrollhint-in { from { opacity: 0; } to { opacity: 1; } }
-
-/* Every showing AFTER the first. Same arrow, same place — but no dimming, no blur and no blocking,
-   because this one appears every time the bars come back and must never feel like an interruption. */
-.scrollhint.is-compact {
-  background: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  pointer-events: none;
-  padding-top: 52px;
-}
-.scrollhint.is-compact .scrollhint-label { font-size: 13px; opacity: 0.85; }
-.scrollhint.is-compact .scrollhint-chevron { margin-bottom: -4px; }
-
-.scrollhint-arrows {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
+  gap: 2px;
+  padding: 6px 8px 5px;
+  border: none;
+  border-radius: 14px;
+  background: rgba(2, 10, 6, 0.42);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
   color: #35d6e8;
-  pointer-events: none;
+  cursor: pointer;
+  animation: scrollhint-in 0.28s ease-out both;
 }
-/* Each chevron pulses; the component staggers delays from the BOTTOM of the stack
-   upward so the twelve read as one travelling stream rather than blinking icons. */
+@keyframes scrollhint-in { from { opacity: 0; } to { opacity: 1; } }
+.scrollhint:active { transform: scale(0.94); }
+.scrollhint:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 2px; }
+
+.scrollhint-arrows { display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+/* Each chevron pulses; delays are staggered from the BOTTOM of the stack upward so they read as one
+   travelling stream rather than blinking icons. */
 .scrollhint-chevron {
   display: block;
-  margin-bottom: -6px;
-  opacity: 0.12;
+  margin-bottom: -5px;
+  opacity: 0.14;
   animation: scrollhint-run 1.25s ease-in-out infinite;
-  filter: drop-shadow(0 0 7px rgba(53, 214, 232, 0.65));
+  filter: drop-shadow(0 0 6px rgba(53, 214, 232, 0.6));
 }
 @keyframes scrollhint-run {
-  0%, 70%, 100% { opacity: 0.12; transform: translateY(2px); }
+  0%, 70%, 100% { opacity: 0.14; transform: translateY(2px); }
   28%           { opacity: 1;    transform: translateY(-2px); }
 }
-
 .scrollhint-label {
-  margin: 10px 2px 0 0;
-  text-align: center;
+  margin-top: 4px;
   font-family: var(--font-lilita), system-ui, sans-serif;
-  font-size: 17px;
-  font-weight: 900;
-  color: #fff8ef;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #d9f7fb;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
   pointer-events: none;
 }
-.scrollhint-label small {
-  display: block;
-  margin-top: 2px;
-  font-family: var(--font-fredoka), system-ui, sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  color: #b6c7ba;
-}
 @media (prefers-reduced-motion: reduce) {
-  .scrollhint-chevron { animation: none; opacity: 0.85; }
+  .scrollhint-chevron { animation: none; opacity: 0.8; }
 }
 
 /* ── "Turn your phone" hint — landing page, portrait only ───────────────────
@@ -11570,18 +11535,33 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
      including the landing page, where there is nothing to gain by hiding the bars
      and the only effect was a page that drifted and stranded you. Scoped here, the
      landing page is fixed and unscrollable again. */
-  html:has(.mobile-landscape-game) {
-    min-height: calc(100% + 112px);
-  }
+  /* Both screens that fill the display want the bars gone: the arena and the lobby.
+     Not the entry screen — it is one button and has nothing to scroll. */
+  /* The gap itself is applied INLINE by FullBleedPage — a CSS selector on <html> did not survive a
+     client-side route change (twice, two different selectors). See FullBleedPage for the detail. */
   html,
   body {
     overscroll-behavior: none; /* no rubber-band or pull-to-refresh off the gap */
   }
   /* Every page that is NOT the arena stays pinned — no scroll, so no gap to fall into. */
-  html:not(:has(.mobile-landscape-game)),
-  body:not(:has(.mobile-landscape-game)) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+  /* The lobby is pinned for exactly the reason the arena is: the 112px of scroll must move the empty
+     gap BEHIND the page, never the page itself. Its background moves to the body so the gap shows the
+     same field rather than a bare strip — the identical trick, and the same reason, as the arena. */
+  .landing-playground {
+    position: fixed;
+    inset: 0;
+    height: max(var(--app-vh, 100dvh), 100dvh);
     overflow: hidden;
-    height: 100%;
+  }
+  body:has(.landing-playground) {
+    background:
+      linear-gradient(115deg, rgba(4, 24, 15, 0.96) 0%, rgba(7, 37, 23, 0.9) 48%, rgba(3, 16, 11, 0.96) 100%),
+      url("/assets/barnaby/barnaby-field.jpg") center center / cover no-repeat;
+    background-attachment: fixed, fixed;
   }
 
   /* The arena page disables page scrolling outright (see the rule that sets
@@ -11602,7 +11582,15 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   .arena-viewport {
     position: fixed;
     inset: 0;
-    height: var(--app-vh, 100dvh);
+    /* NEVER shorter than the viewport. --app-vh is the true visible height and is what keeps iOS
+       from clipping the arena's bottom, but if it is ever stale-small the arena renders short and
+       the shortfall reads as a dead strip that eats taps. max() makes 100dvh the floor. */
+    height: max(var(--app-vh, 100dvh), 100dvh);
+    /* iOS anchors position:fixed to the LAYOUT viewport, which drifts from the visible one during a
+       scroll and bar-collapse — the element visibly slides. Promoting it to its own compositor layer
+       is the long-standing workaround: it stays glued through the transition. */
+    transform: translateZ(0);
+    will-change: transform;
   }
 
   /* THE SCROLL GAP MUST NEVER SHOW AS BARE DOCUMENT.
