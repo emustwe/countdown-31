@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { BookOpen, ChevronRight, Play, ShieldCheck, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { PastureAmbiance } from "../components/dune/PastureAmbiance";
 import { LandingRotateGate } from "../components/dune/LandingRotateGate";
+import { EntryGate } from "../components/dune/EntryGate";
 import { OfficialRulesModal } from "../components/dune/OfficialRulesModal";
 import { soundManager } from "../lib/soundManager";
 import { useSettingsStore } from "../stores/settings-store";
@@ -20,6 +21,7 @@ const steps = [
 export default function RootLandingPage() {
   const router = useRouter();
   const [showRules, setShowRules] = useState(false);
+  const [entered, setEntered] = useState(false);
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
   const toggleSoundStore = useSettingsStore((s) => s.toggleSound);
 
@@ -34,6 +36,10 @@ export default function RootLandingPage() {
     soundManager.setMuted(!next);
     if (next) soundManager.playClick();
   }
+
+  // The entry screen comes first, every visit. While it is up the rotate prompt is deliberately NOT
+  // mounted — the first thing a visitor sees should not be a demand to turn their phone.
+  if (!entered) return <EntryGate onNext={() => setEntered(true)} />;
 
   return (
     <>

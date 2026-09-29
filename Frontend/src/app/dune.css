@@ -12,6 +12,9 @@
   background:
     linear-gradient(180deg, rgba(8, 18, 12, 0.72) 0%, rgba(10, 24, 16, 0.82) 40%, rgba(6, 12, 8, 0.94) 100%),
     url("/assets/barnaby/barnaby-pasture-arena.jpg") center center / cover fixed no-repeat !important;
+  /* BOTH layers viewport-anchored, so the overlay cannot ramp differently here than on the body
+     behind the scroll gap. See the body:has(.mobile-landscape-game) rule. */
+  background-attachment: fixed, fixed !important;
   height: 100dvh;
   min-height: 0;
   max-height: 100dvh;
@@ -11244,6 +11247,73 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   .anb-node { transition: none; animation: none; }
 }
 
+/* ── Entry screen ──────────────────────────────────────────────────────────
+   The first thing a visitor sees: one button. Portrait-native — unlike every
+   screen after it, this one is NOT gated on orientation, so a phone held the
+   normal way meets a product rather than an instruction. */
+.entry-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 40px 28px;
+  text-align: center;
+  color: #fff8ef;
+  background:
+    linear-gradient(180deg, rgba(8, 18, 12, 0.78) 0%, rgba(10, 24, 16, 0.86) 45%, rgba(6, 12, 8, 0.96) 100%),
+    url("/assets/barnaby/barnaby-field.jpg") center center / cover no-repeat;
+}
+.entry-gate-mark {
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  font-family: var(--font-title, inherit);
+  font-size: 30px;
+  color: #2a1a02;
+  background: linear-gradient(135deg, #fcd34d, #f59e0b 60%, #b45309);
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.45);
+}
+.entry-gate-title {
+  margin: 10px 0 0;
+  font-family: var(--font-title, inherit);
+  font-size: clamp(30px, 8vw, 44px);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+}
+.entry-gate-sub {
+  margin: 0;
+  max-width: 26ch;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #b9c9bd;
+}
+.entry-gate-next {
+  margin-top: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 0 34px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: var(--font-title, inherit);
+  font-size: 19px;
+  color: #06230f;
+  background: linear-gradient(180deg, #4ade80, #22c55e 60%, #16a34a);
+  box-shadow: 0 10px 30px rgba(34, 197, 94, 0.4);
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.entry-gate-next:hover { filter: brightness(1.06); }
+.entry-gate-next:active { transform: scale(0.97); }
+.entry-gate-next:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 3px; }
+
 /* ── Landing page: "turn your phone" gate ──────────────────────────────────
    Shown in portrait on touch devices, covering the landing page entirely. Same
    construction as the arena's .rotate-to-play, so the two screens match.
@@ -11495,12 +11565,23 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
    so it only wins by source order.
    ─────────────────────────────────────────────────────────────────────────── */
 @media (pointer: coarse) and (orientation: landscape) and (display-mode: browser) {
-  html {
+  /* THE GAP BELONGS TO THE ARENA, AND NOWHERE ELSE.
+     It used to be on bare `html`, so every page carried 112px of dead scroll —
+     including the landing page, where there is nothing to gain by hiding the bars
+     and the only effect was a page that drifted and stranded you. Scoped here, the
+     landing page is fixed and unscrollable again. */
+  html:has(.mobile-landscape-game) {
     min-height: calc(100% + 112px);
   }
   html,
   body {
     overscroll-behavior: none; /* no rubber-band or pull-to-refresh off the gap */
+  }
+  /* Every page that is NOT the arena stays pinned — no scroll, so no gap to fall into. */
+  html:not(:has(.mobile-landscape-game)),
+  body:not(:has(.mobile-landscape-game)) {
+    overflow: hidden;
+    height: 100%;
   }
 
   /* The arena page disables page scrolling outright (see the rule that sets
@@ -11532,10 +11613,20 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
      viewport so it cannot scroll away, means whatever the bar state reveals is
      pasture rather than a hole. This touches only paint; the arena's measured
      layout is deliberately left alone. */
+  /* THE BAND AT THE BOTTOM OF THE GAME — the one that kept coming back.
+     `.practice-page` paints the pasture and is exactly 100dvh tall, so the 112px of
+     scroll gap sits BELOW it and shows whatever the body has. Painting the body with
+     a gradient only changed the band's colour: a gradient against a photograph is
+     still a visible seam.
+     The body now carries the IDENTICAL background to .practice-page — same image,
+     same overlay, same `fixed` attachment. Fixed attachment is what makes it work:
+     both are anchored to the viewport, not to their own boxes, so the image lines up
+     across the boundary and there is no seam to see at any bar position. */
   body:has(.mobile-landscape-game) {
     background:
-      radial-gradient(120% 80% at 50% 18%, #1b2e21 0%, #0c1710 55%, #050a07 100%)
-      fixed no-repeat;
+      linear-gradient(180deg, rgba(8, 18, 12, 0.72) 0%, rgba(10, 24, 16, 0.82) 40%, rgba(6, 12, 8, 0.94) 100%),
+      url("/assets/barnaby/barnaby-pasture-arena.jpg") center center / cover fixed no-repeat;
+    background-attachment: fixed, fixed;
   }
 
   /* Vertical drags on the board belong to the game, never to the page, so the
