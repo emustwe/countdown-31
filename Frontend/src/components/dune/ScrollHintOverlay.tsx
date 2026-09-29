@@ -57,7 +57,15 @@ export function ScrollHintOverlay() {
       type="button"
       className="scrollhint"
       aria-label="Hide the browser bars"
-      onClick={() => requestFullscreen(document.documentElement)}
+      onClick={() => {
+        // Two things, because one of them can fail silently. Chrome can refuse a fullscreen
+        // re-request shortly after the user exited one, and there is no reliable way to detect that
+        // from here — so the tap ALSO performs the scroll the arrow is pointing at, which collapses
+        // the URL bar on Android and Safari's bars on iOS. Whatever the browser allows, the tap
+        // does something.
+        requestFullscreen(document.documentElement);
+        window.scrollTo({ top: 140, behavior: "smooth" });
+      }}
     >
       <span className="scrollhint-arrows" aria-hidden="true">
         {Array.from({ length: ARROWS }).map((_, i) => (

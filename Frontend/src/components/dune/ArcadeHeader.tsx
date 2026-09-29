@@ -697,6 +697,19 @@ export function ArcadeHeader({
 
               {/* Admin-configured navigation items */}
               <div className="flex flex-col gap-1 text-xs font-title font-normal">
+                {/* Always first, always present: the way out of a game back to the lobby. Not part of
+                    the admin-configurable list, so it can never be lost from a saved menu. */}
+                <button
+                  onClick={() => handleNavigate("/lobby")}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-amber-400/10 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Home size={15} className="text-amber-400" />
+                    <span>Back to lobby</span>
+                  </div>
+                  <ChevronRight size={14} className="text-slate-500" />
+                </button>
+
                 {menuItems.map((item) => {
                   const Icon = menuIcons[item.icon];
                   return (

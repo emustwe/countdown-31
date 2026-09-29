@@ -164,8 +164,8 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   gameplay: {
     turnSeconds: 13,
     defaultBotCount: 1,
-    botThinkMinMs: 900,
-    botThinkMaxMs: 2300,
+    botThinkMinMs: 3500,
+    botThinkMaxMs: 6500,
     allowClassic: true,
     allowSkills: true,
     defaultMode: "skills",

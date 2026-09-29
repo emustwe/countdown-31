@@ -11247,6 +11247,49 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   .anb-node { transition: none; animation: none; }
 }
 
+/* ── Round restart beats ───────────────────────────────────────────────────
+   "Starting again" then "Get ready, <name>", between an elimination and the next
+   round. Silent by design — the elimination already had its sound. */
+.rrs {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  text-align: center;
+  padding: 0 24px;
+}
+.rrs-line {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-lilita), system-ui, sans-serif;
+  font-size: clamp(30px, 7vw, 64px);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  color: #fff8ef;
+  text-shadow: 0 6px 26px rgba(0, 0, 0, 0.75), 0 0 40px rgba(53, 214, 232, 0.35);
+  animation: rrs-in 620ms cubic-bezier(0.18, 0.9, 0.24, 1) both;
+}
+.rrs-line b {
+  font-weight: inherit;
+  font-size: 0.72em;
+  color: #35d6e8;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.7), 0 0 34px rgba(53, 214, 232, 0.5);
+}
+/* Spirals in: a turn plus a scale-up, settling to rest. */
+@keyframes rrs-in {
+  from { opacity: 0; transform: rotate(-22deg) scale(0.35); }
+  60%  { opacity: 1; transform: rotate(4deg) scale(1.06); }
+  to   { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rrs-line { animation: none; }
+}
+
 /* ── Entry screen ──────────────────────────────────────────────────────────
    The first thing a visitor sees: one button. Portrait-native — unlike every
    screen after it, this one is NOT gated on orientation, so a phone held the
@@ -11412,12 +11455,11 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 6px 8px 5px;
+  padding: 4px 6px;
   border: none;
-  border-radius: 14px;
-  background: rgba(2, 10, 6, 0.42);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
+  /* No chip, no blur — just the arrows over the game, as asked. The glow on each chevron and the
+     text-shadow on the label are what keep them readable against a bright pasture. */
+  background: none;
   color: #35d6e8;
   cursor: pointer;
   animation: scrollhint-in 0.28s ease-out both;

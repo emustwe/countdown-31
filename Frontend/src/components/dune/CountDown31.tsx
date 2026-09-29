@@ -13,6 +13,7 @@ import { useCountdownLive, type GameMode, type LivePlayer } from "../../lib/hook
 import { setClockDeadline, useDeadlinePassed } from "../../stores/clock-store";
 import { soundManager } from "../../lib/soundManager";
 import { EliminationSequence } from "./EliminationSequence";
+import { RoundRestartSequence } from "./RoundRestartSequence";
 import { KickoffWheel } from "./KickoffWheel";
 import { WinnerCelebration } from "./WinnerCelebration";
 import { CowntdownTimerCow } from "./CowntdownTimerCow";
@@ -264,7 +265,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   const dancePhase = !!state?.dancing || serverDancing;
   // Elimination cinematic phase (local engine): "seq" = the 4.6s ELIMINATION sequence plays on every
   // elimination; "cow" = the dancing cow, shown ONLY when that elimination completed the round (31).
-  const [elimPhase, setElimPhase] = useState<"seq" | null>(null);
+  const [elimPhase, setElimPhase] = useState<"seq" | "restart" | null>(null);
   useEffect(() => {
     setElimPhase(state?.dancing ? "seq" : null);
   }, [state?.dancing?.id]);
@@ -503,7 +504,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   return (
     <div
       ref={arenaViewportRef}
-      className={`arena-viewport mobile-landscape-game relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${campaign ? "has-tournament-campaign" : ""} ${theme ? "has-tournament-theme" : ""} ${isShaking ? "animate-screen-shake" : ""} ${elimPhase === "seq" || (!isLocalEngine && serverDancing) ? "elim-frozen" : ""}`}
+      className={`arena-viewport mobile-landscape-game relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${campaign ? "has-tournament-campaign" : ""} ${theme ? "has-tournament-theme" : ""} ${isShaking ? "animate-screen-shake" : ""} ${elimPhase !== null || (!isLocalEngine && serverDancing) ? "elim-frozen" : ""}`}
       style={
         campaign
           ? ({
@@ -689,10 +690,22 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
           reason={state.dancing.reason}
           remaining={state.dancing.remaining}
           onDone={() => {
-            // ALWAYS resume here. The dancing cow used to own this call on a round-completing "31"
-            // (elimPhase -> "cow", then the clip's `ended` fired onDanceEnd). With the cow gone
-            // there is nothing else to unfreeze the arena, so a missed endDance would hang the
-            // game on state.dancing forever.
+            // Hand over to the restart beats rather than resuming straight away. The arena stays
+            // frozen (state.dancing is still set) until they finish, so the board cannot start
+            // moving underneath the text.
+            setElimPhase("restart");
+          }}
+        />
+      )}
+
+      {/* "Starting again" -> "Get ready, <name>", then the round actually resumes. */}
+      {isLocalEngine && state?.dancing && elimPhase === "restart" && (
+        <RoundRestartSequence
+          nextName={players.find((p) => p.id === currentId)?.name ?? "Players"}
+          onDone={() => {
+            // ALWAYS resume here. Nothing else unfreezes the arena, so a missed endDance would hang
+            // the game on state.dancing forever.
+            setElimPhase(null);
             endDance();
           }}
         />
