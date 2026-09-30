@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { requestFullscreen } from "../../lib/fullscreen";
+import { requestFullscreen, barsAreUp } from "../../lib/fullscreen";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
 
 /** How many chevrons make the trail. Enough to read as a flowing stream, not a single icon. */
@@ -42,12 +42,14 @@ export function ScrollHintOverlay() {
       // iOS: a passive arrow pointing at the swipe, which is the only way to clear Safari's bars.
       // With the flag on, it hides once the bars are actually gone and returns on a reload or a
       // return from another app. With it off, it behaves exactly as it does today: always on screen.
-      const collapsed = ONE_WAY_COLLAPSE ? (fs ? already : window.scrollY >= 88) : fs && already;
+      // MEASURED. scrollY is not a usable proxy on iOS — see barsAreUp().
+      const collapsed = ONE_WAY_COLLAPSE ? (fs ? already : !barsAreUp()) : fs && already;
       setShow(coarse && landscape && !standalone && !collapsed);
     };
     sync();
     window.addEventListener("resize", sync);
     window.addEventListener("scroll", sync, { passive: true });
+    window.visualViewport?.addEventListener("resize", sync);
     window.addEventListener("orientationchange", sync);
     document.addEventListener("visibilitychange", sync);
     document.addEventListener("fullscreenchange", sync);
@@ -58,6 +60,7 @@ export function ScrollHintOverlay() {
     return () => {
       window.removeEventListener("resize", sync);
       window.removeEventListener("scroll", sync);
+      window.visualViewport?.removeEventListener("resize", sync);
       window.removeEventListener("orientationchange", sync);
       document.removeEventListener("visibilitychange", sync);
       document.removeEventListener("fullscreenchange", sync);

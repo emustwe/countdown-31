@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
+import { barsAreUp } from "../../lib/fullscreen";
 
 /** Extra scroll height that lets Safari collapse its bars. ~101px measured + slack. */
 const GAP_PX = 112;
@@ -76,8 +77,11 @@ export function FullBleedPage() {
       el.style.removeProperty("touch-action");
       body.style.removeProperty("touch-action");
     };
+    // Lock when the bars are actually GONE, measured from the viewport. Keying this off scrollY did
+    // not work on a real device: the collapse happens mid-swipe and Safari settles the scroll back,
+    // so the threshold never fired even though it passed in an emulator.
     const onScroll = () => {
-      if (window.scrollY >= GAP_PX - 24) lock();
+      if (!barsAreUp()) lock();
     };
     const onReturn = () => {
       if (document.visibilityState !== "visible") return;
@@ -94,11 +98,13 @@ export function FullBleedPage() {
 
     sync();
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.visualViewport?.addEventListener("resize", onScroll);
     window.addEventListener("resize", sync);
     window.addEventListener("orientationchange", onRotate);
     document.addEventListener("visibilitychange", onReturn);
     return () => {
       window.removeEventListener("scroll", onScroll);
+      window.visualViewport?.removeEventListener("resize", onScroll);
       window.removeEventListener("resize", sync);
       window.removeEventListener("orientationchange", onRotate);
       document.removeEventListener("visibilitychange", onReturn);

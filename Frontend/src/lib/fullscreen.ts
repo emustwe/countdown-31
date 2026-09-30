@@ -39,3 +39,27 @@ export function inFullscreen(): boolean {
   const d = document as Document & { webkitFullscreenElement?: Element | null };
   return !!(document.fullscreenElement || d.webkitFullscreenElement);
 }
+
+/**
+ * Are the browser's own bars currently on screen?
+ *
+ * MEASURED, not inferred from scroll position. `scrollY` is unusable for this on iOS: the bars
+ * collapse DURING the swipe, the viewport grows, and Safari settles the scroll back to a smaller
+ * value — so a "scrolled past the gap" test never fires on a real device even though it passes in an
+ * emulator, where nothing collapses and a programmatic scroll stays put.
+ *
+ * 100lvh is the viewport AS IF no chrome were present (on iOS it never shrinks); visualViewport.height
+ * is what is genuinely visible right now. The difference between them IS the chrome.
+ */
+export function barsAreUp(): boolean {
+  if (typeof window === "undefined") return false;
+  const probe = document.createElement("div");
+  probe.style.cssText =
+    "position:fixed;top:0;left:0;width:1px;height:100vh;height:100lvh;visibility:hidden;pointer-events:none";
+  document.body.appendChild(probe);
+  const barsHidden = probe.getBoundingClientRect().height;
+  probe.remove();
+  const visible = window.visualViewport?.height ?? window.innerHeight;
+  if (!barsHidden || !visible) return false;
+  return barsHidden - visible >= 24;
+}
