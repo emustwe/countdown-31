@@ -9,7 +9,7 @@ import { normalizeCountry } from "../../lib/countries";
 import { CountrySelect } from "./CountrySelect";
 import { useAuthStore } from "../../stores/auth-store";
 import { useCosmetics } from "../../lib/hooks/useSponsors";
-import { useCountdownLive, type GameMode, type LivePlayer } from "../../lib/hooks/useCountdownLive";
+import { useCountdownLive, type GameMode, type LivePlayer, LIVE_PRACTICE } from "../../lib/hooks/useCountdownLive";
 import { setClockDeadline, useDeadlinePassed } from "../../stores/clock-store";
 import { soundManager } from "../../lib/soundManager";
 import { EliminationSequence } from "./EliminationSequence";
@@ -102,7 +102,11 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   const { state, myId, join, leaveGame, submit, endDance, turnSeconds } = useCountdownLive(roomId, testArena ? { local: true, botCount: 100 } : undefined);
   // The practice room and the always-open test arena run the in-browser engine (which supports the
   // freeze-for-cow-dance). Real tournaments are server-driven.
-  const isLocalEngine = roomId === "practice" || testArena;
+  // Which engine is ACTUALLY driving this room. It used to be `roomId === "practice"`, which stopped
+  // being true the moment practice moved to the server: the local branch then waited on state.dancing
+  // (server never sends it) while the server branch was gated behind !isLocalEngine, so the
+  // elimination cinematic could render from neither. The test arena is still genuinely local.
+  const isLocalEngine = (roomId === "practice" && !LIVE_PRACTICE) || testArena;
   const isAdmin = user?.role === "ADMIN";
   // In the test arena, only an admin gets the join/rejoin controls + their own player card.
   const canPlay = !testArena || isAdmin;
