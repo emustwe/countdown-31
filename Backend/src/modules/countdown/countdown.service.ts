@@ -465,7 +465,12 @@ class Room {
           this.onChange();
         }, BOT_REJOIN_MS);
       }
-      this.beginRound(idx);
+      // Same rule the knockout path already uses: ONLY a "31" starts a fresh count. Being knocked
+      // out for repeating a count, timing out, skipping or over-3 leaves the lap where it was, so
+      // play carries on from 15/16/whatever rather than snapping back to 1. Practice used to call
+      // beginRound() unconditionally here, which reset every elimination to a new lap.
+      if (reason === "31" || this.count >= TARGET) this.beginRound(idx);
+      else this.continueRound(idx);
     } else {
       // Knockout: the player is OUT for good — the field shrinks. They may keep watching but can
       // never rejoin. FIRST, freeze the WHOLE game for the elimination cow-dance (every player sees
