@@ -266,9 +266,18 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   // Elimination cinematic phase (local engine): "seq" = the 4.6s ELIMINATION sequence plays on every
   // elimination; "cow" = the dancing cow, shown ONLY when that elimination completed the round (31).
   const [elimPhase, setElimPhase] = useState<"seq" | "restart" | null>(null);
-  // Keyed off BOTH engines. This used to watch only `state.dancing`, which the LOCAL engine sets —
-  // so when practice moved to the server the eliminations went silent: no sequence, no beats.
-  const elimKey = state?.dancing?.id ?? (serverDancing ? (state?.lastEliminated?.name ?? "srv") : null);
+  // Keyed off BOTH engines, and on the server off the ELIMINATION ITSELF.
+  //
+  // It first watched `state.dancing` (local engine only), then `serverDancing` — which is
+  // `!!danceEndsAt`. Measured against the live practice room: danceEndsAt is sent 0 times out of 21
+  // states, while lastEliminated is sent every time. danceEndsAt is a KNOCKOUT-mode field; practice
+  // never emits it, so the whole cinematic was gated behind something that is always false there.
+  //
+  // lastEliminated PERSISTS between eliminations, so it is turned into a key that only changes when
+  // someone new goes out — the round is included because the same player can be knocked out again.
+  const elimKey =
+    state?.dancing?.id ??
+    (state?.lastEliminated ? `${state.lastEliminated.name}#${state.round}` : null);
   useEffect(() => {
     setElimPhase(elimKey ? "seq" : null);
   }, [elimKey]);
@@ -507,7 +516,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   return (
     <div
       ref={arenaViewportRef}
-      className={`arena-viewport mobile-landscape-game relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${campaign ? "has-tournament-campaign" : ""} ${theme ? "has-tournament-theme" : ""} ${isShaking ? "animate-screen-shake" : ""} ${elimPhase !== null || (!isLocalEngine && serverDancing) ? "elim-frozen" : ""}`}
+      className={`arena-viewport mobile-landscape-game relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-2 py-1 sm:px-6 ${campaign ? "has-tournament-campaign" : ""} ${theme ? "has-tournament-theme" : ""} ${isShaking ? "animate-screen-shake" : ""} ${elimPhase !== null || serverDancing ? "elim-frozen" : ""}`}
       style={
         campaign
           ? ({
@@ -715,7 +724,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
       )}
       {/* Mid-lap knockout (timeout/repeat/skip/over-3): the elimination cinematic. A round-completing
           "31" instead plays the dancing cow below (round over → next round). */}
-      {!isLocalEngine && serverDancing && state?.lastEliminated && elimPhase === "seq" && (
+      {!isLocalEngine && state?.lastEliminated && elimPhase === "seq" && (
         <EliminationSequence
           key={state.lastEliminated.name}
           name={state.lastEliminated.name}
@@ -726,7 +735,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
       )}
       {/* The same two beats on the SERVER path. The server owns when play resumes, so these are
           purely presentational here — they must not call endDance (which is the local engine's). */}
-      {!isLocalEngine && serverDancing && elimPhase === "restart" && (
+      {!isLocalEngine && elimPhase === "restart" && (
         <RoundRestartSequence
           nextName={players.find((p) => p.id === currentId)?.name ?? "Players"}
           onDone={() => setElimPhase(null)}
