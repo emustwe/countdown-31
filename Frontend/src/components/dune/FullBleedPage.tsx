@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
 
 /** Extra scroll height that lets Safari collapse its bars. ~101px measured + slack. */
 const GAP_PX = 112;
@@ -52,12 +53,56 @@ export function FullBleedPage() {
       body.style.setProperty("overflow-y", "auto", "important");
     };
 
+    /**
+     * ONE-WAY COLLAPSE (gated by ONE_WAY_COLLAPSE — see lib/mobile-flags.ts).
+     *
+     * Once the bars are gone, lock the page so they cannot be scrolled back. The gap is deliberately
+     * LEFT in place and the scroll position untouched: removing the gap would force scrollY to 0, and
+     * landing on 0 is one of the things that makes Safari restore the bars — the fix would trigger
+     * exactly what it prevents. Blocking the gesture instead leaves the page sitting at the bottom of
+     * the gap with nothing able to move it.
+     *
+     * Unlocked on a reload (fresh page) or on return from another app, which is when the bars come
+     * back anyway and the swipe is needed a second time.
+     *
+     * NOT complete, and cannot be: tapping the top of the screen is an OS gesture no page can block.
+     */
+    const lock = () => {
+      if (!ONE_WAY_COLLAPSE) return;
+      el.style.setProperty("touch-action", "none");
+      body.style.setProperty("touch-action", "none");
+    };
+    const unlock = () => {
+      el.style.removeProperty("touch-action");
+      body.style.removeProperty("touch-action");
+    };
+    const onScroll = () => {
+      if (window.scrollY >= GAP_PX - 24) lock();
+    };
+    const onReturn = () => {
+      if (document.visibilityState !== "visible") return;
+      unlock();
+      // Safari brings its bars back when you return to the tab, but the page is still sitting at the
+      // bottom of the gap — so there is nothing left to scroll and the swipe is unavailable exactly
+      // when it is needed again. Returning to 0 restores the gap, and the arrow with it.
+      window.scrollTo(0, 0);
+    };
+    const onRotate = () => {
+      unlock();
+      sync();
+    };
+
     sync();
+    window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", sync);
-    window.addEventListener("orientationchange", sync);
+    window.addEventListener("orientationchange", onRotate);
+    document.addEventListener("visibilitychange", onReturn);
     return () => {
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", sync);
-      window.removeEventListener("orientationchange", sync);
+      window.removeEventListener("orientationchange", onRotate);
+      document.removeEventListener("visibilitychange", onReturn);
+      unlock();
       clear();
     };
   }, []);

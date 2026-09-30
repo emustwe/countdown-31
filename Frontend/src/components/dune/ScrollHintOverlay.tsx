@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { requestFullscreen } from "../../lib/fullscreen";
+import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
 
 /** How many chevrons make the trail. Enough to read as a flowing stream, not a single icon. */
 const ARROWS = 8;
@@ -39,11 +40,16 @@ export function ScrollHintOverlay() {
       setCanFs(fs);
       // Android: a fullscreen button, hidden once fullscreen is on.
       // iOS: a passive arrow pointing at the swipe, which is the only way to clear Safari's bars.
-      setShow(coarse && landscape && !standalone && !(fs && already));
+      // With the flag on, it hides once the bars are actually gone and returns on a reload or a
+      // return from another app. With it off, it behaves exactly as it does today: always on screen.
+      const collapsed = ONE_WAY_COLLAPSE ? (fs ? already : window.scrollY >= 88) : fs && already;
+      setShow(coarse && landscape && !standalone && !collapsed);
     };
     sync();
     window.addEventListener("resize", sync);
+    window.addEventListener("scroll", sync, { passive: true });
     window.addEventListener("orientationchange", sync);
+    document.addEventListener("visibilitychange", sync);
     document.addEventListener("fullscreenchange", sync);
     document.addEventListener("webkitfullscreenchange", sync);
     // Client-side navigation changes the page — and the scroll room with it — without firing any of
@@ -51,7 +57,9 @@ export function ScrollHintOverlay() {
     const poll = setInterval(sync, 800);
     return () => {
       window.removeEventListener("resize", sync);
+      window.removeEventListener("scroll", sync);
       window.removeEventListener("orientationchange", sync);
+      document.removeEventListener("visibilitychange", sync);
       document.removeEventListener("fullscreenchange", sync);
       document.removeEventListener("webkitfullscreenchange", sync);
       clearInterval(poll);
