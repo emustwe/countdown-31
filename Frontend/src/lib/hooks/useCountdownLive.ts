@@ -32,7 +32,10 @@ export const PRACTICE_TURN_SECONDS = 13;
  * Set to false to go back. The local engine is untouched and still used as the fallback whenever the
  * socket cannot connect, so a server outage degrades to a playable game rather than an empty screen.
  */
-export const LIVE_PRACTICE = true;
+// OFF for now: the shared room connects and stays in sync across devices, but players cannot yet be
+// SEATED in it, so turning this on would ship a practice room nobody can join — worse than the
+// private local game. Flip to true once the join lands.
+export const LIVE_PRACTICE = false;
 /** Practice always runs on the built-in defaults, with its own longer turn timer. */
 const PRACTICE_GAME_CONFIG = {
   ...DEFAULT_GAME_CONFIG,
