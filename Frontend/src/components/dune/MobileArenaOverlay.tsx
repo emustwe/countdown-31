@@ -94,6 +94,19 @@ export function MobileArenaOverlay({
         <>
           <div className="fixed inset-0 z-[208]" onClick={() => setOpen(false)} />
           <div className="fixed top-14 right-2 z-[211] w-52 max-h-[80vh] overflow-y-auto rounded-2xl bg-gradient-to-b from-[#15241b] to-[#070e0a] border-2 border-amber-400/70 shadow-2xl p-2 flex flex-col gap-0.5">
+            {/* Always first, always present — same as the desktop header menu. This list is built from
+                the admin-configured items, so a fixed entry here is the only way it cannot be lost. */}
+            <button
+              onClick={() => {
+                setOpen(false);
+                router.push("/lobby");
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-amber-400/10 transition-colors cursor-pointer text-xs font-title"
+            >
+              <Home size={15} className="text-amber-400" />
+              <span>Back to lobby</span>
+            </button>
+
             {menuItems.map((m) => {
               const Icon = MENU_ICONS[m.icon] ?? Home;
               return (

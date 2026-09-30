@@ -11612,7 +11612,12 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   .landing-playground {
     position: fixed;
     inset: 0;
-    height: max(var(--app-vh, 100dvh), 100dvh);
+    /* 100lvh = the viewport AS IF the bars were hidden, which on iOS is the largest it can ever be.
+       Sizing to that means the lobby covers the screen in EVERY bar state, so scrolling the gap can
+       never reveal anything behind it. max() with --app-vh was not enough: when --app-vh went stale
+       the page rendered short and the shortfall showed as the dark strip. */
+    height: 100lvh;
+    min-height: 100dvh;
     overflow: hidden;
     /* Own compositor layer, same as the arena — keeps it glued through Safari's bar animation. */
     transform: translateZ(0);
