@@ -3,71 +3,61 @@
 import { useEffect, useState } from "react";
 
 /**
- * TEMPORARY calibration readout for the iOS soft-fullscreen work.
+ * On-device viewport readout. Shown ONLY with ?cal=1 in the URL, so players never see it.
  *
- * There is no API that reports whether Safari's bars are showing, and the offset needed to make the
- * page marginally scrollable (so Safari's collapse gesture has somewhere to go) depends on the iOS
- * version — the commonly-quoted 72px comes from a 44px bar collapsing to 20px and predates several
- * Safari redesigns. A headless browser has no dynamic toolbar at all: there vh, dvh, svh and lvh are
- * all equal, so none of this can be measured off-device.
- *
- * So instead of guessing a constant, this prints the numbers that actually matter, live, on the real
- * phone. Rotate, scroll to collapse the bars, screenshot, and read `lvh - svh` — that is the true
- * bar height for that device and iOS version, and the value the scroll affordance should use.
- *
- * Shown ONLY when the URL carries ?cal=1, so players never see it. Delete this file once the
- * affordance is calibrated.
+ * This exists because iOS Safari's bar behaviour cannot be reproduced in any emulator: the page
+ * measures as correct on a desktop browser pretending to be an iPhone while being visibly wrong on a
+ * real one. Rather than keep guessing from screenshots, this prints the numbers that actually decide
+ * the layout so they can be read straight off the device.
  */
 export function ViewportCalibrator() {
   const [on, setOn] = useState(false);
-  const [m, setM] = useState<Record<string, number | string>>({});
+  const [m, setM] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!new URLSearchParams(window.location.search).has("cal")) return;
+    if (new URLSearchParams(window.location.search).get("cal") !== "1") return;
     setOn(true);
 
+    const px = (v: number | undefined) => (v == null ? "—" : `${Math.round(v)}`);
     const probe = (unit: string) => {
-      const el = document.createElement("div");
-      el.style.cssText = `position:absolute;height:100${unit};visibility:hidden;pointer-events:none`;
-      document.body.appendChild(el);
-      const h = Math.round(el.getBoundingClientRect().height);
-      el.remove();
+      const d = document.createElement("div");
+      d.style.cssText = `position:fixed;top:0;left:0;width:1px;height:100${unit};visibility:hidden;pointer-events:none`;
+      document.body.appendChild(d);
+      const h = d.getBoundingClientRect().height;
+      d.remove();
       return h;
     };
 
     const read = () => {
-      const vv = window.visualViewport;
-      const svh = probe("svh");
-      const lvh = probe("lvh");
+      const el = document.querySelector(".landing-playground") ?? document.querySelector(".arena-viewport");
+      const r = el?.getBoundingClientRect();
+      const cs = el ? getComputedStyle(el) : null;
+      const d = document.documentElement;
       setM({
-        orientation: window.innerWidth >= window.innerHeight ? "landscape" : "portrait",
-        innerHeight: window.innerHeight,
-        outerHeight: window.outerHeight,
-        clientHeight: document.documentElement.clientHeight,
-        bodyOffsetH: document.body.offsetHeight,
-        scrollHeight: document.documentElement.scrollHeight,
-        "visualViewport.h": vv ? Math.round(vv.height) : "n/a",
-        "vv.offsetTop": vv ? Math.round(vv.offsetTop) : "n/a",
-        dvh: probe("dvh"),
-        svh,
-        lvh,
-        "→ BAR HEIGHT (lvh-svh)": lvh - svh,
-        scrollY: Math.round(window.scrollY),
-        standalone: window.matchMedia("(display-mode: standalone)").matches ? "yes" : "no",
+        "innerHeight": px(window.innerHeight),
+        "visualViewport": px(window.visualViewport?.height),
+        "100lvh": px(probe("lvh")),
+        "100dvh": px(probe("dvh")),
+        "100svh": px(probe("svh")),
+        "--app-vh": (getComputedStyle(d).getPropertyValue("--app-vh") || "unset").trim(),
+        "page height": cs?.height ?? "—",
+        "page top→bottom": r ? `${px(r.top)} → ${px(r.bottom)}` : "—",
+        "page position": cs?.position ?? "—",
+        "scrollY": px(window.scrollY),
+        "scrollH − clientH": `${d.scrollHeight - d.clientHeight}`,
+        "UNCOVERED BELOW": r ? `${Math.max(0, Math.round((window.visualViewport?.height ?? window.innerHeight) - r.bottom))}px` : "—",
       });
     };
 
     read();
-    window.addEventListener("resize", read);
+    const t = setInterval(read, 400);
     window.addEventListener("scroll", read, { passive: true });
-    window.addEventListener("orientationchange", read);
     window.visualViewport?.addEventListener("resize", read);
     window.visualViewport?.addEventListener("scroll", read);
     return () => {
-      window.removeEventListener("resize", read);
+      clearInterval(t);
       window.removeEventListener("scroll", read);
-      window.removeEventListener("orientationchange", read);
       window.visualViewport?.removeEventListener("resize", read);
       window.visualViewport?.removeEventListener("scroll", read);
     };
@@ -79,24 +69,23 @@ export function ViewportCalibrator() {
     <div
       style={{
         position: "fixed",
-        top: 4,
-        left: 4,
+        top: 6,
+        left: 6,
         zIndex: 2147483647,
-        background: "rgba(0,0,0,0.88)",
+        background: "rgba(0,0,0,.88)",
         color: "#7CFFB2",
-        font: "600 10px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace",
-        padding: "6px 8px",
+        font: "600 11px/1.45 ui-monospace,Menlo,monospace",
+        padding: "8px 10px",
         borderRadius: 8,
-        border: "1px solid #7CFFB2",
         pointerEvents: "none",
-        whiteSpace: "pre",
-        maxWidth: "48vw",
+        maxWidth: "62vw",
       }}
-      aria-hidden="true"
     >
-      {Object.entries(m)
-        .map(([k, v]) => `${k.padEnd(22, " ")}${v}`)
-        .join("\n")}
+      {Object.entries(m).map(([k, v]) => (
+        <div key={k} style={{ color: k === "UNCOVERED BELOW" && v !== "0px" ? "#FF7A7A" : undefined }}>
+          {k}: <b>{v}</b>
+        </div>
+      ))}
     </div>
   );
 }
