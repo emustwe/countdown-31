@@ -10305,11 +10305,16 @@ body:has(.mobile-landscape-game) .app-shell > footer {
   }
 
   /* 1. Landing Page (Root /) Landscape 2-Column Grid */
+  /* IDENTICAL to .arena-viewport above — same position, same height expression, nothing else.
+     The game page collapses Safari's bars correctly on a real iPhone, so the lobby matching it
+     exactly is the reliable way to get the same behaviour. Earlier variations here (100lvh,
+     touch-action overrides, a compositor-layer transform) each measured fine in emulation and each
+     behaved differently on the device. */
   .landing-playground {
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    overflow-y: auto !important;
-    padding: 6px max(12px, env(safe-area-inset-right)) max(65px, calc(60px + env(safe-area-inset-bottom))) max(12px, env(safe-area-inset-left)) !important;
+    position: fixed;
+    inset: 0;
+    height: max(var(--app-vh, 100dvh), 100dvh);
+    overflow: hidden;
   }
 
   .landing-nav {
@@ -11616,14 +11621,13 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
        Sizing to that means the lobby covers the screen in EVERY bar state, so scrolling the gap can
        never reveal anything behind it. max() with --app-vh was not enough: when --app-vh went stale
        the page rendered short and the shortfall showed as the dark strip. */
-    height: 100lvh;
-    min-height: 100dvh;
+    /* IDENTICAL to .arena-viewport — same height expression, no transform, no touch-action override.
+       The game page collapses Safari's bars correctly on a real device, so matching it exactly is
+       the reliable way to get the same behaviour here. Every variation tried before (100lvh, a
+       compositor-layer transform, touch-action:none) measured fine in emulation and behaved
+       differently on the phone; touch-action:none in particular blocked the swipe outright. */
+    height: max(var(--app-vh, 100dvh), 100dvh);
     overflow: hidden;
-    /* Own compositor layer, same as the arena — keeps it glued through Safari's bar animation. */
-    transform: translateZ(0);
-    /* Nothing to scroll here any more, so the page must not accept a scroll gesture at all — that is
-       what was dragging the empty strip into view. */
-    touch-action: none;
   }
   /* The body behind the gap carries the lobby's own field, so what the collapse reveals is the same
      picture rather than a bare strip. Both layers viewport-anchored so they line up across it. */
