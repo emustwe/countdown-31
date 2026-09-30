@@ -7,7 +7,6 @@ import { motion } from "framer-motion";
 import { BookOpen, ChevronRight, Play, ShieldCheck, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { PastureAmbiance } from "../../components/dune/PastureAmbiance";
 import { ViewportCalibrator } from "../../components/dune/ViewportCalibrator";
-import { FullBleedPage } from "../../components/dune/FullBleedPage";
 import { LandingRotateGate } from "../../components/dune/LandingRotateGate";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { soundManager } from "../../lib/soundManager";
@@ -40,7 +39,6 @@ export default function RootLandingPage() {
   return (
     <>
       <ViewportCalibrator />
-      <FullBleedPage />
       <LandingRotateGate />
       <div className="landing-playground">
       <PastureAmbiance />
