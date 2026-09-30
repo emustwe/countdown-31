@@ -1,66 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
-
-/** Extra scroll height that lets the browser collapse its bars. ~101px measured + slack. */
-const GAP_PX = 112;
-
 /**
- * Marks a page as full-bleed: it fills the display and wants the browser bars gone.
+ * Formerly added 112px of scroll height so iOS Safari would collapse its bars.
  *
- * It applies the scroll gap as an INLINE STYLE rather than via a class or attribute the CSS keys off.
- * Two earlier attempts failed the same way and it is worth recording why:
+ * THAT GAP WAS THE BUG. Scrolling into it exposed an empty strip that covered the game and swallowed
+ * touches, and no amount of painting, flooring or layer-promotion fixed it — because the strip was
+ * not a rendering artefact, it was the gap itself. It is gone.
  *
- *   `html:has(.landing-playground)`  — worked on a direct load, silently stopped matching after a
- *                                      client-side route change.
- *   `html[data-fullbleed]`           — the attribute was demonstrably set (verified in the DOM) and
- *                                      the rule STILL did not apply after a route change, while a
- *                                      reload of the same URL applied it fine.
+ * Consequence, stated plainly: on iOS there is now no way to hide Safari's bars. Apple exposes no
+ * Fullscreen API for page content, and the scroll trick was the only alternative. The game is laid
+ * out to the visible area instead, which it already did correctly. Android is unaffected — it has
+ * real fullscreen, offered by the entry screen's Next button and the fullscreen control.
  *
- * Both are style-invalidation behaviour on the root element that this code cannot control. An inline
- * style has no selector to re-evaluate, so it cannot drift from the component's lifecycle.
- *
- * Only where collapsing is possible: a touch device, in landscape, in a browser tab. An installed
- * PWA has no bars, portrait has nothing to gain, desktop has neither.
+ * Kept as a no-op component so the pages that mount it do not need touching, and so this note stays
+ * attached to the decision.
  */
 export function FullBleedPage() {
-  useEffect(() => {
-    const el = document.documentElement;
-    const body = document.body;
-
-    const applies = () =>
-      window.matchMedia("(pointer: coarse)").matches &&
-      window.matchMedia("(orientation: landscape)").matches &&
-      !window.matchMedia("(display-mode: standalone)").matches &&
-      (navigator as Navigator & { standalone?: boolean }).standalone !== true;
-
-    const clear = () => {
-      el.style.removeProperty("min-height");
-      el.style.removeProperty("overflow-y");
-      body.style.removeProperty("overflow-y");
-    };
-
-    const sync = () => {
-      if (!applies()) {
-        clear();
-        return;
-      }
-      el.style.setProperty("min-height", `calc(100% + ${GAP_PX}px)`);
-      // The arena sets overflow:hidden on html/body to stop the page moving mid-turn; the gap needs
-      // vertical scroll back, and only the gap moves — the page itself is pinned.
-      el.style.setProperty("overflow-y", "auto", "important");
-      body.style.setProperty("overflow-y", "auto", "important");
-    };
-
-    sync();
-    window.addEventListener("resize", sync);
-    window.addEventListener("orientationchange", sync);
-    return () => {
-      window.removeEventListener("resize", sync);
-      window.removeEventListener("orientationchange", sync);
-      clear();
-    };
-  }, []);
-
   return null;
 }

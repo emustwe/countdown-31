@@ -11572,95 +11572,30 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
    so it only wins by source order.
    ─────────────────────────────────────────────────────────────────────────── */
 @media (pointer: coarse) and (orientation: landscape) and (display-mode: browser) {
-  /* THE GAP BELONGS TO THE ARENA, AND NOWHERE ELSE.
-     It used to be on bare `html`, so every page carried 112px of dead scroll —
-     including the landing page, where there is nothing to gain by hiding the bars
-     and the only effect was a page that drifted and stranded you. Scoped here, the
-     landing page is fixed and unscrollable again. */
-  /* Both screens that fill the display want the bars gone: the arena and the lobby.
-     Not the entry screen — it is one button and has nothing to scroll. */
-  /* The gap itself is applied INLINE by FullBleedPage — a CSS selector on <html> did not survive a
-     client-side route change (twice, two different selectors). See FullBleedPage for the detail. */
+  /* The 112px scroll gap that used to live here is GONE — see FullBleedPage for why. With no gap
+     there is nothing to scroll, so nothing can slide over the game and eat touches. */
   html,
   body {
-    overscroll-behavior: none; /* no rubber-band or pull-to-refresh off the gap */
+    overflow: hidden;
+    overscroll-behavior: none;
   }
-  /* Every page that is NOT the arena stays pinned — no scroll, so no gap to fall into. */
-  html,
-  body {
-    overflow-x: hidden;
+
+  /* The arena fills the VISIBLE area exactly. --app-vh is the true visible height (visualViewport),
+     with 100dvh as a floor so a stale-small value can never render it short. */
+  .arena-viewport {
+    position: fixed;
+    inset: 0;
+    height: max(var(--app-vh, 100dvh), 100dvh);
   }
-  /* The lobby is pinned for exactly the reason the arena is: the 112px of scroll must move the empty
-     gap BEHIND the page, never the page itself. Its background moves to the body so the gap shows the
-     same field rather than a bare strip — the identical trick, and the same reason, as the arena. */
+
   .landing-playground {
     position: fixed;
     inset: 0;
     height: max(var(--app-vh, 100dvh), 100dvh);
     overflow: hidden;
   }
-  body:has(.landing-playground) {
-    background:
-      linear-gradient(115deg, rgba(4, 24, 15, 0.96) 0%, rgba(7, 37, 23, 0.9) 48%, rgba(3, 16, 11, 0.96) 100%),
-      url("/assets/barnaby/barnaby-field.jpg") center center / cover no-repeat;
-    background-attachment: fixed, fixed;
-  }
 
-  /* The arena page disables page scrolling outright (see the rule that sets
-     overflow:hidden on html/body when .mobile-landscape-game is present) — which
-     also blocks Safari's collapse. Re-enable just the vertical gap here. This is
-     only safe because .arena-viewport is pinned below: the scroll moves the empty
-     gap behind the game, never the game. */
-  html:has(.mobile-landscape-game),
-  body:has(.mobile-landscape-game) {
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-  }
-
-  /* The ARENA must not move — it is measured to fit the visible area exactly, so
-     a scrolling page would drag the board off-screen mid-turn. Pinning it puts
-     the scroll gap behind it. Its absolutely-positioned children keep this as
-     their containing block, so the PLAY button and overlays are unaffected. */
-  .arena-viewport {
-    position: fixed;
-    inset: 0;
-    /* NEVER shorter than the viewport. --app-vh is the true visible height and is what keeps iOS
-       from clipping the arena's bottom, but if it is ever stale-small the arena renders short and
-       the shortfall reads as a dead strip that eats taps. max() makes 100dvh the floor. */
-    height: max(var(--app-vh, 100dvh), 100dvh);
-    /* iOS anchors position:fixed to the LAYOUT viewport, which drifts from the visible one during a
-       scroll and bar-collapse — the element visibly slides. Promoting it to its own compositor layer
-       is the long-standing workaround: it stays glued through the transition. */
-    transform: translateZ(0);
-    will-change: transform;
-  }
-
-  /* THE SCROLL GAP MUST NEVER SHOW AS BARE DOCUMENT.
-     The arena is sized to the VISIBLE height (--app-vh). The moment Safari
-     collapses its bars the viewport grows but the fixed arena does not, and the
-     body's flat colour showed through as a dark strip — the glitch reported from
-     production. Painting the body with the arena's own ground, ATTACHED to the
-     viewport so it cannot scroll away, means whatever the bar state reveals is
-     pasture rather than a hole. This touches only paint; the arena's measured
-     layout is deliberately left alone. */
-  /* THE BAND AT THE BOTTOM OF THE GAME — the one that kept coming back.
-     `.practice-page` paints the pasture and is exactly 100dvh tall, so the 112px of
-     scroll gap sits BELOW it and shows whatever the body has. Painting the body with
-     a gradient only changed the band's colour: a gradient against a photograph is
-     still a visible seam.
-     The body now carries the IDENTICAL background to .practice-page — same image,
-     same overlay, same `fixed` attachment. Fixed attachment is what makes it work:
-     both are anchored to the viewport, not to their own boxes, so the image lines up
-     across the boundary and there is no seam to see at any bar position. */
-  body:has(.mobile-landscape-game) {
-    background:
-      linear-gradient(180deg, rgba(8, 18, 12, 0.72) 0%, rgba(10, 24, 16, 0.82) 40%, rgba(6, 12, 8, 0.94) 100%),
-      url("/assets/barnaby/barnaby-pasture-arena.jpg") center center / cover fixed no-repeat;
-    background-attachment: fixed, fixed;
-  }
-
-  /* Vertical drags on the board belong to the game, never to the page, so the
-     extra scroll height can't be used to drag the arena mid-round. */
+  /* Vertical drags on the board belong to the game, never to the page. */
   .nb-stage,
   .nb-trackwrap,
   .cab-stage {

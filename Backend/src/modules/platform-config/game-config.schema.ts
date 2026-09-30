@@ -163,7 +163,10 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   },
   gameplay: {
     turnSeconds: 13,
-    defaultBotCount: 1,
+    // 5, not 1. The practice room seeds this many CPU cows at startup, and a room holding a single
+    // player can never begin — it sat at status "waiting" forever with one bot, which is exactly why
+    // live practice showed no turns. Five enabled bots already ship in this config.
+    defaultBotCount: 5,
     botThinkMinMs: 3500,
     botThinkMaxMs: 6500,
     allowClassic: true,
