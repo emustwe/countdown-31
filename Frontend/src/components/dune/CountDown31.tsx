@@ -266,9 +266,12 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   // Elimination cinematic phase (local engine): "seq" = the 4.6s ELIMINATION sequence plays on every
   // elimination; "cow" = the dancing cow, shown ONLY when that elimination completed the round (31).
   const [elimPhase, setElimPhase] = useState<"seq" | "restart" | null>(null);
+  // Keyed off BOTH engines. This used to watch only `state.dancing`, which the LOCAL engine sets —
+  // so when practice moved to the server the eliminations went silent: no sequence, no beats.
+  const elimKey = state?.dancing?.id ?? (serverDancing ? (state?.lastEliminated?.name ?? "srv") : null);
   useEffect(() => {
-    setElimPhase(state?.dancing ? "seq" : null);
-  }, [state?.dancing?.id]);
+    setElimPhase(elimKey ? "seq" : null);
+  }, [elimKey]);
   const frozen = dancePhase || spinPhase;
   const myTurn = status === "playing" && currentId === myId && !frozen;
   const myPlayer = players.find((p) => p.id === myId) ?? null;
@@ -712,13 +715,21 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
       )}
       {/* Mid-lap knockout (timeout/repeat/skip/over-3): the elimination cinematic. A round-completing
           "31" instead plays the dancing cow below (round over → next round). */}
-      {!isLocalEngine && serverDancing && state?.lastEliminated && state.lastEliminated.reason !== "31" && (
+      {!isLocalEngine && serverDancing && state?.lastEliminated && elimPhase === "seq" && (
         <EliminationSequence
           key={state.lastEliminated.name}
           name={state.lastEliminated.name}
           reason={state.lastEliminated.reason}
           remaining={players.filter((p) => !p.eliminated).length}
-          onDone={() => {}}
+          onDone={() => setElimPhase("restart")}
+        />
+      )}
+      {/* The same two beats on the SERVER path. The server owns when play resumes, so these are
+          purely presentational here — they must not call endDance (which is the local engine's). */}
+      {!isLocalEngine && serverDancing && elimPhase === "restart" && (
+        <RoundRestartSequence
+          nextName={players.find((p) => p.id === currentId)?.name ?? "Players"}
+          onDone={() => setElimPhase(null)}
         />
       )}
 

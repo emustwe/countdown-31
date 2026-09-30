@@ -11591,11 +11591,24 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
     height: max(var(--app-vh, 100dvh), 100dvh);
   }
 
+  /* Pinned exactly like .arena-viewport: the 112px of scroll must move the empty gap BEHIND the
+     page, never the page itself. Without this the lobby content scrolled with the gesture, which is
+     what made it feel rough compared with the game. */
   .landing-playground {
     position: fixed;
     inset: 0;
     height: max(var(--app-vh, 100dvh), 100dvh);
     overflow: hidden;
+    /* Own compositor layer, same as the arena — keeps it glued through Safari's bar animation. */
+    transform: translateZ(0);
+  }
+  /* The body behind the gap carries the lobby's own field, so what the collapse reveals is the same
+     picture rather than a bare strip. Both layers viewport-anchored so they line up across it. */
+  body:has(.landing-playground) {
+    background:
+      linear-gradient(115deg, rgba(4, 24, 15, 0.96) 0%, rgba(7, 37, 23, 0.9) 48%, rgba(3, 16, 11, 0.96) 100%),
+      url("/assets/barnaby/barnaby-field.jpg") center center / cover no-repeat;
+    background-attachment: fixed, fixed;
   }
 
   /* Vertical drags on the board belong to the game, never to the page. */
