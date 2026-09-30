@@ -11466,6 +11466,9 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
 }
 @keyframes scrollhint-in { from { opacity: 0; } to { opacity: 1; } }
 .scrollhint:active { transform: scale(0.94); }
+/* iOS: the arrow is a hint, not a control. Inert so a tap cannot scroll the page — a tap that
+   scrolled is what used to drag the scroll gap over the board. */
+.scrollhint.is-hint { pointer-events: none; cursor: default; }
 .scrollhint:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 2px; }
 
 .scrollhint-arrows { display: flex; flex-direction: column; align-items: center; pointer-events: none; }

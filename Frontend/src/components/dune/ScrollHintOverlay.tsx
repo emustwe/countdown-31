@@ -22,6 +22,7 @@ const ARROWS = 8;
  */
 export function ScrollHintOverlay() {
   const [show, setShow] = useState(false);
+  const [canFs, setCanFs] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -31,14 +32,14 @@ export function ScrollHintOverlay() {
       const standalone =
         window.matchMedia("(display-mode: standalone)").matches ||
         (navigator as Navigator & { standalone?: boolean }).standalone === true;
-      // ONLY where fullscreen genuinely exists — Android. There is no scroll gap any more, and iOS
-      // has no Fullscreen API for page content, so on iPhone this control could do nothing at all.
-      // Showing a button that cannot work is worse than showing none.
       const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: unknown };
-      const canFullscreen =
+      const fs =
         typeof el.requestFullscreen === "function" || typeof el.webkitRequestFullscreen === "function";
       const already = !!(document.fullscreenElement || (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement);
-      setShow(coarse && landscape && !standalone && canFullscreen && !already);
+      setCanFs(fs);
+      // Android: a fullscreen button, hidden once fullscreen is on.
+      // iOS: a passive arrow pointing at the swipe, which is the only way to clear Safari's bars.
+      setShow(coarse && landscape && !standalone && !(fs && already));
     };
     sync();
     window.addEventListener("resize", sync);
@@ -60,13 +61,17 @@ export function ScrollHintOverlay() {
   if (!show) return null;
 
   return (
+    /* On iOS this is a HINT, not a control: it is rendered inert (pointer-events:none via
+       .is-hint) so a tap cannot scroll the page. Tapping used to scroll, and that is exactly what
+       dragged the scroll gap over the board — the control opened the very strip it existed to
+       remove. The swipe still works; the arrow only points at it. */
     <button
       type="button"
-      className="scrollhint"
-      aria-label="Enter fullscreen"
-      // Fullscreen only. It used to scroll as well, which is precisely what dragged the old scroll
-      // gap over the game — tapping the control opened the very strip it was meant to get rid of.
-      onClick={() => requestFullscreen(document.documentElement)}
+      className={`scrollhint${canFs ? "" : " is-hint"}`}
+      aria-hidden={!canFs}
+      tabIndex={canFs ? 0 : -1}
+      aria-label={canFs ? "Enter fullscreen" : undefined}
+      onClick={canFs ? () => requestFullscreen(document.documentElement) : undefined}
     >
       <span className="scrollhint-arrows" aria-hidden="true">
         {Array.from({ length: ARROWS }).map((_, i) => (
@@ -77,7 +82,7 @@ export function ScrollHintOverlay() {
           </span>
         ))}
       </span>
-      <span className="scrollhint-label">Fullscreen</span>
+      <span className="scrollhint-label">{canFs ? "Fullscreen" : "Swipe up"}</span>
     </button>
   );
 }
