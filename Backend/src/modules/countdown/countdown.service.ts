@@ -15,6 +15,8 @@ const WHEEL_MS = 6500; // the kickoff wheel spins this long (for everyone at onc
 // freeze should match the clip: too long and the cow holds its last frame ("extra" seconds); too
 // short and the clip is cut off. Re-measure the clip (headless `<video>.duration`) if it changes.
 const DANCE_MS = 8150;
+/** Practice freeze on an elimination: the 4.6s cinematic plus the two ~1.5s beats after it. */
+const ELIM_PAUSE_MS = 7600;
 const MIN_PLAYERS = 2;
 const MAX_ROOMS = 2000; // backstop against unbounded room creation from watch/join floods
 const BOT_REJOIN_MS = 3500;
@@ -465,12 +467,18 @@ class Room {
           this.onChange();
         }, BOT_REJOIN_MS);
       }
-      // Same rule the knockout path already uses: ONLY a "31" starts a fresh count. Being knocked
-      // out for repeating a count, timing out, skipping or over-3 leaves the lap where it was, so
-      // play carries on from 15/16/whatever rather than snapping back to 1. Practice used to call
-      // beginRound() unconditionally here, which reset every elimination to a new lap.
-      if (reason === "31" || this.count >= TARGET) this.beginRound(idx);
-      else this.continueRound(idx);
+      // FREEZE, exactly as knockout does. The elimination cinematic and the two beats after it run
+      // for about 7.6s on the client; without a pause the bots carried on picking and the next
+      // player's clock started while the animation was still on screen, so play happened behind it.
+      // Deciding the resume now and applying it in tick() is the same mechanism knockout uses.
+      //
+      // The rule itself is knockout's: ONLY a "31" starts a fresh count. Repeat / timeout / skip /
+      // over-3 leave the lap where it was. Practice used to call beginRound() unconditionally.
+      this.pendingResume = { type: "round", idx, reset: reason === "31" || this.count >= TARGET };
+      this.danceEndsAt = Date.now() + ELIM_PAUSE_MS;
+      this.currentId = null; // no active turn while the cinematic plays
+      this.turnEndsAt = null;
+      this.botActAt = null;
     } else {
       // Knockout: the player is OUT for good — the field shrinks. They may keep watching but can
       // never rejoin. FIRST, freeze the WHOLE game for the elimination cow-dance (every player sees

@@ -11616,6 +11616,10 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
     overflow: hidden;
     /* Own compositor layer, same as the arena — keeps it glued through Safari's bar animation. */
     transform: translateZ(0);
+    /* The drag must reach the DOCUMENT, or Safari never collapses its bars. A fixed, overflow:hidden
+       layer covering the viewport swallows vertical gestures, which is why the swipe did nothing on
+       the lobby while it worked in the game. pan-y hands vertical drags back to the page. */
+    touch-action: pan-y;
   }
   /* The body behind the gap carries the lobby's own field, so what the collapse reveals is the same
      picture rather than a bare strip. Both layers viewport-anchored so they line up across it. */
