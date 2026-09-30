@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import { wsBaseUrl } from "../runtime-host";
+import { wsBaseUrl, socketPath } from "../runtime-host";
 import { getAuthState } from "../../stores/auth-store";
 import { soundManager } from "../soundManager";
 import { useGameConfig } from "./useGameConfig";
@@ -16,6 +16,23 @@ export type GameMode = "classic" | "skills";
 export const COW_COUNT_SPAN = 7;
 /** Practice turn length: two passes of the cow's 7-count — a full 7→1, then 7→2. */
 export const PRACTICE_TURN_SECONDS = 13;
+
+/**
+ * LIVE PRACTICE — the one switch.
+ *
+ * `true`  → practice joins the SERVER's always-on "practice" room, so everyone who opens it is in the
+ *           same game, sees the same players and waits for the same turns.
+ * `false` → practice runs a private in-browser engine per device (the old behaviour): every player
+ *           got their own game with their own bots and never saw anyone else.
+ *
+ * The server room already existed — see countdown.service.ts, "one always-on practice room (5 CPU
+ * players, rounds reset and eliminated players/CPUs rejoin)". The frontend simply never connected to
+ * it: the effect below short-circuited on `roomId === "practice"` before a socket was ever opened.
+ *
+ * Set to false to go back. The local engine is untouched and still used as the fallback whenever the
+ * socket cannot connect, so a server outage degrades to a playable game rather than an empty screen.
+ */
+export const LIVE_PRACTICE = true;
 /** Practice always runs on the built-in defaults, with its own longer turn timer. */
 const PRACTICE_GAME_CONFIG = {
   ...DEFAULT_GAME_CONFIG,
@@ -589,7 +606,9 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
   useEffect(() => {
     // Local engine for the practice room and for a forced local arena (the test tournament).
     // Starts the 24/7 ambient arena: CPU cows already playing that a human can drop into any time.
-    if (roomId === "practice" || forceLocalRef.current) {
+    // The TEST arena stays local by design. Practice now goes over the socket to the shared room
+    // unless LIVE_PRACTICE is turned off.
+    if (forceLocalRef.current || (roomId === "practice" && !LIVE_PRACTICE)) {
       isLocalPracticeRef.current = true;
       setMyId("player_local");
       startLocalGame(humanSeatRef.current);
@@ -603,6 +622,9 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
       // the arena would fall back to the local practice bots.
       const token = getAuthState().accessToken ?? undefined;
       socket = io(`${wsBaseUrl()}/countdown`, {
+        // "/countdown" above is the NAMESPACE; this is the transport path, which differs in
+        // production because the API is proxied under /api. See socketPath().
+        path: socketPath(),
         transports: ["websocket"],
         timeout: 3000,
         reconnectionAttempts: 2,
@@ -638,6 +660,16 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
       });
 
       socket.on("connect_error", () => {
+        // Practice must stay playable if the gateway is unreachable: fall back to the in-browser
+        // engine rather than showing an empty board.
+        if (roomId === "practice") {
+          if (!isLocalPracticeRef.current) {
+            isLocalPracticeRef.current = true;
+            setMyId("player_local");
+            startLocalGame(humanSeatRef.current);
+          }
+          return;
+        }
         if (!stateRef.current) {
           isLocalPracticeRef.current = true;
           setMyId("player_local");

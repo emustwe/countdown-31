@@ -33,6 +33,27 @@ export function apiBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 }
 
+/**
+ * The Socket.IO transport path.
+ *
+ * Socket.IO takes the namespace ("/countdown") in the URL but the TRANSPORT path as a separate
+ * option, defaulting to "/socket.io". When the API is served under a path prefix — which it is in
+ * production, where everything lives under vera31.com/api because api.vera31.com has no DNS record —
+ * the default would hit the Next.js app instead of the gateway. Derive it from the configured API
+ * origin so the two can never drift apart.
+ */
+export function socketPath(): string {
+  const origin = CONFIGURED_API_ORIGIN;
+  if (!origin) return "/socket.io";
+  try {
+    const base = typeof window !== "undefined" ? window.location.origin : "http://localhost";
+    const prefix = new URL(origin, base).pathname.replace(/\/+$/, "");
+    return prefix ? `${prefix}/socket.io` : "/socket.io";
+  } catch {
+    return "/socket.io";
+  }
+}
+
 export function wsBaseUrl(): string {
   if (CONFIGURED_WS_ORIGIN) return CONFIGURED_WS_ORIGIN;
   if (typeof window !== "undefined") {
