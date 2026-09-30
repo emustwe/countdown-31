@@ -73,6 +73,9 @@ export function ScrollHintOverlay() {
       aria-label={canFs ? "Enter fullscreen" : undefined}
       onClick={canFs ? () => requestFullscreen(document.documentElement) : undefined}
     >
+      {/* Android: a round "Tap here" button with the chevrons BELOW it, pointing up at the thing to
+          press. iOS: the same chevrons, pointing at the swipe, with no button and no label. */}
+      {canFs && <span className="scrollhint-btn">Tap here</span>}
       <span className="scrollhint-arrows" aria-hidden="true">
         {Array.from({ length: ARROWS }).map((_, i) => (
           <span key={i} className="scrollhint-chevron" style={{ animationDelay: `${(ARROWS - 1 - i) * 0.09}s` }}>
@@ -82,7 +85,6 @@ export function ScrollHintOverlay() {
           </span>
         ))}
       </span>
-      <span className="scrollhint-label">{canFs ? "Fullscreen" : "Swipe up"}</span>
     </button>
   );
 }

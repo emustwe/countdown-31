@@ -11485,16 +11485,31 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   0%, 70%, 100% { opacity: 0.14; transform: translateY(2px); }
   28%           { opacity: 1;    transform: translateY(-2px); }
 }
-.scrollhint-label {
-  margin-top: 4px;
+.scrollhint-btn {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 999px;
+  margin-bottom: 4px;
   font-family: var(--font-lilita), system-ui, sans-serif;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #d9f7fb;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-  pointer-events: none;
+  font-size: 12px;
+  line-height: 1.05;
+  text-align: center;
+  color: #04222a;
+  background: radial-gradient(circle at 35% 30%, #9beef8, #35d6e8 60%, #0e7f90);
+  box-shadow: 0 0 22px rgba(53, 214, 232, 0.6), 0 4px 12px rgba(0, 0, 0, 0.45);
+  border: 2px solid #d3fbff;
+  pointer-events: none;            /* the whole control is the button */
+  animation: scrollhint-pulse 1.8s ease-in-out infinite;
 }
+@keyframes scrollhint-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.07); }
+}
+/* The chevrons sit BELOW the button and point UP at it, so the arrow names its target. */
+.scrollhint-btn + .scrollhint-arrows { flex-direction: column-reverse; }
+@media (prefers-reduced-motion: reduce) { .scrollhint-btn { animation: none; } }
 @media (prefers-reduced-motion: reduce) {
   .scrollhint-chevron { animation: none; opacity: 0.8; }
 }
