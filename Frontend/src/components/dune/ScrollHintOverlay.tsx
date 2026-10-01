@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { requestFullscreen, barsAreUp } from "../../lib/fullscreen";
+import { requestFullscreen } from "../../lib/fullscreen";
+import { isCollapsed, onCollapseChange } from "../../lib/collapse-latch";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
 
 /** How many chevrons make the trail. Enough to read as a flowing stream, not a single icon. */
@@ -42,11 +43,12 @@ export function ScrollHintOverlay() {
       // iOS: a passive arrow pointing at the swipe, which is the only way to clear Safari's bars.
       // With the flag on, it hides once the bars are actually gone and returns on a reload or a
       // return from another app. With it off, it behaves exactly as it does today: always on screen.
-      // MEASURED. scrollY is not a usable proxy on iOS — see barsAreUp().
-      const collapsed = ONE_WAY_COLLAPSE ? (fs ? already : !barsAreUp()) : fs && already;
+      // Reads the LATCH, not the viewport — so the keyboard opening cannot bring this back.
+      const collapsed = ONE_WAY_COLLAPSE ? (fs ? already : isCollapsed()) : fs && already;
       setShow(coarse && landscape && !standalone && !collapsed);
     };
     sync();
+    const offLatch = onCollapseChange(sync);
     window.addEventListener("resize", sync);
     window.addEventListener("scroll", sync, { passive: true });
     window.visualViewport?.addEventListener("resize", sync);
@@ -58,6 +60,7 @@ export function ScrollHintOverlay() {
     // the events above, so a cheap poll is what actually keeps this correct across routes.
     const poll = setInterval(sync, 800);
     return () => {
+      offLatch();
       window.removeEventListener("resize", sync);
       window.removeEventListener("scroll", sync);
       window.visualViewport?.removeEventListener("resize", sync);

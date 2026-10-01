@@ -62,12 +62,6 @@ export function keyboardOpen(): boolean {
 
 export function barsAreUp(): boolean {
   if (typeof window === "undefined") return false;
-  // THE KEYBOARD SHRINKS THE VISUAL VIEWPORT TOO, and by far more than the browser chrome does
-  // (~200px against ~101px in landscape). Without this the moment a text field was focused the page
-  // measured a huge shrink, concluded the bars had come back, unlocked itself and put the arrow
-  // back — the "zoom out" that happened whenever the name prompt was used. A focused field means the
-  // shrink is the keyboard, and the chrome has not moved.
-  if (keyboardOpen()) return false;
   const probe = document.createElement("div");
   probe.style.cssText =
     "position:fixed;top:0;left:0;width:1px;height:100vh;height:100lvh;visibility:hidden;pointer-events:none";

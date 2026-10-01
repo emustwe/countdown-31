@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
 import { barsAreUp } from "../../lib/fullscreen";
+import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
 
 /** Extra scroll height that lets Safari collapse its bars. ~101px measured + slack. */
 const GAP_PX = 112;
@@ -89,8 +90,15 @@ export function FullBleedPage() {
     // Lock when the bars are actually GONE, measured from the viewport. Keying this off scrollY did
     // not work on a real device: the collapse happens mid-swipe and Safari settles the scroll back,
     // so the threshold never fired even though it passed in an emulator.
+    // LATCH IT. Look only until the bars go; once they have, stop looking entirely. Re-measuring
+    // after that is what made the page flip in and out as the keyboard opened and focus moved —
+    // the keyboard shrinks the viewport too, so every check disagreed with the last one.
     const onScroll = () => {
-      if (!barsAreUp()) lock();
+      if (isCollapsed()) return;
+      if (!barsAreUp()) {
+        setCollapsed(true);
+        lock();
+      }
     };
     const onReturn = () => {
       if (document.visibilityState !== "visible") return;
@@ -98,9 +106,11 @@ export function FullBleedPage() {
       // Safari brings its bars back when you return to the tab, but the page is still sitting at the
       // bottom of the gap — so there is nothing left to scroll and the swipe is unavailable exactly
       // when it is needed again. Returning to 0 restores the gap, and the arrow with it.
+      setCollapsed(false);
       window.scrollTo(0, 0);
     };
     const onRotate = () => {
+      setCollapsed(false);
       unlock();
       sync();
     };
@@ -108,7 +118,9 @@ export function FullBleedPage() {
     sync();
     // If the bars are ALREADY down when this page mounts — i.e. the player collapsed them on the
     // previous page and navigated here — lock straight away so they stay down.
-    onScroll();
+    // Already collapsed on the previous page? Stay that way through the navigation.
+    if (isCollapsed()) lock();
+    else onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.visualViewport?.addEventListener("resize", onScroll);
     window.addEventListener("resize", sync);
