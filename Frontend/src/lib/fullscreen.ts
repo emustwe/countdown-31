@@ -51,8 +51,23 @@ export function inFullscreen(): boolean {
  * 100lvh is the viewport AS IF no chrome were present (on iOS it never shrinks); visualViewport.height
  * is what is genuinely visible right now. The difference between them IS the chrome.
  */
+/** True while an on-screen keyboard is (almost certainly) open. */
+export function keyboardOpen(): boolean {
+  if (typeof document === "undefined") return false;
+  const el = document.activeElement as HTMLElement | null;
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+}
+
 export function barsAreUp(): boolean {
   if (typeof window === "undefined") return false;
+  // THE KEYBOARD SHRINKS THE VISUAL VIEWPORT TOO, and by far more than the browser chrome does
+  // (~200px against ~101px in landscape). Without this the moment a text field was focused the page
+  // measured a huge shrink, concluded the bars had come back, unlocked itself and put the arrow
+  // back — the "zoom out" that happened whenever the name prompt was used. A focused field means the
+  // shrink is the keyboard, and the chrome has not moved.
+  if (keyboardOpen()) return false;
   const probe = document.createElement("div");
   probe.style.cssText =
     "position:fixed;top:0;left:0;width:1px;height:100vh;height:100lvh;visibility:hidden;pointer-events:none";
