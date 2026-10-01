@@ -8779,20 +8779,44 @@ button.mini:hover { filter: brightness(1.06); }
   height: var(--vv-h, 100dvh);
   /* Above EVERYTHING in the arena — the countdown cow sits at z-100 and was drawing over the
      prompt. A modal that blocks input must outrank the game it covers. */
-  z-index: 200; display: grid; place-items: center;
-  background: rgba(3, 7, 5, 0.78); backdrop-filter: blur(5px); padding: 24px;
+  z-index: 200; display: grid; align-items: start; justify-items: center;
+  background: rgba(3, 7, 5, 0.78); backdrop-filter: blur(5px); padding: 16px;
   overflow-y: auto;
+  /* Start-aligned, not centred: with the keyboard open the visible strip is ~190px tall, and a
+     centred card has its top pushed off the top edge where it cannot be scrolled back to. */
 }
 
 /* New cow-arcade theme (matches AuthGateModal): dark green pasture gradient + gold border/glow. */
 .cd31-gate {
   width: 100%; max-width: 380px; padding: 26px 24px; border-radius: 22px; text-align: center;
   display: flex; flex-direction: column; gap: 12px; color: #fff8ef;
-  /* Never taller than the viewport; scroll inside itself if the content still does not fit. */
-  max-height: calc(100dvh - 32px); overflow-y: auto;
+  /* Capped against the VISUAL viewport, not 100dvh. The keyboard shrinks the visible region without
+     touching dvh, so a dvh-based cap let the card stay ~360px tall inside a ~190px strip and the
+     bottom — the input and the buttons — was simply cut off. */
+  /* Bounded by the OVERLAY, which is already sized to the visual viewport (height: var(--vv-h)).
+     Reading --vv-h again here duplicated that dependency and silently did nothing whenever the
+     variable had not been republished; 100% of the parent cannot drift from it. */
+  max-height: 100%; overflow-y: auto;
   background: linear-gradient(180deg, #18281e 0%, #0d1811 55%, #050a07 100%);
   border: 2px solid #f5a524;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 42px rgba(245, 158, 11, 0.3);
+}
+/* Keyboard up in landscape leaves very little height — shrink the chrome so the field and the
+   buttons still fit rather than being pushed out of reach. */
+/* The card must never exceed the visible strip. Stated on the overlay>card pair so it outranks the
+   base .cd31-gate rule, and against --vv-h because that is the only value the on-screen keyboard
+   actually moves — 100dvh does not change when the keyboard opens, which is why the bottom of this
+   card (the input and the buttons) was being cut off. */
+.cd31-gate-overlay > .cd31-gate {
+  max-height: calc(var(--vv-h, 100dvh) - 32px);
+  overflow-y: auto;
+}
+
+@media (max-height: 420px) {
+  .cd31-gate { padding: 14px 16px; gap: 8px; border-radius: 16px; }
+  .cd31-gate h2 { font-size: 17px; }
+  .cd31-gate p { font-size: 11px; }
+  .cd31-gate-icon, .cd31-gate .cd31-gate-crown { display: none; }
 }
 .cd31-gate h2 { margin: 0; font-size: 22px; color: #ffffff; }
 .cd31-gate p { margin: 0; color: #b6c7ba; font-size: 13px; }
