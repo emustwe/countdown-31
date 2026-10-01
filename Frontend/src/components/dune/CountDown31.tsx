@@ -502,6 +502,44 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
     // testArena, join, cosmetics, botCount, chosenName. (setState setters are stable and omitted.)
   }, [accessToken, gameConfig, router, user, defaultName, seatCountry, isTournament, testArena, join, cosmetics, botCount, chosenName]);
 
+  /**
+   * iOS takes the /join PAGE; everything else keeps the modal.
+   *
+   * The modal lags on iPhone because it sits on the arena, which carries 112px of scroll gap — and
+   * focusing a field makes iOS scroll the document to reveal it, which brings Safari's bars back
+   * mid-animation. The page has no gap, so there is nothing to scroll. It is a client-side route
+   * change on the same document, so the collapsed bars carry through it untouched.
+   *
+   * Nothing about the arena's own behaviour changes either way.
+   */
+  const openJoin = useCallback(() => {
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: unknown };
+    const canFullscreen =
+      typeof el.requestFullscreen === "function" || typeof el.webkitRequestFullscreen === "function";
+    if (!canFullscreen) {
+      router.push("/join", { scroll: false }); // iOS
+      return;
+    }
+    openNameGate();
+  }, [router, openNameGate]);
+
+  // Arriving back from /join: the name is already chosen, so join straight away.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("autojoin") !== "1") return;
+    const nm = useGuestStore.getState().username;
+    if (!nm || chosenName) return;
+    setChosenName(nm);
+    join(
+      nm,
+      { card: cosmetics?.card as Record<string, unknown> | undefined, avatar: cosmetics?.avatar, country: useGuestStore.getState().country ?? undefined },
+      "classic",
+      [],
+      botCount,
+    );
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [chosenName, join, cosmetics, botCount]);
+
   function confirmJoin() {
     soundManager.playClick();
     const name = nameInput.trim().slice(0, 20) || `Player ${Math.floor(1000 + Math.random() * 9000)}`;
@@ -647,7 +685,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
         <div className="nb-play-pos absolute z-30 flex flex-col items-center gap-1.5 select-none">
           <button
             type="button"
-            onClick={chosenName ? rejoin : openNameGate}
+            onClick={chosenName ? rejoin : openJoin}
             aria-label={chosenName ? "Rejoin the game" : "Play — join the game"}
             title={chosenName ? "Rejoin" : "Play"}
             className="relative grid h-[44px] w-[44px] place-items-center rounded-full border-2 border-white bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 text-slate-950 shadow-[0_0_24px_rgba(245,158,11,0.85)] transition-transform hover:scale-105 active:scale-95 cursor-pointer sm:h-[52px] sm:w-[52px]"

@@ -22,5 +22,8 @@ export function GlobalMobileChrome() {
   if (pathname.startsWith("/events")) return null; // tournament arena — mounts its own
   if (OWN.includes(pathname)) return null;
   if (pathname === "/") return null; // entry screen: one button, nothing to scroll
+  // /join must have NOTHING to scroll — a gap here would give iOS somewhere to scroll the page when
+  // the keyboard opens, which is the exact behaviour this page exists to avoid.
+  if (pathname === "/join") return null;
   return <FullBleedPage />;
 }
