@@ -8781,7 +8781,11 @@ button.mini:hover { filter: brightness(1.06); }
      prompt. A modal that blocks input must outrank the game it covers. */
   z-index: 200; display: grid; align-items: start; justify-items: center;
   background: rgba(3, 7, 5, 0.78); backdrop-filter: blur(5px); padding: 16px;
+  /* scrollIntoView on the focused field needs a scrollable ancestor to act on, and the smooth
+     behaviour must survive the keyboard animation. */
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding: 12px;
   /* Start-aligned, not centred: with the keyboard open the visible strip is ~190px tall, and a
      centred card has its top pushed off the top edge where it cannot be scrolled back to. */
 }

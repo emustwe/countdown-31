@@ -846,6 +846,16 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
               onKeyDown={(e) => {
                 if (e.key === "Enter" && nameInput.trim()) confirmJoin();
               }}
+              // iOS opens the keyboard AFTER focus and shrinks the visual viewport a beat later, so
+              // the field can end up behind it. CSS alone could not solve this — the card was capped
+              // correctly and still sat under the keyboard on a real device. Asking the browser to
+              // bring the focused field into view is the one thing iOS reliably honours. The delay
+              // is for the keyboard animation; without it the scroll happens against the old
+              // viewport and does nothing.
+              onFocus={(e) => {
+                const el = e.currentTarget;
+                setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 320);
+              }}
             />
             {/* Country — a searchable picker (not a 249-option native select, which scrolled the
                 page behind it and whose type-ahead matched the flag emoji, not the name). */}
