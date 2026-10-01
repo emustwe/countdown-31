@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
-import { barsAreUp } from "../../lib/fullscreen";
+import { barsAreUp, keyboardOpen } from "../../lib/fullscreen";
 import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
 
 /** Extra scroll height that lets Safari collapse its bars. ~101px measured + slack. */
@@ -90,9 +90,32 @@ export function FullBleedPage() {
     // Lock when the bars are actually GONE, measured from the viewport. Keying this off scrollY did
     // not work on a real device: the collapse happens mid-swipe and Safari settles the scroll back,
     // so the threshold never fired even though it passed in an emulator.
-    // LATCH IT. Look only until the bars go; once they have, stop looking entirely. Re-measuring
-    // after that is what made the page flip in and out as the keyboard opened and focus moved —
-    // the keyboard shrinks the viewport too, so every check disagreed with the last one.
+    /**
+     * Follow the bars BOTH ways, so whatever brings them back — a reload, an app switch, arriving
+     * from another page, Safari deciding on its own — puts the arrow back and lets the player
+     * collapse them again. The user cannot cause it themselves: while collapsed the page is locked,
+     * so scrolling down is not available to them in the first place.
+     *
+     * Two guards stop this flipping the way an earlier live version did:
+     *  - a focused text field means the shrink is the KEYBOARD, not the chrome, so nothing is
+     *    re-evaluated at all until it is dismissed;
+     *  - everything is debounced, so the frames mid-animation cannot each flip the state.
+     */
+    let settle: ReturnType<typeof setTimeout> | null = null;
+    const evaluate = () => {
+      if (keyboardOpen()) return;
+      if (settle) clearTimeout(settle);
+      settle = setTimeout(() => {
+        const up = barsAreUp();
+        if (up && isCollapsed()) {
+          setCollapsed(false);
+          unlock();
+        } else if (!up && !isCollapsed()) {
+          onScroll();
+        }
+      }, 260);
+    };
+
     const onScroll = () => {
       if (isCollapsed()) return;
       if (!barsAreUp()) {
@@ -127,13 +150,18 @@ export function FullBleedPage() {
     if (isCollapsed()) lock();
     else onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.visualViewport?.addEventListener("resize", onScroll);
+    window.visualViewport?.addEventListener("resize", evaluate);
+    window.visualViewport?.addEventListener("scroll", evaluate);
+    window.addEventListener("focus", evaluate);
     window.addEventListener("resize", sync);
     window.addEventListener("orientationchange", onRotate);
     document.addEventListener("visibilitychange", onReturn);
     return () => {
+      if (settle) clearTimeout(settle);
       window.removeEventListener("scroll", onScroll);
-      window.visualViewport?.removeEventListener("resize", onScroll);
+      window.visualViewport?.removeEventListener("resize", evaluate);
+      window.visualViewport?.removeEventListener("scroll", evaluate);
+      window.removeEventListener("focus", evaluate);
       window.removeEventListener("resize", sync);
       window.removeEventListener("orientationchange", onRotate);
       document.removeEventListener("visibilitychange", onReturn);
