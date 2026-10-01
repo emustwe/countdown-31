@@ -97,7 +97,12 @@ export function FullBleedPage() {
       if (isCollapsed()) return;
       if (!barsAreUp()) {
         setCollapsed(true);
-        lock();
+        // Only lock a page that has nothing of its own to scroll. On a content page — the shop, the
+        // avatar list — freezing the scroll would make it unusable, so those keep their scrolling
+        // and simply get the arrow back when the bars return.
+        const d = document.documentElement;
+        const ownContent = d.scrollHeight - d.clientHeight > GAP_PX + 40;
+        if (!ownContent) lock();
       }
     };
     const onReturn = () => {

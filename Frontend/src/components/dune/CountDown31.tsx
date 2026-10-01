@@ -116,6 +116,31 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
 
   const [chosenName, setChosenName] = useState("");
   const [showNameGate, setShowNameGate] = useState(false);
+
+  // FREEZE THE PAGE WHILE THE NAME GATE IS OPEN.
+  //
+  // Tapping the field makes iOS scroll the document itself to reveal the input — the browser does
+  // it, the page never asks — and any scroll is what brings Safari's bars back. touch-action does
+  // not help: it blocks scrolling by FINGER, not a scroll the browser performs from focus. (An
+  // earlier scrollIntoView on this field was making it worse by scrolling a second time.)
+  //
+  // So while the gate is up, every scroll is undone immediately. The card sizes itself to the
+  // visible strip and scrolls internally if it has to; the page itself never moves.
+  useEffect(() => {
+    if (!showNameGate) return;
+    const y = window.scrollY;
+    const hold = () => {
+      if (window.scrollY !== y) window.scrollTo(0, y);
+    };
+    window.addEventListener("scroll", hold, { passive: true });
+    window.visualViewport?.addEventListener("scroll", hold);
+    window.visualViewport?.addEventListener("resize", hold);
+    return () => {
+      window.removeEventListener("scroll", hold);
+      window.visualViewport?.removeEventListener("scroll", hold);
+      window.visualViewport?.removeEventListener("resize", hold);
+    };
+  }, [showNameGate]);
   const [showRules, setShowRules] = useState(false);
   const [nameInput, setNameInput] = useState("");
   // Country for the practice seat. A signed-in player's account country wins; a guest picks one at
@@ -845,16 +870,6 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
               onChange={(e) => setNameInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && nameInput.trim()) confirmJoin();
-              }}
-              // iOS opens the keyboard AFTER focus and shrinks the visual viewport a beat later, so
-              // the field can end up behind it. CSS alone could not solve this — the card was capped
-              // correctly and still sat under the keyboard on a real device. Asking the browser to
-              // bring the focused field into view is the one thing iOS reliably honours. The delay
-              // is for the keyboard animation; without it the scroll happens against the old
-              // viewport and does nothing.
-              onFocus={(e) => {
-                const el = e.currentTarget;
-                setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 320);
               }}
             />
             {/* Country — a searchable picker (not a 249-option native select, which scrolled the
