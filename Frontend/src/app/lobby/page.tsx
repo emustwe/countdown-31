@@ -27,7 +27,10 @@ export default function RootLandingPage() {
 
   function play() {
     soundManager.playClick();
-    router.push("/home");
+    // scroll:false — Next scrolls to the top on every route change by default, and returning to
+    // scroll 0 is exactly what makes Safari put its bars back. Keeping the position carries the
+    // collapsed bars from the lobby into the game.
+    router.push("/home", { scroll: false });
   }
 
   function toggleSound() {

@@ -68,14 +68,23 @@ export function FullBleedPage() {
      *
      * NOT complete, and cannot be: tapping the top of the screen is an OS gesture no page can block.
      */
+    /** The element the finger actually lands on — html/body are never touched directly. */
+    const surface = () =>
+      document.querySelector<HTMLElement>(".arena-viewport, .landing-playground");
+
     const lock = () => {
       if (!ONE_WAY_COLLAPSE) return;
       el.style.setProperty("touch-action", "none");
       body.style.setProperty("touch-action", "none");
+      // THE ONE THAT MATTERS. The page is a fixed layer covering the viewport, so every touch lands
+      // on IT, and its own touch-action governs the gesture — setting html/body alone did nothing,
+      // which is why the bars could still be scrolled back.
+      surface()?.style.setProperty("touch-action", "none");
     };
     const unlock = () => {
       el.style.removeProperty("touch-action");
       body.style.removeProperty("touch-action");
+      surface()?.style.removeProperty("touch-action");
     };
     // Lock when the bars are actually GONE, measured from the viewport. Keying this off scrollY did
     // not work on a real device: the collapse happens mid-swipe and Safari settles the scroll back,
@@ -97,6 +106,9 @@ export function FullBleedPage() {
     };
 
     sync();
+    // If the bars are ALREADY down when this page mounts — i.e. the player collapsed them on the
+    // previous page and navigated here — lock straight away so they stay down.
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.visualViewport?.addEventListener("resize", onScroll);
     window.addEventListener("resize", sync);
@@ -108,8 +120,10 @@ export function FullBleedPage() {
       window.removeEventListener("resize", sync);
       window.removeEventListener("orientationchange", onRotate);
       document.removeEventListener("visibilitychange", onReturn);
-      unlock();
-      clear();
+      // Deliberately NOT clearing the gap or the lock here. Both full-bleed pages want them, and
+      // removing the gap on unmount shrank the document mid-navigation — which clamped scrollY to 0
+      // and handed Safari its bars back the instant you tapped Play. The next page re-applies what
+      // it needs on mount; a page that does not want them never mounts this at all.
     };
   }, []);
 
