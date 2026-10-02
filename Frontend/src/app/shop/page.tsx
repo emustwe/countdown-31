@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Check, Sparkles, Clock, Flame } from "lucide-react";
 import { ArcadeHeader } from "../../components/dune/ArcadeHeader";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
-import { AuthGateModal } from "../../components/dune/AuthGateModal";
+import { AuthRedirect } from "../../components/dune/AuthRedirect";
 import { useAuthStore } from "../../stores/auth-store";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
 import { soundManager } from "../../lib/soundManager";
@@ -538,14 +538,11 @@ export default function ShopPage() {
         isOpen={showRules}
         onClose={() => setShowRules(false)}
       />
-      <AuthGateModal
-        isOpen={showAuthGate}
-        onClose={() => setShowAuthGate(false)}
-        title="Marketplace Account Required"
-        description="Sign in or create a free account to unlock rare avatars, frames, and tactical power packs — everything's free!"
-        featureName="the Marketplace"
-        redirectTo="/shop"
-      />
+      {/* Sign-in sends the player to the /login PAGE rather than opening an overlay. A modal here
+          sits on a page carrying a scroll gap, and focusing its field makes the browser scroll the
+          page underneath — the same thing that made the name prompt unusable on a phone. /login is
+          already a real route, so there is nothing to work around. */}
+      <AuthRedirect open={showAuthGate} />
     </div>
   );
 }
