@@ -25,5 +25,9 @@ export function GlobalMobileChrome() {
   // /join must have NOTHING to scroll — a gap here would give iOS somewhere to scroll the page when
   // the keyboard opens, which is the exact behaviour this page exists to avoid.
   if (pathname === "/join") return null;
+  // Auth pages are short forms with a keyboard — the same reason /join has no gap. A gap here
+  // gives the browser somewhere to scroll the page when a field is focused, which is what moved
+  // the layout under the name prompt.
+  if (pathname === "/login" || pathname === "/register") return null;
   return <FullBleedPage />;
 }

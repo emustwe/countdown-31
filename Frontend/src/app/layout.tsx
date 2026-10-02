@@ -3,6 +3,7 @@ import { Lilita_One, Fredoka, Orbitron, Cinzel_Decorative } from "next/font/goog
 import { Providers } from "./providers";
 import { ViewportCalibrator } from "../components/dune/ViewportCalibrator";
 import { ScrollHintOverlay } from "../components/dune/ScrollHintOverlay";
+import { PortraitGate } from "../components/dune/PortraitGate";
 import { ScrollKeeper } from "../components/dune/ScrollKeeper";
 import { GlobalMobileChrome } from "../components/dune/GlobalMobileChrome";
 import { KeepFullscreen } from "../components/dune/KeepFullscreen";
@@ -84,6 +85,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <KeepFullscreen />
         <GlobalMobileChrome />
         <ScrollKeeper />
+        <PortraitGate />
           {children}
         </Providers>
       </body>

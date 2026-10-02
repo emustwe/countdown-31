@@ -23,7 +23,10 @@ export default function RootLandingPage() {
   // The launcher's buttons ARE the admin menu — same source, so the admin panel still drives them.
   const { data: config } = useGameConfig();
   const menuItems = (config ?? DEFAULT_GAME_CONFIG).menuItems
-    .filter((i) => i.enabled && i.path !== "/home")
+    // /home is the Play tile, already hard-coded first. The wallet system was deleted from this
+    // project, so its menu entry leads nowhere — filtered here rather than depending on someone
+    // remembering to disable it in the admin panel.
+    .filter((i) => i.enabled && i.path !== "/home" && !/wallet/i.test(i.path + i.id))
     .sort((a, b) => a.order - b.order);
   const [showRules, setShowRules] = useState(false);
 
