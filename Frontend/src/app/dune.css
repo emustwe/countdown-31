@@ -10775,13 +10775,28 @@ body:has(.mobile-landscape-game) .app-shell > footer {
 /* the quiet version for everyone else — small warm caption, no bar, no bolts */
 .ti-root.fire-them .ti-sweep .ti-bar,
 .ti-root.fire-them .ti-bolt { animation: none; opacity: 0; }
+/* "<Name>'S TURN" — the other-player caption.
+   It was 16-22px in #D8E6DB with no glow and its backing bar hidden: pale, small, shadowless text
+   over a bright green pasture, which is why it read as not being there at all. Bigger, warm amber
+   against the field rather than near-white, and carrying its own dark plate so it is legible over
+   any part of the background. Still clearly NOT the cyan "YOUR TURN" moment. */
 .ti-root.fire-them .ti-sweep b {
-  font-size: clamp(16px, 3vw, 22px); letter-spacing: 0.22em; background: none; color: #D8E6DB;
-  -webkit-text-fill-color: #D8E6DB; filter: none; animation: ti-quiet 1.2s ease forwards;
+  font-size: clamp(24px, 4.6vw, 40px);
+  letter-spacing: 0.14em;
+  background: none;
+  color: #FFD98A;
+  -webkit-text-fill-color: #FFD98A;
+  padding: 8px 20px;
+  border-radius: 14px;
+  background-color: rgba(4, 10, 6, 0.74);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+  filter: none;
+  animation: ti-quiet 1.5s ease forwards;
 }
 @keyframes ti-quiet {
-  0% { opacity: 0; transform: translateY(8px); }
-  25%, 70% { opacity: 0.9; transform: none; }
+  0% { opacity: 0; transform: translateY(8px) scale(0.94); }
+  18%, 76% { opacity: 1; transform: none; }
   100% { opacity: 0; transform: translateY(-6px); }
 }
 
@@ -11334,13 +11349,31 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   .rrs-line { animation: none; }
 }
 
-/* The profile icon and its menu are removed INSIDE A GAME only — every destination lives on the
-   lobby now, and the back arrow in the header is the way out. Sound and music stay. Scoped to the
-   arena, so the lobby and every other page keep theirs. */
-.mobile-landscape-game .arcade-profile-trigger,
-body:has(.mobile-landscape-game) .mobile-arena-profile {
+/* THE PROFILE ICON LIVES ON THE LOBBY ONLY. Every destination is reachable from the lobby and the
+   header brand is now a way back to it, so a menu on each page is redundant. The shared header
+   (ArcadeHeader) appears on every page EXCEPT the lobby, which has its own — so hiding it here
+   removes it everywhere it should not be, and the lobby is unaffected. */
+.arcade-profile-trigger,
+.mobile-arena-profile {
   display: none !important;
 }
+/* With the profile gone, sound and music slide right into the space it occupied. */
+.arcade-header-actions,
+.arcade-arena-header .flex.items-center.gap-2:last-child {
+  margin-right: -6px;
+}
+
+/* The lobby's own profile button — the single account entry point in the app. */
+.lobby-profile {
+  width: 42px; height: 42px; display: grid; place-items: center; cursor: pointer;
+  border-radius: 999px; color: #1b1206;
+  background: linear-gradient(180deg, #fcd34d, #f59e0b 60%, #b45309);
+  border: 2px solid #fff5bd;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.55);
+}
+.lobby-profile:active { transform: scale(0.95); }
+.lobby-profile:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 3px; }
+
 
 /* ── Portrait gate (everything except the lobby, the game and admin) ───────
    The mirror of .landing-rotate. iOS has no orientation lock API, so this is a
@@ -11416,6 +11449,21 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
 @media (max-height: 420px) {
   .lobby-btn { min-height: 66px; width: clamp(92px, 13vw, 124px); }
   .lobby-btn.is-play { width: clamp(132px, 19vw, 178px); }
+}
+
+/* PORTRAIT lobby: the launcher was a wide wrapping band built for landscape. Upright it becomes a
+   two-column grid — one column leaves the tiles enormous and pushes half of them off-screen. */
+@media (orientation: portrait) {
+  .lobby-launcher {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    align-content: start;
+    gap: 12px;
+    padding: 12px 16px 20px;
+  }
+  .lobby-btn { width: auto; min-height: 92px; }
+  /* Play now spans the full width — it is the one thing most visitors came for. */
+  .lobby-btn.is-play { grid-column: 1 / -1; width: auto; min-height: 84px; }
 }
 
 /* ── Join page (iOS path into a game) ──────────────────────────────────────
@@ -11571,42 +11619,10 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
 }
 .landing-rotate-note b { color: #ffd98a; font-weight: 600; }
 
-/* ── Landing page: force the LANDSCAPE layout on a portrait phone ───────────
-   The landing page is designed for landscape and looks right there. The problem
-   is a phone with iOS Rotation Lock ON: turning it does not re-lay-out, so the
-   player sees the PORTRAIT design sideways and there is no API a page can call
-   to override that lock.
+/* The lobby is a PORTRAIT page now, so the 90deg forced-landscape hack that used to rotate it on a
+   portrait phone is gone — it existed only to make a landscape-only design readable when the device
+   could not be rotated. Landscape is the game's alone. */
 
-   So in portrait we render the landscape layout and rotate it 90°. The viewport
-   box is swapped (width = viewport height, height = viewport width), which makes
-   the page believe it is landscape, and the whole surface is turned so it reads
-   correctly the moment the phone is physically turned — lock on or off.
-
-   Only on touch devices in portrait. A real landscape viewport, and every
-   desktop, is left completely alone — that layout is already correct and must
-   not be touched. */
-@media (pointer: coarse) and (orientation: portrait) {
-  .landing-playground {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100dvh;           /* swapped on purpose */
-    height: 100dvw;          /* swapped on purpose */
-    /* The base rule carries min-height:100svh, which in portrait is the LONG edge and
-       would stretch the rotated box off-screen. Swap it too. */
-    min-height: 100dvw;
-    max-height: 100dvw;
-    transform-origin: top left;
-    /* Rotate about the top-left, then slide up by the new height so the rotated
-       box lands back over the viewport. */
-    transform: rotate(90deg) translateY(-100%);
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  /* The rotate prompt is meaningless once the layout is already landscape. */
-  .rotate-hint { display: none !important; }
-}
 
 /* ── First-visit coach mark for the soft-fullscreen swipe ───────────────────
    The 112px scroll gap is useless unless the player discovers the gesture, so

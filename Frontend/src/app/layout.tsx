@@ -83,11 +83,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ViewportCalibrator />
           <ScrollHintOverlay />
           <KeepFullscreen />
-        <GlobalMobileChrome />
-        <ScrollKeeper />
-        <PortraitGate />
+          <GlobalMobileChrome />
+          <ScrollKeeper />
           {children}
         </Providers>
+        {/* OUTSIDE Providers on purpose. Inside it, this rendered on /login but not on /settings,
+            /shop, /history or /avatar — the pages wrapped in AuthGuard. Whatever in that subtree
+            suppressed it, a sibling of Providers cannot be reached by it, and the gate has to be
+            present on exactly the pages an unauthenticated visitor lands on. */}
+        <PortraitGate />
       </body>
     </html>
   );

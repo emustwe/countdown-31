@@ -3,8 +3,14 @@
 import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 
-/** Landscape belongs to these; everything else is a portrait page. */
-const LANDSCAPE = ["/lobby", "/home"];
+/**
+ * Landscape belongs to the GAME and the screens that are part of entering one; everything else is a
+ * portrait page, the lobby included.
+ *
+ * /join is the name + country step. It is not a page in its own right so much as the arena's door,
+ * so forcing it upright would make the player rotate twice to start a game.
+ */
+const LANDSCAPE = ["/home", "/join"];
 
 /**
  * "Turn your phone upright" — the mirror of the lobby's rotate gate.

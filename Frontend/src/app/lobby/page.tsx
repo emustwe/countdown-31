@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Play, Home, User, Trophy, ShoppingBag, Handshake, Settings as SettingsIcon, Users, Crown, History, BookOpen } from "lucide-react";
+import { Play, Home, User, Trophy, ShoppingBag, Handshake, Settings as SettingsIcon, Users, Crown, History, BookOpen } from "lucide-react";
 import { PastureAmbiance } from "../../components/dune/PastureAmbiance";
 import { ViewportCalibrator } from "../../components/dune/ViewportCalibrator";
 import { FullBleedPage } from "../../components/dune/FullBleedPage";
-import { LandingRotateGate } from "../../components/dune/LandingRotateGate";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { soundManager } from "../../lib/soundManager";
+import { useAuthStore } from "../../stores/auth-store";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
 import { DEFAULT_GAME_CONFIG } from "../../lib/game-config";
 
@@ -21,6 +21,7 @@ const ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
 export default function RootLandingPage() {
   const router = useRouter();
   // The launcher's buttons ARE the admin menu — same source, so the admin panel still drives them.
+  const user = useAuthStore((s) => s.user);
   const { data: config } = useGameConfig();
   const menuItems = (config ?? DEFAULT_GAME_CONFIG).menuItems
     // /home is the Play tile, already hard-coded first. The wallet system was deleted from this
@@ -42,7 +43,6 @@ export default function RootLandingPage() {
     <>
       <ViewportCalibrator />
       <FullBleedPage />
-      <LandingRotateGate />
       <div className="landing-playground">
       <PastureAmbiance />
       <div className="landing-orb landing-orb-one" />
@@ -52,6 +52,18 @@ export default function RootLandingPage() {
         <button className="landing-brand" onClick={() => router.push("/lobby")} aria-label="Vera 31 home">
           <span className="landing-brand-mark">31</span>
           <span><b>VERA 31</b><small>The cow counting game</small></span>
+        </button>
+
+        {/* THE ONLY PROFILE ICON IN THE APP. Every other page had one opening a menu of
+            destinations; those destinations are now tiles below, and the header brand on those
+            pages is a way back here, so this is the single place an account is reached from. */}
+        <button
+          className="lobby-profile"
+          onClick={() => router.push(user ? "/settings" : "/login", { scroll: false })}
+          aria-label={user ? "Your account" : "Sign in"}
+          title={user ? "Your account" : "Sign in"}
+        >
+          <User size={20} />
         </button>
       </header>
 
