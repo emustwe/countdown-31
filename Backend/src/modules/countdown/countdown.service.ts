@@ -15,8 +15,14 @@ const WHEEL_MS = 6500; // the kickoff wheel spins this long (for everyone at onc
 // freeze should match the clip: too long and the cow holds its last frame ("extra" seconds); too
 // short and the clip is cut off. Re-measure the clip (headless `<video>.duration`) if it changes.
 const DANCE_MS = 8150;
-/** Practice freeze on an elimination: the 4.6s cinematic plus the two ~1.5s beats after it. */
-const ELIM_PAUSE_MS = 7600;
+/**
+ * Practice freeze on an elimination: the 4.6s cinematic plus the two ~1.5s beats = 7.6s, PLUS a
+ * margin. 7.6s exactly was the running time with zero allowance for network latency or the client
+ * starting its animation a frame late — so the server resumed while the beats were still on screen,
+ * the player's clock started, and the overlay blocked them from tapping. The client also clears its
+ * own overlay the moment the server reports play resumed, so the two cannot drift apart either way.
+ */
+const ELIM_PAUSE_MS = 9200;
 const MIN_PLAYERS = 2;
 const MAX_ROOMS = 2000; // backstop against unbounded room creation from watch/join floods
 const BOT_REJOIN_MS = 3500;
@@ -398,6 +404,12 @@ class Room {
    * count/taken/lastK/lastMove and passes the turn to the next surviving player (the one now sitting
    * at `starterIndex` after the eliminated player was spliced out). */
   private continueRound(starterIndex: number): void {
+    // THE ELIMINATED PLAYER'S MOVE IS VOID, so the "you may not repeat this count" constraint dies
+    // with them. Leaving lastK set handed the SAME forbidden count to the next player, who was then
+    // knocked out the same way — a cascade down the table from one mistake. The lap and the running
+    // count carry on; only the constraint is cleared, which is what makes this feel like a fresh
+    // round without resetting the score.
+    this.lastK = null;
     if (this.players.length < MIN_PLAYERS) {
       this.status = this.mode === "knockout" && this.players.length === 1 ? "over" : "waiting";
       if (this.status === "over") this.winner = this.makeWinner(this.players[0]);

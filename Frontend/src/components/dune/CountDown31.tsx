@@ -307,6 +307,14 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
   const elimKey =
     state?.dancing?.id ??
     (state?.lastEliminated ? `${state.lastEliminated.name}#${state.round}` : null);
+
+  // THE SERVER DECIDES WHEN PLAY RESUMES, so the overlay clears on its word rather than on a timer
+  // of its own. Fixed client timers drifted against the freeze — the beats were still on screen
+  // when the turn started, so the clock ran while the board could not be tapped.
+  useEffect(() => {
+    if (isLocalEngine) return;
+    if (!serverDancing && elimPhase !== null) setElimPhase(null);
+  }, [serverDancing, elimPhase, isLocalEngine]);
   useEffect(() => {
     setElimPhase(elimKey ? "seq" : null);
   }, [elimKey]);
