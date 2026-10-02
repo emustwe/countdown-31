@@ -2,28 +2,30 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { motion } from "framer-motion";
-import { BookOpen, ChevronRight, Play, ShieldCheck, Sparkles, Volume2, VolumeX } from "lucide-react";
+import { ChevronRight, Play, Home, User, Trophy, ShoppingBag, Handshake, Settings as SettingsIcon, Users, Crown, History, BookOpen } from "lucide-react";
 import { PastureAmbiance } from "../../components/dune/PastureAmbiance";
 import { ViewportCalibrator } from "../../components/dune/ViewportCalibrator";
 import { FullBleedPage } from "../../components/dune/FullBleedPage";
 import { LandingRotateGate } from "../../components/dune/LandingRotateGate";
 import { OfficialRulesModal } from "../../components/dune/OfficialRulesModal";
 import { soundManager } from "../../lib/soundManager";
-import { useSettingsStore } from "../../stores/settings-store";
+import { useGameConfig } from "../../lib/hooks/useGameConfig";
+import { DEFAULT_GAME_CONFIG } from "../../lib/game-config";
 
-const steps = [
-  { icon: "1", title: "Pick numbers", copy: "Choose 1, 2, or 3." },
-  { icon: "2", title: "Take turns", copy: "Watch the count grow." },
-  { icon: "3", title: "Avoid 31", copy: "Stay safe to win!" },
-];
+/** Same icon set the header menu uses, so a button here looks like its menu entry did. */
+const ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
+  home: Home, cow: User, trophy: Trophy, shop: ShoppingBag,
+  sponsor: Handshake, settings: SettingsIcon, users: Users, crown: Crown, history: History,
+};
 
 export default function RootLandingPage() {
   const router = useRouter();
+  // The launcher's buttons ARE the admin menu — same source, so the admin panel still drives them.
+  const { data: config } = useGameConfig();
+  const menuItems = (config ?? DEFAULT_GAME_CONFIG).menuItems
+    .filter((i) => i.enabled && i.path !== "/home")
+    .sort((a, b) => a.order - b.order);
   const [showRules, setShowRules] = useState(false);
-  const soundEnabled = useSettingsStore((s) => s.soundEnabled);
-  const toggleSoundStore = useSettingsStore((s) => s.toggleSound);
 
   function play() {
     soundManager.playClick();
@@ -31,13 +33,6 @@ export default function RootLandingPage() {
     // scroll 0 is exactly what makes Safari put its bars back. Keeping the position carries the
     // collapsed bars from the lobby into the game.
     router.push("/home", { scroll: false });
-  }
-
-  function toggleSound() {
-    toggleSoundStore();
-    const next = !soundEnabled;
-    soundManager.setMuted(!next);
-    if (next) soundManager.playClick();
   }
 
   return (
@@ -55,48 +50,32 @@ export default function RootLandingPage() {
           <span className="landing-brand-mark">31</span>
           <span><b>VERA 31</b><small>The cow counting game</small></span>
         </button>
-        <div className="landing-nav-actions">
-          <button className="landing-icon-button" onClick={toggleSound} aria-label={soundEnabled ? "Turn sound off" : "Turn sound on"} title={soundEnabled ? "Sound on" : "Sound off"}>
-            {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
-          </button>
-          <button className="landing-rules-button" onClick={() => setShowRules(true)}>
-            <BookOpen size={18} /><span>How to play</span>
-          </button>
-        </div>
       </header>
 
-      <main className="landing-main">
-        <motion.section className="landing-copy" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-          <div className="landing-kicker"><Sparkles size={15} /> Easy to learn. Fun to master.</div>
-          <h1>Count together.<br /><em>Don&apos;t land on 31!</em></h1>
-          <p className="landing-lede">A quick turn-taking game for friends, families, and clever cows.</p>
+      {/* THE LOBBY IS A LAUNCHER. Every destination is a button on screen — no list, no menu to
+          open. The entries come from the SAME admin-configured list the header menu uses, so what
+          you set in the admin panel still drives them and the two cannot drift apart. */}
+      <main className="lobby-launcher">
+        <button className="lobby-btn is-play" onClick={play}>
+          <span className="lobby-btn-ico"><Play size={26} fill="currentColor" /></span>
+          <b>Play now</b>
+          <small>No account needed</small>
+        </button>
 
-          <div className="landing-actions">
-            <button className="landing-play" onClick={play}>
-              <span className="landing-play-icon"><Play size={25} fill="currentColor" /></span>
-              <span><b>Play now</b><small>No account needed</small></span>
-              <ChevronRight size={22} />
+        {menuItems.map((item) => {
+          const Icon = ICONS[item.icon] ?? Home;
+          return (
+            <button key={item.id} className="lobby-btn" onClick={() => router.push(item.path, { scroll: false })}>
+              <span className="lobby-btn-ico"><Icon size={22} /></span>
+              <b>{item.label}</b>
             </button>
-            <button className="landing-how" onClick={() => setShowRules(true)}><BookOpen size={20} /> See the rules</button>
-          </div>
+          );
+        })}
 
-          <div className="landing-steps" aria-label="How the game works">
-            {steps.map((step, index) => (
-              <motion.div key={step.icon} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 + index * 0.1 }}>
-                <span>{step.icon}</span><div><b>{step.title}</b><small>{step.copy}</small></div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.section>
-
-        <motion.section className="landing-mascot-wrap" initial={{ opacity: 0, scale: 0.9, rotate: 2 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 90, damping: 14, delay: 0.15 }}>
-          <div className="landing-speech">Ready? Let&apos;s count! <span>🐮</span></div>
-          <div className="landing-mascot-card">
-            <Image src="/assets/barnaby/barnaby-field.jpg" alt="Barnaby the friendly cow champion" fill sizes="(max-width: 820px) 360px, 430px" priority />
-            <div className="landing-mascot-name"><span>Meet Barnaby</span><b>Your counting buddy</b></div>
-          </div>
-          <div className="landing-safe"><ShieldCheck size={17} /> Clear controls · Calm sounds · Motion can be reduced</div>
-        </motion.section>
+        <button className="lobby-btn" onClick={() => setShowRules(true)}>
+          <span className="lobby-btn-ico"><BookOpen size={22} /></span>
+          <b>How to play</b>
+        </button>
       </main>
 
       <footer className="landing-footer"><span>WM Tournaments</span><span>18+ · Play responsibly</span></footer>

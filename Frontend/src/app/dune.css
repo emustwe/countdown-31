@@ -10368,6 +10368,17 @@ body:has(.mobile-landscape-game) .app-shell > footer {
     display: none !important;
   }
 
+  /* The launcher is a WRAPPING FLEX BOARD, not the old two-column grid — it must keep its own
+     display, or it collapses to nothing (which is exactly what happened: the buttons were in the
+     DOM and had no height). It only needs the height and the centring here. */
+  .lobby-launcher {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-width: 980px !important;
+    margin: 0 auto !important;
+    padding: 4px 0 !important;
+  }
+
   .landing-main {
     display: grid !important;
     grid-template-columns: 1.15fr 0.85fr !important;
@@ -11321,6 +11332,53 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
 }
 @media (prefers-reduced-motion: reduce) {
   .rrs-line { animation: none; }
+}
+
+/* ── Lobby launcher ────────────────────────────────────────────────────────
+   The lobby is a board of buttons, one per destination — no list, no menu to
+   open. Equal-sized tiles that WRAP rather than shrink: nine of them in a single
+   row would each be below a usable tap target on a phone. */
+.lobby-launcher {
+  /* .landing-nav/.landing-main/.landing-footer get `position:relative; z-index:5` in globals so they
+     sit above the pasture backdrop and the orbs. The launcher replaced .landing-main and needs the
+     same — without it the buttons laid out correctly and rendered BEHIND the background, which is
+     exactly how they measured as visible while being invisible on screen. */
+  position: relative; z-index: 5;
+  flex: 1; min-height: 0; display: flex; flex-wrap: wrap; align-content: center;
+  justify-content: center; gap: 10px; padding: 8px 14px; overflow-y: auto;
+}
+.lobby-btn {
+  flex: 0 0 auto; width: clamp(104px, 15vw, 150px); min-height: 84px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 10px 8px; border-radius: 18px; cursor: pointer;
+  font-family: var(--font-title, inherit); color: #fff8ef;
+  background: linear-gradient(180deg, rgba(24,40,30,.92), rgba(9,18,13,.95));
+  border: 2px solid rgba(245,165,36,.5);
+  box-shadow: 0 10px 26px rgba(0,0,0,.5);
+  transition: transform .12s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.lobby-btn:active { transform: scale(.96); }
+.lobby-btn:hover { border-color: #f5a524; box-shadow: 0 12px 30px rgba(245,165,36,.25); }
+.lobby-btn:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 3px; }
+.lobby-btn b { font-weight: 400; font-size: 13px; line-height: 1.15; text-align: center; }
+.lobby-btn small { font-size: 10px; color: #a9bdaf; }
+.lobby-btn-ico { display: grid; place-items: center; color: #f5a524; }
+
+/* Play now leads: wider, green, and first in the flow. */
+.lobby-btn.is-play {
+  width: clamp(150px, 22vw, 210px);
+  color: #06230f;
+  background: linear-gradient(180deg,#4ade80,#22c55e 62%,#16a34a);
+  border-color: #bbf7d0;
+  box-shadow: 0 12px 30px rgba(34,197,94,.42);
+}
+.lobby-btn.is-play b { font-size: 17px; }
+.lobby-btn.is-play small { color: #06351a; }
+.lobby-btn.is-play .lobby-btn-ico { color: #06230f; }
+
+@media (max-height: 420px) {
+  .lobby-btn { min-height: 66px; width: clamp(92px, 13vw, 124px); }
+  .lobby-btn.is-play { width: clamp(132px, 19vw, 178px); }
 }
 
 /* ── Join page (iOS path into a game) ──────────────────────────────────────
