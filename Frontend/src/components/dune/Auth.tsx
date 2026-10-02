@@ -54,7 +54,7 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
         await loginMutation.mutateAsync({ email, password, ...(requiresMfa ? { mfaCode } : {}) });
       }
       soundManager.playSuccess();
-      router.push(next && next.startsWith("/") ? next : "/home");
+      router.push(next && next.startsWith("/") ? next : "/lobby");
     } catch (err) {
       soundManager.playError();
       const message =
@@ -83,7 +83,7 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
       <header className="relative z-20 w-full max-w-5xl mx-auto flex items-center justify-between px-4 py-3 rounded-2xl bg-gradient-to-r from-amber-950/80 via-black/90 to-amber-950/80 border-2 border-amber-500/50 shadow-xl backdrop-blur-md">
         <div
           className="flex items-center gap-3 cursor-pointer"
-          onClick={() => router.push("/home")}
+          onClick={() => router.push("/lobby")}
         >
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-700 border-2 border-amber-300 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.6)]">
             <span className="text-xl">🐮</span>

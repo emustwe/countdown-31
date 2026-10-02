@@ -634,9 +634,14 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
 
       socket.on("connect", () => {
         isLocalPracticeRef.current = false;
-        // Tournaments identify players by USER ID (their DB-seeded seat), so "me" is my user id — not
-        // the socket id — otherwise `currentId === myId` (and my turn / my defeat) would never match.
-        setMyId(getAuthState().user?.id ?? socket?.id ?? null);
+        // WHICH ID IS "ME" DEPENDS ON THE ROOM. This mirrors `playerId()` in countdown.gateway.ts —
+        // tournaments seat by USER ID (the DB-seeded roster), practice seats by SOCKET ID, because
+        // practice is open to guests who have no user id at all. This line used to keep only the
+        // tournament half, so a SIGNED-IN player in practice compared their user id against a seat
+        // held under their socket id: `currentId === myId` could never be true, and with it went YOUR
+        // TURN, the timer, the clickable tiles and the submit button. Guests were unaffected because
+        // `user?.id` was undefined and they fell through to the socket id.
+        setMyId((roomId !== "practice" ? getAuthState().user?.id : null) ?? socket?.id ?? null);
         socket?.emit("watch", { roomId });
         // If a join was requested before the socket was ready, send it now (fixes the race where a
         // tournament auto-join fired before the websocket finished connecting → player never joined).
