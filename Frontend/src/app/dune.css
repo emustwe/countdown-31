@@ -11334,6 +11334,14 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   .rrs-line { animation: none; }
 }
 
+/* The profile icon and its menu are removed INSIDE A GAME only — every destination lives on the
+   lobby now, and the back arrow in the header is the way out. Sound and music stay. Scoped to the
+   arena, so the lobby and every other page keep theirs. */
+.mobile-landscape-game .arcade-profile-trigger,
+body:has(.mobile-landscape-game) .mobile-arena-profile {
+  display: none !important;
+}
+
 /* ── Lobby launcher ────────────────────────────────────────────────────────
    The lobby is a board of buttons, one per destination — no list, no menu to
    open. Equal-sized tiles that WRAP rather than shrink: nine of them in a single

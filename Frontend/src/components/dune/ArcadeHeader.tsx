@@ -28,6 +28,7 @@ import {
   Check,
   Sun,
   X,
+  ArrowLeft,
 } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useAuthStore } from "../../stores/auth-store";
@@ -48,6 +49,10 @@ import {
 
 interface ArcadeHeaderProps {
   onOpenRules?: () => void;
+  /** Arena mode: the brand becomes a BACK arrow to the lobby and the profile menu is removed.
+   *  Every destination now lives on the lobby, so the arrow is the way out and the menu is
+   *  redundant. Sound and music stay. */
+  arenaExit?: boolean;
   gameMode?: GameMode;
   onToggleMode?: (mode: GameMode) => void;
   showModeToggle?: boolean;
@@ -94,6 +99,7 @@ function pageTitleFor(pathname: string | null): string {
 
 export function ArcadeHeader({
   onOpenRules,
+  arenaExit = false,
   gameMode = "skills",
   onToggleMode,
   showModeToggle = false,
@@ -280,15 +286,19 @@ export function ArcadeHeader({
             type="button"
             onClick={() => {
               soundManager.playClick();
-              router.push("/home");
+              router.push(arenaExit ? "/lobby" : "/home", arenaExit ? { scroll: false } : undefined);
             }}
             className="brand-31-badge relative flex items-center justify-center h-11 sm:h-12 rounded-full bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 border-2 border-white shadow-[0_4px_12px_rgba(245,158,11,0.9),inset_0_1px_2px_rgba(255,255,255,0.7)] hover:scale-105 active:scale-95 transition-transform cursor-pointer shrink-0"
-            title="Vera 31"
-            aria-label="Vera 31 — Home"
+            title={arenaExit ? "Back to lobby" : "Vera 31"}
+            aria-label={arenaExit ? "Back to lobby" : "Vera 31 — Home"}
           >
-            <span className="brand-31-badge-text font-title font-black leading-none text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
-              VERA 31
-            </span>
+            {arenaExit ? (
+              <ArrowLeft size={22} className="text-amber-950" />
+            ) : (
+              <span className="brand-31-badge-text font-title font-black leading-none text-amber-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
+                VERA 31
+              </span>
+            )}
           </button>
         )}
 

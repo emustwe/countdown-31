@@ -521,11 +521,11 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
    * Nothing about the arena's own behaviour changes either way.
    */
   const openJoin = useCallback(() => {
-    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: unknown };
-    const canFullscreen =
-      typeof el.requestFullscreen === "function" || typeof el.webkitRequestFullscreen === "function";
-    if (!canFullscreen) {
-      router.push("/join", { scroll: false }); // iOS
+    // EVERY touch device takes the page. Android has the same keyboard problem the modal causes on
+    // iOS — the overlay sits on a page with a scroll gap, focus makes the browser scroll it, and the
+    // layout moves under the field. Desktop keeps the modal, where none of that applies.
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      router.push("/join", { scroll: false });
       return;
     }
     openNameGate();
@@ -625,6 +625,7 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
       )}
       {/* Top Arcade Header Marquee with Game Mode Switcher */}
       <ArcadeHeader
+        arenaExit
         config={themedHeaderConfig}
         onOpenRules={() => setShowRules(true)}
         gameMode={gameMode}
