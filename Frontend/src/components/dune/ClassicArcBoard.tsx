@@ -9,6 +9,7 @@ import { MasterAvatar } from "./MasterAvatar";
 import { NumberBoard } from "./NumberBoard";
 import { ArcNumberBoard, ARC_APEX, ARC_APEX_HALF } from "./ArcNumberBoard";
 import { useArcDesign } from "../../lib/arena-design";
+import { useArenaV2 } from "../../lib/arena-skin";
 import { useAvatarStore, type AvatarConfig } from "../../stores/avatar-customization-store";
 import type { LivePlayer, LastMoveInfo } from "../../lib/hooks/useCountdownLive";
 
@@ -77,6 +78,14 @@ const NO_PICKS: number[] = [];
 // composition being a few percent tighter.
 const ARC_ROSTER_X = 538;
 const ARC_ROSTER_W = 300;
+/**
+ * v2 arena (preview flag `?arena=v2`): the floating detail card is gone, so the bowl between the
+ * two arcs holds ONE thing instead of two and the list can have the room the card was using.
+ * Grown 300 → 420 and moved left by the same 120, so its RIGHT edge stays exactly where it was and
+ * the number arc beside it does not have to move at all.
+ */
+const ARC_ROSTER_W_V2 = 420;
+const ARC_ROSTER_X_V2 = ARC_ROSTER_X - (ARC_ROSTER_W_V2 - ARC_ROSTER_W);
 /** Centred on STAGE_H/2, which is exactly where the player card's midline sits. */
 const ARC_ROSTER_TOP = STAGE_H / 2 - ARENA_H / 2;
 /** Submit + status sit OUTSIDE the arc, level with the apex number, so the button is right beside
@@ -418,6 +427,13 @@ function ClassicArcBoardImpl({
   const localCfg = useAvatarStore();
   // THE switch. See src/lib/arena-design.ts — flipping one constant there restores the old board.
   const arc = useArcDesign();
+  /** Preview flag `?arena=v2` — see src/lib/arena-skin.ts. False for everyone who has not asked. */
+  const arenaV2 = useArenaV2();
+  /** The rail's own avatar builder, handed to the roster so both draw the same cow for a player. */
+  const rosterAvatarFor = useCallback(
+    (p: LivePlayer) => avatarConfigFor(p, p.id === myId, localCfg),
+    [myId, localCfg],
+  );
   const contentW = arc ? ARC_CONTENT_W : CONTENT_W;
 
   // Fit the fixed-design stage into whatever space the arena gives us (width AND height). Runs only
@@ -606,8 +622,11 @@ function ClassicArcBoardImpl({
           })}
         </div>
 
-        {/* Current player's detail card at the apex */}
-        {currentPlayer && (
+        {/* Current player's detail card at the apex.
+            NOT RENDERED in v2 — everything it showed (the Active-turn badge, the name and flag, the
+            cow title, CPU, "Choosing…") moved into the arena list's top row, so this would be the
+            same information twice and the list would have no room to grow into. */}
+        {currentPlayer && !arenaV2 && (
           <CurrentCard
             player={currentPlayer}
             waiting={status === "playing" && currentPlayer.id !== myId ? "Choosing…" : null}
@@ -637,9 +656,9 @@ function ClassicArcBoardImpl({
         <div
           style={{
             position: "absolute",
-            left: arc ? ARC_ROSTER_X : ROSTER_X,
+            left: arc ? (arenaV2 ? ARC_ROSTER_X_V2 : ARC_ROSTER_X) : ROSTER_X,
             top: arc ? ARC_ROSTER_TOP : ROSTER_TOP,
-            width: arc ? ARC_ROSTER_W : ROSTER_W,
+            width: arc ? (arenaV2 ? ARC_ROSTER_W_V2 : ARC_ROSTER_W) : ROSTER_W,
             height: ARENA_H,
           }}
         >
@@ -652,6 +671,8 @@ function ClassicArcBoardImpl({
             sponsor={rosterSponsor}
             rosterStyle={rosterStyle}
             plainText={arc}
+            v2={arenaV2}
+            avatarFor={rosterAvatarFor}
           />
         </div>
 
