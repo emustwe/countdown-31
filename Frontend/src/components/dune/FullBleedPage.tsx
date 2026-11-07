@@ -8,17 +8,18 @@ import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
 /**
  * THE GAP IS MEASURED, NOT A CONSTANT. This used to be a flat 112px and that was the whole bug.
  *
- * The gap exists to give the browser something to scroll so it will collapse its bars. The bars
- * then eat the scroll: collapse reclaims exactly `chrome` pixels of viewport, so after collapsing
- * the leftover scroll is `gap − chrome`. Whatever is left over is dead space that the page is
- * parked on top of, and on iOS Chrome a fixed layer sitting over a scrolled document renders
- * SHIFTED BY IT — which is the black panel that slides out from under the arena instead of a zoom.
+ * The gap exists to give the browser something to scroll so it will collapse its bars. A swipe
+ * spends its first `chrome` pixels doing exactly that — and every pixel AFTER that genuinely
+ * scrolls the document, sliding the fixed page layer up and exposing the empty gap beneath it.
+ * That is the black panel that slides out from under the arena instead of a zoom.
  *
- *   Safari iOS    chrome ~101  →  112 gap  →  ~11px leftover   (never noticed — this is why it worked)
- *   Chrome iOS    chrome   22  →  112 gap  →   90px leftover   ← the panel
+ *   Safari iOS    chrome ~101  →  112 gap  →  ~11px of slide   (never noticed — this is why it worked)
+ *   Chrome iOS    chrome   22  →  112 gap  →   90px of slide   ← the panel
  *
- * 90px of a 372px viewport is a quarter of the screen. Sizing the gap from the chrome actually on
- * screen leaves ~12px in both browsers, so there is nothing left to shift.
+ * 90px of a 372px viewport is a quarter of the screen. Note the gap is NOT consumed by the
+ * collapse: `calc(100% + Npx)` resolves against the current viewport, so it stays fully scrollable
+ * in either bar state — measured on the device as `scrollH − clientH: 112` with the bars already
+ * down. Sizing the gap from the chrome actually on screen is what shrinks the slide, to ~12px.
  */
 const GAP_SLACK_PX = 12;
 /** Below this a thumb flick may not register as a scroll at all, so the bars never collapse. */

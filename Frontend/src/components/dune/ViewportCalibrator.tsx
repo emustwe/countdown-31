@@ -66,9 +66,13 @@ export function ViewportCalibrator() {
         "canFullscreen()": String(canFullscreen()),
         // The two readings that decide whether the swipe is possible at all.
         "chrome gap": `${Math.round(probe("lvh") - (window.visualViewport?.height ?? window.innerHeight))}`,
-        // THE number for the black-panel bug. The gap is scroll room the browser is meant to eat by
-        // collapsing its bars; whatever is still scrollable AFTER they are down is dead space the
-        // fixed page layer gets shifted by. Should be ~12px once the bars are gone, never ~90.
+        // THE number for the black-panel bug, and it is the GAP — measured here rather than read
+        // back off the style, because `calc(100% + Npx)` resolves against the CURRENT viewport, so
+        // the gap stays fully scrollable whatever the bars are doing. A swipe spends its first
+        // `chrome gap` pixels collapsing the bars and every pixel after that slides the fixed page
+        // layer up, exposing empty document. So this is the WORST-CASE slide, and it wants to be as
+        // close to `chrome gap` as possible: ~34 on Chrome iOS, ~113 on Safari. 112 here on Chrome
+        // means the old constant gap is still deployed.
         "leftover scroll": `${Math.max(0, d.scrollHeight - d.clientHeight)}`,
         "barsAreUp()": String(barsAreUp()),
         "isCollapsed()": String(isCollapsed()),
