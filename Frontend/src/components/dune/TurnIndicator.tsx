@@ -133,9 +133,8 @@ function TurnIndicatorImpl({
 
   const rootClass = [
     "ti-root",
-    // "on" = a turn is genuinely running, so the frame should carry the ambient green even when the
-    // move belongs to someone else.
-    active ? "on" : "",
+    // No class for "a turn is running" any more: the frame used to carry an ambient green whenever
+    // one was, and that glow is gone — it lights for your move alone now.
     myTurn && active ? "mine" : "theirs",
     panic ? "panic" : "",
     fire ? (fireMine ? "fire fire-mine" : "fire fire-them") : "",
@@ -145,7 +144,7 @@ function TurnIndicatorImpl({
 
   return (
     <div className={rootClass} aria-hidden>
-      {/* frame breathes cyan on your turn, red when your time is nearly out */}
+      {/* frame breathes cyan on your turn, red when your time is nearly out, dark otherwise */}
       <div className="ti-edge" />
       {/* the announcement sweep */}
       <div className="ti-sweep">

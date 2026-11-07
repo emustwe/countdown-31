@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { requestFullscreen } from "../../lib/fullscreen";
+import { canFullscreen, requestFullscreen } from "../../lib/fullscreen";
 import { isCollapsed, onCollapseChange } from "../../lib/collapse-latch";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
 
@@ -34,9 +34,11 @@ export function ScrollHintOverlay() {
       const standalone =
         window.matchMedia("(display-mode: standalone)").matches ||
         (navigator as Navigator & { standalone?: boolean }).standalone === true;
-      const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: unknown };
-      const fs =
-        typeof el.requestFullscreen === "function" || typeof el.webkitRequestFullscreen === "function";
+      // Shared with FullBleedPage, so the arrow and the scroll gap can never disagree about which
+      // platform they are on. It asks what DEVICE this is: the old inline API probe answered "yes,
+      // fullscreen" for Chrome on iOS — which then rendered a Tap-here button wired to an API Apple
+      // does not implement for page content, on a page that had been denied the scroll gap too.
+      const fs = canFullscreen();
       const already = !!(document.fullscreenElement || (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement);
       setCanFs(fs);
       // Android: a fullscreen button, hidden once fullscreen is on.

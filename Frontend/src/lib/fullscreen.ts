@@ -1,6 +1,42 @@
 "use client";
 
 /**
+ * Is this an iOS device — ANY browser, not just Safari?
+ *
+ * This exists because the codebase used to decide "is this iPhone?" by probing for the Fullscreen
+ * API: no API meant iOS, an API meant Android. That is a question about the JAVASCRIPT ENGINE, not
+ * about the device, and it gets Chrome / Firefox / Edge on iOS wrong — Apple requires them all to
+ * be WKWebView under a different shell, so what they expose is WebKit's, while the browser chrome
+ * on screen is not Safari's. A device misread as Android gets no scroll gap, which is the only
+ * mechanism iOS has for clearing the bars, plus a fullscreen button that cannot do anything. The
+ * result is a player who can neither swipe nor tap their way to a full screen.
+ *
+ * Ask about the platform instead. iPadOS 13+ deliberately claims to be a Mac, so the touch points
+ * are what give it away — a real Mac reports 0 (or 1 with a touch bar).
+ */
+export function isIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  if (/iPad|iPhone|iPod/.test(ua)) return true;
+  return navigator.platform === "MacIntel" && (navigator.maxTouchPoints ?? 0) > 1;
+}
+
+/**
+ * Will a fullscreen request actually produce a full screen HERE?
+ *
+ * The single source of truth for "this browser can go fullscreen", so the arena and the scroll hint
+ * can never disagree about which platform they are on. Deliberately NOT a bare API probe: WebKit
+ * exposes `webkitRequestFullscreen` on iPad even though it does nothing for page content, so the
+ * probe alone answers yes on a device where the answer is no.
+ */
+export function canFullscreen(): boolean {
+  if (typeof document === "undefined") return false;
+  if (isIOS()) return false; // whatever the API says — Apple allows it for <video> only
+  const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: unknown };
+  return typeof el.requestFullscreen === "function" || typeof el.webkitRequestFullscreen === "function";
+}
+
+/**
  * Ask the browser for true fullscreen.
  *
  * MUST be called synchronously from a real user gesture (a click/tap handler). Browsers reject the
@@ -15,11 +51,12 @@
  */
 export function requestFullscreen(target?: Element | null): boolean {
   if (typeof document === "undefined") return false;
+  if (!canFullscreen()) return false; // iOS lands here, whatever it exposes
   const el = (target ?? document.documentElement) as HTMLElement & {
     webkitRequestFullscreen?: () => Promise<void> | void;
   };
   const fn = el.requestFullscreen ?? el.webkitRequestFullscreen;
-  if (typeof fn !== "function") return false; // iOS lands here
+  if (typeof fn !== "function") return false;
   try {
     const r = fn.call(el);
     if (r && typeof (r as Promise<void>).catch === "function") {

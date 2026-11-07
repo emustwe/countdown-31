@@ -10698,14 +10698,11 @@ body:has(.mobile-landscape-game) .app-shell > footer {
   box-shadow: inset 0 0 0 2px rgba(53, 214, 232, 0.62), inset 0 0 60px rgba(53, 214, 232, 0.2);
   transition: opacity 0.4s ease;
 }
-/* SOMEONE ELSE'S turn — ambient green, steady, no animation. The frame is lit the whole time a round
-   is running so the arena always reads as live; what changes with whose turn it is, is the COLOUR:
-   green = someone else, cyan = you, red = you and nearly out of time. Colour carries the meaning, not
-   brightness, which keeps the "cyan means YOU" rule intact. */
-.ti-root.on.theirs .ti-edge {
-  opacity: 1;
-  box-shadow: inset 0 0 0 2px rgba(53, 227, 155, 0.45), inset 0 0 52px rgba(53, 227, 155, 0.14);
-}
+/* SOMEONE ELSE'S turn — the frame stays DARK. There was an ambient green glow here, lit the whole
+   time a round was running so the arena always read as live. On a phone it ringed the entire screen
+   in green over an already-green pasture and simply looked like a fault. The frame now lights for
+   one reason only: it is your move. That is also the stronger signal — an edge that is lit 100% of
+   the time says nothing. Cyan (you) and red (you, nearly out of time) are untouched below. */
 
 /* YOUR turn — cyan, and it breathes. */
 .ti-root.mine .ti-edge { opacity: 1; animation: ti-breathe 2.4s ease-in-out infinite; }
@@ -10775,19 +10772,30 @@ body:has(.mobile-landscape-game) .app-shell > footer {
 /* the quiet version for everyone else — small warm caption, no bar, no bolts */
 .ti-root.fire-them .ti-sweep .ti-bar,
 .ti-root.fire-them .ti-bolt { animation: none; opacity: 0; }
+/* "<Name>'S TURN" — the other-player caption. Warm amber on its own dark plate, so it stays legible
+   over any part of the pasture (it was pale near-white with no plate, and read as simply absent) —
+   and it sits in the clear strip ABOVE the two arcs rather than across the middle of the board.
+   The centre band is where the game is; a caption parked there covers the player card and the arena
+   list for a second and a half, every single turn. `height:auto` collapses the 120px band to the
+   plate itself so `top` positions the text, not an empty box around it. */
+.ti-root.fire-them .ti-sweep { top: 8%; height: auto; }
 /* "<Name>'S TURN" — the other-player caption.
-   It was 16-22px in #D8E6DB with no glow and its backing bar hidden: pale, small, shadowless text
-   over a bright green pasture, which is why it read as not being there at all. Bigger, warm amber
-   against the field rather than near-white, and carrying its own dark plate so it is legible over
-   any part of the background. Still clearly NOT the cyan "YOUR TURN" moment. */
+   Small, because the strip it lives in is narrow: it has to clear the back arrow on one side, the
+   sound buttons on the other, and must not reach down into either arc. `max-width` + ellipsis is the
+   guard for a name long enough to break out of that corridor; at this size an ordinary one is
+   nowhere near it. (Grid blockifies the <b>, so the ellipsis applies.) */
 .ti-root.fire-them .ti-sweep b {
-  font-size: clamp(24px, 4.6vw, 40px);
-  letter-spacing: 0.14em;
+  font-size: clamp(11px, 1.7vw, 18px);
+  letter-spacing: 0.1em;
+  max-width: 38%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   background: none;
   color: #FFD98A;
   -webkit-text-fill-color: #FFD98A;
-  padding: 8px 20px;
-  border-radius: 14px;
+  padding: 5px 14px;
+  border-radius: 11px;
   background-color: rgba(4, 10, 6, 0.74);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);

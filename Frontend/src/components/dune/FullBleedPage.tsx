@@ -2,18 +2,11 @@
 
 import { useEffect } from "react";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
-import { barsAreUp, keyboardOpen } from "../../lib/fullscreen";
+import { barsAreUp, canFullscreen, keyboardOpen } from "../../lib/fullscreen";
 import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
 
 /** Extra scroll height that lets Safari collapse its bars. ~101px measured + slack. */
 const GAP_PX = 112;
-
-/** True where the browser can actually go fullscreen — Android Chrome yes, iOS Safari never. */
-function canFullscreen(): boolean {
-  if (typeof document === "undefined") return false;
-  const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: unknown };
-  return typeof el.requestFullscreen === "function" || typeof el.webkitRequestFullscreen === "function";
-}
 
 /**
  * Gives a full-bleed page the scroll room Safari needs to collapse its bars — on iOS ONLY.
@@ -36,7 +29,10 @@ export function FullBleedPage() {
     const body = document.body;
 
     const applies = () =>
-      !canFullscreen() && // Android is excluded here, by design
+      // Android is excluded here, by design. This now asks what DEVICE this is, not what the
+      // engine exposes — Chrome/Firefox/Edge on iOS are WebKit under another shell, and the old
+      // API probe classified them as Android, so they got no gap and no way to clear the bars.
+      !canFullscreen() &&
       window.matchMedia("(pointer: coarse)").matches &&
       window.matchMedia("(orientation: landscape)").matches &&
       !window.matchMedia("(display-mode: standalone)").matches &&
@@ -146,9 +142,15 @@ export function FullBleedPage() {
     sync();
     // If the bars are ALREADY down when this page mounts — i.e. the player collapsed them on the
     // previous page and navigated here — lock straight away so they stay down.
-    // Already collapsed on the previous page? Stay that way through the navigation.
+    //
+    // Otherwise, require the page to have actually been SCROLLED before trusting a measurement.
+    // A cold reading on mount can lie: a browser whose toolbars overlay the viewport instead of
+    // shrinking it reports no chrome while its bars are plainly on screen, and we would then latch
+    // and lock a page the player has not touched — no scrolling, and no arrow either, because the
+    // latch claims the job is already done. At scroll 0 with the gap unused, the bars are up; there
+    // is nothing to conclude and nothing worth locking.
     if (isCollapsed()) lock();
-    else onScroll();
+    else if (window.scrollY > 0) onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.visualViewport?.addEventListener("resize", evaluate);
     window.visualViewport?.addEventListener("scroll", evaluate);

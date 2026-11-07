@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { barsAreUp, canFullscreen, isIOS } from "../../lib/fullscreen";
+import { isCollapsed } from "../../lib/collapse-latch";
 
 /**
  * On-device viewport readout. Shown ONLY with ?cal=1 in the URL, so players never see it.
@@ -9,6 +11,10 @@ import { useEffect, useState } from "react";
  * measures as correct on a desktop browser pretending to be an iPhone while being visibly wrong on a
  * real one. Rather than keep guessing from screenshots, this prints the numbers that actually decide
  * the layout so they can be read straight off the device.
+ *
+ * It also prints the PLATFORM CLASSIFICATION, because the layout is only half the story: whether a
+ * page gets the scroll gap or a fullscreen button is decided from these flags, and reading them off
+ * the device is the only way to catch a browser being classified as something it is not.
  */
 export function ViewportCalibrator() {
   const [on, setOn] = useState(false);
@@ -47,6 +53,25 @@ export function ViewportCalibrator() {
         "scrollY": px(window.scrollY),
         "scrollH − clientH": `${d.scrollHeight - d.clientHeight}`,
         "UNCOVERED BELOW": r ? `${Math.max(0, Math.round((window.visualViewport?.height ?? window.innerHeight) - r.bottom))}px` : "—",
+        // ── platform classification: which branch of the collapse logic this device lands on ──
+        "browser": /CriOS/.test(navigator.userAgent) ? "Chrome iOS"
+          : /FxiOS/.test(navigator.userAgent) ? "Firefox iOS"
+          : /EdgiOS/.test(navigator.userAgent) ? "Edge iOS"
+          : isIOS() ? "Safari iOS" : "other",
+        "isIOS()": String(isIOS()),
+        "raw FS api": String(
+          typeof (d as HTMLElement & { webkitRequestFullscreen?: unknown }).requestFullscreen === "function" ||
+            typeof (d as HTMLElement & { webkitRequestFullscreen?: unknown }).webkitRequestFullscreen === "function",
+        ),
+        "canFullscreen()": String(canFullscreen()),
+        // The two readings that decide whether the swipe is possible at all.
+        "chrome gap": `${Math.round(probe("lvh") - (window.visualViewport?.height ?? window.innerHeight))}`,
+        "barsAreUp()": String(barsAreUp()),
+        "isCollapsed()": String(isCollapsed()),
+        "GAP applied": d.style.minHeight || "none",
+        "touch-action": cs?.touchAction ?? "—",
+        "maxTouchPoints": String(navigator.maxTouchPoints ?? 0),
+        "UA tail": navigator.userAgent.slice(-42),
       });
     };
 
@@ -79,10 +104,24 @@ export function ViewportCalibrator() {
         borderRadius: 8,
         pointerEvents: "none",
         maxWidth: "62vw",
+        maxHeight: "94vh",
+        overflow: "hidden",
       }}
     >
       {Object.entries(m).map(([k, v]) => (
-        <div key={k} style={{ color: k === "UNCOVERED BELOW" && v !== "0px" ? "#FF7A7A" : undefined }}>
+        <div
+          key={k}
+          style={{
+            color:
+              (k === "UNCOVERED BELOW" && v !== "0px") ||
+              // An iOS device that believes it can go fullscreen is denied the scroll gap, and an
+              // iOS device with no gap cannot clear its bars at all. Either one in red is the bug.
+              (k === "canFullscreen()" && v === "true" && m["isIOS()"] === "true") ||
+              (k === "GAP applied" && v === "none" && m["isIOS()"] === "true")
+                ? "#FF7A7A"
+                : undefined,
+          }}
+        >
           {k}: <b>{v}</b>
         </div>
       ))}
