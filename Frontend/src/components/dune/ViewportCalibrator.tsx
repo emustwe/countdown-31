@@ -99,11 +99,16 @@ export function ViewportCalibrator() {
         zIndex: 2147483647,
         background: "rgba(0,0,0,.88)",
         color: "#7CFFB2",
-        font: "600 11px/1.45 ui-monospace,Menlo,monospace",
+        // Two columns at a small size, because the readout has to fit a 350px-tall landscape
+        // viewport WITHOUT scrolling — the page it is diagnosing may well be locked, which is
+        // exactly how the last few lines went unreadable on the device that needed them most.
+        font: "600 10px/1.32 ui-monospace,Menlo,monospace",
+        columns: 2,
+        columnGap: "14px",
         padding: "8px 10px",
         borderRadius: 8,
         pointerEvents: "none",
-        maxWidth: "62vw",
+        maxWidth: "78vw",
         maxHeight: "94vh",
         overflow: "hidden",
       }}

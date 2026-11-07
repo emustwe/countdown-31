@@ -98,15 +98,31 @@ export function FullBleedPage() {
      *  - everything is debounced, so the frames mid-animation cannot each flip the state.
      */
     let settle: ReturnType<typeof setTimeout> | null = null;
+    /**
+     * The latch may only fire on an OBSERVED up → down transition, never on a cold reading.
+     *
+     * A single measurement is not evidence that anything collapsed: any browser whose chrome is
+     * thinner than the threshold reads as "already gone" from the very first frame, and the page
+     * then locks itself (touch-action:none) before the player has touched it — unable to scroll,
+     * with no arrow, because the latch claims the job is done. That is precisely what Chrome for
+     * iOS did. Requiring the bars to have been seen UP first makes the state machine describe a
+     * transition that actually happened.
+     *
+     * Deliberately NOT keyed off scrollY: on iOS the collapse happens mid-swipe and the scroll
+     * settles back afterwards, so the scroll position is not a reliable witness to it.
+     */
+    let sawBarsUp = false;
     const evaluate = () => {
       if (keyboardOpen()) return;
       if (settle) clearTimeout(settle);
       settle = setTimeout(() => {
-        const up = barsAreUp();
-        if (up && isCollapsed()) {
-          setCollapsed(false);
-          unlock();
-        } else if (!up && !isCollapsed()) {
+        if (barsAreUp()) {
+          sawBarsUp = true;
+          if (isCollapsed()) {
+            setCollapsed(false);
+            unlock();
+          }
+        } else if (!isCollapsed()) {
           onScroll();
         }
       }, 260);
@@ -114,7 +130,9 @@ export function FullBleedPage() {
 
     const onScroll = () => {
       if (isCollapsed()) return;
-      if (!barsAreUp()) {
+      if (barsAreUp()) {
+        sawBarsUp = true;
+      } else if (sawBarsUp) {
         setCollapsed(true);
         // Only lock a page that has nothing of its own to scroll. On a content page — the shop, the
         // avatar list — freezing the scroll would make it unusable, so those keep their scrolling
@@ -136,21 +154,18 @@ export function FullBleedPage() {
     const onRotate = () => {
       setCollapsed(false);
       unlock();
+      // Rotating changes the chrome itself — iOS Chrome drops its bottom toolbar in landscape — so
+      // what was observed in the old orientation says nothing about the new one. Start again.
+      sawBarsUp = false;
       sync();
     };
 
     sync();
     // If the bars are ALREADY down when this page mounts — i.e. the player collapsed them on the
-    // previous page and navigated here — lock straight away so they stay down.
-    //
-    // Otherwise, require the page to have actually been SCROLLED before trusting a measurement.
-    // A cold reading on mount can lie: a browser whose toolbars overlay the viewport instead of
-    // shrinking it reports no chrome while its bars are plainly on screen, and we would then latch
-    // and lock a page the player has not touched — no scrolling, and no arrow either, because the
-    // latch claims the job is already done. At scroll 0 with the gap unused, the bars are up; there
-    // is nothing to conclude and nothing worth locking.
+    // previous page and navigated here — lock straight away so they stay down. Otherwise this is
+    // just the first reading, and `sawBarsUp` is what decides whether it can conclude anything.
     if (isCollapsed()) lock();
-    else if (window.scrollY > 0) onScroll();
+    else onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.visualViewport?.addEventListener("resize", evaluate);
     window.visualViewport?.addEventListener("scroll", evaluate);

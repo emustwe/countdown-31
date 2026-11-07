@@ -107,5 +107,16 @@ export function barsAreUp(): boolean {
   probe.remove();
   const visible = window.visualViewport?.height ?? window.innerHeight;
   if (!barsHidden || !visible) return false;
-  return barsHidden - visible >= 24;
+  /**
+   * 10px, not 24. MEASURED on an iPhone: Chrome for iOS in landscape reports 100lvh 372 against a
+   * visual viewport of 350 — **22px of chrome** — with its omnibox plainly on screen. Safari shows
+   * ~101px in the same state, which is where 24 came from, and 22 fell straight through it.
+   *
+   * That one number was the whole iOS-Chrome bug. Reading 22 as "no chrome" meant the bars looked
+   * already gone the moment the arena loaded, so the page latched collapsed and locked itself
+   * (touch-action:none) at scroll 0 — nothing to scroll, and no arrow either, because the latch
+   * said the job was done. A browser whose chrome is thinner than Safari's must not read as a
+   * browser with no chrome at all.
+   */
+  return barsHidden - visible >= 10;
 }
