@@ -98,10 +98,13 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
           </div>
         </div>
 
+        {/* Declining to sign in lands on the LOBBY, not straight in the arena. The lobby is the
+            hub every route returns to, and dropping someone into a running game because they
+            skipped a form is a decision the button never offered to make for them. */}
         <button
           onClick={() => {
             soundManager.playClick();
-            router.push("/home");
+            router.push("/lobby");
           }}
           className="px-3.5 py-1.5 rounded-xl bg-black/60 border border-slate-700 hover:border-amber-400/60 text-slate-300 hover:text-white text-xs font-title font-bold transition-all flex items-center gap-1.5 cursor-pointer"
         >
@@ -317,17 +320,17 @@ export function DuneAuth({ register: initialRegister = false }: { register?: boo
             </button>
           </form>
 
-          {/* Guest Mode Direct Access */}
+          {/* Guest Mode Direct Access — to the lobby, same as the header's Guest Mode above. */}
           <div className="mt-6 pt-5 border-t border-slate-800 flex flex-col items-center gap-2">
             <button
               type="button"
               onClick={() => {
                 soundManager.playClick();
-                router.push("/home");
+                router.push("/lobby");
               }}
               className="text-xs font-title font-bold text-amber-400 hover:text-amber-300 hover:underline transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <span>Skip for now — Play as Guest</span>
+              <span>Continue as Guest</span>
               <ArrowRight size={13} />
             </button>
           </div>
