@@ -11474,6 +11474,180 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   .lobby-btn.is-play { grid-column: 1 / -1; width: auto; min-height: 84px; }
 }
 
+/* ── Lobby launcher: ARCADE SKIN ───────────────────────────────────────────
+   A game menu rather than a web nav: chunky extruded slabs stacked in a column,
+   each sitting on a hard, un-blurred bottom edge that it presses down into when
+   tapped. That one un-blurred offset shadow is what makes a button read as a
+   physical object — blur it and it goes straight back to looking like a card.
+
+   EVERY rule here is scoped behind `.is-gameskin`, which lib/mobile-flags.ts
+   puts on the launcher. The flat board above is untouched underneath, so
+   flipping GAME_MENU_SKIN to false restores it exactly, and nothing outside
+   this block changes either way.
+
+   Colours are the app's own: pasture green for the stack, the existing gold
+   (#f5a524) for Play, cream lettering outlined in near-black so it stays
+   legible over both.
+   ──────────────────────────────────────────────────────────────────────────*/
+.lobby-launcher.is-gameskin {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  align-content: center;
+  gap: 9px;
+  padding: 12px 16px 16px;
+}
+
+.lobby-launcher.is-gameskin .lobby-btn {
+  /* Grid, not flex: Play carries a second line of text and the others do not, and a grid puts the
+     icon beside a text column that is one row or two without either case needing its own rule. */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  justify-items: start;
+  column-gap: 12px;
+  row-gap: 1px;
+
+  width: min(100%, 420px);
+  flex: 0 0 auto;
+  min-height: 0;
+  height: 54px;
+  padding: 0 16px 0 10px;
+  border-radius: 13px;
+  border: 2px solid #07140c;
+  background: linear-gradient(180deg, #2f6040 0%, #1e4429 54%, #163420 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.2),   /* lit top face */
+    inset 0 -2px 0 rgba(0, 0, 0, 0.34),       /* shaded underside */
+    0 5px 0 #0b2114,                          /* THE EDGE — no blur, or it stops being a solid */
+    0 10px 17px rgba(0, 0, 0, 0.45);          /* the shadow it casts on the field */
+  transition: transform 0.09s ease, box-shadow 0.09s ease, filter 0.18s ease;
+}
+
+/* Pressed: the slab travels exactly as far as its edge is tall, so it lands flush on the surface. */
+.lobby-launcher.is-gameskin .lobby-btn:active {
+  transform: translateY(5px);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3),
+    0 0 0 #0b2114,
+    0 3px 7px rgba(0, 0, 0, 0.4);
+}
+.lobby-launcher.is-gameskin .lobby-btn:hover {
+  filter: brightness(1.08);
+  border-color: #07140c; /* the flat skin lit the border on hover; here the whole slab lifts */
+}
+.lobby-launcher.is-gameskin .lobby-btn:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 3px; }
+
+.lobby-launcher.is-gameskin .lobby-btn b {
+  grid-column: 2;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  text-align: left;
+  line-height: 1.1;
+  color: #fff6e2;
+  /* Outlined arcade lettering. A hard 1px drop plus a soft halo reads as a stroke at this size and
+     costs nothing, where -webkit-text-stroke would thin the glyphs on iOS. */
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6), 0 0 9px rgba(0, 0, 0, 0.35);
+}
+.lobby-launcher.is-gameskin .lobby-btn small {
+  grid-column: 2;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: #bfe6cb;
+}
+
+/* The icon sits in its own recessed tile — the inset shadow is what sinks it into the slab. */
+.lobby-launcher.is-gameskin .lobby-btn-ico {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  align-self: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 2px solid rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.26);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  color: #ffd98a;
+}
+
+/* Play leads the stack: gold, taller, and the only slab with a second line. */
+.lobby-launcher.is-gameskin .lobby-btn.is-play {
+  width: min(100%, 420px);
+  height: 66px;
+  background: linear-gradient(180deg, #ffd47d 0%, #f5a524 50%, #d4820f 100%);
+  border-color: #351c03;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.52),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.22),
+    0 6px 0 #8e5409,
+    0 12px 22px rgba(0, 0, 0, 0.5);
+}
+.lobby-launcher.is-gameskin .lobby-btn.is-play:active {
+  transform: translateY(6px);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.2),
+    0 0 0 #8e5409,
+    0 3px 8px rgba(0, 0, 0, 0.42);
+}
+.lobby-launcher.is-gameskin .lobby-btn.is-play b {
+  font-size: 19px;
+  color: #2b1703;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45); /* lit from above, like the slab */
+}
+.lobby-launcher.is-gameskin .lobby-btn.is-play small { color: #5d3907; }
+.lobby-launcher.is-gameskin .lobby-btn.is-play .lobby-btn-ico {
+  background: rgba(255, 255, 255, 0.26);
+  border-color: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.22), inset 0 -1px 0 rgba(255, 255, 255, 0.3);
+  color: #2b1703;
+}
+
+/* The header's account button, cut from the same material — otherwise it is the one flat web
+   control left on an otherwise physical screen. */
+body:has(.lobby-launcher.is-gameskin) .lobby-profile {
+  border: 2px solid #07140c;
+  background: linear-gradient(180deg, #2f6040 0%, #1e4429 60%, #163420 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.18), 0 4px 0 #0b2114, 0 7px 12px rgba(0, 0, 0, 0.42);
+  color: #ffd98a;
+}
+body:has(.lobby-launcher.is-gameskin) .lobby-profile:active {
+  transform: translateY(4px);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.1), 0 0 0 #0b2114, 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* LANDSCAPE: a phone on its side is ~372px tall, and a single column of ten slabs does not fit in
+   it. Two columns of the same slab do, with Play spanning both — the stack stays a stack, it just
+   folds. Capped and centred so it does not stretch into a pair of very wide bars on a tablet. */
+@media (orientation: landscape) {
+  .lobby-launcher.is-gameskin {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: center;
+    gap: 8px 12px;
+    width: min(100%, 720px);
+    margin: 0 auto;
+    padding: 8px 18px 12px;
+  }
+  .lobby-launcher.is-gameskin .lobby-btn { width: auto; height: 48px; }
+  .lobby-launcher.is-gameskin .lobby-btn.is-play { grid-column: 1 / -1; width: auto; height: 58px; }
+}
+
+/* Very short landscape (the smallest phones): trim the slabs rather than let the stack scroll. */
+@media (orientation: landscape) and (max-height: 380px) {
+  .lobby-launcher.is-gameskin { gap: 6px 10px; padding: 4px 16px 8px; }
+  .lobby-launcher.is-gameskin .lobby-btn { height: 42px; border-radius: 11px; }
+  .lobby-launcher.is-gameskin .lobby-btn.is-play { height: 50px; }
+  .lobby-launcher.is-gameskin .lobby-btn b { font-size: 13px; }
+  .lobby-launcher.is-gameskin .lobby-btn.is-play b { font-size: 16px; }
+  .lobby-launcher.is-gameskin .lobby-btn-ico { width: 30px; height: 30px; border-radius: 8px; }
+}
+
 /* ── Join page (iOS path into a game) ──────────────────────────────────────
    Deliberately NO scroll gap and content that fits: iOS must have nothing to
    scroll when the keyboard opens, because that scroll is what restores the bars
@@ -11830,6 +12004,12 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
     background:
       linear-gradient(115deg, rgba(4, 24, 15, 0.96) 0%, rgba(7, 37, 23, 0.9) 48%, rgba(3, 16, 11, 0.96) 100%),
       url("/assets/barnaby/barnaby-field.jpg") center center / cover no-repeat;
+    /* MUST come after the shorthand, which resets background-color to TRANSPARENT.
+       A body background propagates to the canvas, and `attachment: fixed` scopes those two image
+       layers to the viewport rectangle — so the landscape safe-area strip beside the notch sits
+       outside them and was painted with the colour, i.e. transparent, i.e. WHITE. A flat colour
+       has no positioning area to fall outside of and covers the strip in every bar state. */
+    background-color: #070e0a; /* layout.tsx themeColor — the dark both pages already sit on */
     background-attachment: fixed, fixed;
   }
 

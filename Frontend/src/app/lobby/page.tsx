@@ -11,6 +11,7 @@ import { soundManager } from "../../lib/soundManager";
 import { useAuthStore } from "../../stores/auth-store";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
 import { DEFAULT_GAME_CONFIG } from "../../lib/game-config";
+import { GAME_MENU_SKIN } from "../../lib/mobile-flags";
 
 /** Same icon set the header menu uses, so a button here looks like its menu entry did. */
 const ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
@@ -70,7 +71,9 @@ export default function RootLandingPage() {
       {/* THE LOBBY IS A LAUNCHER. Every destination is a button on screen — no list, no menu to
           open. The entries come from the SAME admin-configured list the header menu uses, so what
           you set in the admin panel still drives them and the two cannot drift apart. */}
-      <main className="lobby-launcher">
+      {/* The arcade skin is ONE extra class — see GAME_MENU_SKIN in lib/mobile-flags.ts. The markup,
+          the entries and the admin config behind them are identical either way. */}
+      <main className={GAME_MENU_SKIN ? "lobby-launcher is-gameskin" : "lobby-launcher"}>
         <button className="lobby-btn is-play" onClick={play}>
           <span className="lobby-btn-ico"><Play size={26} fill="currentColor" /></span>
           <b>Play now</b>
