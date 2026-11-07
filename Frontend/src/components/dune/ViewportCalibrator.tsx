@@ -66,6 +66,10 @@ export function ViewportCalibrator() {
         "canFullscreen()": String(canFullscreen()),
         // The two readings that decide whether the swipe is possible at all.
         "chrome gap": `${Math.round(probe("lvh") - (window.visualViewport?.height ?? window.innerHeight))}`,
+        // THE number for the black-panel bug. The gap is scroll room the browser is meant to eat by
+        // collapsing its bars; whatever is still scrollable AFTER they are down is dead space the
+        // fixed page layer gets shifted by. Should be ~12px once the bars are gone, never ~90.
+        "leftover scroll": `${Math.max(0, d.scrollHeight - d.clientHeight)}`,
         "barsAreUp()": String(barsAreUp()),
         "isCollapsed()": String(isCollapsed()),
         "GAP applied": d.style.minHeight || "none",
@@ -122,7 +126,10 @@ export function ViewportCalibrator() {
               // An iOS device that believes it can go fullscreen is denied the scroll gap, and an
               // iOS device with no gap cannot clear its bars at all. Either one in red is the bug.
               (k === "canFullscreen()" && v === "true" && m["isIOS()"] === "true") ||
-              (k === "GAP applied" && v === "none" && m["isIOS()"] === "true")
+              (k === "GAP applied" && v === "none" && m["isIOS()"] === "true") ||
+              // Bars down but a big scrollable remainder = the gap was sized for a browser with
+              // more chrome than this one has, and the page is parked on dead space.
+              (k === "leftover scroll" && m["barsAreUp()"] === "false" && Number(v) > 40)
                 ? "#FF7A7A"
                 : undefined,
           }}

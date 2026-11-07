@@ -77,17 +77,6 @@ export function inFullscreen(): boolean {
   return !!(document.fullscreenElement || d.webkitFullscreenElement);
 }
 
-/**
- * Are the browser's own bars currently on screen?
- *
- * MEASURED, not inferred from scroll position. `scrollY` is unusable for this on iOS: the bars
- * collapse DURING the swipe, the viewport grows, and Safari settles the scroll back to a smaller
- * value — so a "scrolled past the gap" test never fires on a real device even though it passes in an
- * emulator, where nothing collapses and a programmatic scroll stays put.
- *
- * 100lvh is the viewport AS IF no chrome were present (on iOS it never shrinks); visualViewport.height
- * is what is genuinely visible right now. The difference between them IS the chrome.
- */
 /** True while an on-screen keyboard is (almost certainly) open. */
 export function keyboardOpen(): boolean {
   if (typeof document === "undefined") return false;
@@ -97,8 +86,20 @@ export function keyboardOpen(): boolean {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
 }
 
-export function barsAreUp(): boolean {
-  if (typeof window === "undefined") return false;
+/**
+ * How many pixels of browser chrome are on screen RIGHT NOW. 0 when none, or when unmeasurable.
+ *
+ * This is the one number the whole collapse mechanism turns on, so it is measured rather than
+ * assumed — and it is wildly different between browsers on the same phone. Landscape, same iPhone:
+ *
+ *   Safari iOS     ~101px   (top tab bar + bottom toolbar)
+ *   Chrome iOS       22px   (a thin omnibox; no bottom toolbar in landscape at all)
+ *
+ * Any constant tuned for one of those is wrong for the other by a factor of five, which is how both
+ * iOS-Chrome bugs in this file's history happened.
+ */
+export function chromeGapPx(): number {
+  if (typeof window === "undefined" || typeof document === "undefined") return 0;
   const probe = document.createElement("div");
   probe.style.cssText =
     "position:fixed;top:0;left:0;width:1px;height:100vh;height:100lvh;visibility:hidden;pointer-events:none";
@@ -106,7 +107,20 @@ export function barsAreUp(): boolean {
   const barsHidden = probe.getBoundingClientRect().height;
   probe.remove();
   const visible = window.visualViewport?.height ?? window.innerHeight;
-  if (!barsHidden || !visible) return false;
+  if (!barsHidden || !visible) return 0;
+  return Math.round(barsHidden - visible);
+}
+
+/**
+ * Are the browser's own bars currently on screen?
+ *
+ * MEASURED, not inferred from scroll position. `scrollY` is unusable for this on iOS: the bars
+ * collapse DURING the swipe, the viewport grows, and Safari settles the scroll back to a smaller
+ * value — so a "scrolled past the gap" test never fires on a real device even though it passes in an
+ * emulator, where nothing collapses and a programmatic scroll stays put.
+ */
+export function barsAreUp(): boolean {
+  if (typeof window === "undefined") return false;
   /**
    * 10px, not 24. MEASURED on an iPhone: Chrome for iOS in landscape reports 100lvh 372 against a
    * visual viewport of 350 — **22px of chrome** — with its omnibox plainly on screen. Safari shows
@@ -118,5 +132,5 @@ export function barsAreUp(): boolean {
    * said the job was done. A browser whose chrome is thinner than Safari's must not read as a
    * browser with no chrome at all.
    */
-  return barsHidden - visible >= 10;
+  return chromeGapPx() >= 10;
 }

@@ -11819,9 +11819,14 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
     height: max(var(--app-vh, 100dvh), 100dvh);
     overflow: hidden;
   }
-  /* The body behind the gap carries the lobby's own field, so what the collapse reveals is the same
-     picture rather than a bare strip. Both layers viewport-anchored so they line up across it. */
-  body:has(.landing-playground) {
+  /* The body behind the gap carries the page's own field, so what the collapse reveals is the same
+     picture rather than a bare strip. Both layers viewport-anchored so they line up across it.
+     THE ARENA IS LISTED HERE TOO. It never was, and that asymmetry is why the same leftover scroll
+     looked harmless on the lobby and like a black panel sliding out from under the game: the lobby
+     had a field painted behind it and the arena had nothing. The measured gap in FullBleedPage is
+     the actual fix; this is what the failure looks like if it ever comes back. */
+  body:has(.landing-playground),
+  body:has(.arena-viewport) {
     background:
       linear-gradient(115deg, rgba(4, 24, 15, 0.96) 0%, rgba(7, 37, 23, 0.9) 48%, rgba(3, 16, 11, 0.96) 100%),
       url("/assets/barnaby/barnaby-field.jpg") center center / cover no-repeat;

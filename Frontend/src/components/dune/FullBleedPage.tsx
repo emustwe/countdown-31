@@ -2,11 +2,29 @@
 
 import { useEffect } from "react";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
-import { barsAreUp, canFullscreen, keyboardOpen } from "../../lib/fullscreen";
+import { barsAreUp, canFullscreen, chromeGapPx, keyboardOpen } from "../../lib/fullscreen";
 import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
 
-/** Extra scroll height that lets Safari collapse its bars. ~101px measured + slack. */
-const GAP_PX = 112;
+/**
+ * THE GAP IS MEASURED, NOT A CONSTANT. This used to be a flat 112px and that was the whole bug.
+ *
+ * The gap exists to give the browser something to scroll so it will collapse its bars. The bars
+ * then eat the scroll: collapse reclaims exactly `chrome` pixels of viewport, so after collapsing
+ * the leftover scroll is `gap − chrome`. Whatever is left over is dead space that the page is
+ * parked on top of, and on iOS Chrome a fixed layer sitting over a scrolled document renders
+ * SHIFTED BY IT — which is the black panel that slides out from under the arena instead of a zoom.
+ *
+ *   Safari iOS    chrome ~101  →  112 gap  →  ~11px leftover   (never noticed — this is why it worked)
+ *   Chrome iOS    chrome   22  →  112 gap  →   90px leftover   ← the panel
+ *
+ * 90px of a 372px viewport is a quarter of the screen. Sizing the gap from the chrome actually on
+ * screen leaves ~12px in both browsers, so there is nothing left to shift.
+ */
+const GAP_SLACK_PX = 12;
+/** Below this a thumb flick may not register as a scroll at all, so the bars never collapse. */
+const MIN_GAP_PX = 34;
+/** Safari's ~101px is the widest chrome known; past this the measurement is wrong, not the browser. */
+const MAX_GAP_PX = 140;
 
 /**
  * Gives a full-bleed page the scroll room Safari needs to collapse its bars — on iOS ONLY.
@@ -44,9 +62,37 @@ export function FullBleedPage() {
       body.style.removeProperty("overflow-y");
     };
 
+    /**
+     * The gap currently applied, in px. Starts at the minimum and is replaced by a real measurement
+     * as soon as one is available — never read back out of the DOM, because the style it is written
+     * to is the very thing being measured against.
+     */
+    let gapPx = MIN_GAP_PX;
+
+    /**
+     * Re-measure the chrome and resize the gap to match it.
+     *
+     * ONLY while the bars are actually up. Once they are down the chrome measures 0, which would
+     * shrink the gap to the minimum — and shrinking the document under a page that is parked at the
+     * bottom of it forces scrollY back toward 0, which is one of the things that makes iOS put its
+     * bars back. The fix would trigger exactly what it prevents, so a collapsed page keeps the gap
+     * it collapsed with until something (a rotation, a reload, an app switch) says otherwise.
+     */
+    const remeasureGap = () => {
+      if (isCollapsed()) return;
+      // A focused field means the viewport is short because of the KEYBOARD, not the chrome. Taking
+      // that reading would size the gap to the keyboard and leave a gap that size behind once it
+      // closed — the same dead-space bug, from the other direction.
+      if (keyboardOpen()) return;
+      const chrome = chromeGapPx();
+      if (chrome < 10) return; // bars already down, or unmeasurable — keep what we have
+      gapPx = Math.min(MAX_GAP_PX, Math.max(MIN_GAP_PX, chrome + GAP_SLACK_PX));
+    };
+
     const sync = () => {
       if (!applies()) return clear();
-      el.style.setProperty("min-height", `calc(100% + ${GAP_PX}px)`);
+      remeasureGap();
+      el.style.setProperty("min-height", `calc(100% + ${gapPx}px)`);
       el.style.setProperty("overflow-y", "auto", "important");
       body.style.setProperty("overflow-y", "auto", "important");
     };
@@ -138,7 +184,7 @@ export function FullBleedPage() {
         // avatar list — freezing the scroll would make it unusable, so those keep their scrolling
         // and simply get the arrow back when the bars return.
         const d = document.documentElement;
-        const ownContent = d.scrollHeight - d.clientHeight > GAP_PX + 40;
+        const ownContent = d.scrollHeight - d.clientHeight > gapPx + 40;
         if (!ownContent) lock();
       }
     };
