@@ -11501,21 +11501,26 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
 }
 
 .lobby-launcher.is-gameskin .lobby-btn {
-  /* Grid, not flex: Play carries a second line of text and the others do not, and a grid puts the
-     icon beside a text column that is one row or two without either case needing its own rule. */
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-content: center;
-  justify-items: start;
-  column-gap: 12px;
-  row-gap: 1px;
+  /* CENTRED COLUMN, not a grid with the icon in its own track. The reference menu centres its
+     label in the slab, so the label owns the full width and the icon is lifted out of the flow
+     and pinned to the left end — a grid track would push the text off-centre by the icon's width,
+     which is exactly how the first attempt ended up left-aligned. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
 
-  width: min(100%, 420px);
+  /* NARROW AND CENTRED. The reference's slabs sit around two thirds of the screen with the field
+     visible either side; full-width bars read as a web nav, not a game menu. Capped so they stay
+     the same size on a big phone instead of stretching edge to edge. */
+  width: clamp(218px, 66%, 300px);
   flex: 0 0 auto;
   min-height: 0;
-  height: 54px;
-  padding: 0 16px 0 10px;
-  border-radius: 13px;
+  height: 48px;
+  padding: 0 12px;
+  border-radius: 12px;
   border: 2px solid #07140c;
   background: linear-gradient(180deg, #2f6040 0%, #1e4429 54%, #163420 100%);
   box-shadow:
@@ -11542,12 +11547,11 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
 .lobby-launcher.is-gameskin .lobby-btn:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 3px; }
 
 .lobby-launcher.is-gameskin .lobby-btn b {
-  grid-column: 2;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.055em;
   text-transform: uppercase;
-  text-align: left;
+  text-align: center; /* centred in the slab, like the reference — not beside the icon */
   line-height: 1.1;
   color: #fff6e2;
   /* Outlined arcade lettering. A hard 1px drop plus a soft halo reads as a stroke at this size and
@@ -11555,30 +11559,33 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6), 0 0 9px rgba(0, 0, 0, 0.35);
 }
 .lobby-launcher.is-gameskin .lobby-btn small {
-  grid-column: 2;
-  font-size: 10px;
+  font-size: 9.5px;
   letter-spacing: 0.02em;
+  text-align: center;
   color: #bfe6cb;
 }
 
-/* The icon sits in its own recessed tile — the inset shadow is what sinks it into the slab. */
+/* PINNED to the left end and OUT OF THE FLOW, so it cannot shift the label off centre. Smaller and
+   flatter than before: at two thirds width the recessed tile crowded the longer labels. */
 .lobby-launcher.is-gameskin .lobby-btn-ico {
-  grid-column: 1;
-  grid-row: 1 / -1;
-  align-self: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: 2px solid rgba(0, 0, 0, 0.4);
-  background: rgba(0, 0, 0, 0.26);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
   color: #ffd98a;
+  opacity: 0.92;
+  pointer-events: none;
 }
+.lobby-launcher.is-gameskin .lobby-btn-ico svg { width: 19px; height: 19px; }
 
-/* Play leads the stack: gold, taller, and the only slab with a second line. */
+/* Play leads the stack: gold, and the only slab with a second line — so a little taller, but the
+   SAME WIDTH as the rest. In the reference every slab is one width and colour alone marks the
+   primary action; a wider Play button broke the column's edge. */
 .lobby-launcher.is-gameskin .lobby-btn.is-play {
-  width: min(100%, 420px);
-  height: 66px;
+  width: clamp(218px, 66%, 300px);
+  height: 56px;
   background: linear-gradient(180deg, #ffd47d 0%, #f5a524 50%, #d4820f 100%);
   border-color: #351c03;
   box-shadow:
@@ -11596,17 +11603,12 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
     0 3px 8px rgba(0, 0, 0, 0.42);
 }
 .lobby-launcher.is-gameskin .lobby-btn.is-play b {
-  font-size: 19px;
+  font-size: 17px;
   color: #2b1703;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45); /* lit from above, like the slab */
 }
 .lobby-launcher.is-gameskin .lobby-btn.is-play small { color: #5d3907; }
-.lobby-launcher.is-gameskin .lobby-btn.is-play .lobby-btn-ico {
-  background: rgba(255, 255, 255, 0.26);
-  border-color: rgba(0, 0, 0, 0.28);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.22), inset 0 -1px 0 rgba(255, 255, 255, 0.3);
-  color: #2b1703;
-}
+.lobby-launcher.is-gameskin .lobby-btn.is-play .lobby-btn-ico { color: #2b1703; opacity: 0.85; }
 
 /* The header's account button, cut from the same material — otherwise it is the one flat web
    control left on an otherwise physical screen. */
@@ -11634,18 +11636,19 @@ body:has(.lobby-launcher.is-gameskin) .lobby-profile:active {
     margin: 0 auto;
     padding: 8px 18px 12px;
   }
-  .lobby-launcher.is-gameskin .lobby-btn { width: auto; height: 48px; }
-  .lobby-launcher.is-gameskin .lobby-btn.is-play { grid-column: 1 / -1; width: auto; height: 58px; }
+  .lobby-launcher.is-gameskin .lobby-btn { width: min(100%, 300px); height: 46px; justify-self: center; }
+  .lobby-launcher.is-gameskin .lobby-btn.is-play { grid-column: 1 / -1; width: min(100%, 300px); height: 54px; }
 }
 
 /* Very short landscape (the smallest phones): trim the slabs rather than let the stack scroll. */
 @media (orientation: landscape) and (max-height: 380px) {
   .lobby-launcher.is-gameskin { gap: 6px 10px; padding: 4px 16px 8px; }
-  .lobby-launcher.is-gameskin .lobby-btn { height: 42px; border-radius: 11px; }
-  .lobby-launcher.is-gameskin .lobby-btn.is-play { height: 50px; }
-  .lobby-launcher.is-gameskin .lobby-btn b { font-size: 13px; }
-  .lobby-launcher.is-gameskin .lobby-btn.is-play b { font-size: 16px; }
-  .lobby-launcher.is-gameskin .lobby-btn-ico { width: 30px; height: 30px; border-radius: 8px; }
+  .lobby-launcher.is-gameskin .lobby-btn { height: 40px; border-radius: 10px; }
+  .lobby-launcher.is-gameskin .lobby-btn.is-play { height: 48px; }
+  .lobby-launcher.is-gameskin .lobby-btn b { font-size: 12.5px; }
+  .lobby-launcher.is-gameskin .lobby-btn.is-play b { font-size: 15px; }
+  .lobby-launcher.is-gameskin .lobby-btn-ico { left: 9px; width: 19px; height: 19px; }
+  .lobby-launcher.is-gameskin .lobby-btn-ico svg { width: 17px; height: 17px; }
 }
 
 /* ── Join page (iOS path into a game) ──────────────────────────────────────
