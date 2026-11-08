@@ -7,9 +7,6 @@ import { MasterAvatar } from "./MasterAvatar";
 import type { AvatarConfig } from "../../stores/avatar-customization-store";
 import type { LivePlayer } from "../../lib/hooks/useCountdownLive";
 
-/** v2 only: how many players the list shows at once — the active one plus the next few up. */
-const V2_ROWS = 4;
-
 const C = { gold: "#F5A524", goldSoft: "#FFD98A", cyan: "#2ED3E9", mute: "#8A8071" };
 
 /* Two-letter initials for the roster avatar (strips emoji/symbols): "Daisy Cow 🌸" → "DC". */
@@ -64,24 +61,45 @@ export function ArenaRoster({
 }) {
   const alive = players.filter((p) => !p.eliminated).length;
 
-  /** True seat numbers, so a windowed list still shows a player's real position, not its row index. */
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+  const dragY = React.useRef<number | null>(null);
+  const onDragStart = (e: React.TouchEvent) => {
+    dragY.current = e.touches[0]?.clientY ?? null;
+  };
+  const onDragMove = (e: React.TouchEvent) => {
+    const el = listRef.current;
+    const y = e.touches[0]?.clientY;
+    if (!el || y == null || dragY.current == null) return;
+    el.scrollTop += dragY.current - y;
+    dragY.current = y;
+  };
+  const onDragEnd = () => {
+    dragY.current = null;
+  };
+
+  /** True seat numbers, so a row shows a player's real position, not its index in this order. */
   const seatOf = new Map(players.map((p, i) => [p.id, i + 1] as const));
 
   /**
-   * v2 WINDOW: the active player, then whoever is up after them, wrapping round the table.
+   * v2 ORDER: the active player first, then whoever is up after them, wrapping round the table;
+   * knocked-out players last.
    *
-   * Turn order rather than seat order, because mid-game the question a player is asking is "who is
-   * going, and who is coming" — a fixed seat list answers neither once the turn has moved past row
-   * one. Eliminated players are dropped: they take no turns, so they cannot be "next".
+   * Turn order rather than seat order, because mid-game the question is "who is going, and who is
+   * coming" — a seat list answers neither once the turn has moved past row one.
+   *
+   * EVERYONE IS RENDERED. This used to be a window of four with a "+N more in the ring" line under
+   * it, which meant the fifth player existed only as a number — and the line itself was the first
+   * thing clipped when the list ran out of room. The list scrolls instead, so the whole ring is
+   * reachable and nothing is hidden behind a count.
    */
   const rows = (() => {
     if (!v2) return players;
     const pool = players.filter((p) => !p.eliminated);
-    if (!pool.length) return players.slice(0, V2_ROWS);
+    const out = players.filter((p) => p.eliminated);
+    if (!pool.length) return players;
     const start = Math.max(0, pool.findIndex((p) => p.id === currentId));
-    return Array.from({ length: Math.min(V2_ROWS, pool.length) }, (_, k) => pool[(start + k) % pool.length]!);
+    return [...Array.from({ length: pool.length }, (_, k) => pool[(start + k) % pool.length]!), ...out];
   })();
-  const hidden = v2 ? Math.max(0, alive - rows.length) : 0;
   const W = plainText
     ? { hdr: 400, cnt: 400, seat: 400, ava: 500, name: 400, you: 500, role: 400 }
     : { hdr: 900, cnt: 800, seat: 800, ava: 900, name: 800, you: 900, role: 600 };
@@ -119,14 +137,19 @@ export function ArenaRoster({
       </div>
 
       {/* Player rows */}
-      <div className="cab-roster-list" style={{ display: "flex", flexDirection: "column", gap: v2 ? 12 : 8, overflowY: "auto", flex: 1, minHeight: 0, paddingRight: 4, paddingLeft: v2 ? 0 : 28 }}>
+      <div
+        className="cab-roster-list"
+        ref={listRef}
+        {...(v2 ? { onTouchStart: onDragStart, onTouchMove: onDragMove, onTouchEnd: onDragEnd, onTouchCancel: onDragEnd } : {})}
+        style={{ display: "flex", flexDirection: "column", gap: v2 ? 12 : 8, overflowY: "auto", flex: 1, minHeight: 0, paddingRight: v2 ? 7 : 4, paddingLeft: v2 ? 0 : 28, touchAction: v2 ? "pan-y" : undefined, overscrollBehavior: "contain" }}
+      >
         {rows.map((pl, i) => {
           const isCur = pl.id === currentId && !pl.eliminated;
           const isMe = pl.id === myId;
           /** v2's top row replaces the floating detail card, so it is taller and carries its content. */
           const hero = v2 && i === 0;
           /** v2 portraits are big rectangles, not small discs — the row is mostly picture. */
-          const avaSize = hero ? 118 : v2 ? 68 : 38;
+          const avaSize = hero ? 118 : v2 ? 84 : 38;
           // Turn pointer: an arrow that sits in the left gutter of whoever's turn it is (so it "moves"
           // to the active player as turns pass). Cyan = YOU, gold = another player (the cyan=YOU rule).
           const showArrow = isCur && status === "playing";
@@ -194,7 +217,7 @@ export function ArenaRoster({
                   style={{
                     width: avaSize,
                     height: avaSize,
-                    borderRadius: hero ? 22 : 16,
+                    borderRadius: hero ? 18 : 14,
                     overflow: "hidden",
                     flex: "none",
                     background: "rgba(8,7,5,.6)",
@@ -214,11 +237,15 @@ export function ArenaRoster({
               <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
                 {/* v2's top row leads with the badge the floating card used to carry. */}
                 {hero && isCur && status === "playing" && (
-                  <span style={{ alignSelf: "flex-start", marginBottom: 8, fontSize: 14, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase", padding: "5px 13px", borderRadius: 999, color: isMe ? C.cyan : C.goldSoft, border: `1.5px solid ${isMe ? C.cyan : C.gold}55`, background: `${isMe ? C.cyan : C.gold}14` }}>
+                  <span style={{ alignSelf: "flex-start", marginBottom: 6, fontSize: 10, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", padding: "3px 9px", borderRadius: 999, color: isMe ? C.cyan : C.goldSoft, border: `1px solid ${isMe ? C.cyan : C.gold}55`, background: `${isMe ? C.cyan : C.gold}14` }}>
                     {isMe ? "⚡ Your turn" : "⚡ Active turn"}
                   </span>
                 )}
-                <span style={{ fontSize: hero ? 34 : v2 ? 23 : 14, fontWeight: W.name, color: pl.eliminated ? C.mute : "#fff", textDecoration: pl.eliminated ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: hero ? 40 : v2 ? 24 : 14,
+                  // BOLD on the active row whatever the board's text weight is: `plainText` drops the
+                  // roster to regular so a long list is not a wall, but the row whose turn it is
+                  // has to win that trade.
+                  fontWeight: hero ? 900 : W.name, color: pl.eliminated ? C.mute : "#fff", textDecoration: pl.eliminated ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {/* Country flag, ahead of the name. Absent for CPU cows and for players who joined
                       before the country picker existed — the row simply has no flag then. */}
                   {countryFlag(pl.country) && (
@@ -244,14 +271,6 @@ export function ArenaRoster({
             </div>
           );
         })}
-
-        {/* The list is a WINDOW in v2, so say how many players it is not showing. Without this the
-            arena silently looks like a 4-player game once the table is bigger than the window. */}
-        {hidden > 0 && (
-          <div style={{ flex: "none", textAlign: "center", padding: "8px 0 2px", fontSize: 14, letterSpacing: ".14em", textTransform: "uppercase", fontWeight: W.role, color: C.mute }}>
-            + {hidden} more in the ring
-          </div>
-        )}
       </div>
 
     </div>

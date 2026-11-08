@@ -598,7 +598,7 @@ function ClassicArcBoardImpl({
         /* Fixed-height, scrollable roster list — the panel NEVER grows with more players; extra rows
            scroll. Thin amber scrollbar so it's clearly scrollable. */
         .cab-roster-list{scrollbar-width:thin;scrollbar-color:rgba(245,165,36,.55) transparent}
-        .cab-roster-list::-webkit-scrollbar{width:5px}
+        .cab-roster-list::-webkit-scrollbar{width:7px}
         .cab-roster-list::-webkit-scrollbar-thumb{background:rgba(245,165,36,.55);border-radius:999px}
         .cab-roster-list::-webkit-scrollbar-track{background:transparent}
         .cab-panel-title{font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:900;color:#c8b790}
