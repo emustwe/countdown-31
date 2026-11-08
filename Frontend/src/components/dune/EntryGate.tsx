@@ -2,6 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import { requestFullscreen } from "../../lib/fullscreen";
+import { WholeImageBackdrop } from "./WholeImageBackdrop";
 
 /**
  * The first screen a visitor meets: one button.
@@ -20,6 +21,17 @@ import { requestFullscreen } from "../../lib/fullscreen";
 export function EntryGate({ onNext }: { onNext: () => void }) {
   return (
     <div className="entry-gate">
+      {/* The pasture, WHOLE. This screen is portrait-native, which is the worst case for a 16:9
+          photograph — see WholeImageBackdrop.
+
+          The tint is the one .entry-gate used to carry in its own `background` shorthand, at roughly
+          half the alpha. It was .78 → .96 because it had to hold legible text over a bright, sharp,
+          screen-filling crop; the backdrop now dims its own surround, so keeping those values simply
+          crushed the picture to near-black. The text still has a dark ground under it. */}
+      <WholeImageBackdrop
+        src="/assets/barnaby/barnaby-field.jpg"
+        tint="linear-gradient(180deg, rgba(8, 18, 12, 0.4) 0%, rgba(10, 24, 16, 0.5) 45%, rgba(6, 12, 8, 0.72) 100%)"
+      />
       <div className="entry-gate-mark" aria-hidden="true">
         31
       </div>

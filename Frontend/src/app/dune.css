@@ -11277,6 +11277,89 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
    reachable. The arena list is the ORIGINAL straight ArenaRoster in both
    designs; the arc design only asks it for normal-weight type. */
 
+/* ── The background picture, COMPLETE ──────────────────────────────────────
+   Used by the entry screen and the lobby menu; see WholeImageBackdrop.tsx for
+   the full reasoning, which is the short version of: barnaby-field.jpg is 16:9
+   and a phone held upright is 1:2.17, so `cover` was throwing away three
+   quarters of it and cutting Barnaby in half.
+
+   z-index -1 keeps the stack behind the page's own content without needing any
+   of that content to opt in. Both hosts are stacking contexts already
+   (.entry-gate has a z-index, PastureAmbiance's wrapper is .z-0), so it can
+   never escape upward past them.
+   ─────────────────────────────────────────────────────────────────────────*/
+.whole-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden; /* contains the filler's scale — nothing spills onto the page */
+  pointer-events: none;
+  /* So the picture can size itself against THIS box in cqw/cqh rather than against the viewport —
+     see WholeImageBackdrop. The lobby's host is sized from --app-vh, which on iOS is not 100vh, so
+     viewport units here would have been off by the height of the browser bars. */
+  container-type: size;
+  /* The ground the filler sits on. A blurred photograph ALONE was not enough: blow this picture up
+     on a tall screen and the low sun becomes a pale blob a third of the screen across, which reads
+     as a stain rather than as sky. A dark pasture gradient underneath, with the blur let through at
+     reduced strength on top of it, keeps the texture and loses the blob.
+
+     FLAT, deliberately — a vertical fade, not a radial. A radial here put its own bright centre on
+     the screen, which is the exact defect it was added to remove: a soft pale disc in the upper
+     middle that reads as a smudge rather than as sky. */
+  background: linear-gradient(180deg, #16301f 0%, #0f2316 46%, #081409 100%);
+}
+.whole-bg-fill,
+.whole-bg-tint {
+  position: absolute;
+  inset: 0;
+}
+/* The lobby's two drifting orbs are flat discs of colour — #f8cc42 and #3ee276 — at 20% opacity with
+   only 8px of blur. Over the old screen-filling crop of sunlit grass they read as haze and nobody
+   ever saw them. Over the darker surround this backdrop puts behind them they read as two stickers,
+   a yellow one at the top and a green one at the bottom. Softened here rather than removed, and
+   scoped to the pages that use the backdrop, so the orbs are untouched everywhere else. */
+.landing-playground:has(.whole-bg) .landing-orb {
+  opacity: 0.07;
+  filter: blur(60px);
+}
+/* The filler. Blurred hard, dimmed and only half opaque on purpose: it has to read as depth behind
+   the picture, not as a second picture competing with it. Scaled past the edges because blur samples
+   transparency from outside the box, which would otherwise leave a pale halo around the border. */
+.whole-bg-fill {
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transform: scale(1.24);
+  filter: blur(52px) brightness(0.62) saturate(0.62);
+  opacity: 0.7;
+}
+/* The picture, whole. max-width/max-height with auto sizing lays the <img> out at exactly the box
+   `contain` would have painted into — so the element IS the picture, and the percentage mask below
+   feathers the picture's own four edges rather than the viewport's. */
+.whole-bg-img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  /* Two gradients intersected: a vertical feather and a horizontal one. Which pair of edges
+     actually has blur beside it depends on the screen's shape — tall phone: top and bottom; wide
+     phone held sideways: left and right — so both are always applied and the ones with nothing
+     beside them simply fade into more of the same picture. Where mask-composite is unsupported the
+     mask drops out entirely and the edges are merely hard, which is where this started. */
+  -webkit-mask-image:
+    linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%),
+    linear-gradient(90deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  mask-image:
+    linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%),
+    linear-gradient(90deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
 .anb-layer { position: absolute; inset: 0; pointer-events: none; }
 .anb-layer > * { pointer-events: auto; }
 
@@ -11293,10 +11376,20 @@ body:has(.mobile-landscape-game) .mobile-arena-profile {
   will-change: transform, opacity;
   /* The travel along the arc lives HERE, not in a rAF loop — persisting numbers ease to their new
      slot on the compositor, and arriving ones fade in at their final place instead of flying in from
-     off-arc (which is what made them pop). */
-  transition: transform .52s cubic-bezier(.22,.9,.24,1), background .28s ease, border-color .28s ease,
-              color .28s ease, box-shadow .28s ease, opacity .3s ease;
-  animation: anb-in .34s ease both;
+     off-arc (which is what made them pop).
+
+     PACE: .52s with a plain decelerating curve read as a cut, not a move — the numbers were simply
+     somewhere else the next time you looked. .9s is slow enough to follow one number up the arc with
+     your eye, and the curve now ends ABOVE 1 (y1 = 1.3), so a number coasts a little past its slot
+     and rocks back into it. That small overshoot is the whole difference between a value changing
+     and a thing moving. Still far inside the CPU's 3.5–6.5s think time, so the arc is always at rest
+     before the next turn lands.
+
+     The colour cross-fades are stretched to match: at .28s against a .9s slide, a number finished
+     changing colour while it was still halfway up the arc. */
+  transition: transform .9s cubic-bezier(.34,1.3,.5,1), background .52s ease, border-color .52s ease,
+              color .52s ease, box-shadow .52s ease, opacity .5s ease;
+  animation: anb-in .55s ease both;
 }
 @keyframes anb-in { from { opacity: 0 } }
 .anb-node.is-live { cursor: pointer; }
@@ -11710,9 +11803,10 @@ body:has(.lobby-launcher.is-gameskin) .lobby-profile:active {
   padding: 40px 28px;
   text-align: center;
   color: #fff8ef;
-  background:
-    linear-gradient(180deg, rgba(8, 18, 12, 0.78) 0%, rgba(10, 24, 16, 0.86) 45%, rgba(6, 12, 8, 0.96) 100%),
-    url("/assets/barnaby/barnaby-field.jpg") center center / cover no-repeat;
+  /* The picture and its tint moved into <WholeImageBackdrop> (see EntryGate.tsx) so the frame can
+     be shown COMPLETE rather than cropped to fill. What stays here is the colour underneath it —
+     layout.tsx's themeColor — which is all that is ever visible through the backdrop. */
+  background: #070e0a;
 }
 .entry-gate-mark {
   width: 74px;

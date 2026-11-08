@@ -45,7 +45,9 @@ export default function RootLandingPage() {
       <ViewportCalibrator />
       <FullBleedPage />
       <div className="landing-playground">
-      <PastureAmbiance />
+      {/* wholeImage: the menu is the one screen where the pasture IS the view, so it is shown
+          complete rather than cropped to fill. See WholeImageBackdrop. */}
+      <PastureAmbiance wholeImage />
       <div className="landing-orb landing-orb-one" />
       <div className="landing-orb landing-orb-two" />
 

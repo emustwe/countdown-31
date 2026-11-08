@@ -4,26 +4,47 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
 import { DEFAULT_GAME_CONFIG, type GameConfig } from "../../lib/game-config";
+import { WholeImageBackdrop } from "./WholeImageBackdrop";
 
 export function PastureAmbiance({
   config: passedConfig,
   isTournament = false,
+  /**
+   * Show the WHOLE background photograph instead of a cover crop — see WholeImageBackdrop.
+   *
+   * OPT-IN, and only the lobby passes it. The game screen and the event pages keep the cover
+   * crop they have always had: there the picture is atmosphere behind a full-bleed board, and
+   * cropping it is the right call. On the lobby it is the view, and cover was cutting Barnaby
+   * in half.
+   */
+  wholeImage = false,
 }: {
   config?: GameConfig;
   isTournament?: boolean;
+  wholeImage?: boolean;
 } = {}) {
   const { data: serverConfig } = useGameConfig();
   const config = passedConfig ?? (isTournament ? (serverConfig ?? DEFAULT_GAME_CONFIG) : DEFAULT_GAME_CONFIG);
+  const tint = `linear-gradient(rgba(2,8,5,${config.arena.overlayOpacity}),rgba(2,8,5,.76))`;
   return (
     <div className="fixed inset-0 pointer-events-none select-none overflow-hidden z-0">
+      {wholeImage ? (
+        <WholeImageBackdrop src={config.arena.backgroundImage} tint={tint} />
+      ) : (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `${tint},url('${config.arena.backgroundImage}')` }}
+        />
+      )}
+      {/* Warm Golden Sunbeam Radial Glow.
+          Halved under wholeImage: this glow was tuned against a bright, screen-filling crop, where
+          it reads as haze. Against the darker surround the whole-image backdrop puts behind it, the
+          same amber at full strength reads as a pale blob a third of the screen wide. */}
       <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage: `linear-gradient(rgba(2,8,5,${config.arena.overlayOpacity}),rgba(2,8,5,.76)),url('${config.arena.backgroundImage}')`,
-        }}
+        className={`absolute -top-24 left-1/2 -translate-x-1/2 w-[700px] h-[340px] rounded-full bg-gradient-to-b from-amber-300/20 via-emerald-400/10 to-transparent blur-3xl${
+          wholeImage ? " opacity-40" : ""
+        }`}
       />
-      {/* Warm Golden Sunbeam Radial Glow */}
-      <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[700px] h-[340px] rounded-full bg-gradient-to-b from-amber-300/20 via-emerald-400/10 to-transparent blur-3xl" />
 
       {/* Gentle Floating Sunlight Orbs */}
       {config.features.enableParticles && (

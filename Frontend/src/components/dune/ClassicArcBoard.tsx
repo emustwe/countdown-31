@@ -253,7 +253,13 @@ function ArcNode({
       }}
     >
       {active && <span className="cab-ring" style={{ width: size + 8, height: size + 8 }} />}
+      {/* The landing. `active` turns on partway through the hop (|step| < 0.35 — measured at 204ms of
+          the 1040ms travel), so the swell happens while the cow is closing on the apex rather than
+          as it sets off, and is over by 824ms, before the rail settles. It ends on scale(1) with
+          `both`, so dropping the class next turn changes nothing on screen — no snap when the turn
+          passes on. */}
       <div
+        className={active ? "cab-arrive" : undefined}
         style={{
           width: "100%",
           height: "100%",
@@ -510,9 +516,29 @@ function ClassicArcBoardImpl({
       setOffset(0);
       return;
     }
-    const D = 560;
+    /**
+     * Travel time for one hop along the rail.
+     *
+     * 560ms with a plain decelerating curve was over before you had found the avatar that moved —
+     * the turn passing read as a jump cut. 1.04s is slow enough to follow one cow around the bowl,
+     * and still far inside the CPU's 3.5–6.5s think time (gameplay.botThinkMinMs), so the rail is
+     * always at rest well before the next turn lands.
+     */
+    const D = 1040;
     const start = performance.now();
-    const ease = (t: number) => 1 - Math.pow(1 - t, 3); // easeOutCubic ~ cubic-bezier(.22,.9,.24,1)
+    /**
+     * easeOutBack: the rail coasts to its new slot, slips a little PAST it, and settles back.
+     *
+     * That overshoot is what makes the move feel like weight being carried rather than a number
+     * being assigned. C1 sets how far past — 1.35 peaks about 8% of one step beyond the slot,
+     * roughly 1.5° of arc. ease(0) = 0 and ease(1) = 1 exactly, so `offset` still runs a clean
+     * 1 → 0 and every avatar lands precisely on its resting angle.
+     */
+    const C1 = 1.35;
+    const ease = (t: number) => {
+      const u = t - 1;
+      return 1 + (C1 + 1) * u * u * u + C1 * u * u;
+    };
     const tick = (nowT: number) => {
       const p = Math.min(1, (nowT - start) / D);
       setOffset(1 - ease(p)); // 1 → 0
@@ -615,8 +641,10 @@ function ClassicArcBoardImpl({
         @keyframes cab-fade{from{opacity:0;transform:translateY(-50%) translateX(-8px)}to{opacity:1;transform:translateY(-50%) translateX(0)}}
         @keyframes cab-pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,165,36,.5)}50%{box-shadow:0 0 0 6px rgba(245,165,36,0)}}
         @keyframes cab-turn-arrow{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+        .cab-arrive{animation:cab-arrive .62s cubic-bezier(.3,.9,.3,1) both}
+        @keyframes cab-arrive{0%{transform:scale(.88)}62%{transform:scale(1.08)}100%{transform:scale(1)}}
         @media (prefers-reduced-motion: reduce){[style*="cab-turn-arrow"]{animation:none!important}}
-        @media (prefers-reduced-motion: reduce){.cab-ring,.cab-card{animation:none}}
+        @media (prefers-reduced-motion: reduce){.cab-ring,.cab-card,.cab-arrive{animation:none}}
       `}</style>
 
       <div ref={stageRef} style={{ position: "relative", width: contentW, height: STAGE_H, transform: `translateX(${shift}px) scale(${scale})`, transformOrigin: "center center", flex: "none" }}>
