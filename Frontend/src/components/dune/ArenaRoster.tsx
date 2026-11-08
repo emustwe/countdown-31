@@ -89,7 +89,7 @@ export function ArenaRoster({
     <div
       className="cab-panel"
       style={{
-        padding: "16px 15px 14px",
+        padding: v2 ? "18px 20px 16px" : "16px 15px 14px",
         display: "flex",
         flexDirection: "column",
         minHeight: 0,
@@ -109,23 +109,24 @@ export function ArenaRoster({
       }}
     >
       {/* Header: ARENA · N/M ALIVE */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flex: "none" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, letterSpacing: ".22em", textTransform: "uppercase", fontWeight: W.hdr, color: "#c8b790" }}>
-          <Users size={13} style={{ color: C.gold }} /> Arena
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: v2 ? 14 : 12, flex: "none" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: v2 ? 10 : 7, fontSize: v2 ? 18 : 12, letterSpacing: ".22em", textTransform: "uppercase", fontWeight: W.hdr, color: "#c8b790" }}>
+          <Users size={v2 ? 19 : 13} style={{ color: C.gold }} /> Arena
         </span>
-        <span style={{ fontSize: 11, letterSpacing: ".08em", fontWeight: W.cnt, textTransform: "uppercase", color: C.goldSoft }}>
+        <span style={{ fontSize: v2 ? 16 : 11, letterSpacing: ".08em", fontWeight: W.cnt, textTransform: "uppercase", color: C.goldSoft }}>
           {alive} <span style={{ color: C.mute }}>/ {players.length} alive</span>
         </span>
       </div>
 
       {/* Player rows */}
-      <div className="cab-roster-list" style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", flex: 1, minHeight: 0, paddingRight: 4, paddingLeft: 28 }}>
+      <div className="cab-roster-list" style={{ display: "flex", flexDirection: "column", gap: v2 ? 12 : 8, overflowY: "auto", flex: 1, minHeight: 0, paddingRight: 4, paddingLeft: v2 ? 0 : 28 }}>
         {rows.map((pl, i) => {
           const isCur = pl.id === currentId && !pl.eliminated;
           const isMe = pl.id === myId;
           /** v2's top row replaces the floating detail card, so it is taller and carries its content. */
           const hero = v2 && i === 0;
-          const avaSize = hero ? 62 : v2 ? 46 : 38;
+          /** v2 portraits are big rectangles, not small discs — the row is mostly picture. */
+          const avaSize = hero ? 118 : v2 ? 68 : 38;
           // Turn pointer: an arrow that sits in the left gutter of whoever's turn it is (so it "moves"
           // to the active player as turns pass). Cyan = YOU, gold = another player (the cyan=YOU rule).
           const showArrow = isCur && status === "playing";
@@ -141,9 +142,9 @@ export function ArenaRoster({
                 position: "relative",
                 display: "flex",
                 alignItems: "center",
-                gap: v2 ? 13 : 11,
-                padding: hero ? "13px 14px" : v2 ? "10px 13px" : "9px 11px",
-                borderRadius: 16,
+                gap: v2 ? 16 : 11,
+                padding: hero ? "16px 18px" : v2 ? "12px 16px" : "9px 11px",
+                borderRadius: v2 ? 20 : 16,
                 background: isCur
                   ? "linear-gradient(100deg, rgba(245,165,36,.22), rgba(245,165,36,.05))"
                   : "rgba(255,255,255,.035)",
@@ -155,7 +156,7 @@ export function ArenaRoster({
             >
               {/* Turn pointer — a bold gradient arrowhead in the left gutter of the active player's row
                   (cyan=you, gold=other), gently nudging toward the row. */}
-              {showArrow && (
+              {showArrow && !v2 && (
                 <span aria-hidden style={{ position: "absolute", left: -24, top: 0, bottom: 0, display: "flex", alignItems: "center", pointerEvents: "none" }}>
                   <svg
                     width="22"
@@ -180,7 +181,7 @@ export function ArenaRoster({
                 </span>
               )}
               {/* Seat number */}
-              <span style={{ minWidth: 21, height: 21, display: "grid", placeItems: "center", borderRadius: 7, fontFamily: "ui-monospace,Menlo,monospace", fontWeight: W.seat, fontSize: 11, flex: "none", color: isCur ? "#1b1206" : C.goldSoft, background: isCur ? C.gold : "rgba(8,7,5,.75)", border: `1px solid ${isCur ? C.goldSoft : "rgba(245,165,36,.28)"}` }}>
+              <span style={{ minWidth: v2 ? 32 : 21, height: v2 ? 32 : 21, display: "grid", placeItems: "center", borderRadius: v2 ? 11 : 7, fontFamily: "ui-monospace,Menlo,monospace", fontWeight: W.seat, fontSize: v2 ? 17 : 11, flex: "none", color: isCur ? "#1b1206" : C.goldSoft, background: isCur ? C.gold : "rgba(8,7,5,.75)", border: `1px solid ${isCur ? C.goldSoft : "rgba(245,165,36,.28)"}` }}>
                 {seat}
               </span>
               {/* The player's FACE, not their initials — v2 only.
@@ -193,7 +194,7 @@ export function ArenaRoster({
                   style={{
                     width: avaSize,
                     height: avaSize,
-                    borderRadius: hero ? 16 : 13,
+                    borderRadius: hero ? 22 : 16,
                     overflow: "hidden",
                     flex: "none",
                     background: "rgba(8,7,5,.6)",
@@ -213,11 +214,11 @@ export function ArenaRoster({
               <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
                 {/* v2's top row leads with the badge the floating card used to carry. */}
                 {hero && isCur && status === "playing" && (
-                  <span style={{ alignSelf: "flex-start", marginBottom: 3, fontSize: 9.5, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 999, color: isMe ? C.cyan : C.goldSoft, border: `1px solid ${isMe ? C.cyan : C.gold}55`, background: `${isMe ? C.cyan : C.gold}14` }}>
+                  <span style={{ alignSelf: "flex-start", marginBottom: 8, fontSize: 14, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase", padding: "5px 13px", borderRadius: 999, color: isMe ? C.cyan : C.goldSoft, border: `1.5px solid ${isMe ? C.cyan : C.gold}55`, background: `${isMe ? C.cyan : C.gold}14` }}>
                     {isMe ? "⚡ Your turn" : "⚡ Active turn"}
                   </span>
                 )}
-                <span style={{ fontSize: hero ? 19 : v2 ? 15 : 14, fontWeight: W.name, color: pl.eliminated ? C.mute : "#fff", textDecoration: pl.eliminated ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: hero ? 34 : v2 ? 23 : 14, fontWeight: W.name, color: pl.eliminated ? C.mute : "#fff", textDecoration: pl.eliminated ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {/* Country flag, ahead of the name. Absent for CPU cows and for players who joined
                       before the country picker existed — the row simply has no flag then. */}
                   {countryFlag(pl.country) && (
@@ -228,16 +229,18 @@ export function ArenaRoster({
                   {pl.name}
                   {isMe && <span style={{ color: C.cyan, fontWeight: W.you }}> · you</span>}
                 </span>
-                <span style={{ fontSize: hero ? 12.5 : 11, fontWeight: W.role, color: isCur ? C.goldSoft : C.mute, fontStyle: isCur && !isMe ? "italic" : "normal", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {hero ? `✦ ${role}` : role}
-                </span>
-                {/* The card also said whether this was a CPU cow. Kept, on the top row only. */}
-                {hero && pl.cpu && (
-                  <span style={{ fontSize: 10, fontWeight: W.role, color: C.mute, letterSpacing: ".04em" }}>CPU cow</span>
+                {/* NAME ONLY in v2. The cow title, the "Choosing…" line and the CPU label are all
+                    gone from the row by request — the badge above already says whose turn it is,
+                    and dropping the rest is what lets the name be this size. The default arena
+                    keeps its subtitle exactly as it was. */}
+                {!v2 && (
+                  <span style={{ fontSize: 11, fontWeight: W.role, color: isCur ? C.goldSoft : C.mute, fontStyle: isCur && !isMe ? "italic" : "normal", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {role}
+                  </span>
                 )}
               </span>
               {/* Status dot */}
-              <span style={{ width: 9, height: 9, borderRadius: 999, flex: "none", background: dot, boxShadow: pl.eliminated ? "none" : `0 0 7px ${dot}aa` }} />
+              <span style={{ width: v2 ? 13 : 9, height: v2 ? 13 : 9, borderRadius: 999, flex: "none", background: dot, boxShadow: pl.eliminated ? "none" : `0 0 7px ${dot}aa` }} />
             </div>
           );
         })}
@@ -245,7 +248,7 @@ export function ArenaRoster({
         {/* The list is a WINDOW in v2, so say how many players it is not showing. Without this the
             arena silently looks like a 4-player game once the table is bigger than the window. */}
         {hidden > 0 && (
-          <div style={{ flex: "none", textAlign: "center", padding: "4px 0 2px", fontSize: 10.5, letterSpacing: ".14em", textTransform: "uppercase", fontWeight: W.role, color: C.mute }}>
+          <div style={{ flex: "none", textAlign: "center", padding: "8px 0 2px", fontSize: 14, letterSpacing: ".14em", textTransform: "uppercase", fontWeight: W.role, color: C.mute }}>
             + {hidden} more in the ring
           </div>
         )}

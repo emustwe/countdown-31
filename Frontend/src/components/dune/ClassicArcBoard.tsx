@@ -84,8 +84,16 @@ const ARC_ROSTER_W = 300;
  * Grown 300 → 420 and moved left by the same 120, so its RIGHT edge stays exactly where it was and
  * the number arc beside it does not have to move at all.
  */
-const ARC_ROSTER_W_V2 = 420;
+const ARC_ROSTER_W_V2 = 560;
 const ARC_ROSTER_X_V2 = ARC_ROSTER_X - (ARC_ROSTER_W_V2 - ARC_ROSTER_W);
+/**
+ * ...and taller. 494 → 580 of a 680-unit stage, so the panel is the clear centre of the bowl
+ * rather than a column floating in it. Still centred on STAGE_H/2, which is the line the avatar
+ * rail's apex sits on, so growing it does not shift the composition — it only grows outward.
+ * The left edge lands at 278; the apex avatar reaches 196, so they do not touch.
+ */
+const ARENA_H_V2 = 580;
+const ARC_ROSTER_TOP_V2 = STAGE_H / 2 - ARENA_H_V2 / 2;
 /** Centred on STAGE_H/2, which is exactly where the player card's midline sits. */
 const ARC_ROSTER_TOP = STAGE_H / 2 - ARENA_H / 2;
 /** Submit + status sit OUTSIDE the arc, level with the apex number, so the button is right beside
@@ -657,9 +665,9 @@ function ClassicArcBoardImpl({
           style={{
             position: "absolute",
             left: arc ? (arenaV2 ? ARC_ROSTER_X_V2 : ARC_ROSTER_X) : ROSTER_X,
-            top: arc ? ARC_ROSTER_TOP : ROSTER_TOP,
+            top: arc ? (arenaV2 ? ARC_ROSTER_TOP_V2 : ARC_ROSTER_TOP) : ROSTER_TOP,
             width: arc ? (arenaV2 ? ARC_ROSTER_W_V2 : ARC_ROSTER_W) : ROSTER_W,
-            height: ARENA_H,
+            height: arenaV2 ? ARENA_H_V2 : ARENA_H,
           }}
         >
           <ArenaRoster

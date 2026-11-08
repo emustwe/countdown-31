@@ -32,7 +32,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         <AuthGate
           open
           next={pathname}
-          onClose={() => router.replace("/home")}
+          /* THE LOBBY, not /home. Closing a sign-in prompt means "I don't want this page", and
+             /home is the arena — so declining to sign in dropped a guest straight into a running
+             practice game. The lobby is where they came from and the hub everything returns to.
+             Same reasoning as Auth.tsx's own redirects, which were corrected earlier. */
+          onClose={() => router.replace("/lobby")}
           title="Your account is needed"
           message="Log in or create an account to open this page. You can still play the game as a guest."
         />
