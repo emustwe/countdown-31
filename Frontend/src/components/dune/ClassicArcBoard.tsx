@@ -92,7 +92,10 @@ const ARC_ROSTER_X_V2 = ARC_ROSTER_X - (ARC_ROSTER_W_V2 - ARC_ROSTER_W);
  * rail's apex sits on, so growing it does not shift the composition — it only grows outward.
  * The left edge lands at 278; the apex avatar reaches 196, so they do not touch.
  */
-const ARENA_H_V2 = 580;
+// 640, not 580. MEASURED on production: at 580 the four rows plus the "+N more" line overflowed
+// the list by 14px and clipped that line. 640 leaves 13px of slack and still spans y 70..363 of a
+// 372px landscape viewport, so the panel grew rather than the portraits shrinking.
+const ARENA_H_V2 = 640;
 const ARC_ROSTER_TOP_V2 = STAGE_H / 2 - ARENA_H_V2 / 2;
 /** Centred on STAGE_H/2, which is exactly where the player card's midline sits. */
 const ARC_ROSTER_TOP = STAGE_H / 2 - ARENA_H / 2;
