@@ -148,6 +148,27 @@ export function ArenaRoster({
           const isMe = pl.id === myId;
           /** v2's top row replaces the floating detail card, so it is taller and carries its content. */
           const hero = v2 && i === 0;
+          /**
+           * THE HERO NAME FITS, WHATEVER ITS LENGTH.
+           *
+           * 40px flat truncated "Barnaby Horns 👑" to "Barnaby Ho…".
+           *
+           * MEASURED in the rendered row rather than guessed: the text column is 261 stage units
+           * once the seat badge, the 118-unit portrait, the gaps and the status dot have taken
+           * theirs, and the largest size that fits is
+           *
+           *     11 glyphs → 40    15 → 32    22 → 22    24 → 20
+           *
+           * i.e. size × glyphs settles around 480 for anything long enough to be constrained. 465
+           * keeps a margin under every one of those, and the 40 cap stops short names ballooning.
+           * The 18 floor is where legibility gives out; past that the ellipsis takes over, which is
+           * the right outcome for a name no arena was designed to hold.
+           *
+           * Spread, not .length: an emoji is two UTF-16 units but one glyph, and most cow names
+           * carry one, so .length over-counts exactly the names that are tightest.
+           */
+          const nameGlyphs = Math.max(1, [...pl.name].length);
+          const heroFont = Math.max(18, Math.min(40, Math.floor(465 / nameGlyphs)));
           /** v2 portraits are big rectangles, not small discs — the row is mostly picture. */
           const avaSize = hero ? 118 : v2 ? 84 : 38;
           // Turn pointer: an arrow that sits in the left gutter of whoever's turn it is (so it "moves"
@@ -234,14 +255,18 @@ export function ArenaRoster({
                 </span>
               )}
               {/* Name + role */}
-              <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-                {/* v2's top row leads with the badge the floating card used to carry. */}
+              <span style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 1 }}>
+                {/* v2's top row leads with the badge the floating card used to carry.
+                    OUT OF THE FLOW, sitting just above the name rather than stacked with it: in
+                    the flow the pair was centred together, which pushed the NAME below the row's
+                    middle and left it looking low against the portrait. Absolute, and the name is
+                    the only thing left to centre. */}
                 {hero && isCur && status === "playing" && (
-                  <span style={{ alignSelf: "flex-start", marginBottom: 6, fontSize: 10, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", padding: "3px 9px", borderRadius: 999, color: isMe ? C.cyan : C.goldSoft, border: `1px solid ${isMe ? C.cyan : C.gold}55`, background: `${isMe ? C.cyan : C.gold}14` }}>
+                  <span style={{ position: "absolute", bottom: "100%", left: 0, marginBottom: 5, whiteSpace: "nowrap", fontSize: 10, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", padding: "3px 9px", borderRadius: 999, color: isMe ? C.cyan : C.goldSoft, border: `1px solid ${isMe ? C.cyan : C.gold}55`, background: `${isMe ? C.cyan : C.gold}14` }}>
                     {isMe ? "⚡ Your turn" : "⚡ Active turn"}
                   </span>
                 )}
-                <span style={{ fontSize: hero ? 40 : v2 ? 24 : 14,
+                <span style={{ fontSize: hero ? heroFont : v2 ? 24 : 14,
                   // BOLD on the active row whatever the board's text weight is: `plainText` drops the
                   // roster to regular so a long list is not a wall, but the row whose turn it is
                   // has to win that trade.

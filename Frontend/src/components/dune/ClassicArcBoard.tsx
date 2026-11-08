@@ -81,11 +81,20 @@ const ARC_ROSTER_W = 300;
 /**
  * v2 arena (preview flag `?arena=v2`): the floating detail card is gone, so the bowl between the
  * two arcs holds ONE thing instead of two and the list can have the room the card was using.
- * Grown 300 → 420 and moved left by the same 120, so its RIGHT edge stays exactly where it was and
- * the number arc beside it does not have to move at all.
+ * Grown 300 → 560 and moved left by the same amount, so its RIGHT edge stays where it was and the
+ * number arc beside it does not have to move at all.
  */
 const ARC_ROSTER_W_V2 = 560;
-const ARC_ROSTER_X_V2 = ARC_ROSTER_X - (ARC_ROSTER_W_V2 - ARC_ROSTER_W);
+/**
+ * NUDGE: +7 stage units ≈ 3 screen px at the landscape fit-scale (0.457).
+ *
+ * Keeping the right edge pinned made the panel grow leftward only, which left it sitting a touch
+ * left of the bowl's optical centre — the bowl is the gap between the two arcs, not the stage, and
+ * those are not the same midline. Small enough that the number arc keeps its clearance and the
+ * avatar rail (whose apex reaches x 196) gains some.
+ */
+const ARC_ROSTER_NUDGE_V2 = 7;
+const ARC_ROSTER_X_V2 = ARC_ROSTER_X - (ARC_ROSTER_W_V2 - ARC_ROSTER_W) + ARC_ROSTER_NUDGE_V2;
 /**
  * ...and taller. 494 → 580 of a 680-unit stage, so the panel is the clear centre of the bowl
  * rather than a column floating in it. Still centred on STAGE_H/2, which is the line the avatar
