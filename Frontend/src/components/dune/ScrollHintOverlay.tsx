@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { canFullscreen, requestFullscreen } from "../../lib/fullscreen";
 import { isCollapsed, onCollapseChange } from "../../lib/collapse-latch";
+import { isEntering, onEnteringChange } from "../../lib/entry-latch";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
 
 /** How many chevrons make the trail. Enough to read as a flowing stream, not a single icon. */
@@ -47,10 +48,15 @@ export function ScrollHintOverlay() {
       // return from another app. With it off, it behaves exactly as it does today: always on screen.
       // Reads the LATCH, not the viewport — so the keyboard opening cannot bring this back.
       const collapsed = ONE_WAY_COLLAPSE ? (fs ? already : isCollapsed()) : fs && already;
-      setShow(coarse && landscape && !standalone && !collapsed);
+      // NEVER during the entry takeover. The arena is mid-load: the board is not on screen yet, so
+      // there is nothing for a swipe to uncover, and the components that watch the bars and keep
+      // the viewport honest mount with the arena rather than before it. Offering the gesture there
+      // invited the one swipe nobody was listening to — see lib/entry-latch.ts.
+      setShow(coarse && landscape && !standalone && !collapsed && !isEntering());
     };
     sync();
     const offLatch = onCollapseChange(sync);
+    const offEntry = onEnteringChange(sync);
     window.addEventListener("resize", sync);
     window.addEventListener("scroll", sync, { passive: true });
     window.visualViewport?.addEventListener("resize", sync);
@@ -63,6 +69,7 @@ export function ScrollHintOverlay() {
     const poll = setInterval(sync, 800);
     return () => {
       offLatch();
+      offEntry();
       window.removeEventListener("resize", sync);
       window.removeEventListener("scroll", sync);
       window.visualViewport?.removeEventListener("resize", sync);

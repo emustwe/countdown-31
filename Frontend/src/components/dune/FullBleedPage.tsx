@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
-import { barsAreUp, canFullscreen, chromeGapPx, keyboardOpen } from "../../lib/fullscreen";
+import { barsAreUp, canFullscreen, chromeGapPx, keyboardOpen, resetChromeBaseline } from "../../lib/fullscreen";
 import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
 
 /**
@@ -192,6 +192,8 @@ export function FullBleedPage() {
     const onReturn = () => {
       if (document.visibilityState !== "visible") return;
       unlock();
+      // The bars come back on return, so what "bars up" measures starts over with them.
+      resetChromeBaseline();
       // Safari brings its bars back when you return to the tab, but the page is still sitting at the
       // bottom of the gap — so there is nothing left to scroll and the swipe is unavailable exactly
       // when it is needed again. Returning to 0 restores the gap, and the arrow with it.
@@ -202,8 +204,10 @@ export function FullBleedPage() {
       setCollapsed(false);
       unlock();
       // Rotating changes the chrome itself — iOS Chrome drops its bottom toolbar in landscape — so
-      // what was observed in the old orientation says nothing about the new one. Start again.
+      // what was observed in the old orientation says nothing about the new one. Start again: both
+      // the transition we were waiting for AND the bars-up height it is measured against.
       sawBarsUp = false;
+      resetChromeBaseline();
       sync();
     };
 

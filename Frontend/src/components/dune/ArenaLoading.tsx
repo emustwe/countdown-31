@@ -1,11 +1,19 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion } from "framer-motion";
+import { setEntering } from "../../lib/entry-latch";
 
 /**
  * A short branded loading takeover shown while the arena is prepared — used both when entering a
  * practice game and after the tournament wheel picks the starting order (so all players are seated /
  * the pasture is shuffled before play begins).
+ *
+ * NOTHING SCROLLS WHILE THIS IS UP. See lib/entry-latch.ts: the arena's own viewport machinery has
+ * not mounted yet, but the scroll gap left by the previous page has not gone away, so a swipe here
+ * moves the page with nobody watching and the board mounts into the position it left. Two halves to
+ * that: the latch tells the swipe-up arrow to stay off screen, and `touch-action: none` on this
+ * layer means a swipe that is tried anyway does nothing. Both end when this unmounts.
  */
 export function ArenaLoading({
   title = "Preparing the arena",
@@ -14,8 +22,19 @@ export function ArenaLoading({
   title?: string;
   subtitle?: string;
 }) {
+  useEffect(() => {
+    setEntering(true);
+    return () => setEntering(false);
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-7 bg-[#070e0a] px-6 select-none overflow-hidden">
+    <div
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-7 bg-[#070e0a] px-6 select-none overflow-hidden"
+      /* This layer covers the viewport, so every touch lands on IT and its touch-action is what
+         governs the gesture — the same reason FullBleedPage sets this on the arena surface rather
+         than on html/body, where it did nothing. */
+      style={{ touchAction: "none", overscrollBehavior: "none" }}
+    >
       <div className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-30 mix-blend-luminosity" style={{ backgroundImage: "url('/assets/barnaby/barnaby-field.jpg')" }} />
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.35)_0%,#040906_92%)]" />
 

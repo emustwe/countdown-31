@@ -1,5 +1,7 @@
 "use client";
 
+import { RELATIVE_BAR_COLLAPSE } from "./mobile-flags";
+
 /**
  * Is this an iOS device — ANY browser, not just Safari?
  *
@@ -112,25 +114,75 @@ export function chromeGapPx(): number {
 }
 
 /**
+ * 10px. MEASURED on an iPhone: Chrome for iOS in landscape reports 100lvh 372 against a visual
+ * viewport of 350 — **22px of chrome** — with its omnibox plainly on screen. Safari shows ~101px in
+ * the same state, which is where the old 24 came from, and 22 fell straight through it.
+ *
+ * That one number was the first iOS-Chrome bug. Reading 22 as "no chrome" meant the bars looked
+ * already gone the moment the arena loaded, so the page latched collapsed and locked itself
+ * (touch-action:none) at scroll 0 — nothing to scroll, and no arrow either, because the latch said
+ * the job was done. A browser whose chrome is thinner than Safari's must not read as a browser with
+ * no chrome at all.
+ */
+const CHROME_FLOOR_PX = 10;
+/** Past this the reading is the KEYBOARD, not the chrome — Safari's ~101px is the widest known. */
+const CHROME_PLAUSIBLE_MAX_PX = 140;
+/** Shrunk to below this share of the bars-up baseline = collapsed. See RELATIVE_BAR_COLLAPSE. */
+const COLLAPSED_SHARE = 0.5;
+
+/**
+ * The largest chrome seen since the last reset — i.e. what this browser's bars measure when they
+ * are fully UP, learned from the device instead of written down here.
+ *
+ * It only ever grows, so the frames mid-collapse (each smaller than the last) cannot move it, and
+ * it is reset by the two events that genuinely change what "bars up" means: a rotation (iOS Chrome
+ * drops its bottom toolbar in landscape, so the portrait figure says nothing about landscape) and a
+ * return from another app.
+ */
+let barsUpBaselinePx = 0;
+
+/** Forget the learned bars-up height. Call when the chrome itself changes — rotation, app switch. */
+export function resetChromeBaseline(): void {
+  barsUpBaselinePx = 0;
+}
+
+/**
  * Are the browser's own bars currently on screen?
  *
  * MEASURED, not inferred from scroll position. `scrollY` is unusable for this on iOS: the bars
  * collapse DURING the swipe, the viewport grows, and Safari settles the scroll back to a smaller
  * value — so a "scrolled past the gap" test never fires on a real device even though it passes in an
  * emulator, where nothing collapses and a programmatic scroll stays put.
+ *
+ * RELATIVE, not absolute (see RELATIVE_BAR_COLLAPSE). "Collapsed" cannot mean a fixed number of
+ * pixels, because what a collapsed browser leaves behind is different on every browser:
+ *
+ *   Safari iOS    ~101px up  →    0px collapsed
+ *   Chrome iOS      ~70px up  →  22px collapsed   ← never reaches any fixed floor above 22
+ *
+ * Measuring against the largest chrome this browser has shown instead means both describe the same
+ * event: the bars are down once they have shrunk to less than half of their full height. Safari is
+ * unaffected — 0 is below half of 101 just as it was below 10 — while Chrome's 22 against a 70px
+ * baseline finally reads as the collapse it is, so the arrow goes away and the page locks exactly
+ * as it does on Safari.
+ *
+ * The half-share matters as much as the baseline: a swipe collapses the bars over several frames,
+ * and a threshold set too close to the full height would fire mid-animation and lock the page with
+ * the bars still half up.
  */
 export function barsAreUp(): boolean {
   if (typeof window === "undefined") return false;
-  /**
-   * 10px, not 24. MEASURED on an iPhone: Chrome for iOS in landscape reports 100lvh 372 against a
-   * visual viewport of 350 — **22px of chrome** — with its omnibox plainly on screen. Safari shows
-   * ~101px in the same state, which is where 24 came from, and 22 fell straight through it.
-   *
-   * That one number was the whole iOS-Chrome bug. Reading 22 as "no chrome" meant the bars looked
-   * already gone the moment the arena loaded, so the page latched collapsed and locked itself
-   * (touch-action:none) at scroll 0 — nothing to scroll, and no arrow either, because the latch
-   * said the job was done. A browser whose chrome is thinner than Safari's must not read as a
-   * browser with no chrome at all.
-   */
-  return chromeGapPx() >= 10;
+  const gap = chromeGapPx();
+  // Learn the bars-up height — but never from a reading taken while a field is focused, and never
+  // from an implausibly large one. Both are the KEYBOARD shrinking the visual viewport, and a
+  // baseline poisoned to keyboard height would make the real bars-up state read as collapsed.
+  if (!keyboardOpen() && gap <= CHROME_PLAUSIBLE_MAX_PX && gap > barsUpBaselinePx) {
+    barsUpBaselinePx = gap;
+  }
+  if (gap < CHROME_FLOOR_PX) return false;
+  if (!RELATIVE_BAR_COLLAPSE) return true;
+  // STRICTLY greater: a browser sitting at exactly half its bars-up height has collapsed as far as
+  // it goes. Measured, this is the difference between covering a 44px toolbar and not — with `>=`,
+  // 22 against a 44px baseline reads as bars still up and the arrow never leaves.
+  return gap > Math.max(CHROME_FLOOR_PX, barsUpBaselinePx * COLLAPSED_SHARE);
 }

@@ -31,3 +31,21 @@ export const ONE_WAY_COLLAPSE = true;
  * not the collapse behaviour, not the admin-configured menu entries, which still drive both skins.
  */
 export const GAME_MENU_SKIN = true;
+
+/**
+ * ════════════════════════════════════════════════════════════════════════════
+ *  THE CHROME-iOS COLLAPSE SWITCH — change `true` to `false` and rebuild.
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * true  (new)  "The bars are down" means the browser chrome has shrunk to less than half of the
+ *              biggest it has been on this page. Chrome for iOS keeps a thin omnibox in landscape
+ *              even when fully collapsed, so it never reaches zero — and so, measured against a
+ *              fixed number, its bars read as permanently UP. That is why the swipe arrow never
+ *              went away there while Safari's did.
+ *
+ * false (old)  "The bars are down" means fewer than 10px of chrome, full stop. Correct on Safari,
+ *              which really does reach zero; never true on Chrome for iOS.
+ *
+ * Only `barsAreUp()` reads this. Nothing else changes either way.
+ */
+export const RELATIVE_BAR_COLLAPSE = true;
