@@ -2,16 +2,23 @@
 
 import { useEffect } from "react";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
-import { barsAreUp, canFullscreen, chromeGapPx, keyboardOpen, resetChromeBaseline } from "../../lib/fullscreen";
+import {
+  barsAreUp,
+  canFullscreen,
+  chromeGapPx,
+  keyboardOpen,
+  resetChromeBaseline,
+  sheddableChromePx,
+} from "../../lib/fullscreen";
 import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
 
 /**
  * THE GAP IS MEASURED, NOT A CONSTANT. This used to be a flat 112px and that was the whole bug.
  *
  * The gap exists to give the browser something to scroll so it will collapse its bars. A swipe
- * spends its first `chrome` pixels doing exactly that — and every pixel AFTER that genuinely
- * scrolls the document, sliding the fixed page layer up and exposing the empty gap beneath it.
- * That is the black panel that slides out from under the arena instead of a zoom.
+ * spends its first pixels doing exactly that — and every pixel AFTER that genuinely scrolls the
+ * document, sliding the fixed page layer up and exposing the empty gap beneath it. That is the
+ * black panel that slides out from under the arena instead of a zoom.
  *
  *   Safari iOS    chrome ~101  →  112 gap  →  ~11px of slide   (never noticed — this is why it worked)
  *   Chrome iOS    chrome   22  →  112 gap  →   90px of slide   ← the panel
@@ -19,7 +26,18 @@ import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
  * 90px of a 372px viewport is a quarter of the screen. Note the gap is NOT consumed by the
  * collapse: `calc(100% + Npx)` resolves against the current viewport, so it stays fully scrollable
  * in either bar state — measured on the device as `scrollH − clientH: 112` with the bars already
- * down. Sizing the gap from the chrome actually on screen is what shrinks the slide, to ~12px.
+ * down.
+ *
+ * SIZED TO WHAT RETRACTS, NOT TO WHAT IS ON SCREEN — which is the same bug one level down, and the
+ * strip that was still appearing "sometimes" after the measured gap landed. The collapse only
+ * consumes as much scroll as there is chrome that can actually GO, and on Chrome for iOS a thin
+ * omnibox stays put however far you swipe:
+ *
+ *   Safari iOS    101 on screen → 101 retracts → gap 113 → 12px of slide
+ *   Chrome iOS     70 on screen →  48 retracts → gap  82 → 34px of slide   ← the empty div
+ *                                                gap  60 →  12px, i.e. Safari's own residual
+ *
+ * See sheddableChromePx() for where that second figure comes from.
  */
 const GAP_SLACK_PX = 12;
 /** Below this a thumb flick may not register as a scroll at all, so the bars never collapse. */
@@ -42,6 +60,18 @@ const MAX_GAP_PX = 140;
  * were both tried and both silently stopped matching after a client-side route change, leaving the
  * lobby with no gap while a direct load had one. An inline style has no selector to re-evaluate.
  */
+/**
+ * The gap currently applied, in px. MODULE scope, not per-mount: the component remounts on every
+ * route change, and a fresh local reset this to the minimum — so tapping Play while collapsed
+ * shrank the document from 82px to 34px underneath a page parked at the bottom of it, which is the
+ * one thing the comment on remeasureGap() says must never happen. Surviving the navigation is what
+ * makes "a collapsed page keeps the gap it collapsed with" actually true.
+ *
+ * Never read back out of the DOM, because the style it is written to is the very thing being
+ * measured against.
+ */
+let gapPx = MIN_GAP_PX;
+
 export function FullBleedPage() {
   useEffect(() => {
     const el = document.documentElement;
@@ -63,12 +93,7 @@ export function FullBleedPage() {
       body.style.removeProperty("overflow-y");
     };
 
-    /**
-     * The gap currently applied, in px. Starts at the minimum and is replaced by a real measurement
-     * as soon as one is available — never read back out of the DOM, because the style it is written
-     * to is the very thing being measured against.
-     */
-    let gapPx = MIN_GAP_PX;
+    /* The gap currently applied lives at MODULE scope — see the declaration above the component. */
 
     /**
      * Re-measure the chrome and resize the gap to match it.
@@ -87,7 +112,15 @@ export function FullBleedPage() {
       if (keyboardOpen()) return;
       const chrome = chromeGapPx();
       if (chrome < 10) return; // bars already down, or unmeasurable — keep what we have
-      gapPx = Math.min(MAX_GAP_PX, Math.max(MIN_GAP_PX, chrome + GAP_SLACK_PX));
+      /**
+       * `chrome` is what is ON SCREEN; `shed` is how much of it can actually GO. The difference is
+       * the empty strip — the collapse stops consuming scroll once the retractable part is gone, and
+       * the rest of the gap slides the page. Never more than is on screen (you cannot retract chrome
+       * that is not there), and `0` means not-yet-known, which keeps the old total-chrome behaviour.
+       */
+      const shed = sheddableChromePx();
+      const consumed = shed > 0 ? Math.min(shed, chrome) : chrome;
+      gapPx = Math.min(MAX_GAP_PX, Math.max(MIN_GAP_PX, consumed + GAP_SLACK_PX));
     };
 
     const sync = () => {
