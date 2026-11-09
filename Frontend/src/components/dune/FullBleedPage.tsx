@@ -40,7 +40,21 @@ import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
  * See sheddableChromePx() for where that second figure comes from.
  */
 const GAP_SLACK_PX = 12;
-/** Below this a thumb flick may not register as a scroll at all, so the bars never collapse. */
+/**
+ * 2px, and it is INSURANCE, not slack — see remeasureGap(). The settled slide is `gap − retractable`,
+ * so every pixel of gap past the retractable chrome is a pixel of the page pushed off the bottom of
+ * the screen. Two is enough to absorb the ±1px rounding in `chromeGapPx()` and is invisible; if the
+ * bars ever stop collapsing all the way, this is the number to raise.
+ */
+const EXACT_GAP_INSURANCE_PX = 2;
+/**
+ * Below this a thumb flick may not register as a scroll at all, so the bars never collapse.
+ *
+ * ONLY FOR THE UNKNOWN CASE now. As a floor on every gap it was itself a bug: Chrome for iOS
+ * retracts 19px (a 70px toolbar collapsing to a 51px one), so a 34px floor guaranteed 15px of slide
+ * no matter what else was right — which is the board's bottom row sliced off, measured off the
+ * device at 12px.
+ */
 const MIN_GAP_PX = 34;
 /** Safari's ~101px is the widest chrome known; past this the measurement is wrong, not the browser. */
 const MAX_GAP_PX = 140;
@@ -119,8 +133,21 @@ export function FullBleedPage() {
        * that is not there), and `0` means not-yet-known, which keeps the old total-chrome behaviour.
        */
       const shed = sheddableChromePx();
-      const consumed = shed > 0 ? Math.min(shed, chrome) : chrome;
-      gapPx = Math.min(MAX_GAP_PX, Math.max(MIN_GAP_PX, consumed + GAP_SLACK_PX));
+      if (shed > 0) {
+        // EXACTLY what retracts — no slack, and no minimum. The slide a player is left looking at is
+        // `gap − retractable`, confirmed twice from the device:
+        //
+        //   Safari  gap 113, retracts 101  →  12px   (this file's own "~11px of slide")
+        //   Chrome  gap  34, retracts  19  →  15px   (measured off the screenshot at ~12px)
+        //
+        // So the gap must MATCH the retractable chrome, not exceed it. Clamped to what is actually
+        // on screen, because chrome that is not there cannot retract.
+        gapPx = Math.min(MAX_GAP_PX, Math.min(shed, chrome) + EXACT_GAP_INSURANCE_PX);
+        return;
+      }
+      // Not learned yet and the browser gives no usable svh: keep the old sizing, which errs towards
+      // definitely collapsing. One swipe teaches the real figure and this never runs again.
+      gapPx = Math.min(MAX_GAP_PX, Math.max(MIN_GAP_PX, chrome + GAP_SLACK_PX));
     };
 
     const sync = () => {
