@@ -2,14 +2,7 @@
 
 import { useEffect } from "react";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
-import {
-  barsAreUp,
-  canFullscreen,
-  chromeGapPx,
-  keyboardOpen,
-  resetChromeBaseline,
-  sheddableChromePx,
-} from "../../lib/fullscreen";
+import { barsAreUp, canFullscreen, chromeGapPx, keyboardOpen, resetChromeBaseline } from "../../lib/fullscreen";
 import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
 
 /**
@@ -28,33 +21,18 @@ import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
  * in either bar state — measured on the device as `scrollH − clientH: 112` with the bars already
  * down.
  *
- * SIZED TO WHAT RETRACTS, NOT TO WHAT IS ON SCREEN — which is the same bug one level down, and the
- * strip that was still appearing "sometimes" after the measured gap landed. The collapse only
- * consumes as much scroll as there is chrome that can actually GO, and on Chrome for iOS a thin
- * omnibox stays put however far you swipe:
+ * HOW BIG THE GAP IS NO LONGER MATTERS, and two earlier attempts to compute it exactly are gone
+ * with that. Whatever the gap, the page can end up parked somewhere inside it, and THAT — not the
+ * gap's size — is what slides the fixed layer up and cuts the board's bottom row. Chasing the exact
+ * figure meant chasing every browser's chrome on every handset: measured 101px on Safari, 19px of
+ * retractable chrome on one iPhone, something else again on the next.
  *
- *   Safari iOS    101 on screen → 101 retracts → gap 113 → 12px of slide
- *   Chrome iOS     70 on screen →  48 retracts → gap  82 → 34px of slide   ← the empty div
- *                                                gap  60 →  12px, i.e. Safari's own residual
- *
- * See sheddableChromePx() for where that second figure comes from.
+ * So the gap is generous and the SLIDE is cancelled instead, from the one number that is true on
+ * every device without being measured in advance: how far the document is actually scrolled. See
+ * `--app-slide` in AppViewportHeight.
  */
 const GAP_SLACK_PX = 12;
-/**
- * 2px, and it is INSURANCE, not slack — see remeasureGap(). The settled slide is `gap − retractable`,
- * so every pixel of gap past the retractable chrome is a pixel of the page pushed off the bottom of
- * the screen. Two is enough to absorb the ±1px rounding in `chromeGapPx()` and is invisible; if the
- * bars ever stop collapsing all the way, this is the number to raise.
- */
-const EXACT_GAP_INSURANCE_PX = 2;
-/**
- * Below this a thumb flick may not register as a scroll at all, so the bars never collapse.
- *
- * ONLY FOR THE UNKNOWN CASE now. As a floor on every gap it was itself a bug: Chrome for iOS
- * retracts 19px (a 70px toolbar collapsing to a 51px one), so a 34px floor guaranteed 15px of slide
- * no matter what else was right — which is the board's bottom row sliced off, measured off the
- * device at 12px.
- */
+/** Below this a thumb flick may not register as a scroll at all, so the bars never collapse. */
 const MIN_GAP_PX = 34;
 /** Safari's ~101px is the widest chrome known; past this the measurement is wrong, not the browser. */
 const MAX_GAP_PX = 140;
@@ -126,27 +104,6 @@ export function FullBleedPage() {
       if (keyboardOpen()) return;
       const chrome = chromeGapPx();
       if (chrome < 10) return; // bars already down, or unmeasurable — keep what we have
-      /**
-       * `chrome` is what is ON SCREEN; `shed` is how much of it can actually GO. The difference is
-       * the empty strip — the collapse stops consuming scroll once the retractable part is gone, and
-       * the rest of the gap slides the page. Never more than is on screen (you cannot retract chrome
-       * that is not there), and `0` means not-yet-known, which keeps the old total-chrome behaviour.
-       */
-      const shed = sheddableChromePx();
-      if (shed > 0) {
-        // EXACTLY what retracts — no slack, and no minimum. The slide a player is left looking at is
-        // `gap − retractable`, confirmed twice from the device:
-        //
-        //   Safari  gap 113, retracts 101  →  12px   (this file's own "~11px of slide")
-        //   Chrome  gap  34, retracts  19  →  15px   (measured off the screenshot at ~12px)
-        //
-        // So the gap must MATCH the retractable chrome, not exceed it. Clamped to what is actually
-        // on screen, because chrome that is not there cannot retract.
-        gapPx = Math.min(MAX_GAP_PX, Math.min(shed, chrome) + EXACT_GAP_INSURANCE_PX);
-        return;
-      }
-      // Not learned yet and the browser gives no usable svh: keep the old sizing, which errs towards
-      // definitely collapsing. One swipe teaches the real figure and this never runs again.
       gapPx = Math.min(MAX_GAP_PX, Math.max(MIN_GAP_PX, chrome + GAP_SLACK_PX));
     };
 

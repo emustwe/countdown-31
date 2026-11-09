@@ -10342,6 +10342,13 @@ body:has(.mobile-landscape-game) .app-shell > footer {
     position: fixed;
     inset: 0;
     height: max(var(--app-vh, 100dvh), 100dvh);
+    /* Pushed back down by exactly however far the document has been scrolled, so the layer lands on
+       the visible area whatever the gap and whatever the bars did. See `--app-slide` in
+       AppViewportHeight. MUST come after `inset`, which sets `top` too — and it is `top`,
+       deliberately NOT `transform`: a transform here would make this a containing block for its own
+       fixed children, and every compositor-layer variant tried before behaved differently on a real
+       phone. At rest `--app-slide` is 0px and this changes nothing. */
+    top: var(--app-slide, 0px);
     overflow: hidden;
   }
 
@@ -12070,6 +12077,8 @@ body:has(.lobby-launcher.is-gameskin) .lobby-profile:active {
     position: fixed;
     inset: 0;
     height: max(var(--app-vh, 100dvh), 100dvh);
+    /* Slide cancellation — see .arena-viewport. After `inset`; `top`, never `transform`. */
+    top: var(--app-slide, 0px);
   }
 
   /* Pinned exactly like .arena-viewport: the 112px of scroll must move the empty gap BEHIND the
@@ -12088,6 +12097,8 @@ body:has(.lobby-launcher.is-gameskin) .lobby-profile:active {
        compositor-layer transform, touch-action:none) measured fine in emulation and behaved
        differently on the phone; touch-action:none in particular blocked the swipe outright. */
     height: max(var(--app-vh, 100dvh), 100dvh);
+    /* Slide cancellation — see .arena-viewport. After `inset`; `top`, never `transform`. */
+    top: var(--app-slide, 0px);
     overflow: hidden;
   }
   /* The body behind the gap carries the page's own field, so what the collapse reveals is the same

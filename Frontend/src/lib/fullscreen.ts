@@ -148,75 +148,9 @@ const COLLAPSED_SHARE = 0.5;
  */
 let barsUpBaselinePx = 0;
 
-/**
- * The smallest chrome seen once the bars were observed to go down — i.e. the sliver this browser
- * keeps even when fully collapsed. 0 on Safari, ~22px on Chrome for iOS.
- *
- * Only ever shrinks, so it converges on the true resting figure rather than on a frame caught
- * mid-animation, and `null` means "not learned yet" (which is not the same as "zero").
- */
-let collapsedFloorPx: number | null = null;
-
-/** Orientation-keyed: iOS Chrome drops its bottom toolbar in landscape, so the two differ. */
-function floorStoreKey(): string {
-  const landscape = typeof window !== "undefined" && window.innerWidth > window.innerHeight;
-  return `vera31:chrome-floor:${landscape ? "landscape" : "portrait"}`;
-}
-
-/**
- * Remembered across reloads, because the sliver is a property of the BROWSER and does not change.
- * Without this it has to be re-learned by collapsing the bars once, and the one swipe that teaches
- * it is the one swipe that shows the strip — exactly the "sometimes" in the bug report.
- */
-function storedFloor(): number | null {
-  try {
-    const raw = sessionStorage.getItem(floorStoreKey());
-    if (raw === null) return null;
-    const n = Number(raw);
-    return Number.isFinite(n) && n >= 0 && n <= CHROME_PLAUSIBLE_MAX_PX ? n : null;
-  } catch {
-    return null; // private mode / blocked storage — fall back to learning it live
-  }
-}
-
 /** Forget the learned chrome figures. Call when the chrome itself changes — rotation, app switch. */
 export function resetChromeBaseline(): void {
   barsUpBaselinePx = 0;
-  collapsedFloorPx = null;
-}
-
-/**
- * How much chrome this browser can ACTUALLY retract, which is not the same as how much is on screen.
- *
- * THE SOURCE OF THE EMPTY STRIP. The scroll gap exists to give the browser something to scroll so it
- * will collapse its bars, and the collapse consumes the first N pixels of that scroll. Every pixel
- * after N genuinely scrolls the document, sliding the fixed page layer up and leaving empty space
- * below it. Sizing the gap to the chrome ON SCREEN assumes all of it can go — true on Safari, false
- * on Chrome for iOS, which keeps a thin omnibox whatever you do:
- *
- *   Safari iOS    101 on screen → 101 retracts → gap 113 → 12px of slide   (never noticed)
- *   Chrome iOS     70 on screen →  48 retracts → gap  82 → 34px of slide   ← the empty div
- *
- * Two independent answers, best first:
- *
- *  1. MEASURED on this device — the bars-up height minus the sliver left after a real collapse.
- *     Nothing to assume; it is what the browser actually did. Needs one collapse to learn, which is
- *     why it is remembered for the session.
- *  2. `100lvh − 100svh` — the spec's own "how much UA chrome is dynamically retractable", available
- *     with no collapse at all. Used until (1) exists, and a sanity check on nothing: a browser that
- *     mis-reports it is corrected by (1) the first time the bars move.
- *
- * Returns 0 for "unknown", which tells the caller to keep the old behaviour of sizing to the total.
- */
-export function sheddableChromePx(): number {
-  const floor = collapsedFloorPx ?? storedFloor();
-  if (barsUpBaselinePx > 0 && floor !== null) {
-    const measured = barsUpBaselinePx - floor;
-    if (measured >= CHROME_FLOOR_PX) return measured;
-  }
-  const retractable = Math.round(probeViewportUnit("lvh") - probeViewportUnit("svh"));
-  if (retractable >= CHROME_FLOOR_PX && retractable <= CHROME_PLAUSIBLE_MAX_PX) return retractable;
-  return 0;
 }
 
 /**
@@ -258,20 +192,6 @@ export function barsAreUp(): boolean {
   const up =
     gap >= CHROME_FLOOR_PX &&
     (!RELATIVE_BAR_COLLAPSE || gap > Math.max(CHROME_FLOOR_PX, barsUpBaselinePx * COLLAPSED_SHARE));
-
-  // Learn the sliver this browser keeps when collapsed — the other half of sizing the scroll gap.
-  // Only from a reading taken AFTER the bars have been seen up, so a cold load that happens to start
-  // collapsed cannot teach a floor that the baseline knows nothing about.
-  if (!up && !keyboardOpen() && barsUpBaselinePx > 0 && gap >= 0 && gap <= CHROME_PLAUSIBLE_MAX_PX) {
-    if (collapsedFloorPx === null || gap < collapsedFloorPx) {
-      collapsedFloorPx = gap;
-      try {
-        sessionStorage.setItem(floorStoreKey(), String(gap));
-      } catch {
-        /* private mode / blocked storage — the in-memory value still does the job this page-life */
-      }
-    }
-  }
 
   return up;
 }
