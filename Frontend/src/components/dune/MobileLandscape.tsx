@@ -12,29 +12,13 @@ import { useEffect } from "react";
  * true landscape, where it renders exactly as on desktop / manual landscape. Renders nothing.
  */
 export function MobileLandscape() {
-  // TRUE visible height. iOS Safari in landscape overlays a top tab bar / bottom toolbar that
-  // `100dvh` doesn't reliably subtract, so the bottom of the arena gets clipped (~5%). visualViewport
-  // reports the actually-visible area (chrome excluded), so we mirror it into `--app-vh` and size the
-  // arena from that instead of dvh. Falls back to innerHeight where visualViewport is unavailable.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const setVH = () => {
-      const h = window.visualViewport?.height ?? window.innerHeight;
-      document.documentElement.style.setProperty("--app-vh", `${Math.round(h)}px`);
-    };
-    setVH();
-    const vv = window.visualViewport;
-    vv?.addEventListener("resize", setVH);
-    vv?.addEventListener("scroll", setVH);
-    window.addEventListener("resize", setVH);
-    window.addEventListener("orientationchange", setVH);
-    return () => {
-      vv?.removeEventListener("resize", setVH);
-      vv?.removeEventListener("scroll", setVH);
-      window.removeEventListener("resize", setVH);
-      window.removeEventListener("orientationchange", setVH);
-    };
-  }, []);
+  /**
+   * `--app-vh` IS NOT WRITTEN HERE ANY MORE. <AppViewportHeight> in the root layout writes it
+   * globally from the same `visualViewport.height`, so this copy was a second set of listeners and
+   * a second write of an identical value on every resize, scroll and poll. Two writers of one
+   * measurement cannot disagree, but they both pay for it — and a custom property on <html> costs
+   * a document-wide style invalidation every time.
+   */
 
   useEffect(() => {
     if (typeof window === "undefined") return;

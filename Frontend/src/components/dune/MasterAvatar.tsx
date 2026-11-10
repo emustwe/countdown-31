@@ -4,6 +4,7 @@ import React from "react";
 import { type AvatarConfig } from "../../stores/avatar-customization-store";
 import { EYE_ANCHOR, getAvatarVariant, isAvatarVariantId } from "../../lib/avatar-catalog";
 import { getAvatarBackground, getAvatarFrame } from "../../lib/avatar-decorations";
+import { smallAvatarImage } from "../../lib/avatar-image";
 
 interface MasterAvatarProps {
   config?: Partial<AvatarConfig>;
@@ -17,6 +18,12 @@ interface MasterAvatarProps {
   /** Studio preview override for the styling glasses. If undefined, uses `config.stylingGlasses`
    *  (so an EQUIPPED avatar shows the glasses everywhere it's rendered — e.g. the in-game card). */
   glasses?: boolean;
+  /**
+   * Load the full 1024px master instead of the 384px copy. For the catalog studio's large preview
+   * ONLY — every in-game slot draws this at 60-120px, where the master is eight times more image
+   * than the screen can show and a megabyte that a weak connection never finishes.
+   */
+  full?: boolean;
 }
 
 export function MasterAvatar({
@@ -29,6 +36,7 @@ export function MasterAvatar({
   rarityText = "Mythic",
   rarityColor = "#f59e0b",
   glasses,
+  full = false,
 }: MasterAvatarProps) {
   const skinId = config?.skinId ?? "base_bull";
   const showGlasses = glasses !== undefined ? glasses : !!config?.stylingGlasses;
@@ -58,9 +66,18 @@ export function MasterAvatar({
       {catalogVariant && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={catalogVariant.image}
+          src={full ? catalogVariant.image : smallAvatarImage(catalogVariant.image)}
           alt={catalogVariant.label}
+          /* async: five avatars decoding 1024px masters on the main thread is a visible stall on a
+             browser with less headroom than Safari. Off the critical path, they decode off-thread. */
+          decoding="async"
+          width={384}
+          height={384}
           className="absolute inset-[6%] w-[88%] h-[88%] rounded-[18%] object-cover pointer-events-none shadow-[0_0_18px_rgba(0,0,0,.35)]"
+          /* A render that fails — and on a weak connection some will — must not leave a hole where
+             a player's cow should be. Hiding it drops through to the background and frame below,
+             which still read as an avatar. */
+          onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
         />
       )}
 
@@ -72,6 +89,8 @@ export function MasterAvatar({
           <img
             src="/assets/styling/glasses-aviator.png"
             alt="Glasses"
+            decoding="async"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
             className="absolute z-[5] pointer-events-none object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,0.55)]"
             style={{
               left: `${a.x}%`,
@@ -88,6 +107,8 @@ export function MasterAvatar({
         <img
           src="/assets/master/base_bull_1024.png"
           alt="Base Bull"
+          decoding="async"
+          onError={(e) => { e.currentTarget.style.display = "none"; }}
           className="absolute inset-0 w-full h-full object-contain pointer-events-none"
         />
       )}
@@ -114,6 +135,8 @@ export function MasterAvatar({
         <img
           src="/assets/master/mustache_1024.png"
           alt="Mustache"
+          decoding="async"
+          onError={(e) => { e.currentTarget.style.display = "none"; }}
           className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
         />
       )}
@@ -124,6 +147,8 @@ export function MasterAvatar({
         <img
           src="/assets/master/glasses_1024.png"
           alt="Glasses"
+          decoding="async"
+          onError={(e) => { e.currentTarget.style.display = "none"; }}
           className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)]"
         />
       )}

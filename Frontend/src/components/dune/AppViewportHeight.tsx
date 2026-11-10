@@ -23,11 +23,18 @@ import { useEffect } from "react";
 export function AppViewportHeight() {
   useEffect(() => {
     if (typeof window === "undefined") return;
+    /**
+     * Only written WHEN IT CHANGES. Setting a custom property on <html> invalidates style for the
+     * whole document, and this runs on a poll as well as on events — so re-writing the identical
+     * value handed the engine a document-wide style recalculation several times a second for
+     * nothing. Free on a browser with Safari's headroom; not free on one with less.
+     */
+    let last = -1;
     const setVH = () => {
-      const el = document.documentElement;
-      const h = window.visualViewport?.height ?? window.innerHeight;
-      el.style.setProperty("--app-vh", `${Math.round(h)}px`);
-
+      const h = Math.round(window.visualViewport?.height ?? window.innerHeight);
+      if (h === last || h <= 0) return;
+      last = h;
+      document.documentElement.style.setProperty("--app-vh", `${h}px`);
     };
     setVH();
     const vv = window.visualViewport;

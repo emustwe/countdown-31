@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { smallAvatarImage } from "../../lib/avatar-image";
 import { Check, ShieldCheck, Sparkles, Lock, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -273,7 +274,7 @@ export function AvatarCatalogStudio() {
                   }`}
                 >
                   <div className="relative aspect-square w-full rounded-xl overflow-hidden">
-                    <img src={character.baseVariant.image} alt="" className="mx-auto aspect-square w-full rounded-xl object-cover" />
+                    <img src={smallAvatarImage(character.baseVariant.image)} alt="" decoding="async" loading="lazy" className="mx-auto aspect-square w-full rounded-xl object-cover" />
                     {!isOwned && (
                       <div className="absolute inset-0 bg-black/70 backdrop-blur-[1px] flex flex-col items-center justify-center gap-0.5">
                         <Lock size={16} className="text-amber-400 drop-shadow" />
@@ -324,7 +325,7 @@ export function AvatarCatalogStudio() {
                     selected ? "border-amber-300 shadow-[0_0_18px_rgba(251,191,36,.45)]" : "border-white/10"
                   }`}
                 >
-                  <img src={variant.image} alt="" className="h-full w-full object-cover" />
+                  <img src={smallAvatarImage(variant.image)} alt="" decoding="async" loading="lazy" className="h-full w-full object-cover" />
                   {!isVarOwned && (
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-[1px] flex items-center justify-center">
                       <Lock size={16} className="text-amber-400 drop-shadow" />

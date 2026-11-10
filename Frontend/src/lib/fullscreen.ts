@@ -100,15 +100,58 @@ export function keyboardOpen(): boolean {
  * Any constant tuned for one of those is wrong for the other by a factor of five, which is how both
  * iOS-Chrome bugs in this file's history happened.
  */
+/**
+ * ONE probe element, reused, and every reading cached until the next frame.
+ *
+ * THIS FUNCTION WAS THE LAG. It used to create a div, append it to <body>, call
+ * getBoundingClientRect() — a forced synchronous layout — and remove it again, which invalidates
+ * layout a second time. That ran from `barsAreUp()`, which runs from the page's scroll handler, so
+ * every scroll event cost two full-document layouts, and `retractableChromePx()` asks for two units
+ * at once. On a browser with Safari's memory and CPU headroom the cost hides; on any third-party
+ * iOS browser, which iOS gives less of both, it is visible stutter.
+ *
+ * Both halves of the fix matter. Reusing one detached-then-reattached element removes the churn,
+ * and the per-frame cache means N callers in a frame pay for ONE layout instead of N — a scroll
+ * burst that used to force a dozen now forces one.
+ */
+let probeEl: HTMLDivElement | null = null;
+const probeCache = new Map<string, { h: number; at: number }>();
+
+/**
+ * How long a reading stays good. A scroll fires ~60 events a second and each one used to force its
+ * own layout; at 100ms that burst costs about ten. Deliberately a timestamp and NOT a
+ * requestAnimationFrame ticker — a permanent rAF loop keeps the compositor awake every frame and
+ * spends battery on precisely the phones this is meant to help. Nothing here needs to be fresher:
+ * the collapse is watched on a 260ms debounce.
+ */
+const PROBE_TTL_MS = 100;
+
+/** Throw the readings away the instant the viewport genuinely changes, TTL or no TTL. */
+if (typeof window !== "undefined") {
+  const flush = () => probeCache.clear();
+  window.addEventListener("resize", flush);
+  window.addEventListener("orientationchange", flush);
+  window.visualViewport?.addEventListener("resize", flush);
+}
+
 function probeViewportUnit(unit: "lvh" | "svh" | "dvh"): number {
-  if (typeof document === "undefined") return 0;
-  const probe = document.createElement("div");
+  if (typeof document === "undefined" || !document.body) return 0;
+  const now = Date.now();
+  const hit = probeCache.get(unit);
+  if (hit && now - hit.at < PROBE_TTL_MS) return hit.h;
+
+  if (!probeEl) {
+    probeEl = document.createElement("div");
+    probeEl.setAttribute("aria-hidden", "true");
+  }
   // `100vh` first as the fallback for anything without the v2 units — an unsupported unit leaves the
   // declaration dropped, and a probe with no height at all would read as "no chrome whatsoever".
-  probe.style.cssText = `position:fixed;top:0;left:0;width:1px;height:100vh;height:100${unit};visibility:hidden;pointer-events:none`;
-  document.body.appendChild(probe);
-  const h = probe.getBoundingClientRect().height;
-  probe.remove();
+  // NO `contain` here: `contain: strict` implies SIZE containment, which would resolve the
+  // percentage height against nothing and report 0 — i.e. "this browser has no chrome at all".
+  probeEl.style.cssText = `position:fixed;top:0;left:0;width:1px;height:100vh;height:100${unit};visibility:hidden;pointer-events:none`;
+  if (!probeEl.isConnected) document.body.appendChild(probeEl);
+  const h = probeEl.getBoundingClientRect().height;
+  probeCache.set(unit, { h, at: now });
   return h;
 }
 
