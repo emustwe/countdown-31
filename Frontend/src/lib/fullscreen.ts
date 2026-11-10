@@ -154,6 +154,36 @@ export function resetChromeBaseline(): void {
 }
 
 /**
+ * How much browser chrome can actually RETRACT — the one number the scroll gap must equal.
+ *
+ * THE GAP IS WHAT THE BROWSER SCROLLS TO RETRACT ITS BARS, and the retraction consumes exactly as
+ * much scroll as there is chrome to retract. Any gap beyond that is left over as scroll, the page
+ * sits that far down, and the board's bottom row is pushed off the screen. Measured on an iPhone 14
+ * in Chrome, from the calibrator, with the bars down:
+ *
+ *   100lvh 372, 100svh 350  ->  22px retracts
+ *   gap applied 34          ->  scrollY 12   <- the slice, 34 − 22
+ *
+ * `100lvh − 100svh` IS that number, and it is NOT a figure read off one handset: the spec defines
+ * the large viewport as "assuming any dynamically retracted UA interfaces are retracted" and the
+ * small one as "assuming they are expanded", so the difference is the browser stating what it can
+ * retract. The same expression answers 22 on an iPhone 14, 19 on a 13 Pro Max, ~101 on Safari, and
+ * whatever is right on a handset that does not exist yet. Asking the browser is the generalisation;
+ * measuring a phone and writing the answer down is what it replaces.
+ *
+ * Returns 0 for "this browser will not say", which leaves the caller on its old generous sizing.
+ */
+export function retractableChromePx(): number {
+  const lvh = probeViewportUnit("lvh");
+  const svh = probeViewportUnit("svh");
+  if (!lvh || !svh) return 0;
+  const retractable = Math.round(lvh - svh);
+  // Below the floor there is nothing worth retracting; above the plausible max the reading is the
+  // keyboard or a broken unit, not browser chrome.
+  return retractable >= CHROME_FLOOR_PX && retractable <= CHROME_PLAUSIBLE_MAX_PX ? retractable : 0;
+}
+
+/**
  * Are the browser's own bars currently on screen?
  *
  * MEASURED, not inferred from scroll position. `scrollY` is unusable for this on iOS: the bars

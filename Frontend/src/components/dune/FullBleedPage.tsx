@@ -2,7 +2,14 @@
 
 import { useEffect } from "react";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
-import { barsAreUp, canFullscreen, chromeGapPx, keyboardOpen, resetChromeBaseline } from "../../lib/fullscreen";
+import {
+  barsAreUp,
+  canFullscreen,
+  chromeGapPx,
+  keyboardOpen,
+  resetChromeBaseline,
+  retractableChromePx,
+} from "../../lib/fullscreen";
 import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
 
 /**
@@ -21,17 +28,24 @@ import { isCollapsed, setCollapsed } from "../../lib/collapse-latch";
  * in either bar state — measured on the device as `scrollH − clientH: 112` with the bars already
  * down.
  *
- * HOW BIG THE GAP IS NO LONGER MATTERS, and two earlier attempts to compute it exactly are gone
- * with that. Whatever the gap, the page can end up parked somewhere inside it, and THAT — not the
- * gap's size — is what slides the fixed layer up and cuts the board's bottom row. Chasing the exact
- * figure meant chasing every browser's chrome on every handset: measured 101px on Safari, 19px of
- * retractable chrome on one iPhone, something else again on the next.
+ * THE GAP MUST EQUAL THE CHROME THAT RETRACTS. Not the chrome on screen, not a floor, not a guess —
+ * the retraction consumes exactly that much scroll, and every pixel of gap beyond it is left over as
+ * scroll the page then sits at. Read straight off an iPhone 14 in Chrome:
  *
- * So the gap is generous and the SLIDE is cancelled instead, from the one number that is true on
- * every device without being measured in advance: how far the document is actually scrolled. See
- * `--app-slide` in AppViewportHeight.
+ *   100lvh 372, 100svh 350  ->  22px retracts
+ *   gap 34                  ->  scrollY 12   <- the board's bottom row, pushed off the screen
+ *   gap 24                  ->  scrollY  2   <- invisible
+ *
+ * `retractableChromePx()` is where that number comes from, and it is the browser's own answer
+ * rather than anything measured off a particular handset. MIN_GAP_PX and GAP_SLACK_PX apply only
+ * when the browser will not give one.
  */
 const GAP_SLACK_PX = 12;
+/**
+ * 2px of insurance on a gap that is otherwise exact — enough to absorb the rounding in the viewport
+ * probes, and invisible. If the bars ever stop retracting all the way, this is the number to raise.
+ */
+const RETRACT_INSURANCE_PX = 2;
 /** Below this a thumb flick may not register as a scroll at all, so the bars never collapse. */
 const MIN_GAP_PX = 34;
 /** Safari's ~101px is the widest chrome known; past this the measurement is wrong, not the browser. */
@@ -104,6 +118,14 @@ export function FullBleedPage() {
       if (keyboardOpen()) return;
       const chrome = chromeGapPx();
       if (chrome < 10) return; // bars already down, or unmeasurable — keep what we have
+      const retractable = retractableChromePx();
+      if (retractable > 0) {
+        // Exactly what retracts. No floor: a 34px minimum against 22px of retractable chrome is
+        // itself 12px of leftover scroll, which is the whole bug.
+        gapPx = Math.min(MAX_GAP_PX, retractable + RETRACT_INSURANCE_PX);
+        return;
+      }
+      // The browser will not say what it can retract — fall back to sizing from what is on screen.
       gapPx = Math.min(MAX_GAP_PX, Math.max(MIN_GAP_PX, chrome + GAP_SLACK_PX));
     };
 

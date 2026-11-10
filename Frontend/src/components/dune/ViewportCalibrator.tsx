@@ -47,13 +47,13 @@ export function ViewportCalibrator() {
         "100dvh": px(probe("dvh")),
         "100svh": px(probe("svh")),
         "--app-vh": (getComputedStyle(d).getPropertyValue("--app-vh") || "unset").trim(),
-        // THE TWO THAT SAY WHY THE BOARD IS CUT. `vv offsetTop` is how far what you can see has been
-        // pushed off the box `position: fixed` is placed against — the displacement, straight from
-        // the browser. `--app-slide` is what the page did about it. If the board's bottom row is
-        // sliced while BOTH read 0, the cause is the HEIGHT, not a displacement, and the answer is in
-        // --app-vh / 100dvh / visualViewport above instead.
+        // THE LINE THAT SAYS WHY THE BOARD IS CUT. `retracts` is what the browser says it can pull
+        // back (100lvh − 100svh); the GAP must equal it. Any excess is left over as scroll, the page
+        // sits that far down, and that much of the board goes off the bottom — measured here once as
+        // retracts 22, gap 34, scrollY 12. So `leftover = GAP − retracts` should read ~2, and if it
+        // does while the board is still sliced, the cause is the HEIGHT instead (--app-vh / 100dvh).
+        "retracts (lvh−svh)": `${Math.round(probe("lvh") - probe("svh"))}`,
         "vv offsetTop": px(window.visualViewport?.offsetTop),
-        "--app-slide": (getComputedStyle(d).getPropertyValue("--app-slide") || "unset").trim(),
         "page height": cs?.height ?? "—",
         "page top→bottom": r ? `${px(r.top)} → ${px(r.bottom)}` : "—",
         "page position": cs?.position ?? "—",
@@ -135,6 +135,8 @@ export function ViewportCalibrator() {
             color:
               (k === "UNCOVERED BELOW" && v !== "0px") ||
               (k === "vv offsetTop" && v !== "0" && v !== "—") ||
+              // The gap is sized to this; if scrollY settles far above 0 the two disagree.
+              (k === "scrollY" && Number(v) > 4) ||
               // An iOS device that believes it can go fullscreen is denied the scroll gap, and an
               // iOS device with no gap cannot clear its bars at all. Either one in red is the bug.
               (k === "canFullscreen()" && v === "true" && m["isIOS()"] === "true") ||
