@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import { wsBaseUrl, socketPath } from "../runtime-host";
+import {
+  LIVE_PRACTICE,
+  countdownSocketOptions,
+  countdownSocketUrl,
+  peekPracticeState,
+  takePracticeSocket,
+} from "../practice-socket";
 import { getAuthState } from "../../stores/auth-store";
 import { soundManager } from "../soundManager";
 import { useGameConfig } from "./useGameConfig";
@@ -17,22 +23,9 @@ export const COW_COUNT_SPAN = 7;
 /** Practice turn length: two passes of the cow's 7-count — a full 7→1, then 7→2. */
 export const PRACTICE_TURN_SECONDS = 13;
 
-/**
- * LIVE PRACTICE — the one switch.
- *
- * `true`  → practice joins the SERVER's always-on "practice" room, so everyone who opens it is in the
- *           same game, sees the same players and waits for the same turns.
- * `false` → practice runs a private in-browser engine per device (the old behaviour): every player
- *           got their own game with their own bots and never saw anyone else.
- *
- * The server room already existed — see countdown.service.ts, "one always-on practice room (5 CPU
- * players, rounds reset and eliminated players/CPUs rejoin)". The frontend simply never connected to
- * it: the effect below short-circuited on `roomId === "practice"` before a socket was ever opened.
- *
- * Set to false to go back. The local engine is untouched and still used as the fallback whenever the
- * socket cannot connect, so a server outage degrades to a playable game rather than an empty screen.
- */
-export const LIVE_PRACTICE = true;
+// LIVE_PRACTICE — the one switch — lives in lib/practice-socket.ts now (so the lobby can read it
+// without bundling this hook) and is re-exported here, so every existing import keeps working.
+export { LIVE_PRACTICE };
 /** Practice always runs on the built-in defaults, with its own longer turn timer. */
 const PRACTICE_GAME_CONFIG = {
   ...DEFAULT_GAME_CONFIG,
@@ -128,7 +121,12 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
   const activeConfig = isTournament ? (gameConfig ?? DEFAULT_GAME_CONFIG) : PRACTICE_GAME_CONFIG;
   const runtimeConfigRef = useRef(activeConfig);
   runtimeConfigRef.current = activeConfig;
-  const [state, setState] = useState<LiveState | null>(null);
+  // Practice starts from whatever the lobby's early connection already received (lib/practice-socket),
+  // so the board is populated on its FIRST frame instead of sitting at "0 / 0 ALIVE" for a handshake.
+  // Client-only: the arena is never server-rendered (home/page.tsx mounts it after hydration).
+  const [state, setState] = useState<LiveState | null>(() =>
+    roomId === "practice" && LIVE_PRACTICE && !opts?.local ? peekPracticeState() : null,
+  );
   const [myId, setMyId] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const isLocalPracticeRef = useRef(false);
@@ -617,22 +615,18 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
 
     let socket: Socket | null = null;
     try {
-      // Send the access token in the handshake so the server can authenticate the player and let
-      // them JOIN this tournament room (registered players only). Without it the join is refused and
-      // the arena would fall back to the local practice bots.
-      const token = getAuthState().accessToken ?? undefined;
-      socket = io(`${wsBaseUrl()}/countdown`, {
-        // "/countdown" above is the NAMESPACE; this is the transport path, which differs in
-        // production because the API is proxied under /api. See socketPath().
-        path: socketPath(),
-        transports: ["websocket"],
-        timeout: 3000,
-        reconnectionAttempts: 2,
-        auth: { token },
-      });
+      // PRACTICE: take the socket the lobby opened early (lib/practice-socket) — usually already
+      // connected and already holding the room's latest state. Anything else (a tournament, a direct
+      // link to the game, an early connection that expired) opens its own, exactly as before.
+      const warm = roomId === "practice" ? takePracticeSocket() : null;
+      if (warm?.last) setState(warm.last);
+      // The options carry the access token in the handshake so the server can authenticate the
+      // player and let them JOIN a tournament room (registered players only). Without it the join is
+      // refused and the arena would fall back to the local practice bots.
+      socket = warm?.socket ?? io(countdownSocketUrl(), countdownSocketOptions(roomId));
       socketRef.current = socket;
 
-      socket.on("connect", () => {
+      const onConnect = () => {
         isLocalPracticeRef.current = false;
         // WHICH ID IS "ME" DEPENDS ON THE ROOM. This mirrors `playerId()` in countdown.gateway.ts —
         // tournaments seat by USER ID (the DB-seeded roster), practice seats by SOCKET ID, because
@@ -657,7 +651,11 @@ export function useCountdownLive(roomId = "practice", opts?: { local?: boolean; 
             mode: pending.mode,
           });
         }
-      });
+      };
+      socket.on("connect", onConnect);
+      // The lobby's early socket is usually ALREADY connected, and "connect" will not fire again for
+      // it — so do the connect work now (seat id, a fresh "watch" snapshot, any queued join).
+      if (socket.connected) onConnect();
 
       socket.on("state", (s: LiveState) => {
         isLocalPracticeRef.current = false;

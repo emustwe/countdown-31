@@ -12072,6 +12072,14 @@ body:has(.lobby-launcher.is-gameskin) .lobby-profile:active {
     height: max(var(--app-vh, 100dvh), 100dvh);
   }
 
+  /* Chrome / Edge / Firefox on iOS (`data-ios-alt`, set in layout.tsx): EXACTLY the visible area,
+     never the 100dvh floor. Their bar does not retract like Safari's, so 100dvh can be taller than
+     what is on screen and the difference is the bottom of the board. Phones already got this from
+     `.mobile-landscape-game.arena-viewport` (≤1180px); this makes it true at every width (iPad). */
+  html[data-ios-alt] .arena-viewport {
+    height: var(--app-vh, 100dvh);
+  }
+
   /* Pinned exactly like .arena-viewport: the 112px of scroll must move the empty gap BEHIND the
      page, never the page itself. Without this the lobby content scrolled with the gesture, which is
      what made it feel rough compared with the game. */

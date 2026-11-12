@@ -115,6 +115,19 @@ export class CountdownGateway implements OnGatewayInit, OnGatewayConnection, OnG
   // Verify the access token from the socket handshake (if any). Guests (no/invalid token) may still
   // connect — they just can't join tournament rooms.
   async handleConnection(client: Socket): Promise<void> {
+    // SNAPSHOT ON CONNECT. A client that names its room in the handshake (`auth.watch`) gets the
+    // room's state in the same flight as the connect itself, instead of after a separate "watch"
+    // message — one fewer round trip (~250-550ms measured through Cloudflare) before the arena shows
+    // its players. Exactly what onWatch does, so it exposes nothing new; roomOf() validates the id.
+    // Done FIRST, before the async token check, which it does not depend on. Clients still emit
+    // "watch" on connect, so an older client is unaffected and a duplicate snapshot is harmless.
+    const watch = client.handshake?.auth?.watch;
+    if (typeof watch === "string" && watch) {
+      const room = roomOf({ roomId: watch });
+      void client.join(room);
+      client.emit("state", this.game.getState(room));
+    }
+
     const token = (client.handshake?.auth?.token ?? client.handshake?.query?.token) as string | undefined;
     if (typeof token === "string" && token) {
       try {

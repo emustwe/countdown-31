@@ -880,8 +880,13 @@ export function CountDown31({ roomId = "practice", testArena = false, theme = nu
         </div>
       )}
 
-      {/* Small "joining" loader when entering the practice game. */}
-      {joining && (
+      {/* Small "joining" loader when entering the practice game — and, with the same look, while the
+          live practice room has not sent its first state yet. Without it that wait showed as an
+          empty board ("0 / 0 ALIVE", tiles 1-4) that read as broken rather than loading. Usually
+          never seen now: the lobby connects early (lib/practice-socket), so the state is already
+          here on the first frame; this covers a direct link to /home or a slow connection.
+          pointer-events-none, so the back button still works underneath it. */}
+      {(joining || (roomId === "practice" && !isLocalEngine && !state)) && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 backdrop-blur-sm pointer-events-none select-none">
           <div className="flex flex-col items-center gap-3">
             <div className="relative w-16 h-16">

@@ -7,6 +7,7 @@ import { CountrySelect } from "../../components/dune/CountrySelect";
 import { normalizeCountry } from "../../lib/countries";
 import { useGuestStore } from "../../stores/guest-store";
 import { soundManager } from "../../lib/soundManager";
+import { prewarmPracticeSocket } from "../../lib/practice-socket";
 
 /**
  * Name + country as a PAGE, not a modal — the iOS path into a game.
@@ -30,6 +31,15 @@ export default function JoinPage() {
 
   const [name, setName] = useState(storedName ?? "");
   const [country, setCountry] = useState(storedCountry ?? "");
+
+  // Coming here UNMOUNTS the arena, which closes its connection — so returning to /home?autojoin=1
+  // used to start the whole handshake again before the player could be seated. Re-open it while
+  // they type, and have the game's code ready, so Enter lands straight in the room. See
+  // lib/practice-socket.ts.
+  useEffect(() => {
+    router.prefetch("/home");
+    prewarmPracticeSocket();
+  }, [router]);
 
   /**
    * Hold the page still.

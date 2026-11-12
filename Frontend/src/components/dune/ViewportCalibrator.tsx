@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { barsAreUp, canFullscreen, isIOS } from "../../lib/fullscreen";
+import { barsAreUp, canFullscreen, isIOS, isIOSAltBrowser } from "../../lib/fullscreen";
 import { isCollapsed } from "../../lib/collapse-latch";
 
 /**
@@ -66,6 +66,8 @@ export function ViewportCalibrator() {
           : /EdgiOS/.test(navigator.userAgent) ? "Edge iOS"
           : isIOS() ? "Safari iOS" : "other",
         "isIOS()": String(isIOS()),
+        // true = Chrome/Edge/Firefox on iOS: no gap, no arrow, no lock BY DESIGN (see isIOSAltBrowser).
+        "isIOSAltBrowser()": String(isIOSAltBrowser()),
         "raw FS api": String(
           typeof (d as HTMLElement & { webkitRequestFullscreen?: unknown }).requestFullscreen === "function" ||
             typeof (d as HTMLElement & { webkitRequestFullscreen?: unknown }).webkitRequestFullscreen === "function",
@@ -140,7 +142,10 @@ export function ViewportCalibrator() {
               // An iOS device that believes it can go fullscreen is denied the scroll gap, and an
               // iOS device with no gap cannot clear its bars at all. Either one in red is the bug.
               (k === "canFullscreen()" && v === "true" && m["isIOS()"] === "true") ||
-              (k === "GAP applied" && v === "none" && m["isIOS()"] === "true") ||
+              // ...except on Chrome/Edge/Firefox for iOS, where "none" is the fix, not the bug.
+              (k === "GAP applied" && v === "none" && m["isIOS()"] === "true" && m["isIOSAltBrowser()"] !== "true") ||
+              // On those browsers ANY leftover scroll is the bug — the page has nothing to scroll.
+              (k === "leftover scroll" && m["isIOSAltBrowser()"] === "true" && Number(v) > 0) ||
               // Bars down but a big scrollable remainder = the gap was sized for a browser with
               // more chrome than this one has, and the page is parked on dead space.
               (k === "leftover scroll" && m["barsAreUp()"] === "false" && Number(v) > 40)

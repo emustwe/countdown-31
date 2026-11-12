@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Play, Home, User, Trophy, ShoppingBag, Handshake, Settings as SettingsIcon, Users, Crown, History, BookOpen } from "lucide-react";
 import { PastureAmbiance } from "../../components/dune/PastureAmbiance";
@@ -12,6 +12,7 @@ import { useAuthStore } from "../../stores/auth-store";
 import { useGameConfig } from "../../lib/hooks/useGameConfig";
 import { DEFAULT_GAME_CONFIG } from "../../lib/game-config";
 import { GAME_MENU_SKIN } from "../../lib/mobile-flags";
+import { prewarmPracticeSocket } from "../../lib/practice-socket";
 
 /** Same icon set the header menu uses, so a button here looks like its menu entry did. */
 const ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
@@ -32,8 +33,20 @@ export default function RootLandingPage() {
     .sort((a, b) => a.order - b.order);
   const [showRules, setShowRules] = useState(false);
 
+  // GET THE GAME READY WHILE THE PLAYER IS STILL HERE. Entering the arena used to start from
+  // nothing: fetch the game page's code, mount it, THEN connect to the practice room — ~2.6s on
+  // production before any player appeared, longer on a phone. Both start now, in the background, so
+  // by the time Play is tapped (and the phone is turned) the code is cached and the room's live state
+  // is already in hand. See lib/practice-socket.ts.
+  useEffect(() => {
+    router.prefetch("/home");
+    prewarmPracticeSocket();
+  }, [router]);
+
   function play() {
     soundManager.playClick();
+    // No-op if the early connection is alive; re-opens it if it idled out while the menu sat open.
+    prewarmPracticeSocket();
     // scroll:false — Next scrolls to the top on every route change by default, and returning to
     // scroll 0 is exactly what makes Safari put its bars back. Keeping the position carries the
     // collapsed bars from the lobby into the game.

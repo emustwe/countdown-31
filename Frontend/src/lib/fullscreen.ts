@@ -24,6 +24,25 @@ export function isIOS(): boolean {
 }
 
 /**
+ * Chrome, Edge or Firefox on iPhone/iPad — WebKit underneath, but NOT Safari's bars on top.
+ *
+ * The swipe-to-collapse trick (FullBleedPage's scroll gap + ScrollHintOverlay's arrow + the one-way
+ * lock) is a SAFARI mechanism: a swipe there hides ~101px of bars. These browsers do not hide theirs
+ * the same way — Chrome retracts at most 22px in landscape, and in practice (iPhone 14, 2026-11-12)
+ * a swipe left its omnibox exactly where it was. So the swipe just scrolled the page into the empty
+ * gap, the gap rose over the bottom of the board (the "14"/"17" tiles, the lower avatar, PLAY), and
+ * the lock then froze it there. No size of gap fixes that: any scroll the bars do not absorb is cut.
+ *
+ * So on these browsers there is no gap, no arrow and no lock — the game simply fits the visible area
+ * under the browser's bar, exactly as it already did before the swipe. Safari is untouched (this is
+ * false there), and Android is untouched (isIOS() is false there).
+ */
+export function isIOSAltBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return isIOS() && /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent || "");
+}
+
+/**
  * Will a fullscreen request actually produce a full screen HERE?
  *
  * The single source of truth for "this browser can go fullscreen", so the arena and the scroll hint

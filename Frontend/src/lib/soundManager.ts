@@ -6,8 +6,19 @@ import { Howl } from "howler";
 
 export type BgmTrackType = "tropical";
 
-export const BGM_AUDIO_MAP: Record<BgmTrackType, string> = {
-  tropical: "/assets/sounds/tropical-party-bgm.wav",
+/**
+ * Each track is a list of sources; Howler plays the FIRST one the browser can decode.
+ *
+ * The .wav was 2.8 MB — 57% of every byte the arena downloaded (4.7 MB measured on production), and
+ * fetched on first visit because music defaults to on, so it competed with the game's own code and
+ * images on exactly the slow connections where that hurts. The .m4a is the same 16s loop as 128 kbps
+ * AAC: 265 KB. It carries gapless trim data, verified to decode to EXACTLY the .wav's 705,600
+ * samples, offset 0, in both Chrome and Apple's decoder (Safari / every iOS browser) — so the loop
+ * point is as seamless as before. The .wav stays only as a fallback for a browser without AAC.
+ * Re-encode: afconvert -f m4af -d aac -b 128000 -s 0 tropical-party-bgm.wav tropical-party-bgm.m4a
+ */
+export const BGM_AUDIO_MAP: Record<BgmTrackType, string[]> = {
+  tropical: ["/assets/sounds/tropical-party-bgm.m4a", "/assets/sounds/tropical-party-bgm.wav"],
 };
 
 class SoundManager {
@@ -274,11 +285,11 @@ class SoundManager {
     this.stopBgm();
     this.bgmPlaying = true;
 
-    const audioFile = BGM_AUDIO_MAP[selectedTrack] || BGM_AUDIO_MAP.tropical;
+    const audioFiles = BGM_AUDIO_MAP[selectedTrack] || BGM_AUDIO_MAP.tropical;
 
     try {
       this.bgmSound = new Howl({
-        src: [audioFile],
+        src: audioFiles,
         loop: true,
         volume: this.bgmDucked ? 0 : this.bgmVolume,
         autoplay: false,

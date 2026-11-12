@@ -6,6 +6,7 @@ import {
   barsAreUp,
   canFullscreen,
   chromeGapPx,
+  isIOSAltBrowser,
   keyboardOpen,
   resetChromeBaseline,
   retractableChromePx,
@@ -98,6 +99,18 @@ export function FullBleedPage() {
       el.style.removeProperty("overflow-y");
       body.style.removeProperty("overflow-y");
     };
+
+    // Chrome / Edge / Firefox on iOS: no gap, no collapse watcher, no lock — ever. Their bars do not
+    // hide on a swipe the way Safari's do, so the gap could only ever slide up over the board. See
+    // isIOSAltBrowser(). Clearing (rather than just returning) also strips anything a previous
+    // build's page left on <html> before a client-side navigation landed here.
+    if (isIOSAltBrowser()) {
+      clear();
+      el.style.removeProperty("touch-action");
+      body.style.removeProperty("touch-action");
+      document.querySelector<HTMLElement>(".arena-viewport, .landing-playground")?.style.removeProperty("touch-action");
+      return;
+    }
 
     /* The gap currently applied lives at MODULE scope — see the declaration above the component. */
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { canFullscreen, requestFullscreen } from "../../lib/fullscreen";
+import { canFullscreen, isIOSAltBrowser, requestFullscreen } from "../../lib/fullscreen";
 import { isCollapsed, onCollapseChange } from "../../lib/collapse-latch";
 import { isEntering, onEnteringChange } from "../../lib/entry-latch";
 import { ONE_WAY_COLLAPSE } from "../../lib/mobile-flags";
@@ -52,7 +52,9 @@ export function ScrollHintOverlay() {
       // there is nothing for a swipe to uncover, and the components that watch the bars and keep
       // the viewport honest mount with the arena rather than before it. Offering the gesture there
       // invited the one swipe nobody was listening to — see lib/entry-latch.ts.
-      setShow(coarse && landscape && !standalone && !collapsed && !isEntering());
+      // NEVER on Chrome / Edge / Firefox for iOS. There is no gap to swipe there (see
+      // isIOSAltBrowser), and the arrow is what invited the swipe that slid the gap over the board.
+      setShow(coarse && landscape && !standalone && !collapsed && !isEntering() && !isIOSAltBrowser());
     };
     sync();
     const offLatch = onCollapseChange(sync);
